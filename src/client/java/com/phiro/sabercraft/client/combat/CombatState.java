@@ -29,6 +29,8 @@ public final class CombatState {
 	private @Nullable CombatMove move;
 	private float moveStart;
 	private boolean struck;
+	/** How many of the further strikes of the move have been played (Phase 9). */
+	private int strikes;
 	private int comboIndex = -1;
 	private float lastAttack = -1000.0F;
 	private final FirstPersonPose firstPersonFrom = new FirstPersonPose();
@@ -137,12 +139,20 @@ public final class CombatState {
 		this.move = next;
 		this.moveStart = now;
 		this.struck = false;
+		this.strikes = 0;
 	}
 
 	/** Returns the current move once, when its strike moment is reached. */
 	public @Nullable CombatMove pollStrike(float now) {
 		if (this.move != null && !this.struck && now - this.moveStart >= this.move.strike()) {
 			this.struck = true;
+			return this.move;
+		}
+
+		// Further blows of the same move.
+		if (this.move != null && this.struck && this.strikes < this.move.moreStrikes().length
+				&& now - this.moveStart >= this.move.moreStrikes()[this.strikes]) {
+			this.strikes++;
 			return this.move;
 		}
 

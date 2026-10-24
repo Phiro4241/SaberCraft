@@ -24,6 +24,7 @@ import net.minecraft.world.level.levelgen.Heightmap;
 
 import com.phiro.sabercraft.SaberCraft;
 import com.phiro.sabercraft.client.ImmersionConfig;
+import com.phiro.sabercraft.client.render.ShaderCompat;
 
 /**
  * The Star Wars planet skies (Phase 8). With a planet chosen, the Overworld looks like it from the
@@ -34,6 +35,10 @@ import com.phiro.sabercraft.client.ImmersionConfig;
  * chosen (the default) nothing of this runs.
  *
  * <p>Only the Overworld turns into the planet; the Nether and the End stay as they are.
+ *
+ * <p>Since Phase 9 the layer also holds a far landscape on the horizon (option "Horizon and sky
+ * details"), and with an Iris shader pack a plain tint layer in the planet's sky color is drawn
+ * under it (option "Planet tint with shaders"), because shader packs replace the vanilla sky color.
  */
 public final class PlanetSky {
 	/** Pixels per cube side for the quality settings low, medium, high (shared with the space sky). */
@@ -41,10 +46,15 @@ public final class PlanetSky {
 	/** Luminance of a clear vanilla day sky and day fog, to tell how much daylight there is. */
 	private static final float DAY_SKY = luminance(0x78A7FF);
 	private static final float DAY_FOG = luminance(0xC0D8FF);
+	/** Pixels per cube side of the tint layer for shader packs: a soft gradient needs no more. */
+	private static final int TINT_SIZE = 64;
 
 	private static @Nullable DynamicTexture day;
 	private static @Nullable DynamicTexture night;
 	private static @Nullable GpuBuffer cube;
+	private static @Nullable DynamicTexture tintDay;
+	private static @Nullable DynamicTexture tintNight;
+	private static @Nullable GpuBuffer tintCube;
 	private static int cubeSize;
 	private static @Nullable String shownKey;
 	private static @Nullable String pendingKey;
@@ -107,7 +117,7 @@ public final class PlanetSky {
 			return;
 		}
 
-		prepare(planet.get(), ImmersionConfig.get().spaceSkyQuality);
+		prepare(planet.get(), ImmersionConfig.get().spaceSkyQuality, ImmersionConfig.get().planetHorizon);
 
 		if (day == null || night == null) {
 			return;
@@ -121,6 +131,20 @@ public final class PlanetSky {
 		float daylight = Mth.clamp(Mth.cos(sunAngle) * 2.2F + 0.5F, 0.0F, 1.0F);
 		float weather = 0.45F + 0.55F * rainBrightness;
 
+		if (tinting() && tintDay != null && tintNight != null) {
+			if (tintCube == null) {
+				tintCube = SpaceSky.createCube(TINT_SIZE, "SaberCraft planet tint cube");
+			}
+
+			if (daylight < 0.99F) {
+				SpaceSky.drawCube(target, pose, tintCube, tintNight, (1.0F - daylight) * weather, "SaberCraft planet tint (night)");
+			}
+
+			if (daylight > 0.01F) {
+				SpaceSky.drawCube(target, pose, tintCube, tintDay, daylight * weather, "SaberCraft planet tint (day)");
+			}
+		}
+
 		if (daylight < 0.99F) {
 			SpaceSky.drawCube(target, pose, cube, night, (1.0F - daylight) * weather, "SaberCraft planet sky (night)");
 		}
@@ -131,9 +155,9 @@ public final class PlanetSky {
 	}
 
 	/** Starts painting the pictures of a planet, or uploads them once they are painted. */
-	private static void prepare(PlanetPreset planet, int quality) {
+	private static void prepare(PlanetPreset planet, int quality, boolean details) {
 		int size = SIZES[Math.clamp(quality, 0, SIZES.length - 1)];
-		String key = planet.id() + "@" + size;
+		String key = key(planet, size, details);
 
 		if (pending != null) {
 			if (!pending.isDone()) {
@@ -154,7 +178,8 @@ public final class PlanetSky {
 			pendingSize = size;
 			long start = System.nanoTime();
 			pending = CompletableFuture.supplyAsync(() -> {
-				int[][] pixels = {PlanetSkyPainter.paint(planet, size, false), PlanetSkyPainter.paint(planet, size, true)};
+				int[][] pixels = {PlanetSkyPainter.paint(planet, size, false, details), PlanetSkyPainter.paint(planet, size, true, details),
+						PlanetSkyPainter.paintTint(planet, TINT_SIZE, false), PlanetSkyPainter.paintTint(planet, TINT_SIZE, true)};
 				SaberCraft.LOGGER.info("Painted the planet sky '{}' at {} px in {} ms", planet.id(), size, (System.nanoTime() - start) / 1_000_000L);
 				return pixels;
 			}, Util.backgroundExecutor()).exceptionally(error -> {
@@ -175,8 +200,18 @@ public final class PlanetSky {
 			night.close();
 		}
 
+		if (tintDay != null) {
+			tintDay.close();
+		}
+
+		if (tintNight != null) {
+			tintNight.close();
+		}
+
 		day = SpaceSky.texture(pixels[0], size, "SaberCraft planet sky (day)");
 		night = SpaceSky.texture(pixels[1], size, "SaberCraft planet sky (night)");
+		tintDay = SpaceSky.texture(pixels[2], TINT_SIZE, "SaberCraft planet tint (day)");
+		tintNight = SpaceSky.texture(pixels[3], TINT_SIZE, "SaberCraft planet tint (night)");
 
 		if (cube != null && cubeSize != size) {
 			cube.close();
@@ -186,9 +221,20 @@ public final class PlanetSky {
 		cubeSize = size;
 	}
 
+	/** Whether the tint layer is drawn: a shader pack is in use and the option is on. */
+	public static boolean tinting() {
+		return ImmersionConfig.get().planetShaderTint && ShaderCompat.shaderPackInUse();
+	}
+
 	/** Whether the pictures of the chosen planet are painted and uploaded, for tests. */
 	public static boolean ready() {
-		return current().map(planet -> shownKey != null && shownKey.startsWith(planet.id() + "@") && pending == null).orElse(false);
+		ImmersionConfig config = ImmersionConfig.get();
+		int size = SIZES[Math.clamp(config.spaceSkyQuality, 0, SIZES.length - 1)];
+		return current().map(planet -> key(planet, size, config.planetHorizon).equals(shownKey) && pending == null).orElse(false);
+	}
+
+	private static String key(PlanetPreset planet, int size, boolean details) {
+		return planet.id() + "@" + size + (details ? "" : "/plain");
 	}
 
 	/** Snow or ash drifting down around the player, a few flakes per tick. */

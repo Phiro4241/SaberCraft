@@ -169,18 +169,20 @@ class Hilt:
     def material(self, name, paint):
         self.painter.column(name, paint)
 
-    def box(self, d0, d1, hw, material, hz=None, ox=0.0, oz=0.0, cap=None, spin=0.0):
-        """A box from d0 to d1 along the axis with half width hw (x) and hz (z), shifted by ox, oz."""
+    def box(self, d0, d1, hw, material, hz=None, ox=0.0, oz=0.0, cap=None, spin=0.0, bend=None):
+        """A box from d0 to d1 along the axis with half width hw (x) and hz (z), shifted by ox, oz.
+        bend = (d, degrees) turns the box around the axis point d before the hilt is tilted (Phase 9,
+        for curved hilts)."""
         hz = hw if hz is None else hz
         self.top = d1 if self.top is None else max(self.top, d1)
         self.bottom = d0 if self.bottom is None else min(self.bottom, d0)
-        self.elements.append((d0, d1, hw, hz, ox, oz, material, cap, spin))
+        self.elements.append((d0, d1, hw, hz, ox, oz, material, cap, spin, bend))
 
     def model(self, display=None):
         elements = []
         span_top = self.top
 
-        for d0, d1, hw, hz, ox, oz, material, cap, spin in self.elements:
+        for d0, d1, hw, hz, ox, oz, material, cap, spin, bend in self.elements:
             u0 = self.painter.columns[material]
             # Continuous along the hilt: v counts from the top of the whole hilt.
             v0 = (span_top - d1) % 16.0
@@ -197,6 +199,8 @@ class Hilt:
             rotation = dict(DIAGONAL)
             if spin:
                 rotation = {"origin": [8, 8, 8], "x": 0, "y": spin, "z": -45}
+            if bend:
+                rotation = bent_rotation(*bend)
             elements.append({
                 "from": rnd([8 + ox - hw, 8 + d0, 8 + oz - hz]),
                 "to": rnd([8 + ox + hw, 8 + d1, 8 + oz + hz]),
@@ -219,6 +223,21 @@ class Hilt:
         if display:
             model["display"] = display
         return model
+
+
+def bent_rotation(d, degrees):
+    """One z rotation that first turns a box by `degrees` around the axis point d and then tilts it
+    onto the diagonal like the rest of the hilt (two turns around one axis are one turn)."""
+    def rot(a):
+        c, s_ = math.cos(math.radians(a)), math.sin(math.radians(a))
+        return np.array([[c, -s_], [s_, c]])
+    total = -45.0 + degrees
+    rt, r45 = rot(total), rot(-45.0)
+    b = np.array([8.0, 8.0 + d])
+    c = np.array([8.0, 8.0])
+    rhs = -rt @ b + r45 @ b - r45 @ c + c
+    o = np.linalg.solve(np.eye(2) - rt, rhs)
+    return {"origin": rnd([o[0], o[1], 8]), "axis": "z", "angle": round(total, 4)}
 
 
 def rnd(values):
@@ -355,6 +374,153 @@ def skywalker():
     return h
 
 
+# ---------------- Phase 9 ----------------
+# Own designs after the sabers of the Phase 9 characters, not copies of film props.
+
+def anakin():
+    """Anakin Skywalker: black ribbed grip between silver rings, a small gold activator and an
+    angled, clawed emitter shroud."""
+    h = Hilt("anakin", 71)
+    h.material("silver", metal((206, 208, 214)))
+    h.material("ribs", ridged((24, 24, 28), (60, 60, 66), period=3, ridge_px=2))
+    h.material("steel", metal((96, 100, 108)))
+    h.material("emitter", emitter_top((206, 208, 214)))
+    h.material("gold", metal((214, 172, 74)))
+
+    h.box(-11.2, -10.5, 1.25, "silver")
+    h.box(-10.5, -9.9, 1.0, "steel")
+    h.box(-9.9, -4.4, 1.08, "ribs")
+    h.box(-4.4, -3.8, 1.22, "silver")
+    h.box(-3.8, -1.0, 1.0, "steel")
+    h.box(-3.2, -2.2, 0.3, "gold", hz=0.25, oz=1.05)
+    h.box(-1.0, -0.4, 1.18, "silver")
+    h.box(-0.4, 1.0, 1.1, "silver")
+    # Clawed shroud: a ring turned by 45 degrees under the emitter rim.
+    h.box(0.6, EMITTER_D - 0.2, 1.2, "steel", spin=45)
+    h.box(1.0, EMITTER_D, 1.38, "silver", cap="emitter")
+    return h
+
+
+def yoda():
+    """Yoda: a short, stout hilt for a small hand, dark grey with a green-black grip and a wide
+    ring; it carries a shorter blade (see HILTS)."""
+    h = Hilt("yoda", 73)
+    h.material("grey", metal((128, 130, 136)))
+    h.material("grip", ridged((30, 40, 32), (66, 84, 68), period=3, ridge_px=1))
+    h.material("dark", metal((62, 64, 70), 0.06))
+    h.material("emitter", emitter_top((150, 152, 158)))
+
+    h.box(-8.0, -7.3, 1.3, "dark")
+    h.box(-7.3, -3.8, 1.15, "grip")
+    h.box(-3.8, -3.2, 1.35, "grey")
+    h.box(-3.2, -0.4, 1.2, "dark")
+    h.box(-2.4, -1.6, 0.3, "grey", hz=0.3, oz=1.2)
+    h.box(-0.4, EMITTER_D, 1.4, "grey", cap="emitter")
+    return h
+
+
+DOOKU_BEND = (-5.4, 18.0)
+
+
+def dooku():
+    """Count Dooku: an elegant curved hilt for one-handed fencing. The pommel half bends away from
+    the blade line; dark leather, silver and a little gold."""
+    h = Hilt("dooku", 79)
+    h.material("silver", metal((198, 200, 208)))
+    h.material("leather", wrapped((44, 30, 26), (70, 50, 40), period=4))
+    h.material("gold", metal((200, 160, 80)))
+    h.material("black", metal((30, 28, 30), 0.05))
+    h.material("emitter", emitter_top((198, 200, 208)))
+
+    # Curved part: pommel and the lower grip.
+    h.box(-11.6, -10.8, 1.1, "gold", bend=DOOKU_BEND)
+    h.box(-10.8, -5.4, 1.0, "leather", bend=DOOKU_BEND)
+    h.box(-6.0, -5.4, 1.12, "silver", bend=DOOKU_BEND)
+    # Straight upper part up to the emitter.
+    h.box(-5.4, -4.6, 1.1, "silver")
+    h.box(-4.6, -1.4, 0.98, "leather")
+    h.box(-1.4, -0.8, 1.12, "gold")
+    h.box(-0.8, 0.6, 1.0, "black")
+    h.box(0.6, EMITTER_D, 1.2, "silver", cap="emitter")
+    return h
+
+
+def tano():
+    """Ahsoka Tano: a slim white and silver hilt with black grip rings and a pointed emitter, made
+    to be held in the reverse grip."""
+    h = Hilt("tano", 83)
+    h.material("white", metal((226, 226, 222), 0.04))
+    h.material("rings", ridged((26, 26, 30), (210, 212, 216), period=4, ridge_px=2, offset=2))
+    h.material("silver", metal((190, 194, 202)))
+    h.material("emitter", emitter_top((200, 204, 210)))
+    h.material("blue", flat((70, 130, 200)))
+
+    h.box(-11.2, -10.4, 1.0, "silver")
+    h.box(-10.4, -5.6, 0.88, "rings")
+    h.box(-5.6, -5.0, 1.02, "white")
+    h.box(-5.0, -1.6, 0.9, "white")
+    h.box(-3.4, -2.6, 0.2, "blue", hz=0.18, oz=0.95)
+    h.box(-1.6, -0.6, 1.02, "silver")
+    h.box(-0.6, 0.8, 0.92, "white")
+    h.box(0.8, EMITTER_D, 1.12, "silver", cap="emitter")
+    return h
+
+
+# Where the two short side blades of the crossguard hilt start.
+CROSS_D = 0.9
+CROSS_X = 2.7
+
+
+def crossguard():
+    """Kylo Ren: a rough, battered hilt of dark metal with a wide crossguard block; two short vents
+    at its ends carry small side blades (see HILTS), and the main blade crackles."""
+    h = Hilt("crossguard", 89)
+    h.material("dark", metal((58, 56, 58), 0.14))
+    h.material("rust", metal((90, 70, 60), 0.18, 0.7))
+    h.material("ribs", ridged((32, 30, 32), (96, 92, 92), period=3, ridge_px=1))
+    h.material("vent", vented((84, 82, 84), (14, 12, 12), period=3, slot_px=1))
+    h.material("emitter", emitter_top((84, 82, 84)))
+
+    h.box(-11.2, -10.2, 1.25, "rust")
+    h.box(-10.2, -4.6, 1.1, "ribs")
+    h.box(-4.6, -3.8, 1.25, "dark")
+    h.box(-3.8, -0.4, 1.12, "dark")
+    h.box(-3.0, -1.6, 0.35, "rust", hz=0.3, oz=1.15)
+    # The crossguard block with the two side vents.
+    h.box(-0.4, EMITTER_D, 1.4, "vent", cap="emitter")
+    h.box(CROSS_D - 0.55, CROSS_D + 0.55, CROSS_X, "vent", hz=0.6)
+    for side in (-1, 1):
+        h.box(CROSS_D - 0.7, CROSS_D + 0.7, 0.35, "dark", hz=0.7, ox=side * (CROSS_X - 0.35))
+    return h
+
+
+def rey():
+    """Rey: a short hilt from a piece of her staff, bronze rings around a leather wrap, a sun-worn
+    yellow-brown body."""
+    h = Hilt("rey", 97)
+    h.material("bronze", metal((176, 130, 70)))
+    h.material("wrap", wrapped((110, 82, 54), (70, 50, 32), period=3))
+    h.material("sand", metal((196, 176, 136), 0.12, 0.7))
+    h.material("emitter", emitter_top((176, 130, 70)))
+    h.material("dark", metal((70, 56, 42), 0.08))
+
+    h.box(-11.2, -10.4, 1.2, "bronze")
+    h.box(-10.4, -9.8, 1.0, "dark")
+    h.box(-9.8, -4.8, 1.06, "wrap")
+    h.box(-4.8, -4.2, 1.2, "bronze")
+    h.box(-4.2, -1.0, 1.04, "sand")
+    h.box(-2.8, -2.0, 1.16, "bronze")
+    h.box(-1.0, -0.4, 1.16, "dark")
+    h.box(-0.4, EMITTER_D, 1.26, "bronze", cap="emitter")
+    return h
+
+
+def side_emitter(side):
+    """Model point of a side vent of the crossguard hilt (axis point CROSS_D, CROSS_X across)."""
+    x = side * CROSS_X
+    return rnd([(8 + x * S + CROSS_D * S) / 16.0, (8 - x * S + CROSS_D * S) / 16.0, 0.5])
+
+
 # The double-bladed hilt is centered on the hand. In the vanilla handheld transforms the hand
 # holds the item about 4.7 units below the model center on the diagonal.
 STAFF_CENTER = -4.7
@@ -397,6 +563,16 @@ HILTS = [
     ("double", double, "red", [(STAFF_CENTER + STAFF_HALF, 0), (STAFF_CENTER - STAFF_HALF, 180)]),
     ("kenobi", kenobi, "blue", [(EMITTER_D, 0)]),
     ("skywalker", skywalker, "green", [(EMITTER_D, 0)]),
+    # Phase 9. A blade entry may carry extra fields for the blade renderer: length, unstable,
+    # and a fixed emitter point.
+    ("anakin", anakin, "blue", [(EMITTER_D, 0)]),
+    ("yoda", yoda, "green", [(EMITTER_D, 0, {"length": 0.86})]),
+    ("dooku", dooku, "red", [(EMITTER_D, 0)]),
+    ("tano", tano, "white", [(EMITTER_D, 0)]),
+    ("crossguard", crossguard, "red", [(EMITTER_D, 0, {"unstable": True}),
+                                      (None, 90, {"emitter": side_emitter(1), "length": 0.24, "unstable": True}),
+                                      (None, -90, {"emitter": side_emitter(-1), "length": 0.24, "unstable": True})]),
+    ("rey", rey, "yellow", [(EMITTER_D, 0)]),
 ]
 
 # Inventory icon size. The 3D hilts are slimmer than a sword sprite, so the one-handed hilts are
@@ -421,12 +597,15 @@ ICON_CONTEXTS = ["gui", "ground", "fixed", "on_shelf"]
 def held_model(hilt_model, color, blades):
     """Hilt only in the inventory, on the ground and in frames; hilt plus blade(s) in the hand."""
     layers = [{"type": "minecraft:model", "model": hilt_model}]
-    for d, angle in blades:
+    for entry in blades:
+        d, angle = entry[0], entry[1]
+        extra = dict(entry[2]) if len(entry) > 2 else {}
         blade = {"type": "sabercraft:saber_blade", "base": hilt_model, "style": "sabercraft:" + color}
         if hilt_model != "sabercraft:item/saber_hilt":
-            blade["emitter"] = emitter_point(d)
+            blade["emitter"] = extra.pop("emitter", None) or emitter_point(d)
         if angle:
             blade["angle"] = angle
+        blade.update(extra)
         layers.append(blade)
     return {
         "type": "minecraft:select",

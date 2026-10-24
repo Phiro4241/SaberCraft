@@ -34,6 +34,19 @@ public record StyleTraits(float blockBonus, int parryBonus, float blockCost, flo
 	/** Juyo (Maul): fast spins with the double blade and quick dodges, but a weaker guard. */
 	public static final StyleTraits JUYO = new StyleTraits(-0.08F, 0, 1.15F, 0.7F, 0.8F, 4, 0.1F);
 
+	/** Ansturm (Anakin): aggressive blows that push the target back, quick dodges, a weaker guard. */
+	public static final StyleTraits ONSLAUGHT = new StyleTraits(-0.05F, 0, 1.1F, 0.8F, 0.9F, 5, 0.22F);
+	/** Ataru (Yoda): the fastest, cheapest dodges and leaps, but a weak, costly guard. */
+	public static final StyleTraits ATARU = new StyleTraits(-0.18F, 1, 1.35F, 0.45F, 0.55F, 4, 0.05F);
+	/** Makashi (Dooku): precise fencing, a long parry window and economical blocks, no extra knockback. */
+	public static final StyleTraits MAKASHI = new StyleTraits(0.1F, 5, 0.7F, 1.0F, 0.9F, 5, 0.0F);
+	/** Reverse Shien (Ahsoka): close and quick, fast dodges, an average guard. */
+	public static final StyleTraits REVERSE_SHIEN = new StyleTraits(-0.05F, 2, 1.0F, 0.6F, 0.7F, 4, 0.08F);
+	/** Ungezügelt (Kylo Ren): the hardest blows and the furthest knockback, but a poor, costly guard. */
+	public static final StyleTraits UNBRIDLED = new StyleTraits(-0.1F, -2, 1.4F, 1.25F, 1.2F, 6, 0.45F);
+	/** Shii-Cho (Rey): wide, sweeping cuts and a solid, all-round guard. */
+	public static final StyleTraits SHII_CHO = new StyleTraits(0.06F, 1, 0.9F, 1.0F, 1.0F, 5, 0.12F);
+
 	public static StyleTraits of(@Nullable Identifier style) {
 		if (SaberVariant.HEAVY.equals(style)) {
 			return HEAVY;
@@ -49,6 +62,18 @@ public record StyleTraits(float blockBonus, int parryBonus, float blockCost, flo
 			return SORESU;
 		} else if (SaberVariant.JUYO.equals(style)) {
 			return JUYO;
+		} else if (SaberVariant.ONSLAUGHT.equals(style)) {
+			return ONSLAUGHT;
+		} else if (SaberVariant.ATARU.equals(style)) {
+			return ATARU;
+		} else if (SaberVariant.MAKASHI.equals(style)) {
+			return MAKASHI;
+		} else if (SaberVariant.REVERSE_SHIEN.equals(style)) {
+			return REVERSE_SHIEN;
+		} else if (SaberVariant.UNBRIDLED.equals(style)) {
+			return UNBRIDLED;
+		} else if (SaberVariant.SHII_CHO.equals(style)) {
+			return SHII_CHO;
 		}
 
 		return FLOWING;

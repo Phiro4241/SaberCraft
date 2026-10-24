@@ -45,6 +45,18 @@ public record SaberVariant(Identifier hilt, Identifier color, Identifier style) 
 	public static final Identifier KENOBI = SaberCraft.id("kenobi");
 	/** Black and silver hilt with a long emitter cone, after Luke Skywalker. Since Phase 8. */
 	public static final Identifier SKYWALKER = SaberCraft.id("skywalker");
+	/** Black grip with silver rings and an angled, clawed emitter, after Anakin Skywalker. Since Phase 9. */
+	public static final Identifier ANAKIN = SaberCraft.id("anakin");
+	/** Small, stout hilt with a short blade, after Yoda. Since Phase 9. */
+	public static final Identifier YODA = SaberCraft.id("yoda");
+	/** Curved, elegant hilt for one-handed fencing, after Count Dooku. Since Phase 9. */
+	public static final Identifier DOOKU = SaberCraft.id("dooku");
+	/** Slim white and silver hilt for the reverse grip, after Ahsoka Tano. Since Phase 9. */
+	public static final Identifier TANO = SaberCraft.id("tano");
+	/** Rough hilt with two short side blades and an unstable blade, after Kylo Ren. Since Phase 9. */
+	public static final Identifier CROSSGUARD = SaberCraft.id("crossguard");
+	/** Wrapped, bronze hilt made from a staff, after Rey. Since Phase 9. */
+	public static final Identifier REY = SaberCraft.id("rey");
 
 	public static final Identifier RED = SaberCraft.id("red");
 	public static final Identifier BLUE = SaberCraft.id("blue");
@@ -69,15 +81,29 @@ public record SaberVariant(Identifier hilt, Identifier color, Identifier style) 
 	public static final Identifier SORESU = SaberCraft.id("soresu");
 	/** Juyo, Darth Maul's style with the double blade: fast spins and sweeps. Since Phase 8. */
 	public static final Identifier JUYO = SaberCraft.id("juyo");
+	/** Ansturm, Anakin Skywalker's style: relentless, fast power blows with leaps forward. Since Phase 9. */
+	public static final Identifier ONSLAUGHT = SaberCraft.id("onslaught");
+	/** Ataru, Yoda's style: acrobatic somersaults, spinning leaps and whirling cuts. Since Phase 9. */
+	public static final Identifier ATARU = SaberCraft.id("ataru");
+	/** Makashi, Count Dooku's style: one-handed fencing, precise thrusts and flicks. Since Phase 9. */
+	public static final Identifier MAKASHI = SaberCraft.id("makashi");
+	/** Shien with the reverse grip, Ahsoka Tano's style: the blade points back from the fist. Since Phase 9. */
+	public static final Identifier REVERSE_SHIEN = SaberCraft.id("reverse_shien");
+	/** Ungezügelt, Kylo Ren's style: wild, raw hammering blows driven by rage. Since Phase 9. */
+	public static final Identifier UNBRIDLED = SaberCraft.id("unbridled");
+	/** Shii-Cho, Rey's style: wide sweeping two-handed cuts, trained with a staff. Since Phase 9. */
+	public static final Identifier SHII_CHO = SaberCraft.id("shii_cho");
 
 	/** All hilts in menu order. The server only accepts these. */
-	public static final List<Identifier> HILTS = List.of(STANDARD, GUARDIAN, DARK_LORD, SENTINEL, KENOBI, SKYWALKER, DOUBLE);
+	public static final List<Identifier> HILTS = List.of(STANDARD, GUARDIAN, DARK_LORD, SENTINEL, KENOBI, SKYWALKER, ANAKIN, YODA, DOOKU, TANO, CROSSGUARD, REY, DOUBLE);
 	/** All blade colors in menu order. The server only accepts these. */
 	public static final List<Identifier> COLORS = List.of(RED, BLUE, GREEN, PURPLE, YELLOW, WHITE);
 	/** All fighting styles. The staff and Juyo styles belong to the double-bladed hilt only. */
-	public static final List<Identifier> STYLES = List.of(FLOWING, HEAVY, DEFENSIVE, AGILE, DJEM_SO, SORESU, STAFF, JUYO);
+	public static final List<Identifier> STYLES = List.of(FLOWING, HEAVY, DEFENSIVE, AGILE, DJEM_SO, SORESU, ONSLAUGHT, ATARU, MAKASHI, REVERSE_SHIEN,
+			UNBRIDLED, SHII_CHO, STAFF, JUYO);
 	/** Styles a one-bladed hilt can use, in menu order. */
-	public static final List<Identifier> SINGLE_STYLES = List.of(FLOWING, HEAVY, DEFENSIVE, AGILE, DJEM_SO, SORESU);
+	public static final List<Identifier> SINGLE_STYLES = List.of(FLOWING, HEAVY, DEFENSIVE, AGILE, DJEM_SO, SORESU, ONSLAUGHT, ATARU, MAKASHI,
+			REVERSE_SHIEN, UNBRIDLED, SHII_CHO);
 	/** Styles of the double-bladed hilt, in menu order. */
 	public static final List<Identifier> DOUBLE_STYLES = List.of(STAFF, JUYO);
 
@@ -108,6 +134,20 @@ public record SaberVariant(Identifier hilt, Identifier color, Identifier style) 
 
 		if (KENOBI.equals(hilt)) {
 			return SORESU;
+		}
+
+		if (ANAKIN.equals(hilt)) {
+			return ONSLAUGHT;
+		} else if (YODA.equals(hilt)) {
+			return ATARU;
+		} else if (DOOKU.equals(hilt)) {
+			return MAKASHI;
+		} else if (TANO.equals(hilt)) {
+			return REVERSE_SHIEN;
+		} else if (CROSSGUARD.equals(hilt)) {
+			return UNBRIDLED;
+		} else if (REY.equals(hilt)) {
+			return SHII_CHO;
 		}
 
 		return DARK_LORD.equals(hilt) ? HEAVY : FLOWING;

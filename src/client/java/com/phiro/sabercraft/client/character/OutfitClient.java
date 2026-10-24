@@ -48,8 +48,11 @@ public final class OutfitClient {
 	private static @Nullable String loadedFile;
 	private static @Nullable DynamicTexture customTexture;
 
-	/** What to draw over a player. */
-	public record Look(Identifier texture, boolean coversHead) {
+	/** What to draw over a player, and how big the figure is drawn (1 = normal, Phase 9). */
+	public record Look(Identifier texture, boolean coversHead, float scale) {
+		public Look(Identifier texture, boolean coversHead) {
+			this(texture, coversHead, 1.0F);
+		}
 	}
 
 	private OutfitClient() {
@@ -198,7 +201,8 @@ public final class OutfitClient {
 
 	public static Look lookOf(Outfit outfit) {
 		Identifier own = outfit.character() ? characterSkin(outfit) : null;
-		return new Look(own != null ? own : outfit.id().withPath(path -> "textures/outfit/" + path + ".png"), outfit.coversHead());
+		float scale = CharacterConfig.get().characterSize ? outfit.scale() : 1.0F;
+		return new Look(own != null ? own : outfit.id().withPath(path -> "textures/outfit/" + path + ".png"), outfit.coversHead(), scale);
 	}
 
 	/** Loads a file of your own once (64 x 64 PNG), or null when it cannot be used. */

@@ -140,7 +140,8 @@ public final class CombatLibrary implements ResourceManagerReloadListener {
 				track(thirdPerson, "off_leg", 3),
 				track(thirdPerson, "lean", 1),
 				track(thirdPerson, "root", 3),
-				track(thirdPerson, "crouch", 1)
+				track(thirdPerson, "crouch", 1),
+				json.has("more_strikes") ? floats(json.get("more_strikes"), json.getAsJsonArray("more_strikes").size()) : new float[0]
 		);
 	}
 

@@ -10,7 +10,8 @@ import com.phiro.sabercraft.client.sky.PlanetPreset;
 
 /**
  * The sky: the space sky (on or off, its detail, the End, shader packs) and since Phase 8 the Star
- * Wars planet the Overworld sky turns into. Only on this client.
+ * Wars planet the Overworld sky turns into; since Phase 9 also the horizon landscape and the planet
+ * tint for shader packs. Only on this client.
  */
 public class SpaceMenuScreen extends SaberMenuScreen {
 	public SpaceMenuScreen() {
@@ -54,6 +55,14 @@ public class SpaceMenuScreen extends SaberMenuScreen {
 			config.planetParticles = v;
 			ImmersionConfig.save();
 		});
+		this.toggle(0, 3, "sabercraft.option.planet_horizon", config.planetHorizon, v -> {
+			config.planetHorizon = v;
+			ImmersionConfig.save();
+		});
+		this.toggle(1, 3, "sabercraft.option.planet_shader_tint", config.planetShaderTint, v -> {
+			config.planetShaderTint = v;
+			ImmersionConfig.save();
+		});
 		this.closeButton();
 	}
 
@@ -62,7 +71,7 @@ public class SpaceMenuScreen extends SaberMenuScreen {
 		String planet = ImmersionConfig.get().planet;
 		Component text = PlanetPreset.byId(planet).<Component>map(p -> Component.translatable("sabercraft.planet." + p.id() + ".description"))
 				.orElse(Component.translatable("sabercraft.planet.none.description"));
-		this.note(graphics, text, 3);
-		this.note(graphics, Component.translatable("sabercraft.menu.space.note"), 5);
+		this.note(graphics, text, 4);
+		this.note(graphics, Component.translatable("sabercraft.menu.space.note"), 6);
 	}
 }

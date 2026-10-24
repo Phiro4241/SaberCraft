@@ -36,6 +36,8 @@ import net.minecraft.util.Mth;
  * @param tpLean      third person: bend of the upper body at the hips
  * @param tpRoot      third person: pitch, roll and lift of the whole figure
  * @param tpCrouch    third person: extra lowering of the figure in blocks
+ * @param moreStrikes ticks of further strikes after {@code strike}, for moves with several blows
+ *                    (Phase 9); each one plays the strike sound again
  */
 public record CombatMove(
 		Identifier id,
@@ -59,7 +61,8 @@ public record CombatMove(
 		@Nullable KeyTrack tpOffLeg,
 		@Nullable KeyTrack tpLean,
 		@Nullable KeyTrack tpRoot,
-		@Nullable KeyTrack tpCrouch
+		@Nullable KeyTrack tpCrouch,
+		float[] moreStrikes
 ) {
 	/** The sound played at the strike of a move. */
 	public enum StrikeSound {

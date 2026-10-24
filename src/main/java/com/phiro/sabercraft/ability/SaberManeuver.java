@@ -56,11 +56,29 @@ public enum SaberManeuver {
 	/** The maneuver for a fighting style and a direction. */
 	public static SaberManeuver of(@Nullable Identifier style, DodgeDirection direction) {
 		boolean heavy = SaberVariant.HEAVY.equals(style) || SaberVariant.DEFENSIVE.equals(style)
-				|| SaberVariant.DJEM_SO.equals(style) || SaberVariant.SORESU.equals(style);
-		// Juyo is the agile style of the double staff: spin steps and back flips.
-		boolean agile = SaberVariant.AGILE.equals(style) || SaberVariant.JUYO.equals(style);
+				|| SaberVariant.DJEM_SO.equals(style) || SaberVariant.SORESU.equals(style)
+				|| SaberVariant.MAKASHI.equals(style) || SaberVariant.UNBRIDLED.equals(style);
+		// Juyo is the agile style of the double staff: spin steps and back flips. Ataru (Yoda) and
+		// the reverse grip (Ahsoka) jump around just as much.
+		boolean agile = SaberVariant.AGILE.equals(style) || SaberVariant.JUYO.equals(style) || SaberVariant.ATARU.equals(style);
 		// The long double staff would cut into the ground in a shoulder roll, so it steps aside.
 		boolean staff = SaberVariant.isStaffStyle(style);
+
+		// Phase 9: mixed sets. Ansturm (Anakin) lunges forward but rolls aside; the reverse grip
+		// rolls forward and flips back.
+		if (SaberVariant.ONSLAUGHT.equals(style)) {
+			return switch (direction) {
+				case FORWARD -> LUNGE;
+				case LEFT, RIGHT -> SIDE_ROLL;
+				case BACK -> BACKFLIP;
+			};
+		} else if (SaberVariant.REVERSE_SHIEN.equals(style)) {
+			return switch (direction) {
+				case FORWARD -> ROLL;
+				case LEFT, RIGHT -> SIDE_ROLL;
+				case BACK -> BACKFLIP;
+			};
+		}
 
 		return switch (direction) {
 			case FORWARD -> heavy ? LUNGE : agile ? SPIN_STEP : ROLL;

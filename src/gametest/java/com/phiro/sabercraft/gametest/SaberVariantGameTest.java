@@ -119,8 +119,11 @@ public class SaberVariantGameTest implements FabricClientGameTest {
 						double heldSize = size(bounds(client, saber, held));
 						double referenceHeld = size(bounds(client, reference, held));
 
-						if (heldSize < referenceHeld * 1.3) {
-							throw new AssertionError("No blade on " + hilt + "/" + color + " in " + held + ": " + heldSize);
+						// Yoda's blade is short on purpose (Phase 9), the others are clearly longer than a sword.
+						double longer = hilt.equals(SaberVariant.YODA) ? 1.1 : 1.3;
+
+						if (heldSize < referenceHeld * longer) {
+							throw new AssertionError("No blade on " + hilt + "/" + color + " in " + held + ": " + heldSize + " vs " + referenceHeld);
 						}
 					}
 

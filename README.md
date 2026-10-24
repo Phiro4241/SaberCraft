@@ -2,7 +2,7 @@
 
 Fabric-Mod für Minecraft Java 26.2, die das Netherite-Schwert in ein filmreifes Energieschwert verwandelt.
 
-**Stand:** Phase 7. Nimmst du ein Netherite-Schwert in die Hand, kommt der Griff hoch und die Energieklinge fährt mit einem Zündgeräusch aus. Solange sie leuchtet, summt sie. Griff, Klingenfarbe und einer von fünf Kampfstilen sind pro Schwert wählbar. Du kämpfst mit eigenen Bewegungen samt Lichtspur und Funken, mit Ganzkörper-Ausweichen und Abwehr samt Parade und Konter, alles mit Ausdauer. Dazu kommen Machtkräfte (Stoß, Griff, Zug, Sprung) und das Abwehren von Geschossen. Optional gibt es einen Weltraum-Himmel und eigene Musik. Fünf Outfits liegen über deinem eigenen Skin. Die Taste **V** öffnet das SaberCraft-Menü mit allen Einstellungen. Details: [docs/phase-7-status.md](docs/phase-7-status.md), zum Kampf [docs/phase-6-status.md](docs/phase-6-status.md), zu Farben und Griffen [docs/phase-5-status.md](docs/phase-5-status.md), zur Animation [docs/phase-4-status.md](docs/phase-4-status.md), zur Klinge selbst [docs/phase-3-status.md](docs/phase-3-status.md).
+**Stand:** Phase 9. Nimmst du ein Netherite-Schwert in die Hand, kommt der Griff hoch und die Energieklinge fährt mit einem Zündgeräusch aus. Solange sie leuchtet, summt sie. Griff, Klingenfarbe und Kampfstil sind pro Schwert wählbar: 13 Griffe, sechs Farben, elf Kampfstile mit eigenen Bewegungen. Du kämpfst mit Lichtspur und Funken, Ausweichen, Abwehr samt Parade und Konter sowie Machtkräften. Zehn Film-Charaktere (Darth Vader, Obi-Wan Kenobi, Darth Maul, Luke Skywalker, Anakin Skywalker, Yoda, Count Dooku, Ahsoka Tano, Kylo Ren, Rey) bringen ihr Aussehen, ihr Lichtschwert und ihren Kampfstil mit. Sechs Planetenhimmel (Tatooine, Coruscant, Endor, Hoth, Mustafar, Naboo) ändern nur den Himmel, nie das Gelände. Es gibt zwei Musikmodi: die eingebaute SaberCraft-Musik und einen Star-Wars-Modus für deine eigenen Dateien ([Anleitung](docs/eigene-musik.md)). Die Taste **V** öffnet das SaberCraft-Menü mit allen Einstellungen. Details: [docs/phase-9-status.md](docs/phase-9-status.md), [docs/phase-8-status.md](docs/phase-8-status.md), [docs/phase-7-status.md](docs/phase-7-status.md), zum Kampf [docs/phase-6-status.md](docs/phase-6-status.md), zu Farben und Griffen [docs/phase-5-status.md](docs/phase-5-status.md), zur Animation [docs/phase-4-status.md](docs/phase-4-status.md), zur Klinge selbst [docs/phase-3-status.md](docs/phase-3-status.md).
 
 ![Alle sechs Klingenfarben](docs/images/phase5/aufstellung_nacht.png)
 
@@ -23,7 +23,7 @@ Für Aussehen, Animationen, Effekte, Himmel, Musik und dein eigenes Outfit musst
 2. Drück **V** (änderbar unter Optionen → Steuerung → SaberCraft). Das SaberCraft-Menü öffnet sich im Bereich **Schwert**.
 3. Wähle den Griff, die Klingenfarbe und den Kampfstil, dann **Übernehmen**.
 
-Die anderen Bereiche des Menüs: **Kampf** (Tasten und Kampfoptionen), **Charakter** (Outfits mit Vorschau), **Weltraum** (Himmel), **Musik**, **Grafik** (Effekte und Qualität).
+Die anderen Bereiche des Menüs: **Kampf** (Tasten und Kampfoptionen), **Charakter** (Film-Charaktere und Outfits mit Vorschau, Name, Klingenfarbe und Kampfstil), **Himmel** (Weltraum und Planeten), **Musik**, **Grafik** (Effekte und Qualität).
 
 Die Werte jeder Farbe (Kern-, Bloom- und Halofarbe, Länge, Dicke, Leuchtstärke, Flimmern) stehen in `config/sabercraft/blade_styles.json`.
 
@@ -146,6 +146,10 @@ src/gametest/  Automatischer Client-Test mit Screenshots
 | `src/main/.../mixin/LivingEntityMixin.java` | Lässt die Abwehrhaltung Schaden blocken |
 | `tools/preview_moves.py` | Zeichnet Strichfiguren-Vorschauen der Bewegungen nach `build/move-previews` |
 
+## Eigene Musik
+
+Der Star-Wars-Modus spielt nur Dateien, die du selbst in `config/sabercraft/starwars_music/` legst (`.ogg` oder `.wav`), passend zur Situation, zum Planeten und zum Charakter. Die Mod enthält keine Filmmusik. Die genaue Anleitung mit Ordnern, Reihenfolge und `mapping.json` steht in [docs/eigene-musik.md](docs/eigene-musik.md).
+
 ## Rechtliches
 
-Alle Sounds, Modelle und Texturen dieser Mod sind selbst erstellt. Die Griffe und ihre Texturen erzeugt `tools/gen_hilts.py`. Die Namen der Griffe im Spiel sind bewusst neutral gehalten (Hüter, Dunkler Lord, Wächter). Die Sounds werden mit `tools/synth_sounds.py` vollständig aus Sinuswellen, Rauschen und Hüllkurven berechnet. Sie enthalten keine Filmaufnahmen, Samples oder Originalmusik. Die sechs Musikstücke sind eigene Kompositionen aus `tools/synth_music.py`, die Outfits eigene Entwürfe aus `tools/paint_outfits.py`. Kein Spieler-Skin wird ersetzt.
+Alle Sounds, Modelle und Texturen dieser Mod sind selbst erstellt. Die Griffe und ihre Texturen erzeugt `tools/gen_hilts.py`. Die Namen der Griffe im Spiel sind bewusst neutral gehalten (Hüter, Dunkler Lord, Wächter). Die Sounds werden mit `tools/synth_sounds.py` vollständig aus Sinuswellen, Rauschen und Hüllkurven berechnet. Sie enthalten keine Filmaufnahmen, Samples oder Originalmusik. Die sechs Musikstücke sind eigene Kompositionen aus `tools/synth_music.py`, die Outfits und Charakter-Looks eigene, pixelweise berechnete Entwürfe aus `tools/paint_outfits.py`. Die Planetenhimmel werden zur Laufzeit aus Zahlen gemalt (`PlanetSkyPainter`), es werden keine Bilder mitgeliefert. Kein Spieler-Skin wird ersetzt. Star Wars und die Namen der Figuren sind Marken ihrer Inhaber. SaberCraft ist ein Fan-Projekt ohne Verbindung zu ihnen und enthält keine Filmmusik, Filmaufnahmen oder Originalgrafiken.

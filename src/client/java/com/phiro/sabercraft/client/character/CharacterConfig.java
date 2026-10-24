@@ -21,6 +21,9 @@ public final class CharacterConfig {
 	/** Show the outfits other players chose. Off: everyone else looks like their plain skin. */
 	@SerializedName("show_other_outfits")
 	public boolean showOtherOutfits = true;
+	/** Draw small characters (Yoda) at their size (Phase 9). Only the picture changes, not the hitbox. */
+	@SerializedName("character_size")
+	public boolean characterSize = true;
 
 	public static CharacterConfig get() {
 		return current;

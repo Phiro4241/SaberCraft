@@ -521,6 +521,329 @@ body("juyo_whirl", legs=[
     (17.85, [-6, 0, 10], [8, 0, -10], 4, 0.02)])
 
 
+# ---------------- Phase 9: six more character styles ----------------
+# Each style has its own resting pose and several moves written from scratch, so they differ in
+# the motion itself, not only in speed or size.
+
+# Ansturm (Anakin): relentless power blows from a high two-handed guard over the right shoulder,
+# a double strike and a leaping attack that closes the distance.
+ONS_FP = ([0.95, -0.45, 0.0], [108, -35, 0])
+ONS_TP = ([-130, -10, 5], [-120, 35, 0], [10, 0, -25])
+for src, name, time, amp in (("heavy_overhead", "ons_overhead", 0.8, 1.1), ("flow_backhand", "ons_backhand", 0.85, 1.2),
+                             ("heavy_rising", "ons_rising", 0.8, 1.1), ("heavy_spin", "ons_spin", 0.8, 1.05)):
+    derive(src, name, time, amp, ONS_FP, ONS_TP)
+# Two blows in one: down to the left, straight back up and down to the right.
+M["ons_double"] = move(14, 3, "swing",
+    [(0, [0.95, -0.25, 0.0], [120, -35, 0]), (1.5, [0.55, -0.1, 0.15], [70, -20, 0]), (3, [-0.35, -0.6, 0.2], [-20, 70, 0]),
+     (5, [-0.2, 0.1, 0.1], [115, 40, 0]), (7, [0.15, -0.2, 0.2], [30, -10, 0]), (8.5, [0.7, -0.7, 0.15], [-30, -80, 0]),
+     (11, [0.8, -0.75, 0.1], [-35, -90, 0])],
+    [(0, [-130, -10, 5], [-120, 35, 0], [0, 15], [10, 0, -25]), (1.5, [-120, -5, 0], [-112, 30, 0], [5, 5], [-40, 0, -20]),
+     (3, [-60, 25, 0], [-55, 45, 0], [12, -20], [-85, 0, 30]), (5, [-160, 0, 0], [-150, 30, 0], [-5, 5], [10, 0, 10]),
+     (7, [-110, -10, 0], [-105, 25, 0], [8, 15], [-60, 0, -20]), (8.5, [-55, -30, 0], [-50, 20, 0], [18, 25], [-85, 0, -30]),
+     (11, [-45, -30, 0], [-45, 20, 0], [15, 25], [-85, 0, -30])],
+    interrupt=10, more_strikes=[8.5])
+step("ons_double", 3, 11, lead="off", front=-24, back=20, lean=14, prep=-4, side=5, crouch=0.05)
+put(M["ons_double"]["third_person"], 7, main_leg=[-30, 0, 5], off_leg=[22, 0, -5], lean=8, crouch=0.02)
+# The leap: a crouch, a jump forward with the blade over the head, a crushing landing blow.
+M["ons_leap"] = move(16, 9, "heavy",
+    [(0, [0.95, -0.4, 0.0], [110, -30, 0]), (3, [0.5, 0.35, 0.0], [140, -5, 0]), (7, [0.3, 0.45, 0.05], [145, 0, 0]),
+     (9, [0.1, -0.35, 0.25], [10, 0, 0]), (11, [0.05, -0.8, 0.25], [-45, 0, 0]), (14, [0.1, -0.85, 0.2], [-45, 0, 0])],
+    [(0, [-110, -10, 5], [-100, 35, 0], [10, 10], [20, 0, -20]), (3, [-175, 0, 5], [-172, 28, 0], [-15, 5], [30, 0, 0]),
+     (7, [-178, 0, 5], [-175, 28, 0], [-20, 0], [35, 0, 0]), (9, [-90, -5, 0], [-90, 28, 0], [25, 0], [-75, 0, 0]),
+     (11, [-45, -5, 0], [-45, 25, 0], [35, 0], [-90, 0, 0]), (14, [-40, -5, 0], [-40, 25, 0], [30, 0], [-90, 0, 0])],
+    interrupt=13, blend_in=1.0, blend_out=3.0)
+body("ons_leap",
+    legs=[(0, [-20, 0, 5], [16, 0, -5], 18, 0.14), (3, [-50, 0, 5], [-10, 0, -5], 4, 0.0), (6, [-70, 0, 5], [-40, 0, -5], 0, 0.0),
+          (9, [-40, 0, 6], [30, 0, -6], 24, 0.12), (11, [-40, 0, 6], [32, 0, -6], 30, 0.14), (14, [-32, 0, 6], [26, 0, -6], 24, 0.08)],
+    root=[(0, [0, 0, 0]), (3, [-6, 0, 0.35]), (6, [-4, 0, 0.6]), (8, [4, 0, 0.35]), (9, [8, 0, 0.0]), (14, [0, 0, 0])],
+    cam=[(0, [0.15, 2, 0]), (3, [-0.15, -6, 0]), (7, [-0.3, -4, 0]), (9, [0.05, 8, 0]), (11, [0.12, 6, 0]), (15, [0, 0, 0])])
+step("ons_overhead", 3.6, 7.0, lead="main", front=-30, back=24, lean=20, prep=-8, side=5, crouch=0.06)
+step("ons_backhand", 2.1, 5.1, lead="main", front=-24, back=18, lean=10, side=5, crouch=0.04)
+step("ons_rising", 3.2, 6.4, lead="off", front=-24, back=20, lean=-6, prep=16, side=5, prep_crouch=0.12)
+body("ons_spin", legs=[
+    (0, [-8, 0, 7], [10, 0, -7], 6, 0.05), (2, [6, 0, 9], [-6, 0, -9], 10, 0.1), (4.8, [-12, 0, 9], [14, 0, -9], 14, 0.12),
+    (7.2, [8, 0, 9], [-8, 0, -9], 10, 0.08), (9.2, [-22, 0, 7], [18, 0, -7], 10, 0.05)])
+
+# Ataru (Yoda): low and coiled, then flips, spinning leaps and whirls through the air.
+ATA_FP = ([0.7, -0.85, 0.15], [55, 45, 0])
+ATA_TP = ([-75, -30, 0], [-60, 45, 15], [-20, 0, 45])
+# Somersault over the target with a cut on the way down.
+M["ataru_flip_cut"] = move(13, 7, "spin",
+    [(0, [0.7, -0.85, 0.15], [55, 45, 0]), (2, [0.6, -0.1, 0.1], [130, 0, 0]), (5, [0.3, 0.3, 0.2], [100, -30, 0]),
+     (7, [0.0, -0.3, 0.25], [10, 10, 0]), (8.5, [-0.4, -0.7, 0.2], [-35, 60, 0]), (11, [-0.2, -0.8, 0.15], [-20, 60, 0])],
+    [(0, [-75, -30, 0], [-60, 45, 15], [0, 0], [-20, 0, 45]), (2, [-170, -5, 0], [-150, 30, 0], [0, 0], [20, 0, 0]),
+     (5, [-165, -5, 0], [-140, 40, 0], [0, 0], [0, 0, 0]), (7, [-90, 15, 0], [-70, 40, 0], [10, -10], [-70, 0, 20]),
+     (8.5, [-50, 30, 0], [-50, 40, 0], [15, -20], [-85, 0, 40]), (11, [-60, -10, 0], [-55, 40, 10], [10, -10], [-40, 0, 40])],
+    interrupt=10, blend_in=1.0, blend_out=3.0)
+body("ataru_flip_cut",
+    legs=[(0, [-30, 0, 6], [20, 0, -6], 20, 0.18), (2, [-70, 0, 5], [-60, 0, -5], 40, 0.0), (4, [-120, 0, 5], [-115, 0, -5], 70, 0.0),
+          (6, [-70, 0, 5], [-50, 0, -5], 35, 0.0), (8, [-36, 0, 6], [26, 0, -6], 22, 0.14), (11, [-30, 0, 6], [22, 0, -6], 20, 0.16)],
+    root=[(0, [0, 0, 0]), (2, [80, 0, 0.6]), (4, [200, 0, 0.9]), (6, [320, 0, 0.45]), (7.5, [360, 0, 0])],
+    cam=[(0, [0.2, 0, 0]), (2, [0.05, 14, 0]), (4, [0.1, 22, 0]), (6, [0.2, 8, 0]), (8, [0.2, 2, 0]), (11, [0.1, 0, 0])])
+# A full turn on one foot with a horizontal cut all around.
+M["ataru_spin_cut"] = move(11, 4.5, "spin",
+    [(0, [0.7, -0.85, 0.15], [55, 45, 0]), (1.5, [1.2, -0.5, 0.1], [10, -130, 0]), (3, [1.6, -0.45, 0.1], [8, -160, 0]),
+     (4.5, [0.0, -0.4, 0.3], [8, 30, 0]), (6, [-1.2, -0.45, 0.15], [8, 120, 0]), (8.5, [-0.3, -0.75, 0.15], [30, 70, 0])],
+    [(0, [-75, -30, 0], [-60, 45, 15], [0, 0], [-20, 0, 45], 0), (1.5, [-90, 45, 0], [-60, 60, 0], [0, 25], [-80, 0, 0], -30),
+     (4.5, [-90, -15, 0], [-70, 30, 0], [0, -15], [-82, 0, 0], -200), (7, [-90, -35, 0], [-70, 20, 0], [5, -20], [-80, 0, 0], -330),
+     (8.5, [-80, -30, 0], [-60, 40, 10], [0, -10], [-40, 0, 40], -360)],
+    interrupt=8)
+body("ataru_spin_cut", legs=[
+    (0, [-30, 0, 6], [20, 0, -6], 20, 0.18), (1.5, [-10, 0, 10], [30, 0, -14], 16, 0.16), (4.5, [-40, 0, 12], [10, 0, -10], 18, 0.2),
+    (7, [-10, 0, 10], [30, 0, -14], 16, 0.16), (8.5, [-30, 0, 6], [20, 0, -6], 20, 0.18)],
+    root=[(0, [0, 0, 0]), (2, [0, 0, 0.12]), (4.5, [0, 0, 0.25]), (7, [0, 0, 0.12]), (8.5, [0, 0, 0])])
+# The leap forward: a long jump with a forward roll in the air and a cut at the end.
+M["ataru_leap"] = move(16, 11, "spin",
+    [(0, [0.7, -0.85, 0.15], [55, 45, 0]), (3, [0.8, -0.3, 0.1], [110, 0, 0]), (8, [0.6, 0.0, 0.1], [120, -10, 0]),
+     (11, [0.05, -0.3, 0.3], [5, 5, 0]), (13, [-0.3, -0.7, 0.2], [-30, 50, 0]), (15, [-0.2, -0.8, 0.15], [-20, 50, 0])],
+    [(0, [-75, -30, 0], [-60, 45, 15], [0, 0], [-20, 0, 45]), (3, [-150, -10, 0], [-140, 30, 0], [0, 0], [10, 0, 0]),
+     (8, [-160, -10, 0], [-150, 30, 0], [0, 0], [10, 0, 0]), (11, [-90, 10, 0], [-75, 40, 0], [15, -10], [-80, 0, 15]),
+     (13, [-50, 25, 0], [-50, 40, 0], [15, -15], [-85, 0, 35]), (15, [-55, -10, 0], [-55, 40, 10], [10, -10], [-40, 0, 40])],
+    interrupt=14, blend_in=1.0, blend_out=3.0)
+body("ataru_leap",
+    legs=[(0, [-30, 0, 6], [20, 0, -6], 24, 0.2), (3, [-40, 0, 5], [10, 0, -5], 10, 0.0), (5, [-100, 0, 5], [-95, 0, -5], 60, 0.0),
+          (8, [-110, 0, 5], [-105, 0, -5], 60, 0.0), (10, [-50, 0, 5], [-20, 0, -5], 20, 0.0), (11, [-36, 0, 6], [28, 0, -6], 22, 0.16),
+          (15, [-30, 0, 6], [22, 0, -6], 20, 0.16)],
+    root=[(0, [0, 0, 0]), (3, [10, 0, 0.5]), (5, [120, 0, 1.0]), (7, [240, 0, 1.0]), (9, [340, 0, 0.5]), (10.5, [360, 0, 0])],
+    cam=[(0, [0.2, 0, 0]), (3, [-0.2, -8, 0]), (6, [-0.3, 10, 0]), (9, [0.0, 4, 0]), (11, [0.2, 6, 0]), (15, [0.1, 0, 0])])
+# The whirlwind: up into the air, two full turns with the blade held out, down again.
+M["ataru_whirlwind"] = move(20, 7, "spin",
+    [(0, [0.7, -0.85, 0.15], [55, 45, 0]), (2, [1.3, -0.4, 0.1], [10, -140, 0]), (4, [-0.4, -0.35, 0.3], [8, 60, 0]),
+     (6, [1.4, -0.4, 0.1], [8, -150, 0]), (8, [-0.6, -0.35, 0.3], [8, 80, 0]), (10, [1.3, -0.45, 0.1], [8, -140, 0]),
+     (12, [-0.5, -0.4, 0.25], [8, 70, 0]), (15, [0.4, -0.8, 0.15], [40, 50, 0])],
+    [(0, [-75, -30, 0], [-60, 45, 15], [0, 0], [-20, 0, 45], 0), (2, [-90, 30, 0], [-85, 50, 0], [0, 15], [-82, 0, 0], -60),
+     (6, [-90, 0, 0], [-88, 40, 0], [0, 0], [-82, 0, 0], -300), (10, [-90, 0, 0], [-88, 40, 0], [0, 0], [-82, 0, 0], -560),
+     (13, [-90, -20, 0], [-80, 30, 0], [0, -10], [-80, 0, 0], -720), (15, [-75, -30, 0], [-60, 45, 15], [0, 0], [-20, 0, 45], -720)],
+    interrupt=16, blend_out=4.0)
+body("ataru_whirlwind",
+    legs=[(0, [-30, 0, 6], [20, 0, -6], 20, 0.2), (2, [-40, 0, 8], [-20, 0, -8], 10, 0.0), (5, [-60, 0, 10], [-50, 0, -10], 20, 0.0),
+          (10, [-60, 0, 10], [-50, 0, -10], 20, 0.0), (13, [-30, 0, 8], [10, 0, -8], 10, 0.0), (15, [-30, 0, 6], [20, 0, -6], 20, 0.18)],
+    root=[(0, [0, 0, 0]), (2, [0, 0, 0.6]), (5, [0, 0, 0.95]), (10, [0, 0, 0.95]), (13, [0, 0, 0.4]), (14.5, [0, 0, 0])])
+derive("agile_twirl", "ataru_twirl", 0.8, 1.1, ATA_FP, ATA_TP)
+body("ataru_twirl", legs=[
+    (0, [-30, 0, 6], [20, 0, -6], 18, 0.16), (1.1, [8, 0, 6], [-8, 0, -6], 10, 0.08), (2.8, [-12, 0, 6], [12, 0, -6], 12, 0.1),
+    (4.5, [8, 0, 6], [-8, 0, -6], 10, 0.08), (5.6, [-28, 0, 6], [20, 0, -6], 18, 0.16)],
+    root=[(0, [0, 0, 0]), (1.1, [0, 0, 0.3]), (2.8, [0, 0, 0.45]), (4.5, [0, 0, 0.2]), (5.6, [0, 0, 0])])
+
+# Makashi (Dooku): upright, sideways stance, the blade held out in one hand and pointed at the
+# opponent, the free hand behind the back. Thrusts, small flicks of the wrist and a long lunge.
+MAK_FP = ([0.55, -0.45, 0.25], [18, 12, 0])
+MAK_TP = ([-75, 10, 0], [35, 25, -25], [-75, 0, 0])
+MAK_OFF = [35, 25, -25]
+M["mak_thrust"] = move(9, 3, "swing",
+    [(0, [0.55, -0.45, 0.25], [18, 12, 0]), (1.5, [0.7, -0.4, 0.0], [20, 14, 0]), (3, [0.2, -0.25, 0.55], [3, 5, 0]),
+     (5, [0.2, -0.25, 0.55], [3, 5, 0]), (7, [0.5, -0.45, 0.25], [15, 12, 0])],
+    [(0, [-75, 10, 0], MAK_OFF, [0, -25], [-75, 0, 0]), (1.5, [-70, 25, 0], MAK_OFF, [0, -20], [-78, 0, 0]),
+     (3, [-95, -5, 0], MAK_OFF, [8, -40], [-92, 0, 0]), (5, [-95, -5, 0], MAK_OFF, [8, -40], [-92, 0, 0]),
+     (7, [-78, 10, 0], MAK_OFF, [0, -25], [-75, 0, 0])],
+    interrupt=6)
+step("mak_thrust", 3, 7, lead="main", front=-34, back=24, lean=6, side=3, crouch=0.04)
+# A flick of the wrist: the arm barely moves, the blade snaps from right to left.
+M["mak_flick"] = move(7, 2, "swing",
+    [(0, [0.55, -0.45, 0.25], [18, 12, 0]), (1, [0.75, -0.35, 0.2], [30, -45, 0]), (2, [0.3, -0.35, 0.3], [20, 50, 0]),
+     (3.5, [0.15, -0.4, 0.28], [15, 75, 0]), (5.5, [0.5, -0.45, 0.25], [18, 15, 0])],
+    [(0, [-75, 10, 0], MAK_OFF, [0, -25], [-75, 0, 0]), (1, [-80, 20, 0], MAK_OFF, [0, -20], [-60, 0, -40]),
+     (2, [-82, 0, 0], MAK_OFF, [0, -28], [-70, 0, 45]), (3.5, [-80, -5, 0], MAK_OFF, [0, -30], [-72, 0, 60]),
+     (5.5, [-76, 10, 0], MAK_OFF, [0, -25], [-75, 0, 0])],
+    interrupt=4)
+step("mak_flick", 2, 5.5, lead="main", front=-18, back=14, lean=4, side=3, crouch=0.03)
+# Disengage: the point circles under the opponent's blade, then a thrust on the other side.
+M["mak_disengage"] = move(11, 5, "swing",
+    [(0, [0.55, -0.45, 0.25], [18, 12, 0]), (1.5, [0.45, -0.6, 0.25], [5, 40, 30]), (3, [0.65, -0.55, 0.2], [0, -20, 60]),
+     (5, [0.15, -0.3, 0.6], [2, 3, 0]), (7.5, [0.15, -0.3, 0.6], [2, 3, 0]), (9.5, [0.5, -0.45, 0.25], [15, 12, 0])],
+    [(0, [-75, 10, 0], MAK_OFF, [0, -25], [-75, 0, 0]), (1.5, [-72, 0, 0], MAK_OFF, [0, -25], [-80, 0, 40], 0),
+     (3, [-74, 20, 0], MAK_OFF, [0, -20], [-80, 0, -40]), (5, [-96, -5, 0], MAK_OFF, [10, -42], [-92, 0, 0]),
+     (7.5, [-96, -5, 0], MAK_OFF, [10, -42], [-92, 0, 0]), (9.5, [-78, 10, 0], MAK_OFF, [0, -25], [-75, 0, 0])],
+    interrupt=8)
+step("mak_disengage", 5, 9.5, lead="main", front=-36, back=26, lean=8, side=3, crouch=0.05)
+# The fleche: a long, flying lunge, the back leg stretched out, the arm and blade one line.
+M["mak_fleche"] = move(12, 4.5, "swing",
+    [(0, [0.55, -0.45, 0.25], [18, 12, 0]), (2, [0.6, -0.5, 0.0], [16, 10, 0]), (4.5, [0.15, -0.25, 0.7], [2, 3, 0]),
+     (8, [0.15, -0.25, 0.7], [2, 3, 0]), (10.5, [0.5, -0.45, 0.25], [15, 12, 0])],
+    [(0, [-75, 10, 0], MAK_OFF, [0, -25], [-75, 0, 0]), (2, [-70, 25, 0], [20, 30, -40], [0, -20], [-78, 0, 0]),
+     (4.5, [-100, -5, 0], [40, 20, -50], [12, -45], [-95, 0, 0]), (8, [-100, -5, 0], [40, 20, -50], [12, -45], [-95, 0, 0]),
+     (10.5, [-78, 10, 0], MAK_OFF, [0, -25], [-75, 0, 0])],
+    interrupt=9)
+body("mak_fleche",
+    legs=[(0, [-14, 0, 4], [12, 0, -4], 2, 0.03), (2, [-10, 0, 4], [16, 0, -4], 4, 0.12), (4.5, [-62, 0, 4], [46, 0, -4], 20, 0.24),
+          (8, [-62, 0, 4], [46, 0, -4], 20, 0.24), (10.5, [-14, 0, 4], [12, 0, -4], 2, 0.03)],
+    cam=[(0, [0, 0, 0]), (4.5, [0.25, 3, 0]), (8, [0.25, 3, 0]), (10.5, [0, 0, 0])])
+derive("flow_overhead", "mak_cut", 0.8, 0.7, MAK_FP, MAK_TP)
+for f in M["mak_cut"]["third_person"]:
+    f["off_arm"] = MAK_OFF
+step("mak_cut", 2.8, 5.6, lead="main", front=-20, back=16, lean=8, side=3, crouch=0.03)
+# Flourish: the blade twirls once in the fingers, then cuts in a full circle around the body.
+M["mak_flourish"] = move(13, 5, "spin",
+    [(0, [0.55, -0.45, 0.25], [18, 12, 0]), (1.5, [0.7, -0.3, 0.2], [80, 0, 90]), (3, [0.7, -0.3, 0.2], [80, 0, 270]),
+     (4, [1.3, -0.4, 0.1], [8, -140, 0]), (6, [-0.6, -0.35, 0.3], [8, 70, 0]), (8, [-1.3, -0.4, 0.15], [8, 140, 0]),
+     (10.5, [0.5, -0.45, 0.25], [18, 12, 0])],
+    [(0, [-75, 10, 0], MAK_OFF, [0, -25], [-75, 0, 0], 0), (1.5, [-110, 10, 0], MAK_OFF, [0, -25], [-75, 0, 90], 0),
+     (3, [-110, 10, 0], MAK_OFF, [0, -25], [-75, 0, 270], 0), (4, [-90, 40, 0], MAK_OFF, [0, 20], [-82, 0, 360], -40),
+     (7, [-90, -20, 0], MAK_OFF, [0, -15], [-82, 0, 360], -220), (9.5, [-90, -30, 0], MAK_OFF, [0, -20], [-80, 0, 360], -360),
+     (10.5, [-75, 10, 0], MAK_OFF, [0, -25], [-75, 0, 360], -360)],
+    interrupt=11)
+body("mak_flourish", legs=[
+    (0, [-14, 0, 4], [12, 0, -4], 2, 0.03), (4, [6, 0, 6], [-6, 0, -6], 6, 0.06), (7, [-10, 0, 6], [12, 0, -6], 8, 0.08),
+    (9.5, [8, 0, 6], [-8, 0, -6], 6, 0.06), (10.5, [-14, 0, 4], [12, 0, -4], 2, 0.03)])
+
+# Rückhand-Shien (Ahsoka): the blade held reversed, pointing back along the forearm. Hooking slashes
+# with the whole body, a stab behind, rising cuts and spins in a low, forward stance.
+REV_FP = ([0.8, -0.3, 0.05], [-45, -30, 0])
+REV_TP = ([-50, -20, 0], [-60, 40, 10], [235, 0, -10])
+# Hook: the fist swings across in front of the body, the reversed blade trailing behind it.
+M["rev_hook"] = move(9, 3, "swing",
+    [(0, [0.85, -0.55, 0.05], [-55, -20, 0]), (1.5, [1.2, -0.45, 0.1], [-20, -120, 0]), (3, [0.0, -0.4, 0.3], [-10, 60, 0]),
+     (4.5, [-0.8, -0.5, 0.15], [-25, 120, 0]), (7, [-0.4, -0.6, 0.1], [-45, 70, 0])],
+    [(0, [-55, -20, 0], [-60, 40, 10], [0, 0], [235, 0, -10]), (1.5, [-90, 45, 0], [-55, 40, 10], [0, 30], [180, 0, 60]),
+     (3, [-95, -10, 0], [-50, 40, 10], [5, -15], [180, 0, 80]), (4.5, [-90, -45, 0], [-50, 35, 10], [8, -35], [190, 0, 70]),
+     (7, [-70, -35, 0], [-55, 40, 10], [5, -20], [205, 0, 30])],
+    interrupt=6)
+step("rev_hook", 3, 7, lead="off", front=-24, back=18, lean=16, side=6, crouch=0.1, prep_crouch=0.1)
+# Stab behind: the body turns away, the reversed blade drives back past the hip.
+M["rev_backstab"] = move(10, 4, "swing",
+    [(0, [0.85, -0.55, 0.05], [-55, -20, 0]), (2, [1.1, -0.7, -0.1], [-40, -100, 0]), (4, [1.4, -0.8, -0.2], [-10, -170, 0]),
+     (6, [1.3, -0.8, -0.15], [-15, -165, 0]), (8, [0.85, -0.6, 0.05], [-50, -30, 0])],
+    [(0, [-55, -20, 0], [-60, 40, 10], [0, 0], [235, 0, -10], 0), (2, [-30, 20, 0], [-70, 40, 10], [0, 20], [200, 0, 0], -40),
+     (4, [10, 10, 0], [-80, 40, 10], [5, 30], [180, 0, 0], -70), (6, [10, 10, 0], [-80, 40, 10], [5, 30], [180, 0, 0], -70),
+     (8, [-50, -20, 0], [-60, 40, 10], [0, 0], [235, 0, -10], 0)],
+    interrupt=7)
+body("rev_backstab", legs=[
+    (0, [-24, 0, 6], [18, 0, -6], 16, 0.1), (2, [-10, 0, 8], [24, 0, -8], 12, 0.14), (4, [10, 0, 8], [-30, 0, -8], 18, 0.18),
+    (6, [10, 0, 8], [-30, 0, -8], 18, 0.18), (8, [-24, 0, 6], [18, 0, -6], 16, 0.1)])
+# Rising cut: from low beside the knee up past the face.
+M["rev_uppercut"] = move(9, 3, "swing",
+    [(0, [0.85, -0.85, 0.05], [-70, -10, 0]), (1.5, [0.6, -0.9, 0.1], [-80, 10, 0]), (3, [0.2, -0.2, 0.25], [-40, 20, 0]),
+     (4.5, [0.0, 0.3, 0.2], [-10, 30, 0]), (7, [0.6, -0.4, 0.1], [-50, -10, 0])],
+    [(0, [-30, -10, 0], [-60, 40, 10], [10, 10], [235, 0, -10]), (1.5, [-20, -5, 0], [-55, 40, 10], [20, 10], [230, 0, -10]),
+     (3, [-110, -10, 0], [-50, 40, 10], [5, -5], [200, 0, -10]), (4.5, [-160, -10, 0], [-50, 40, 10], [-8, -10], [190, 0, -10]),
+     (7, [-70, -20, 0], [-60, 40, 10], [0, 0], [210, 0, -10])],
+    interrupt=6)
+body("rev_uppercut",
+    legs=[(0, [-30, 0, 6], [20, 0, -6], 24, 0.22), (1.5, [-34, 0, 6], [24, 0, -6], 28, 0.26), (3, [-30, 0, 6], [20, 0, -6], 6, 0.05),
+          (4.5, [-20, 0, 6], [10, 0, -6], -4, 0.0), (7, [-24, 0, 6], [18, 0, -6], 14, 0.1)],
+    root=[(0, [0, 0, 0]), (3, [0, 0, 0.12]), (4.5, [0, 0, 0.2]), (7, [0, 0, 0])])
+# Spin: one full turn with the arm out, the reversed blade cutting behind the fist.
+M["rev_spin"] = move(11, 4.5, "spin",
+    [(0, [0.85, -0.55, 0.05], [-55, -20, 0]), (2, [1.3, -0.5, 0.1], [-15, -140, 0]), (3.5, [-0.2, -0.45, 0.3], [-10, 40, 0]),
+     (5, [-1.2, -0.5, 0.15], [-15, 130, 0]), (8, [0.6, -0.55, 0.05], [-50, -20, 0])],
+    [(0, [-55, -20, 0], [-60, 40, 10], [0, 0], [235, 0, -10], 0), (2, [-90, 30, 0], [-50, 40, 10], [0, 20], [180, 0, 70], -60),
+     (5, [-90, -10, 0], [-50, 40, 10], [0, -10], [180, 0, 80], -220), (7.5, [-85, -20, 0], [-55, 40, 10], [0, -10], [190, 0, 60], -340),
+     (8.5, [-55, -20, 0], [-60, 40, 10], [0, 0], [235, 0, -10], -360)],
+    interrupt=8)
+body("rev_spin", legs=[
+    (0, [-24, 0, 6], [18, 0, -6], 16, 0.1), (2, [6, 0, 8], [-6, 0, -8], 12, 0.14), (5, [-12, 0, 8], [14, 0, -8], 14, 0.16),
+    (7.5, [8, 0, 8], [-8, 0, -8], 12, 0.12), (8.5, [-24, 0, 6], [18, 0, -6], 16, 0.1)])
+# Dash cut: low and fast past the target, the blade dragged along behind.
+M["rev_dash_cut"] = move(10, 4, "swing",
+    [(0, [0.85, -0.55, 0.05], [-55, -20, 0]), (2, [1.2, -0.75, -0.05], [-30, -100, 0]), (4, [-0.2, -0.65, 0.3], [-20, 70, 0]),
+     (6, [-1.0, -0.7, 0.15], [-30, 130, 0]), (8.5, [0.5, -0.6, 0.05], [-50, -10, 0])],
+    [(0, [-55, -20, 0], [-60, 40, 10], [15, 0], [235, 0, -10]), (2, [-80, 50, 0], [-40, 40, 20], [25, 35], [180, 0, 60]),
+     (4, [-90, -20, 0], [-40, 40, 20], [25, -20], [180, 0, 80]), (6, [-80, -50, 0], [-45, 35, 20], [25, -35], [190, 0, 60]),
+     (8.5, [-55, -20, 0], [-60, 40, 10], [10, 0], [235, 0, -10])],
+    interrupt=7)
+step("rev_dash_cut", 4, 8.5, lead="main", front=-44, back=34, lean=30, side=6, crouch=0.22, prep_crouch=0.18)
+# Drop: from a jump, the reversed blade driven down in front.
+M["rev_drop"] = move(10, 4, "heavy",
+    [(0, [0.6, 0.1, 0.1], [-60, 0, 0]), (2, [0.3, 0.25, 0.2], [-80, 0, 0]), (4, [0.15, -0.6, 0.35], [-88, 0, 0]),
+     (7, [0.2, -0.7, 0.3], [-88, 0, 0]), (9, [0.8, -0.6, 0.05], [-55, -20, 0])],
+    [(0, [-130, -10, 0], [-90, 40, 10], [-5, 0], [200, 0, -5]), (2, [-170, -5, 0], [-120, 40, 10], [-10, 0], [190, 0, 0]),
+     (4, [-90, -5, 0], [-60, 40, 10], [30, 0], [180, 0, 0]), (7, [-80, -5, 0], [-50, 40, 10], [35, 0], [180, 0, 0]),
+     (9, [-55, -20, 0], [-60, 40, 10], [0, 0], [235, 0, -10])],
+    interrupt=7)
+body("rev_drop", legs=[
+    (0, [-30, 0, 5], [10, 0, -5], 4, 0.0), (2, [-36, 0, 5], [14, 0, -5], 0, 0.0), (4, [-50, 0, 6], [40, 0, -6], 34, 0.3),
+    (7, [-50, 0, 6], [40, 0, -6], 34, 0.3), (9, [-24, 0, 6], [18, 0, -6], 16, 0.1)])
+# Cyclone: two quick turns, low to the ground.
+M["rev_cyclone"] = move(16, 5, "spin",
+    [(0, [0.85, -0.55, 0.05], [-55, -20, 0]), (2, [1.3, -0.6, 0.1], [-15, -140, 0]), (4, [-1.2, -0.6, 0.15], [-15, 130, 0]),
+     (6, [1.3, -0.6, 0.1], [-15, -140, 0]), (8, [-1.2, -0.6, 0.15], [-15, 130, 0]), (11, [0.7, -0.55, 0.05], [-50, -20, 0])],
+    [(0, [-55, -20, 0], [-60, 40, 10], [10, 0], [235, 0, -10], 0), (2, [-90, 10, 0], [-90, 40, 20], [20, 0], [180, 0, 75], -90),
+     (6, [-90, 10, 0], [-90, 40, 20], [20, 0], [180, 0, 75], -400), (9, [-90, -10, 0], [-80, 40, 20], [15, -10], [180, 0, 70], -690),
+     (11, [-55, -20, 0], [-60, 40, 10], [10, 0], [235, 0, -10], -720)],
+    interrupt=13, blend_out=3.5)
+body("rev_cyclone", legs=[
+    (0, [-24, 0, 6], [18, 0, -6], 16, 0.1), (2, [-30, 0, 14], [30, 0, -14], 24, 0.26), (9, [-30, 0, 14], [30, 0, -14], 24, 0.26),
+    (11, [-24, 0, 6], [18, 0, -6], 16, 0.1)])
+
+# Ungezügelt (Kylo Ren): hunched, the blade held low and away, the free hand clenched. Huge
+# hammering blows from far behind the head, uncontrolled wide swings and a frenzy of strikes.
+WILD_FP = ([1.15, -0.95, 0.0], [20, -60, 0])
+WILD_TP = ([-30, -25, 10], [-40, 15, 15], [-30, 0, -40])
+M["wild_hammer"] = move(14, 6, "heavy",
+    [(0, [1.15, -0.95, 0.0], [20, -60, 0]), (2.5, [0.6, 0.45, -0.1], [160, -20, 0]), (4.5, [0.4, 0.5, -0.05], [165, -10, 0]),
+     (6, [0.1, -0.5, 0.25], [-10, 0, 0]), (7.5, [0.0, -0.95, 0.25], [-60, 0, 0]), (11, [0.2, -0.95, 0.2], [-55, -10, 0])],
+    [(0, [-30, -25, 10], [-40, 15, 15], [10, 10], [-30, 0, -40]), (2.5, [-185, 0, 10], [-180, 25, 0], [-25, 10], [50, 0, 0]),
+     (4.5, [-190, 0, 10], [-185, 25, 0], [-30, 10], [55, 0, 0]), (6, [-90, -5, 0], [-90, 25, 0], [30, 0], [-80, 0, 0]),
+     (7.5, [-35, -5, 0], [-38, 25, 0], [42, 0], [-95, 0, 0]), (11, [-35, -10, 0], [-38, 20, 0], [36, 0], [-90, 0, 0])],
+    interrupt=12)
+step("wild_hammer", 6, 11, lead="main", front=-36, back=30, lean=36, prep=-16, side=9, crouch=0.14, prep_crouch=0.0)
+put(M["wild_hammer"]["first_person"], 7.5, camera=[0.18, 6, 2])
+# Frenzy: three hammering blows one after the other, each one a bit wilder.
+M["wild_rage"] = move(16, 3, "heavy",
+    [(0, [1.15, -0.95, 0.0], [20, -60, 0]), (1.5, [0.5, 0.3, 0.0], [150, -10, 0]), (3, [0.1, -0.8, 0.25], [-50, 0, 0]),
+     (5, [0.7, 0.35, 0.0], [150, -30, -10]), (6.5, [-0.2, -0.8, 0.25], [-45, 30, 0]), (8.5, [0.2, 0.4, 0.0], [155, 20, 10]),
+     (10, [0.3, -0.85, 0.25], [-50, -20, 0]), (13, [0.6, -0.9, 0.15], [-45, -40, 0])],
+    [(0, [-30, -25, 10], [-40, 15, 15], [10, 10], [-30, 0, -40]), (1.5, [-170, 0, 5], [-165, 25, 0], [-15, 5], [40, 0, 0]),
+     (3, [-45, -5, 0], [-45, 25, 0], [35, 0], [-95, 0, 0]), (5, [-170, 15, 5], [-160, 30, 0], [-15, 15], [40, 0, -15]),
+     (6.5, [-45, -20, 0], [-45, 25, 0], [35, -12], [-95, 0, 15]), (8.5, [-175, -10, 5], [-165, 20, 0], [-18, -8], [45, 0, 15]),
+     (10, [-40, 5, 0], [-40, 25, 0], [40, 12], [-95, 0, -15]), (13, [-38, -5, 0], [-40, 20, 0], [34, 5], [-90, 0, -10])],
+    interrupt=12, more_strikes=[6.5, 10])
+body("wild_rage", legs=[
+    (0, [-16, 0, 8], [14, 0, -8], 14, 0.08), (1.5, [-10, 0, 8], [18, 0, -8], -6, 0.04), (3, [-34, 0, 8], [28, 0, -8], 30, 0.14),
+    (5, [-14, 0, 8], [20, 0, -8], -4, 0.06), (6.5, [-36, 0, 8], [30, 0, -8], 32, 0.15), (8.5, [-16, 0, 8], [22, 0, -8], -6, 0.06),
+    (10, [-40, 0, 8], [32, 0, -8], 36, 0.16), (13, [-30, 0, 8], [24, 0, -8], 26, 0.1)],
+    cam=[(0, [0, 0, 0]), (3, [0.12, 4, -2]), (6.5, [0.12, 4, 2]), (10, [0.15, 5, -2]), (14, [0, 0, 0])])
+for src, name, time, amp in (("djem_crush", "wild_slam", 0.85, 1.3), ("heavy_wide", "wild_wide", 0.85, 1.4),
+                             ("heavy_thrust", "wild_charge", 0.9, 1.2), ("heavy_spin", "wild_frenzy", 0.9, 1.15)):
+    derive(src, name, time, amp, WILD_FP, WILD_TP)
+step("wild_slam", 4.97, 9.35, lead="main", front=-38, back=30, lean=34, prep=-14, side=9, crouch=0.14, prep_crouch=0.0)
+step("wild_wide", 3.83, 7.2, lead="off", front=-28, back=24, lean=16, side=10, crouch=0.08)
+step("wild_charge", 3.6, 6.3, lead="main", front=-44, back=34, lean=28, side=7, crouch=0.12)
+body("wild_frenzy", legs=[
+    (0, [-8, 0, 10], [10, 0, -10], 10, 0.08), (2.3, [8, 0, 12], [-8, 0, -12], 16, 0.12), (5.4, [-14, 0, 12], [16, 0, -12], 20, 0.14),
+    (8.1, [10, 0, 12], [-10, 0, -12], 16, 0.1), (10.4, [-22, 0, 10], [18, 0, -10], 14, 0.08)])
+
+# Shii-Cho (Rey): a two-handed middle guard like holding a staff. Wide horizontal sweeps from side
+# to side with the whole body, a staff twirl in front and a rising cut.
+SHII_FP = ([0.55, -0.7, 0.15], [55, 20, 0])
+SHII_TP = ([-70, -15, 0], [-70, 45, 0], [-45, 0, 15])
+M["shii_sweep"] = move(11, 4, "swing",
+    [(0, [0.55, -0.7, 0.15], [55, 20, 0]), (2, [1.5, -0.35, 0.05], [5, -140, 0]), (4, [0.0, -0.3, 0.3], [2, 20, 0]),
+     (6, [-1.5, -0.35, 0.1], [2, 140, 0]), (8.5, [-0.6, -0.6, 0.15], [30, 80, 0])],
+    [(0, [-70, -15, 0], [-70, 45, 0], [0, 0], [-45, 0, 15]), (2, [-85, 55, 0], [-85, 70, 0], [0, 45], [-85, 0, 0]),
+     (4, [-90, -10, 0], [-88, 30, 0], [5, -10], [-88, 0, 0]), (6, [-85, -60, 0], [-82, -10, 0], [5, -50], [-85, 0, 0]),
+     (8.5, [-75, -40, 0], [-72, 10, 0], [0, -30], [-60, 0, 10])],
+    interrupt=8)
+step("shii_sweep", 4, 8.5, lead="off", front=-22, back=20, lean=8, side=10, crouch=0.06)
+M["shii_return"] = move(11, 4, "swing",
+    [(0, [-0.6, -0.6, 0.15], [30, 80, 0]), (2, [-1.5, -0.4, 0.1], [2, 150, 0]), (4, [0.0, -0.35, 0.3], [2, 0, 0]),
+     (6, [1.5, -0.4, 0.05], [2, -140, 0]), (8.5, [0.7, -0.7, 0.15], [45, -20, 0])],
+    [(0, [-75, -40, 0], [-72, 10, 0], [0, -30], [-60, 0, 10]), (2, [-85, -65, 0], [-80, -15, 0], [0, -55], [-85, 0, 0]),
+     (4, [-90, -5, 0], [-88, 35, 0], [5, 0], [-88, 0, 0]), (6, [-85, 55, 0], [-85, 70, 0], [5, 45], [-85, 0, 0]),
+     (8.5, [-72, 0, 0], [-70, 50, 0], [0, 15], [-50, 0, 10])],
+    interrupt=8)
+step("shii_return", 4, 8.5, lead="main", front=-22, back=20, lean=8, side=10, crouch=0.06)
+# Staff twirl: the blade spins once in front of the body like a staff, then cuts down.
+M["shii_twirl"] = move(12, 6.5, "spin",
+    [(0, [0.55, -0.7, 0.15], [55, 20, 0]), (2, [0.3, -0.4, 0.2], [60, 0, 120]), (4, [0.3, -0.4, 0.2], [60, 0, 240]),
+     (5.5, [0.3, -0.2, 0.2], [100, 0, 360]), (6.5, [0.1, -0.4, 0.25], [10, 5, 360]), (8, [0.05, -0.8, 0.25], [-40, 5, 360]),
+     (10, [0.4, -0.75, 0.15], [30, 15, 360])],
+    [(0, [-70, -15, 0], [-70, 45, 0], [0, 0], [-45, 0, 15]), (2, [-95, -5, 0], [-90, 35, 0], [0, 0], [-90, 0, 120]),
+     (4, [-95, -5, 0], [-90, 35, 0], [0, 0], [-90, 0, 240]), (5.5, [-150, -5, 0], [-145, 30, 0], [-8, 0], [-60, 0, 360]),
+     (6.5, [-100, -5, 0], [-98, 30, 0], [15, 0], [-75, 0, 360]), (8, [-50, -5, 0], [-50, 25, 0], [25, 0], [-90, 0, 360]),
+     (10, [-65, -15, 0], [-65, 45, 0], [5, 0], [-45, 0, 375])],
+    interrupt=10)
+step("shii_twirl", 6.5, 10, lead="main", front=-28, back=22, lean=18, prep=-4, side=8, crouch=0.08, prep_crouch=0.04)
+for src, name, time, amp in (("flow_overhead", "shii_overhead", 1.0, 1.15), ("flow_stab", "shii_charge", 1.0, 1.1),
+                             ("flow_spin", "shii_spin", 1.0, 1.2)):
+    derive(src, name, time, amp, SHII_FP, SHII_TP)
+step("shii_overhead", 3.5, 7, lead="main", front=-28, back=22, lean=16, prep=-6, side=8, crouch=0.05)
+step("shii_charge", 3, 5.5, lead="main", front=-38, back=30, lean=18, side=8, crouch=0.06)
+body("shii_spin", legs=[
+    (0, [-8, 0, 9], [10, 0, -9], 4, 0.05), (2, [6, 0, 10], [-6, 0, -10], 8, 0.08), (5, [-10, 0, 10], [12, 0, -10], 10, 0.1),
+    (8, [8, 0, 10], [-8, 0, -10], 8, 0.08), (10, [-20, 0, 9], [16, 0, -9], 8, 0.05)])
+
+
 # ---------------- Phase 7: force powers ----------------
 # Grip: the free hand reaches out and holds, the saber is kept low and back. It lasts as long as
 # the server holds the target and is stopped when the grip ends.
@@ -600,7 +923,8 @@ def ground(name):
         put(frames, t, root=r)
 
 
-for name in ("dodge_roll", "dodge_roll_right", "dodge_roll_left", "staff_roll", "dodge_backflip", "agile_flip"):
+for name in ("dodge_roll", "dodge_roll_right", "dodge_roll_left", "staff_roll", "dodge_backflip", "agile_flip",
+             "ataru_flip_cut", "ataru_leap"):
     ground(name)
 
 styles = {
@@ -660,6 +984,48 @@ styles = {
         "idle_third_person": {"main_arm": JUYO_TP[0], "off_arm": JUYO_TP[1], "body": [0, 10], "item": JUYO_TP[2]},
         "guard_first_person": {"grip": [0.1, -0.45, 0.35], "aim": [65, 90, 0]},
         "guard_third_person": {"main_arm": [-95, -15, 0], "off_arm": [-92, 40, 0], "item": [0, 0, 30]}},
+    "sabercraft:onslaught": {
+        "combo": ["ons_overhead", "ons_backhand", "ons_double", "ons_rising"],
+        "sprint": "ons_leap", "jump": "ons_leap", "special": "ons_spin", "combo_window": 16,
+        "idle_first_person": {"grip": ONS_FP[0], "aim": ONS_FP[1]},
+        "idle_third_person": {"main_arm": ONS_TP[0], "off_arm": ONS_TP[1], "body": [0, 15], "item": ONS_TP[2]},
+        "guard_first_person": {"grip": [0.4, -0.5, 0.15], "aim": [42, 80, 0]},
+        "guard_third_person": {"main_arm": [-100, -22, 0], "off_arm": [-95, 38, 0], "body": [4, -10], "item": [0, 0, 58]}},
+    "sabercraft:ataru": {
+        "combo": ["ataru_spin_cut", "ataru_flip_cut", "ataru_twirl", "ataru_spin_cut"],
+        "sprint": "ataru_leap", "jump": "ataru_flip_cut", "special": "ataru_whirlwind", "combo_window": 14,
+        "idle_first_person": {"grip": ATA_FP[0], "aim": ATA_FP[1]},
+        "idle_third_person": {"main_arm": ATA_TP[0], "off_arm": ATA_TP[1], "body": [10, 0], "item": ATA_TP[2]},
+        "guard_first_person": {"grip": [0.45, -0.6, 0.15], "aim": [40, 78, 0]},
+        "guard_third_person": {"main_arm": [-92, -20, 0], "off_arm": [-60, 40, 10], "body": [10, -10], "item": [0, 0, 55]}},
+    "sabercraft:makashi": {
+        "combo": ["mak_thrust", "mak_flick", "mak_disengage", "mak_cut"],
+        "sprint": "mak_fleche", "jump": "mak_cut", "special": "mak_flourish", "combo_window": 15,
+        "idle_first_person": {"grip": MAK_FP[0], "aim": MAK_FP[1]},
+        "idle_third_person": {"main_arm": MAK_TP[0], "off_arm": MAK_TP[1], "body": [0, -25], "item": MAK_TP[2]},
+        "guard_first_person": {"grip": [0.42, -0.5, 0.2], "aim": [55, 60, 0]},
+        "guard_third_person": {"main_arm": [-100, -10, 0], "off_arm": MAK_OFF, "body": [0, -25], "item": [-20, 0, 50]}},
+    "sabercraft:reverse_shien": {
+        "combo": ["rev_hook", "rev_backstab", "rev_uppercut", "rev_spin"],
+        "sprint": "rev_dash_cut", "jump": "rev_drop", "special": "rev_cyclone", "combo_window": 14,
+        "idle_first_person": {"grip": REV_FP[0], "aim": REV_FP[1]},
+        "idle_third_person": {"main_arm": REV_TP[0], "off_arm": REV_TP[1], "body": [12, 5], "item": REV_TP[2]},
+        "guard_first_person": {"grip": [0.5, -0.45, 0.15], "aim": [-10, 85, 0]},
+        "guard_third_person": {"main_arm": [-100, -30, 0], "off_arm": [-70, 40, 10], "body": [8, -10], "item": [180, 0, 70]}},
+    "sabercraft:unbridled": {
+        "combo": ["wild_hammer", "wild_wide", "wild_rage", "wild_slam"],
+        "sprint": "wild_charge", "jump": "wild_hammer", "special": "wild_frenzy", "combo_window": 20,
+        "idle_first_person": {"grip": WILD_FP[0], "aim": WILD_FP[1]},
+        "idle_third_person": {"main_arm": WILD_TP[0], "off_arm": WILD_TP[1], "body": [15, 15], "item": WILD_TP[2]},
+        "guard_first_person": {"grip": [0.45, -0.5, 0.15], "aim": [46, 84, 0]},
+        "guard_third_person": {"main_arm": [-104, -20, 0], "off_arm": [-100, 36, 0], "body": [10, -6], "item": [0, 0, 62]}},
+    "sabercraft:shii_cho": {
+        "combo": ["shii_sweep", "shii_return", "shii_overhead", "shii_twirl"],
+        "sprint": "shii_charge", "jump": "shii_overhead", "special": "shii_spin", "combo_window": 17,
+        "idle_first_person": {"grip": SHII_FP[0], "aim": SHII_FP[1]},
+        "idle_third_person": {"main_arm": SHII_TP[0], "off_arm": SHII_TP[1], "item": SHII_TP[2]},
+        "guard_first_person": {"grip": [0.4, -0.55, 0.15], "aim": [40, 80, 0]},
+        "guard_third_person": {"main_arm": [-96, -20, 0], "off_arm": [-92, 40, 0], "body": [0, -8], "item": [0, 0, 60]}},
 }
 
 # Phase 7: legs of the resting poses, running and jumping poses, dodges and landings.
@@ -680,11 +1046,25 @@ LEGS = {
                           {"main_leg": [-12, 0, 10], "off_leg": [14, 0, -10], "lean": 7, "crouch": 0.08}),
     "sabercraft:juyo": ({"main_leg": [-10, 0, 11], "off_leg": [12, 0, -11], "lean": 8, "crouch": 0.06},
                         {"main_leg": [-8, 0, 12], "off_leg": [10, 0, -12], "lean": 8, "crouch": 0.05}),
+    "sabercraft:onslaught": ({"main_leg": [-14, 0, 6], "off_leg": [14, 0, -6], "lean": 6, "crouch": 0.04},
+                             {"main_leg": [-16, 0, 7], "off_leg": [16, 0, -7], "lean": 8, "crouch": 0.06}),
+    "sabercraft:ataru": ({"main_leg": [-30, 0, 6], "off_leg": [20, 0, -6], "lean": 20, "crouch": 0.18},
+                         {"main_leg": [-30, 0, 7], "off_leg": [22, 0, -7], "lean": 18, "crouch": 0.18}),
+    "sabercraft:makashi": ({"main_leg": [-14, 0, 4], "off_leg": [12, 0, -4], "lean": 2, "crouch": 0.03},
+                           {"main_leg": [-16, 0, 4], "off_leg": [14, 0, -4], "lean": 3, "crouch": 0.05}),
+    "sabercraft:reverse_shien": ({"main_leg": [-24, 0, 6], "off_leg": [18, 0, -6], "lean": 16, "crouch": 0.1},
+                                 {"main_leg": [-24, 0, 8], "off_leg": [20, 0, -8], "lean": 14, "crouch": 0.12}),
+    "sabercraft:unbridled": ({"main_leg": [-16, 0, 8], "off_leg": [14, 0, -8], "lean": 14, "crouch": 0.08},
+                             {"main_leg": [-18, 0, 9], "off_leg": [16, 0, -9], "lean": 12, "crouch": 0.08}),
+    "sabercraft:shii_cho": ({"main_leg": [-10, 0, 8], "off_leg": [10, 0, -8], "lean": 4, "crouch": 0.04},
+                            {"main_leg": [-12, 0, 9], "off_leg": [12, 0, -9], "lean": 6, "crouch": 0.06}),
 }
 for sid, (idle, guard) in LEGS.items():
     styles[sid]["idle_third_person"].update(idle)
     styles[sid]["guard_third_person"].update(guard)
-for sid in ("sabercraft:flowing", "sabercraft:heavy", "sabercraft:defensive", "sabercraft:agile", "sabercraft:djem_so", "sabercraft:soresu"):
+for sid in ("sabercraft:flowing", "sabercraft:heavy", "sabercraft:defensive", "sabercraft:agile", "sabercraft:djem_so", "sabercraft:soresu",
+            "sabercraft:onslaught", "sabercraft:ataru", "sabercraft:makashi", "sabercraft:reverse_shien", "sabercraft:unbridled",
+            "sabercraft:shii_cho"):
     styles[sid]["guard_hit"] = "guard_hit"
     styles[sid]["parry"] = "parry"
     styles[sid]["guard_break"] = "guard_break"
@@ -714,6 +1094,19 @@ styles["sabercraft:agile"]["dodge"] = {"forward": "dodge_spin_step", "left": "do
 styles["sabercraft:djem_so"]["dodge"] = dict(styles["sabercraft:heavy"]["dodge"])
 styles["sabercraft:soresu"]["dodge"] = dict(styles["sabercraft:defensive"]["dodge"])
 styles["sabercraft:juyo"]["dodge"] = {"forward": "dodge_spin_step", "left": "dodge_sidestep_left", "right": "dodge_sidestep_right", "back": "dodge_backflip"}
+# Phase 9: the dodges match SaberManeuver.of for each style.
+styles["sabercraft:onslaught"]["dodge"] = {"forward": "dodge_lunge", "left": "dodge_roll_left", "right": "dodge_roll_right", "back": "dodge_backflip"}
+styles["sabercraft:ataru"]["dodge"] = dict(styles["sabercraft:agile"]["dodge"])
+styles["sabercraft:makashi"]["dodge"] = dict(styles["sabercraft:heavy"]["dodge"])
+styles["sabercraft:reverse_shien"]["dodge"] = {"forward": "dodge_roll", "left": "dodge_roll_left", "right": "dodge_roll_right", "back": "dodge_backflip"}
+styles["sabercraft:unbridled"]["dodge"] = dict(styles["sabercraft:heavy"]["dodge"])
+styles["sabercraft:shii_cho"]["dodge"] = dict(styles["sabercraft:flowing"]["dodge"])
+styles["sabercraft:makashi"]["run_third_person"] = {"main_arm": [-40, 10, 0], "off_arm": MAK_OFF, "item": [-40, 0, 0], "lean": 10}
+styles["sabercraft:reverse_shien"]["run_third_person"] = {"main_arm": [30, 10, 15], "item": [235, 0, -10], "lean": 20}
+styles["sabercraft:reverse_shien"]["air_third_person"] = {"main_arm": [-70, -10, 5], "off_arm": [-35, 30, 25], "item": [235, 0, -10],
+                                                          "main_leg": [-30, 0, 4], "off_leg": [18, 0, -4], "lean": 4}
+styles["sabercraft:ataru"]["run_third_person"] = {"main_arm": [30, 10, 15], "item": [80, 0, 0], "lean": 22}
+styles["sabercraft:unbridled"]["run_third_person"] = {"main_arm": [-20, -20, 10], "off_arm": [-20, 20, 0], "item": [-30, 0, -40], "lean": 16}
 styles["sabercraft:staff"]["dodge"] = {"forward": "staff_roll", "left": "dodge_sidestep_left", "right": "dodge_sidestep_right", "back": "dodge_backstep"}
 for s in styles.values():
     for k in ("combo",):

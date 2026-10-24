@@ -19,6 +19,8 @@ import com.phiro.sabercraft.client.music.UserMusic;
  * SaberCraft music (on or off, its own volume, crossfade length, your own files, all as before),
  * and the Star Wars mode, which plays music files you provide, with its own volume, crossfade,
  * switches for fights and exploration, and a list of the tracks found and the files missing.
+ * Since Phase 9 it also shows where the track playing now comes from (a planet, the character
+ * you play, or the plain folder) and which planets and characters have files of their own.
  */
 public class MusicMenuScreen extends SaberMenuScreen {
 	public MusicMenuScreen() {
@@ -128,34 +130,67 @@ public class MusicMenuScreen extends SaberMenuScreen {
 		this.note(graphics, Component.translatable("sabercraft.menu.music.note"), 4);
 	}
 
-	/** What plays now, how many tracks each situation has (or that they are missing), and problems. */
+	/**
+	 * What plays now and where it comes from, how many tracks each situation has (or that they
+	 * are missing), which planets and characters have their own files, and problems.
+	 */
 	private void extractStarWars(GuiGraphicsExtractor graphics) {
-		int y = this.row(4) + 2;
+		int y = this.row(4);
 		Optional<StarWarsMusic.Track> track = StarWarsMusic.currentTrack();
 		StarWarsMusic.Situation situation = StarWarsMusic.situation();
 		Component now = track.isEmpty() || situation == null
 				? Component.translatable(StarWarsMusic.total() == 0 ? "sabercraft.menu.music.starwars.empty" : "sabercraft.menu.music.silent")
 				: Component.translatable("sabercraft.menu.music.now", Component.translatable("sabercraft.music.situation." + situation.folder()),
 						Component.literal(track.get().name()));
-		graphics.text(this.font, now, this.left + 10, y, StarWarsMusic.total() == 0 ? 0xFFFF7060 : 0xFFFFD060);
+
+		if (track.isPresent() && situation != null) {
+			now = Component.empty().append(now).append(" ").append(source(StarWarsMusic.currentSource()));
+		}
+
+		graphics.text(this.font, this.font.substrByWidth(now, PANEL_WIDTH - 20).getString(), this.left + 10, y,
+				StarWarsMusic.total() == 0 ? 0xFFFF7060 : 0xFFFFD060);
 		y += 11;
 		int index = 0;
 
+		// The plain folders, three to a line.
 		for (StarWarsMusic.Situation each : StarWarsMusic.Situation.values()) {
 			List<StarWarsMusic.Track> tracks = StarWarsMusic.tracks(each);
 			Component name = Component.translatable("sabercraft.music.situation." + each.folder());
 			Component line = tracks.isEmpty()
 					? Component.translatable("sabercraft.menu.music.starwars.missing", name, each.folder() + "/")
-					: Component.translatable("sabercraft.menu.music.starwars.count", name, tracks.size(), tracks.getFirst().name());
-			int x = this.left + 10 + index % 2 * (PANEL_WIDTH / 2);
-			graphics.text(this.font, this.font.substrByWidth(line, PANEL_WIDTH / 2 - 14).getString(), x, y + index / 2 * 10,
+					: Component.translatable("sabercraft.menu.music.starwars.count", name, tracks.size());
+			int x = this.left + 10 + index % 3 * ((PANEL_WIDTH - 20) / 3);
+			graphics.text(this.font, this.font.substrByWidth(line, (PANEL_WIDTH - 20) / 3 - 4).getString(), x, y + index / 3 * 9,
 					tracks.isEmpty() ? 0xFFB07070 : 0xFF90D090);
 			index++;
 		}
 
-		graphics.textWithWordWrap(this.font, Component.translatable("sabercraft.menu.music.starwars.note"), this.left + 10, this.top + 178,
-				PANEL_WIDTH - 20, 0xFFA8A8B0);
-		y += 30;
+		y += (index + 2) / 3 * 9 + 1;
+
+		// Planets and characters with files of their own.
+		List<String> own = new java.util.ArrayList<>();
+
+		for (String planet : StarWarsMusic.PLANETS) {
+			int count = StarWarsMusic.contextCount("planet/" + planet);
+
+			if (count > 0) {
+				own.add(Component.translatable("sabercraft.planet." + planet).getString() + " " + count);
+			}
+		}
+
+		for (com.phiro.sabercraft.character.Outfit character : com.phiro.sabercraft.character.Outfit.CHARACTERS) {
+			int count = StarWarsMusic.contextCount("character/" + character.id().getPath());
+
+			if (count > 0) {
+				own.add(Component.translatable(character.translationKey()).getString() + " " + count);
+			}
+		}
+
+		Component assigned = own.isEmpty() ? Component.translatable("sabercraft.menu.music.starwars.context.none")
+				: Component.translatable("sabercraft.menu.music.starwars.context", String.join(", ", own));
+		graphics.text(this.font, this.font.substrByWidth(assigned, PANEL_WIDTH - 20).getString(), this.left + 10, y,
+				own.isEmpty() ? 0xFFA8A8B0 : 0xFF90D0F0);
+		y += 11;
 		List<String> problems = StarWarsMusic.problems();
 
 		if (!problems.isEmpty()) {
@@ -163,5 +198,20 @@ public class MusicMenuScreen extends SaberMenuScreen {
 			graphics.text(this.font, this.font.substrByWidth(Component.translatable("sabercraft.menu.music.starwars.problems", text), PANEL_WIDTH - 20)
 					.getString(), this.left + 10, y, 0xFFFF9060);
 		}
+
+		graphics.textWithWordWrap(this.font, Component.translatable("sabercraft.menu.music.starwars.note"), this.left + 10, this.top + 187,
+				PANEL_WIDTH - 20, 0xFFA8A8B0);
+	}
+
+	/** "(Hoth)", "(Vader)", "(theme of Vader)", or "(general)". */
+	private static Component source(StarWarsMusic.Source source) {
+		Component name = switch (source.kind()) {
+			case "planet" -> Component.translatable("sabercraft.planet." + source.id());
+			case "character", "theme" -> com.phiro.sabercraft.character.Outfit.CHARACTERS.stream()
+					.filter(o -> o.id().getPath().equals(source.id())).findFirst()
+					.<Component>map(o -> Component.translatable(o.translationKey())).orElse(Component.literal(source.id()));
+			default -> Component.empty();
+		};
+		return Component.translatable("sabercraft.menu.music.starwars.source." + (source.kind().isEmpty() ? "general" : source.kind()), name);
 	}
 }

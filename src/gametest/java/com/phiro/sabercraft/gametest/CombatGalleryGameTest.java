@@ -38,6 +38,12 @@ public class CombatGalleryGameTest implements FabricClientGameTest {
 			{"sabercraft:djem_so", "sabercraft:dark_lord", "sabercraft:red"},
 			{"sabercraft:soresu", "sabercraft:kenobi", "sabercraft:blue"},
 			{"sabercraft:juyo", "sabercraft:double", "sabercraft:red"},
+			{"sabercraft:onslaught", "sabercraft:anakin", "sabercraft:blue"},
+			{"sabercraft:ataru", "sabercraft:yoda", "sabercraft:green"},
+			{"sabercraft:makashi", "sabercraft:dooku", "sabercraft:red"},
+			{"sabercraft:reverse_shien", "sabercraft:tano", "sabercraft:white"},
+			{"sabercraft:unbridled", "sabercraft:crossguard", "sabercraft:red"},
+			{"sabercraft:shii_cho", "sabercraft:rey", "sabercraft:yellow"},
 	};
 
 	@Override
@@ -57,7 +63,14 @@ public class CombatGalleryGameTest implements FabricClientGameTest {
 			server.runCommand("tp @e[tag=front] 3.6 ~ 1.4 115 0");
 			context.waitTicks(20);
 
+			// -Dsabercraft.gallery=onslaught,ataru shoots only these styles (for quick checks).
+			String only = System.getProperty("sabercraft.gallery", "");
+
 			for (String[] style : STYLES) {
+				if (!only.isEmpty() && !java.util.Arrays.asList(only.split(",")).contains(name(style[0]))) {
+					continue;
+				}
+
 				this.style(context, server, style[0], style[1], style[2]);
 			}
 		}
