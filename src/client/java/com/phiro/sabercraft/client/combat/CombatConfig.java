@@ -40,6 +40,12 @@ public final class CombatConfig {
 	/** Landing animation after higher jumps. */
 	@SerializedName("landing_animation")
 	public boolean landingAnimation = true;
+	/**
+	 * While an Iris shader pack is active, draw the blade as a self-lit beam that the pack knows
+	 * (Phase 8). Off: the plain pipelines of Phase 3, which most packs draw almost transparent.
+	 */
+	@SerializedName("shader_blade")
+	public boolean shaderBlade = true;
 
 	public static CombatConfig get() {
 		return current;

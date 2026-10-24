@@ -49,11 +49,15 @@ public class GraphicsMenuScreen extends SaberMenuScreen {
 					immersion.spaceSkyQuality = v;
 					ImmersionConfig.save();
 				});
+		this.toggle(0, 3, "sabercraft.option.shader_blade", combat.shaderBlade, v -> {
+			combat.shaderBlade = v;
+			CombatConfig.save();
+		});
 		this.closeButton();
 	}
 
 	@Override
 	protected void extractPanel(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float a) {
-		this.note(graphics, Component.translatable("sabercraft.menu.graphics.note"), 3);
+		this.note(graphics, Component.translatable("sabercraft.menu.graphics.note"), 4);
 	}
 }

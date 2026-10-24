@@ -32,6 +32,7 @@ import net.minecraft.world.level.Level;
 
 import com.phiro.sabercraft.SaberCraft;
 import com.phiro.sabercraft.client.ImmersionConfig;
+import com.phiro.sabercraft.client.render.ShaderCompat;
 
 /**
  * The optional space sky (Phase 7): a cube around the camera with a painted picture of stars,
@@ -58,7 +59,6 @@ public final class SpaceSky {
 	private static @Nullable String pendingKey;
 	private static @Nullable CompletableFuture<int[]> pending;
 	private static int pendingSize;
-	private static @Nullable Boolean irisPresent;
 
 	private SpaceSky() {
 	}
@@ -70,7 +70,7 @@ public final class SpaceSky {
 
 		if (!config.spaceSky || client.level == null) {
 			return false;
-		} else if (!config.spaceSkyWithShaders && shaderPackInUse()) {
+		} else if (!config.spaceSkyWithShaders && ShaderCompat.shaderPackInUse()) {
 			return false;
 		}
 
@@ -230,23 +230,6 @@ public final class SpaceSky {
 				cube = RenderSystem.getDevice().createBuffer(() -> "SaberCraft space sky cube", 40, mesh.vertexBuffer());
 				return cube;
 			}
-		}
-	}
-
-	/** Whether an Iris shader pack is in use, read through the Iris API when Iris is installed. */
-	private static boolean shaderPackInUse() {
-		if (Boolean.FALSE.equals(irisPresent)) {
-			return false;
-		}
-
-		try {
-			Class<?> api = Class.forName("net.irisshaders.iris.api.v0.IrisApi");
-			Object instance = api.getMethod("getInstance").invoke(null);
-			irisPresent = true;
-			return (boolean) api.getMethod("isShaderPackInUse").invoke(instance);
-		} catch (ReflectiveOperationException | LinkageError error) {
-			irisPresent = false;
-			return false;
 		}
 	}
 }

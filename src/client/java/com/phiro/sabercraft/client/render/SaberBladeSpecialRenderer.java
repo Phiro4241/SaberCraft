@@ -80,8 +80,9 @@ public final class SaberBladeSpecialRenderer implements SpecialModelRenderer<Bla
 	) {
 		BladeRenderState state = blade != null ? blade : BladeRenderState.FULL;
 
-		if (!state.isVisible()) {
-			// Fully retracted: only the hilt is drawn, by the hilt model.
+		if (!state.isVisible() || ShaderCompat.renderingShadowPass()) {
+			// Fully retracted: only the hilt is drawn, by the hilt model. A glowing blade casts no
+			// shadow, so it is left out of the shadow map of shader packs.
 			return;
 		}
 
@@ -94,18 +95,19 @@ public final class SaberBladeSpecialRenderer implements SpecialModelRenderer<Bla
 		float swing = state.swing() != null ? state.swing().strength() : 0.0F;
 		float intensity = intensity(style) * (0.55F + 0.45F * build) * (1.0F + state.flare() + 0.22F * swing);
 
+		boolean shader = SaberRenderTypes.beams();
 		poseStack.pushPose();
 		this.applyBladeTransform(poseStack);
 		// Haze first, then the opaque core on top of it, so the core stays white instead of being
 		// tinted by the haze in front of it. The additive bloom comes last.
 		submitNodeCollector.order(0).submitCustomGeometry(
-				poseStack, SaberRenderTypes.BLADE_HAZE, (pose, buffer) -> BladeMesh.haze(pose, buffer, style, length, intensity * build)
+				poseStack, SaberRenderTypes.haze(state.firstPerson()), (pose, buffer) -> BladeMesh.haze(pose, buffer, style, length, intensity * build, shader)
 		);
 		submitNodeCollector.order(1).submitCustomGeometry(
-				poseStack, SaberRenderTypes.BLADE_CORE, (pose, buffer) -> BladeMesh.core(pose, buffer, style, length, intensity)
+				poseStack, SaberRenderTypes.core(state.firstPerson()), (pose, buffer) -> BladeMesh.core(pose, buffer, style, length, intensity, shader)
 		);
 		submitNodeCollector.order(2).submitCustomGeometry(
-				poseStack, SaberRenderTypes.BLADE_BLOOM, (pose, buffer) -> BladeMesh.bloom(pose, buffer, style, length, intensity * build)
+				poseStack, SaberRenderTypes.bloom(state.firstPerson()), (pose, buffer) -> BladeMesh.bloom(pose, buffer, style, length, intensity * build)
 		);
 
 		if (state.swing() != null) {

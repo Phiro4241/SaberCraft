@@ -28,6 +28,17 @@ public final class BladeMesh {
 	private static final int FINS = 8;
 	/** The core starts slightly inside the emitter so no gap is visible. */
 	private static final float BASE_OFFSET = -0.03F;
+	/** How much of the glow color goes into the core while a shader pack is active. */
+	private static final float SHADER_CORE_TINT = 0.22F;
+	/** Extra opacity of the glow while a shader pack is active. */
+	private static final float SHADER_GLOW_BOOST = 1.7F;
+	/**
+	 * Smallest glow alpha while a shader pack is active. Some packs divide by the alpha of beam
+	 * pixels, and a fully clear vertex then gives black specks at the edge of the glow.
+	 */
+	private static final float SHADER_MIN_ALPHA = 1.5F / 255.0F;
+	/** Packed light for "fully lit", for the shader pack pipelines. */
+	private static final int FULL_BRIGHT = 0xF000F0;
 
 	/** Distance from the axis (fraction of the glow radius) of each vertex across a fin. */
 	private static final float[] FIN_OFFSETS = {-1.0F, -0.42F, 0.0F, 0.42F, 1.0F};
@@ -52,8 +63,11 @@ public final class BladeMesh {
 	 * Solid core, drawn with {@link SaberRenderTypes#BLADE_CORE}. {@code length} is the current
 	 * blade length: the style's length when fully out, less while it ignites or retracts.
 	 */
-	public static void core(PoseStack.Pose pose, VertexConsumer buffer, BladeStyle style, float length, float intensity) {
-		int color = argb(1.0F, scale(style.coreColor(), Math.min(1.0F, 0.94F + 0.06F * intensity)));
+	public static void core(PoseStack.Pose pose, VertexConsumer buffer, BladeStyle style, float length, float intensity, boolean shader) {
+		int rgb = scale(style.coreColor(), Math.min(1.0F, 0.94F + 0.06F * intensity));
+		// Shader packs spread the core with their own bloom and tone it down to white; a slight tint
+		// keeps the color in the middle of that bloom. The core itself stays almost white.
+		int color = argb(1.0F, shader ? mix(rgb, style.glowColor(), SHADER_CORE_TINT) : rgb);
 		tube(pose, buffer, style.coreRadius(), length, color, color);
 	}
 
@@ -66,8 +80,10 @@ public final class BladeMesh {
 	}
 
 	/** Translucent colored glow, drawn with {@link SaberRenderTypes#BLADE_HAZE}. */
-	public static void haze(PoseStack.Pose pose, VertexConsumer buffer, BladeStyle style, float length, float intensity) {
-		float strength = style.glowStrength() * intensity;
+	public static void haze(PoseStack.Pose pose, VertexConsumer buffer, BladeStyle style, float length, float intensity, boolean shader) {
+		// With a shader pack the glow is drawn as a self-lit beam that the pack tones down, so it
+		// needs more opacity to keep the same saturated color.
+		float strength = style.glowStrength() * intensity * (shader ? SHADER_GLOW_BOOST : 1.0F);
 		float core = style.coreRadius();
 		int glow = style.glowColor();
 
@@ -76,7 +92,7 @@ public final class BladeMesh {
 		int outer = argb(0.13F * strength, glow);
 		tube(pose, buffer, core * 2.3F, length + core * 0.9F, inner, inner);
 		tube(pose, buffer, core * 3.4F, length + core * 1.6F, outer, outer);
-		fins(pose, buffer, style.glowRadius(), length, glow, 0.2F * strength);
+		fins(pose, buffer, style.glowRadius(), length, glow, 0.2F * strength, shader ? SHADER_MIN_ALPHA : 0.0F);
 	}
 
 	/** A closed round tube along +Y with a dome-shaped tip. */
@@ -102,21 +118,21 @@ public final class BladeMesh {
 			PoseStack.Pose pose, VertexConsumer buffer, float r0, float y0, float r1, float y1, int color0, int color1
 	) {
 		for (int i = 0; i < SIDES; i++) {
-			vertex(pose, buffer, COS[i] * r0, y0, SIN[i] * r0, color0);
-			vertex(pose, buffer, COS[i] * r1, y1, SIN[i] * r1, color1);
-			vertex(pose, buffer, COS[i + 1] * r1, y1, SIN[i + 1] * r1, color1);
-			vertex(pose, buffer, COS[i + 1] * r0, y0, SIN[i + 1] * r0, color0);
+			vertex(pose, buffer, COS[i] * r0, y0, SIN[i] * r0, color0, COS[i], 0.0F, SIN[i]);
+			vertex(pose, buffer, COS[i] * r1, y1, SIN[i] * r1, color1, COS[i], 0.0F, SIN[i]);
+			vertex(pose, buffer, COS[i + 1] * r1, y1, SIN[i + 1] * r1, color1, COS[i + 1], 0.0F, SIN[i + 1]);
+			vertex(pose, buffer, COS[i + 1] * r0, y0, SIN[i + 1] * r0, color0, COS[i + 1], 0.0F, SIN[i + 1]);
 		}
 	}
 
 	/** Flat glow planes crossing on the blade axis, each with a soft falloff to both sides. */
-	private static void fins(PoseStack.Pose pose, VertexConsumer buffer, float radius, float length, int rgb, float alpha) {
+	private static void fins(PoseStack.Pose pose, VertexConsumer buffer, float radius, float length, int rgb, float alpha, float minAlpha) {
 		// The glow fades in over the first part of the blade, so it does not swallow the emitter.
 		// While the blade is still short, all three sections shrink with it.
 		float fadeEnd = Math.min(radius * 1.2F, length * 0.4F);
 		float tipStart = Math.max(fadeEnd, length - radius * 0.3F);
 		float tipEnd = tipStart + Math.min(radius * 1.1F, Math.max(length, 0.02F) * 0.8F);
-		int clear = argb(0.0F, rgb);
+		int clear = argb(minAlpha, rgb);
 
 		for (int fin = 0; fin < FINS; fin++) {
 			float angle = fin * Mth.PI / FINS;
@@ -126,37 +142,49 @@ public final class BladeMesh {
 			for (int band = 0; band < FIN_OFFSETS.length - 1; band++) {
 				float o0 = FIN_OFFSETS[band] * radius;
 				float o1 = FIN_OFFSETS[band + 1] * radius;
-				int c0 = argb(alpha * FIN_FALLOFF[band], rgb);
-				int c1 = argb(alpha * FIN_FALLOFF[band + 1], rgb);
+				int c0 = argb(Math.max(minAlpha, alpha * FIN_FALLOFF[band]), rgb);
+				int c1 = argb(Math.max(minAlpha, alpha * FIN_FALLOFF[band + 1]), rgb);
 
 				// Base: narrow and clear at the emitter, full glow at fadeEnd.
-				vertex(pose, buffer, dx * o0 * 0.4F, 0.0F, dz * o0 * 0.4F, clear);
-				vertex(pose, buffer, dx * o0, fadeEnd, dz * o0, c0);
-				vertex(pose, buffer, dx * o1, fadeEnd, dz * o1, c1);
-				vertex(pose, buffer, dx * o1 * 0.4F, 0.0F, dz * o1 * 0.4F, clear);
+				vertex(pose, buffer, dx * o0 * 0.4F, 0.0F, dz * o0 * 0.4F, clear, -dz, 0.0F, dx);
+				vertex(pose, buffer, dx * o0, fadeEnd, dz * o0, c0, -dz, 0.0F, dx);
+				vertex(pose, buffer, dx * o1, fadeEnd, dz * o1, c1, -dz, 0.0F, dx);
+				vertex(pose, buffer, dx * o1 * 0.4F, 0.0F, dz * o1 * 0.4F, clear, -dz, 0.0F, dx);
 
 				// Body: constant glow up to the start of the tip.
-				vertex(pose, buffer, dx * o0, fadeEnd, dz * o0, c0);
-				vertex(pose, buffer, dx * o0, tipStart, dz * o0, c0);
-				vertex(pose, buffer, dx * o1, tipStart, dz * o1, c1);
-				vertex(pose, buffer, dx * o1, fadeEnd, dz * o1, c1);
+				vertex(pose, buffer, dx * o0, fadeEnd, dz * o0, c0, -dz, 0.0F, dx);
+				vertex(pose, buffer, dx * o0, tipStart, dz * o0, c0, -dz, 0.0F, dx);
+				vertex(pose, buffer, dx * o1, tipStart, dz * o1, c1, -dz, 0.0F, dx);
+				vertex(pose, buffer, dx * o1, fadeEnd, dz * o1, c1, -dz, 0.0F, dx);
 
 				// Tip: narrows and fades out just beyond the end of the core.
-				vertex(pose, buffer, dx * o0, tipStart, dz * o0, c0);
-				vertex(pose, buffer, dx * o0 * 0.35F, tipEnd, dz * o0 * 0.35F, clear);
-				vertex(pose, buffer, dx * o1 * 0.35F, tipEnd, dz * o1 * 0.35F, clear);
-				vertex(pose, buffer, dx * o1, tipStart, dz * o1, c1);
+				vertex(pose, buffer, dx * o0, tipStart, dz * o0, c0, -dz, 0.0F, dx);
+				vertex(pose, buffer, dx * o0 * 0.35F, tipEnd, dz * o0 * 0.35F, clear, -dz, 0.0F, dx);
+				vertex(pose, buffer, dx * o1 * 0.35F, tipEnd, dz * o1 * 0.35F, clear, -dz, 0.0F, dx);
+				vertex(pose, buffer, dx * o1, tipStart, dz * o1, c1, -dz, 0.0F, dx);
 			}
 		}
 	}
 
-	private static void vertex(PoseStack.Pose pose, VertexConsumer buffer, float x, float y, float z, int argb) {
-		buffer.addVertex(pose, x, y, z).setColor(argb);
+	/**
+	 * One vertex. The plain pipelines only take position and color; the shader pack pipelines
+	 * (beacon beam format) also take texture, light and normal. Elements the format does not have
+	 * are skipped by the buffer.
+	 */
+	static void vertex(PoseStack.Pose pose, VertexConsumer buffer, float x, float y, float z, int argb, float nx, float ny, float nz) {
+		buffer.addVertex(pose, x, y, z).setColor(argb).setUv(0.5F, 0.5F).setLight(FULL_BRIGHT).setNormal(pose, nx, ny, nz);
 	}
 
 	private static int argb(float alpha, int rgb) {
 		int a = Mth.clamp(Math.round(alpha * 255.0F), 0, 255);
 		return a << 24 | rgb & 0xFFFFFF;
+	}
+
+	private static int mix(int from, int to, float amount) {
+		int r = Math.round(Mth.lerp(amount, from >> 16 & 0xFF, to >> 16 & 0xFF));
+		int g = Math.round(Mth.lerp(amount, from >> 8 & 0xFF, to >> 8 & 0xFF));
+		int b = Math.round(Mth.lerp(amount, from & 0xFF, to & 0xFF));
+		return r << 16 | g << 8 | b;
 	}
 
 	private static int scale(int rgb, float factor) {
