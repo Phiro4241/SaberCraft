@@ -7,6 +7,7 @@ import net.minecraft.client.particle.Particle;
 import net.minecraft.client.particle.SingleQuadParticle;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.core.particles.ParticleOptions;
+import net.minecraft.core.particles.DustParticleOptions;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.resources.Identifier;
 import net.minecraft.sounds.SoundEvent;
@@ -143,6 +144,8 @@ public final class SaberEffects {
 		}
 	}
 
+	private static final DustParticleOptions GRIP_DUST = new DustParticleOptions(0xD8E4FF, 0.7F);
+
 	/** Visual part of an ability. The sounds are played by the ability client. */
 	public static void onAbility(LivingEntity entity, SaberAbility ability) {
 		ClientLevel level = Minecraft.getInstance().level;
@@ -173,9 +176,66 @@ public final class SaberEffects {
 					level.addParticle(ParticleTypes.POOF, x, entity.getY() + 0.1, z, -forward.x * 0.05, 0.02, -forward.z * 0.05);
 				}
 			}
-			case GUARD, SPIN -> {
-				// The stance and the spin are shown by the pose and the light trail.
+			case JUMP -> {
+				// A ring of air pressed into the ground at the take-off.
+				for (int i = 0; i < 8 * amount(); i++) {
+					double angle = i * Math.PI * 2.0 / (8 * amount());
+					level.addParticle(ParticleTypes.POOF, entity.getX() + Math.cos(angle) * 0.4, entity.getY() + 0.05, entity.getZ() + Math.sin(angle) * 0.4,
+							Math.cos(angle) * 0.18, 0.01, Math.sin(angle) * 0.18);
+				}
 			}
+			case GUARD, SPIN, GRIP, PULL -> {
+				// The stance and the spin are shown by the pose and the light trail; grip and pull
+				// have their own effects at the target.
+			}
+		}
+	}
+
+	/** A heavy landing, also after a force jump: dust pressed out to the sides. */
+	public static void onHeavyLanding(LivingEntity entity) {
+		ClientLevel level = Minecraft.getInstance().level;
+
+		if (level == null || amount() == 0) {
+			return;
+		}
+
+		for (int i = 0; i < 6 * amount(); i++) {
+			double angle = i * Math.PI * 2.0 / (6 * amount());
+			level.addParticle(ParticleTypes.POOF, entity.getX() + Math.cos(angle) * 0.5, entity.getY() + 0.05, entity.getZ() + Math.sin(angle) * 0.5,
+					Math.cos(angle) * 0.12, 0.0, Math.sin(angle) * 0.12);
+		}
+	}
+
+	/** While a target is held by the force grip: a faint shimmer swirling around it. */
+	public static void onGripTick(Entity target, int age) {
+		ClientLevel level = Minecraft.getInstance().level;
+
+		if (level == null || amount() == 0 || age % (3 - amount()) != 0) {
+			return;
+		}
+
+		double angle = age * 0.7;
+		double radius = target.getBbWidth() * 0.5 + 0.35;
+		double y = target.getY() + target.getBbHeight() * (0.2 + 0.6 * ((age * 0.13) % 1.0));
+		level.addParticle(GRIP_DUST, target.getX() + Math.cos(angle) * radius, y, target.getZ() + Math.sin(angle) * radius, 0.0, 0.01, 0.0);
+		level.addParticle(GRIP_DUST, target.getX() - Math.cos(angle) * radius, y, target.getZ() - Math.sin(angle) * radius, 0.0, 0.01, 0.0);
+	}
+
+	/** The force pull: a short stream of air from the target towards the open hand. */
+	public static void onPull(LivingEntity holder, Entity target) {
+		ClientLevel level = Minecraft.getInstance().level;
+
+		if (level == null || amount() == 0) {
+			return;
+		}
+
+		Vec3 from = target.getBoundingBox().getCenter();
+		Vec3 to = holder.getEyePosition().add(0.0, -0.4, 0.0);
+		Vec3 step = to.subtract(from).scale(1.0 / (6 * amount()));
+
+		for (int i = 0; i < 6 * amount(); i++) {
+			Vec3 at = from.add(step.scale(i));
+			level.addParticle(ParticleTypes.CLOUD, at.x, at.y, at.z, step.x * 0.4, step.y * 0.4, step.z * 0.4);
 		}
 	}
 

@@ -174,5 +174,32 @@
         "attenuation_distance": 16
       }
     ]
+  },
+  "force.grip": {
+    "subtitle": "subtitles.sabercraft.force.grip",
+    "sounds": [
+      {
+        "name": "sabercraft:combat/force_grip",
+        "attenuation_distance": 16
+      }
+    ]
+  },
+  "force.pull": {
+    "subtitle": "subtitles.sabercraft.force.pull",
+    "sounds": [
+      {
+        "name": "sabercraft:combat/force_pull",
+        "attenuation_distance": 20
+      }
+    ]
+  },
+  "force.jump": {
+    "subtitle": "subtitles.sabercraft.force.jump",
+    "sounds": [
+      {
+        "name": "sabercraft:combat/force_jump",
+        "attenuation_distance": 16
+      }
+    ]
   }
 }

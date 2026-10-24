@@ -16,7 +16,8 @@ import com.phiro.sabercraft.ability.SaberAbility;
  * @param entityId id of the entity that used the ability
  * @param ability  which ability
  * @param event    what happened, see {@link Event}
- * @param data     extra information: for the dodge the {@code DodgeDirection} ordinal
+ * @param data     extra information: for the dodge the {@code DodgeDirection} ordinal, for the
+ *                 grip and the pull the id of the target entity
  */
 public record AbilityEventPayload(int entityId, SaberAbility ability, Event event, int data) implements CustomPacketPayload {
 	public static final CustomPacketPayload.Type<AbilityEventPayload> TYPE = new CustomPacketPayload.Type<>(SaberCraft.id("ability_event"));
@@ -42,7 +43,9 @@ public record AbilityEventPayload(int entityId, SaberAbility ability, Event even
 		/** A block took more than the stamina left: the stance breaks and the hit lands. */
 		GUARD_BREAK,
 		/** A parried attacker is thrown off balance. Sent with the attacker as the entity. */
-		UNBALANCED;
+		UNBALANCED,
+		/** A projectile was sent back; data is 1 for a precise deflection along the look direction. */
+		DEFLECT;
 
 		public static final StreamCodec<ByteBuf, Event> STREAM_CODEC = ByteBufCodecs.idMapper(i -> values()[i], Enum::ordinal);
 	}

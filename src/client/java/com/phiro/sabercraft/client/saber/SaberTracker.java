@@ -254,6 +254,10 @@ public final class SaberTracker {
 
 			if (this.airTicks > 0 && ready && CombatConfig.get().landingAnimation) {
 				this.combat.onLand((float) (this.peakY - y), now);
+
+				if (this.peakY - y >= 5.0) {
+					SaberEffects.onHeavyLanding(this.entity);
+				}
 			}
 
 			this.airTicks = 0;

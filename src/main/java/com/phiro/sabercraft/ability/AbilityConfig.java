@@ -75,6 +75,54 @@ public final class AbilityConfig {
 	@SerializedName("dash_damage_share")
 	public float dashDamageShare = 0.5F;
 
+	/** Force grip (Phase 7): reach, longest hold, stamina per tick while holding. */
+	@SerializedName("grip_enabled")
+	public boolean gripEnabled = true;
+	@SerializedName("grip_cooldown")
+	public int gripCooldown = 200;
+	@SerializedName("grip_range")
+	public float gripRange = 10.0F;
+	@SerializedName("grip_max_ticks")
+	public int gripMaxTicks = 80;
+	@SerializedName("grip_cost")
+	public float gripCost = 15.0F;
+	@SerializedName("grip_drain")
+	public float gripDrain = 0.5F;
+	/** Whether grip and pull work on other players. Only if PvP is on. */
+	@SerializedName("force_players")
+	public boolean forcePlayers = false;
+
+	@SerializedName("pull_enabled")
+	public boolean pullEnabled = true;
+	@SerializedName("pull_cooldown")
+	public int pullCooldown = 160;
+	@SerializedName("pull_range")
+	public float pullRange = 12.0F;
+	@SerializedName("pull_strength")
+	public float pullStrength = 1.0F;
+	@SerializedName("pull_cost")
+	public float pullCost = 25.0F;
+
+	@SerializedName("jump_enabled")
+	public boolean jumpEnabled = true;
+	@SerializedName("jump_cooldown")
+	public int jumpCooldown = 100;
+	/** Height of the force jump as a multiplier, 1 = about 5 blocks. Sent to the clients. */
+	@SerializedName("jump_strength")
+	public float jumpStrength = 1.0F;
+	@SerializedName("jump_cost")
+	public float jumpCost = 30.0F;
+
+	/**
+	 * Projectile deflection (Phase 7): the stance, a swing or the staff whirl send projectiles of
+	 * the entity type tag {@code sabercraft:deflectable} back. Right after raising the stance or in
+	 * the first ticks of a swing they fly where the player looks, otherwise they glance off.
+	 */
+	@SerializedName("deflect_enabled")
+	public boolean deflectEnabled = true;
+	@SerializedName("deflect_cost")
+	public float deflectCost = 6.0F;
+
 	/**
 	 * Stamina (Phase 7): blocking, dodging, the spin and the push cost stamina, which comes back
 	 * after a short rest. Without stamina a block breaks and the other abilities wait. So no
@@ -165,6 +213,19 @@ public final class AbilityConfig {
 		config.counterBonus = Mth.clamp(config.counterBonus, 0.0F, 3.0F);
 		config.unbalanceTicks = Mth.clamp(config.unbalanceTicks, 0, 200);
 		config.guardBreakCooldown = Mth.clamp(config.guardBreakCooldown, 0, 1200);
+		config.gripCooldown = Mth.clamp(config.gripCooldown, 10, 6000);
+		config.gripRange = Mth.clamp(config.gripRange, 2.0F, 24.0F);
+		config.gripMaxTicks = Mth.clamp(config.gripMaxTicks, 10, 600);
+		config.gripCost = Mth.clamp(config.gripCost, 0.0F, config.staminaMax);
+		config.gripDrain = Mth.clamp(config.gripDrain, 0.0F, 20.0F);
+		config.pullCooldown = Mth.clamp(config.pullCooldown, 10, 6000);
+		config.pullRange = Mth.clamp(config.pullRange, 2.0F, 24.0F);
+		config.pullStrength = Mth.clamp(config.pullStrength, 0.0F, 3.0F);
+		config.pullCost = Mth.clamp(config.pullCost, 0.0F, config.staminaMax);
+		config.jumpCooldown = Mth.clamp(config.jumpCooldown, 10, 6000);
+		config.jumpStrength = Mth.clamp(config.jumpStrength, 0.3F, 2.0F);
+		config.jumpCost = Mth.clamp(config.jumpCost, 0.0F, config.staminaMax);
+		config.deflectCost = Mth.clamp(config.deflectCost, 0.0F, config.staminaMax);
 		current = config;
 	}
 }

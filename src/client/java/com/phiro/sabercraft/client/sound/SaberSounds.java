@@ -25,6 +25,12 @@ public final class SaberSounds {
 	public static final SoundEvent PUSH = event("saber.push");
 	/** Lunge forward: short rush of air. */
 	public static final SoundEvent DASH = event("saber.dash");
+	/** Force grip: tense low rumble while the target is held. */
+	public static final SoundEvent FORCE_GRIP = event("force.grip");
+	/** Force pull: rush of air coming closer. */
+	public static final SoundEvent FORCE_PULL = event("force.pull");
+	/** Force jump: push off the ground and rushing air. */
+	public static final SoundEvent FORCE_JUMP = event("force.jump");
 
 	private SaberSounds() {
 	}

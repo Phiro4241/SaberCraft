@@ -16,8 +16,14 @@ public enum SaberAbility {
 	SPIN("spin"),
 	/** Pushes nearby enemies and projectiles in front away. */
 	PUSH("push"),
-	/** Short lunge forward. */
-	DASH("dash");
+	/** Dodge in the held direction: roll, step, flip or lunge, depending on the style. */
+	DASH("dash"),
+	/** Force grip while the key is held: lifts the target in front and holds it in the air. Since Phase 7. */
+	GRIP("grip"),
+	/** Force pull: draws the target in front towards the player. Since Phase 7. */
+	PULL("pull"),
+	/** Force jump: a very high jump without fall damage down to the take-off height. Since Phase 7. */
+	JUMP("jump");
 
 	public static final StreamCodec<ByteBuf, SaberAbility> STREAM_CODEC = ByteBufCodecs.idMapper(i -> values()[i], Enum::ordinal);
 

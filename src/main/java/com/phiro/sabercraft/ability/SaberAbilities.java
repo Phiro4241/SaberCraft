@@ -17,27 +17,35 @@ import net.fabricmc.fabric.api.networking.v1.PlayerLookup;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 
+import net.minecraft.core.registries.Registries;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.tags.DamageTypeTags;
+import net.minecraft.tags.TagKey;
+import net.minecraft.util.Mth;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityReference;
+import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.OwnableEntity;
 import net.minecraft.world.entity.ai.attributes.AttributeInstance;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.decoration.ArmorStand;
+import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.entity.item.PrimedTnt;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.projectile.Projectile;
 import net.minecraft.world.entity.projectile.ProjectileDeflection;
+import net.minecraft.world.entity.vehicle.VehicleEntity;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
@@ -68,6 +76,11 @@ public final class SaberAbilities {
 	/** Half angle of the area in front of the player for the push, the whirl and the stance. */
 	private static final double FRONT_COS = Math.cos(Math.toRadians(60.0));
 
+	/** Projectiles a saber can send back. A data pack can add more. */
+	public static final TagKey<EntityType<?>> DEFLECTABLE = TagKey.create(Registries.ENTITY_TYPE, SaberCraft.id("deflectable"));
+	/** Entities grip and pull cannot move: bosses and the like. */
+	public static final TagKey<EntityType<?>> FORCE_IMMUNE = TagKey.create(Registries.ENTITY_TYPE, SaberCraft.id("force_immune"));
+
 	private static final Map<UUID, State> STATES = new HashMap<>();
 
 	private SaberAbilities() {
@@ -90,6 +103,10 @@ public final class SaberAbilities {
 		boolean parryWindow;
 		long counterUntil = -1;
 		boolean counterUsed;
+		@Nullable Entity gripTarget;
+		long gripStart;
+		double gripDistance;
+		double gripBaseY;
 
 		boolean guarding() {
 			return this.guardStart >= 0;
@@ -102,13 +119,20 @@ public final class SaberAbilities {
 		ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> {
 			if (ServerPlayNetworking.canSend(handler.getPlayer(), AbilitySettingsPayload.TYPE)) {
 				AbilityConfig config = AbilityConfig.get();
-				ServerPlayNetworking.send(handler.getPlayer(), new AbilitySettingsPayload(config.dodgeSpeed,
-						config.staminaEnabled ? config.staminaMax : 0.0F, config.dodgeCost, config.spinCost, config.pushCost, config.guardCost));
+				List<Float> costs = new ArrayList<>();
+
+				for (SaberAbility ability : SaberAbility.values()) {
+					costs.add(cost(config, ability, null));
+				}
+
+				ServerPlayNetworking.send(handler.getPlayer(), new AbilitySettingsPayload(config.dodgeSpeed, config.jumpStrength,
+						config.staminaEnabled ? config.staminaMax : 0.0F, costs));
 			}
 		});
 		ServerTickEvents.END_SERVER_TICK.register(SaberAbilities::tick);
-		ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> STATES.remove(handler.getPlayer().getUUID()));
-		ServerPlayerEvents.AFTER_RESPAWN.register((oldPlayer, newPlayer, alive) -> STATES.remove(newPlayer.getUUID()));
+		// Nobody stays stuck: a held target is let go when its holder leaves or respawns.
+		ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> forget(handler.getPlayer()));
+		ServerPlayerEvents.AFTER_RESPAWN.register((oldPlayer, newPlayer, alive) -> forget(newPlayer));
 		// No normal attacks while the stance is up: the blade is busy blocking. A hit after a parry
 		// is a counter, its extra damage ends with it.
 		AttackEntityCallback.EVENT.register((player, level, hand, entity, hit) -> {
@@ -149,7 +173,18 @@ public final class SaberAbilities {
 			case SPIN -> config.spinCost;
 			case PUSH -> config.pushCost;
 			case DASH -> config.dodgeCost * StyleTraits.of(style).dodgeCost();
+			case GRIP -> config.gripCost;
+			case PULL -> config.pullCost;
+			case JUMP -> config.jumpCost;
 		};
+	}
+
+	private static void forget(ServerPlayer player) {
+		State state = STATES.remove(player.getUUID());
+
+		if (state != null && state.gripTarget != null) {
+			releaseTarget(state.gripTarget);
+		}
 	}
 
 	public static boolean isGuarding(Player player) {
@@ -168,13 +203,18 @@ public final class SaberAbilities {
 			return;
 		}
 
+		if (ability == SaberAbility.GRIP && !pressed) {
+			releaseGrip(player, state, now);
+			return;
+		}
+
 		if (!pressed || !canUse(player) || !enabled(config, ability) || now < state.readyAt.getOrDefault(ability, 0L)) {
 			// Tell the client the real cooldown, in case it guessed wrong.
 			sendCooldown(player, state, ability, now);
 			return;
 		}
 
-		if (state.guarding() && ability != SaberAbility.GUARD) {
+		if (state.guarding() && ability != SaberAbility.GUARD || state.gripTarget != null) {
 			return;
 		}
 
@@ -183,6 +223,21 @@ public final class SaberAbilities {
 		int data = 0;
 
 		if (ability == SaberAbility.GUARD && state.guarding()) {
+			return;
+		}
+
+		// Grip and pull need something in front to act on, the force jump solid ground.
+		Entity target = null;
+
+		if (ability == SaberAbility.GRIP || ability == SaberAbility.PULL) {
+			target = findTarget(player, config, ability == SaberAbility.GRIP ? config.gripRange : config.pullRange, ability == SaberAbility.PULL);
+
+			if (target == null) {
+				sendCooldown(player, state, ability, now);
+				return;
+			}
+		} else if (ability == SaberAbility.JUMP && !player.onGround()) {
+			sendCooldown(player, state, ability, now);
 			return;
 		}
 
@@ -232,6 +287,24 @@ public final class SaberAbilities {
 				state.dashStart = now;
 				startCooldown(player, state, ability, now, Math.round(config.dashCooldown * StyleTraits.of(style).dodgeCooldown()));
 			}
+			case GRIP -> {
+				state.gripTarget = target;
+				state.gripStart = now;
+				state.gripDistance = Mth.clamp(player.getEyePosition().distanceTo(target.getBoundingBox().getCenter()), 2.5, config.gripRange);
+				state.gripBaseY = target.getY();
+				data = target.getId();
+			}
+			case PULL -> {
+				pull(player, target, config);
+				data = target.getId();
+				startCooldown(player, state, ability, now, config.pullCooldown);
+			}
+			case JUMP -> {
+				// The client jumps (its own movement); here only the fall damage down to the take-off
+				// height is waived, like after a wind charge.
+				player.setIgnoreFallDamageFromCurrentImpulse(true, player.position());
+				startCooldown(player, state, ability, now, config.jumpCooldown);
+			}
 		}
 
 		player.causeFoodExhaustion(config.exhaustion);
@@ -244,6 +317,9 @@ public final class SaberAbilities {
 			case SPIN -> config.spinEnabled;
 			case PUSH -> config.pushEnabled;
 			case DASH -> config.dashEnabled;
+			case GRIP -> config.gripEnabled;
+			case PULL -> config.pullEnabled;
+			case JUMP -> config.jumpEnabled;
 		};
 	}
 
@@ -285,6 +361,10 @@ public final class SaberAbilities {
 			if (state.dashStart >= 0) {
 				tickManeuver(player, state, config, now - state.dashStart);
 			}
+
+			if (state.gripTarget != null) {
+				tickGrip(player, state, config, now);
+			}
 		}
 	}
 
@@ -293,7 +373,7 @@ public final class SaberAbilities {
 			return;
 		}
 
-		if (!state.guarding() && now - state.staminaUsedAt >= config.staminaRegenDelay && state.stamina < config.staminaMax) {
+		if (!state.guarding() && state.gripTarget == null && now - state.staminaUsedAt >= config.staminaRegenDelay && state.stamina < config.staminaMax) {
 			state.stamina = Math.min(config.staminaMax, state.stamina + config.staminaRegen);
 		}
 
@@ -339,6 +419,203 @@ public final class SaberAbilities {
 
 		state.counterUntil = -1;
 		state.counterUsed = false;
+	}
+
+	/**
+	 * The entity in front that grip or pull would act on: living entities (and for the pull also
+	 * dropped items) close to the look direction, in reach and in sight. The one nearest to the
+	 * crosshair wins.
+	 */
+	private static @Nullable Entity findTarget(ServerPlayer player, AbilityConfig config, double range, boolean items) {
+		Vec3 eye = player.getEyePosition();
+		Vec3 look = player.getLookAngle();
+		AABB box = player.getBoundingBox().expandTowards(look.scale(range)).inflate(1.5);
+		Entity best = null;
+		double bestScore = Double.MAX_VALUE;
+
+		for (Entity entity : player.level().getEntities(player, box, entity -> entity.isAlive()
+				&& (entity instanceof LivingEntity living && canForce(player, living, config) || items && entity instanceof ItemEntity))) {
+			Vec3 to = entity.getBoundingBox().getCenter().subtract(eye);
+			double distance = to.length();
+
+			if (distance > range + entity.getBbWidth() * 0.5 || distance < 1.0E-3) {
+				continue;
+			}
+
+			double cos = to.scale(1.0 / distance).dot(look);
+
+			if (cos < 0.94 || !player.hasLineOfSight(entity)) {
+				continue;
+			}
+
+			double score = (1.0 - cos) * 40.0 + distance * 0.05;
+
+			if (score < bestScore) {
+				bestScore = score;
+				best = entity;
+			}
+		}
+
+		return best;
+	}
+
+	private static boolean canForce(ServerPlayer player, LivingEntity target, AbilityConfig config) {
+		return canAffect(player, target) && !target.is(FORCE_IMMUNE) && (!(target instanceof Player) || config.forcePlayers);
+	}
+
+	/** Holds the gripped entity at the point the player looks at, until the key is let go. */
+	private static void tickGrip(ServerPlayer player, State state, AbilityConfig config, long now) {
+		Entity target = state.gripTarget;
+		long age = now - state.gripStart;
+
+		if (target == null) {
+			return;
+		}
+
+		if (!canUse(player) || !target.isAlive() || target.isRemoved() || target.level() != player.level()
+				|| player.distanceTo(target) > config.gripRange + 6.0 || age >= config.gripMaxTicks
+				|| config.staminaEnabled && state.stamina < config.gripDrain) {
+			releaseGrip(player, state, now);
+			return;
+		}
+
+		spend(state, config, config.gripDrain, now);
+		Vec3 hold = player.getEyePosition().add(player.getLookAngle().scale(state.gripDistance));
+		// Lifted off the ground first, then it follows the look.
+		double minY = state.gripBaseY + Math.min(1.6, age * 0.12);
+		Vec3 feet = new Vec3(hold.x, Math.max(hold.y - target.getBbHeight() * 0.5, minY), hold.z);
+		Vec3 motion = feet.subtract(target.position()).scale(0.3);
+
+		if (motion.length() > 0.9) {
+			motion = motion.normalize().scale(0.9);
+		}
+
+		// Plain movement, so walls and ceilings still stop the target.
+		target.setDeltaMovement(motion);
+		target.resetFallDistance();
+		target.hurtMarked = true;
+		target.needsSync = true;
+
+		if (target instanceof Mob mob) {
+			mob.getNavigation().stop();
+		}
+	}
+
+	private static void releaseGrip(ServerPlayer player, State state, long now) {
+		Entity target = state.gripTarget;
+
+		if (target == null) {
+			return;
+		}
+
+		state.gripTarget = null;
+		releaseTarget(target);
+		startCooldown(player, state, SaberAbility.GRIP, now, AbilityConfig.get().gripCooldown);
+		broadcast(player, new AbilityEventPayload(player.getId(), SaberAbility.GRIP, AbilityEventPayload.Event.STOP, target.getId()));
+	}
+
+	/** Lets a held entity go gently: it sinks down slowly and takes no fall damage. */
+	private static void releaseTarget(Entity target) {
+		Vec3 motion = target.getDeltaMovement();
+		target.setDeltaMovement(motion.x * 0.2, Math.min(0.0, motion.y) * 0.2, motion.z * 0.2);
+		target.resetFallDistance();
+		target.hurtMarked = true;
+
+		if (target instanceof LivingEntity living && living.isAlive()) {
+			living.addEffect(new MobEffectInstance(MobEffects.SLOW_FALLING, 40, 0, false, false, true));
+		}
+	}
+
+	/** Draws the target towards the player so it lands about two blocks in front. */
+	private static void pull(ServerPlayer player, Entity target, AbilityConfig config) {
+		Vec3 to = player.position().subtract(target.position());
+		Vec3 flat = new Vec3(to.x, 0.0, to.z);
+		double distance = flat.length();
+
+		if (distance < 1.0E-3) {
+			return;
+		}
+
+		double resistance = target instanceof LivingEntity living ? living.getAttributeValue(Attributes.KNOCKBACK_RESISTANCE) : 0.0;
+		// Without friction in the air an entity flies about six times its starting speed.
+		double speed = Mth.clamp((distance - 2.0) * 0.16, 0.25, 1.6) * config.pullStrength * (1.0 - resistance);
+		Vec3 motion = flat.scale(speed / distance).add(0.0, 0.28 + 0.015 * distance, 0.0);
+		target.setDeltaMovement(motion);
+		target.resetFallDistance();
+		target.hurtMarked = true;
+		target.needsSync = true;
+
+		if (target instanceof Mob mob) {
+			mob.addEffect(new MobEffectInstance(MobEffects.SLOWNESS, 20, 1, false, false, true), player);
+		}
+	}
+
+	/**
+	 * Called when a projectile hits a player: returns how the saber sends it back, or {@code null}
+	 * if it does not. Needs a lit stance, a swing or the staff whirl, and the projectile coming
+	 * from the front. Right after raising the stance (the parry window) or at the start of a swing
+	 * it flies back exactly where the player looks; otherwise it glances off the blade.
+	 */
+	public static @Nullable ProjectileDeflection deflection(ServerPlayer player, Projectile projectile) {
+		AbilityConfig config = AbilityConfig.get();
+		State state = STATES.get(player.getUUID());
+
+		if (!config.deflectEnabled || !canUse(player) || !projectile.is(DEFLECTABLE) || projectile.getOwner() == player) {
+			return null;
+		}
+
+		long now = player.level().getGameTime();
+		boolean guarding = state != null && state.guarding();
+		boolean whirl = state != null && state.whirl && state.spinStart >= 0;
+		boolean swinging = player.swinging && player.swingTime <= 5;
+		Vec3 motion = projectile.getDeltaMovement();
+
+		if (!(guarding || whirl || swinging) || !inFront(player, projectile.position(), FRONT_COS)
+				|| motion.dot(player.position().subtract(projectile.position())) <= 0.0) {
+			return null;
+		}
+
+		StyleTraits traits = StyleTraits.of(SaberVariant.styleOf(player.getMainHandItem()));
+		boolean precise = guarding && state.parryWindow && now - state.guardStart <= config.guardParryTicks + traits.parryBonus() + 2
+				|| swinging && player.swingTime <= 2;
+		float cost = precise ? config.parryCost : config.deflectCost;
+
+		if (state == null) {
+			state = STATES.computeIfAbsent(player.getUUID(), id -> new State());
+		}
+
+		if (config.staminaEnabled && state.stamina < cost) {
+			return null;
+		}
+
+		spend(state, config, cost, now);
+		broadcast(player, new AbilityEventPayload(player.getId(), SaberAbility.GUARD, AbilityEventPayload.Event.DEFLECT, precise ? 1 : 0));
+		return aimed(player, precise);
+	}
+
+	/**
+	 * Sends a projectile back: along the look direction when {@code precise}, otherwise mirrored
+	 * on the blade (whose face looks where the player looks) and a bit scattered.
+	 */
+	private static ProjectileDeflection aimed(ServerPlayer player, boolean precise) {
+		return (projectile, entity, random) -> {
+			Vec3 motion = projectile.getDeltaMovement();
+			double speed = Math.max(0.6, motion.length());
+			Vec3 look = player.getLookAngle();
+			Vec3 direction;
+
+			if (precise) {
+				direction = look;
+			} else {
+				Vec3 in = motion.normalize();
+				Vec3 mirrored = in.subtract(look.scale(2.0 * in.dot(look)));
+				Vec3 scatter = new Vec3(random.nextGaussian(), random.nextGaussian() * 0.5, random.nextGaussian()).scale(0.15);
+				direction = mirrored.scale(0.6).add(look.scale(0.4)).add(scatter).normalize();
+			}
+
+			projectile.setDeltaMovement(direction.scale(speed * (precise ? 1.1 : 0.75)));
+			projectile.needsSync = true;
+		};
 	}
 
 	private static void tickManeuver(ServerPlayer player, State state, AbilityConfig config, long age) {
@@ -521,14 +798,24 @@ public final class SaberAbilities {
 
 		for (Entity entity : targets) {
 			if (entity instanceof Projectile projectile) {
+				// Projectiles fly back where the player looks, and now count as theirs.
 				if (projectile.getOwner() != player) {
-					projectile.deflect(ProjectileDeflection.REVERSE, player, EntityReference.of(player), false);
+					projectile.deflect(aimed(player, true), player, EntityReference.of(player), false);
 				}
 
 				continue;
 			}
 
-			if (!(entity instanceof LivingEntity target) || !canAffect(player, target)
+			if (entity instanceof ItemEntity || entity instanceof PrimedTnt || entity instanceof VehicleEntity) {
+				Vec3 away = entity.position().subtract(player.position()).normalize();
+				double strength = config.pushStrength * (1.0 - 0.6 * player.distanceTo(entity) / range);
+				entity.setDeltaMovement(entity.getDeltaMovement().add(away.x * strength, 0.2 + 0.1 * strength, away.z * strength));
+				entity.hurtMarked = true;
+				entity.needsSync = true;
+				continue;
+			}
+
+			if (!(entity instanceof LivingEntity target) || !canAffect(player, target) || target.is(FORCE_IMMUNE)
 					|| target instanceof Player && !config.pushPlayers) {
 				continue;
 			}
@@ -548,6 +835,11 @@ public final class SaberAbilities {
 			target.setDeltaMovement(motion.x * 0.5 + away.x * strength, Math.max(motion.y, 0.25 + 0.15 * strength), motion.z * 0.5 + away.z * strength);
 			target.hurtMarked = true;
 			target.needsSync = true;
+
+			// Staggered for a moment after landing.
+			if (target instanceof Mob) {
+				target.addEffect(new MobEffectInstance(MobEffects.SLOWNESS, 25, 1, false, false, true), player);
+			}
 		}
 	}
 
@@ -560,7 +852,7 @@ public final class SaberAbilities {
 
 			// Only projectiles in front that are still flying towards the player.
 			if (inFront(player, projectile.position(), FRONT_COS) && motion.dot(toPlayer) > 0.0) {
-				projectile.deflect(ProjectileDeflection.REVERSE, player, EntityReference.of(player), false);
+				projectile.deflect(aimed(player, false), player, EntityReference.of(player), false);
 			}
 		}
 	}
@@ -609,6 +901,9 @@ public final class SaberAbilities {
 			case SPIN -> state.whirl ? AbilityConfig.get().whirlCooldown : AbilityConfig.get().spinCooldown;
 			case PUSH -> AbilityConfig.get().pushCooldown;
 			case DASH -> AbilityConfig.get().dashCooldown;
+			case GRIP -> AbilityConfig.get().gripCooldown;
+			case PULL -> AbilityConfig.get().pullCooldown;
+			case JUMP -> AbilityConfig.get().jumpCooldown;
 		};
 
 		if (ServerPlayNetworking.canSend(player, AbilityCooldownPayload.TYPE)) {
@@ -640,9 +935,15 @@ public final class SaberAbilities {
 	/** Only for tests: forgets all cooldowns and states. */
 	public static void reset(@Nullable ServerPlayer player) {
 		if (player == null) {
+			for (State state : STATES.values()) {
+				if (state.gripTarget != null) {
+					releaseTarget(state.gripTarget);
+				}
+			}
+
 			STATES.clear();
 		} else {
-			STATES.remove(player.getUUID());
+			forget(player);
 		}
 	}
 }

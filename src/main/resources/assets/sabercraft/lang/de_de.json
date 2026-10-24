@@ -54,5 +54,12 @@
   "sabercraft.style.agile": "Wendig",
   "sabercraft.style.agile.description": "Hoch getragene Klinge, schnelle federnde Schnitte mit Drehungen, Sprüngen und Salto. Ausweichen ist schnell und billig, Blocks sind schwächer.",
   "sabercraft.ability.exhausted": "Zu erschöpft, warte kurz.",
-  "sabercraft.hud.stamina": "Ausdauer"
+  "sabercraft.hud.stamina": "Ausdauer",
+  "subtitles.sabercraft.force.grip": "Machtgriff",
+  "key.sabercraft.grip": "Machtgriff",
+  "subtitles.sabercraft.force.pull": "Machtzug",
+  "key.sabercraft.pull": "Machtzug",
+  "subtitles.sabercraft.force.jump": "Machtsprung",
+  "key.sabercraft.jump": "Machtsprung",
+  "sabercraft.ability.no_target": "Kein Ziel in Reichweite."
 }

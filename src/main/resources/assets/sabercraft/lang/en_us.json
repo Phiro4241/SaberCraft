@@ -54,5 +54,12 @@
   "sabercraft.style.agile": "Agile",
   "sabercraft.style.agile.description": "Blade held high, fast springy cuts with turns, hops and a flip. Quick, cheap dodges, but weaker blocks.",
   "sabercraft.ability.exhausted": "Too exhausted, wait a moment.",
-  "sabercraft.hud.stamina": "Stamina"
+  "sabercraft.hud.stamina": "Stamina",
+  "subtitles.sabercraft.force.grip": "Force grip",
+  "key.sabercraft.grip": "Force grip",
+  "subtitles.sabercraft.force.pull": "Force pull",
+  "key.sabercraft.pull": "Force pull",
+  "subtitles.sabercraft.force.jump": "Force jump",
+  "key.sabercraft.jump": "Force jump",
+  "sabercraft.ability.no_target": "No target in reach."
 }

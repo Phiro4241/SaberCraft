@@ -223,6 +223,33 @@ def dash(rng, seconds=0.4):
     return normalize(rush * np.clip((seconds - t) / 0.1, 0, 1), 0.4)
 
 
+def force_grip(rng, seconds=1.6):
+    """The force grip: a low, tense rumble that swells, with a faint rising whine."""
+    t = t_axis(seconds)
+    env = np.clip(t / 0.25, 0, 1) * np.clip((seconds - t) / 0.4, 0, 1)
+    rumble = bandpass_noise(seconds, 25, 140, rng) * (0.7 + 0.3 * np.sin(2 * np.pi * 6 * t))
+    whine = np.sin(2 * np.pi * (220 * t + 60 * t * t)) * 0.25 + np.sin(2 * np.pi * (331 * t + 90 * t * t)) * 0.12
+    out = (0.9 * rumble + whine * np.clip(t / 0.8, 0, 1)) * env
+    return normalize(soft_clip(out, 1.5), 0.45)
+
+
+def force_pull(rng, seconds=0.7):
+    """The force pull: a rush of air coming towards the listener, ending in a soft thump."""
+    t = t_axis(seconds)
+    swell = np.clip(t / 0.45, 0, 1) ** 2 * np.clip((seconds - t) / 0.08, 0, 1)
+    rush = bandpass_noise(seconds, 200, 2600, rng) * swell
+    thump = np.sin(2 * np.pi * 85 * t) * np.exp(-np.clip(t - 0.45, 0, None) / 0.08) * (t > 0.45)
+    return normalize(0.8 * rush + 0.6 * thump, 0.5)
+
+
+def force_jump(rng, seconds=0.6):
+    """The force jump: a push off the ground and air rushing past upwards."""
+    t = t_axis(seconds)
+    thump = np.sin(2 * np.pi * (90 - 40 * t) * t) * np.exp(-t / 0.07)
+    rush = bandpass_noise(seconds, 300, 3000, rng) * np.clip(t / 0.05, 0, 1) * np.exp(-t / 0.22)
+    return normalize((0.8 * thump + 0.6 * rush) * np.clip((seconds - t) / 0.15, 0, 1), 0.5)
+
+
 def normalize(x, peak):
     """Scales to the given peak. Peaks stay well below 1.0, because in the game the hum, an
     ignition and a swing (or two sabers) can play at the same time and would clip otherwise."""
@@ -263,11 +290,25 @@ def combat():
     write_ogg("parry", clash(rng, seconds=1.0, ring=2.2), out)
     write_ogg("push", push(rng), out)
     write_ogg("dash", dash(rng), out)
+    force()
+
+
+def force():
+    """The force powers of Phase 7, with their own random stream."""
+    rng = np.random.default_rng(7007)
+    out = os.path.join(os.path.dirname(OUT), "combat")
+    write_ogg("force_grip", force_grip(rng), out)
+    write_ogg("force_pull", force_pull(rng), out)
+    write_ogg("force_jump", force_jump(rng), out)
 
 
 def main():
     if "--combat" in sys.argv:
         combat()
+        return
+
+    if "--force" in sys.argv:
+        force()
         return
 
     rng = np.random.default_rng(4241)

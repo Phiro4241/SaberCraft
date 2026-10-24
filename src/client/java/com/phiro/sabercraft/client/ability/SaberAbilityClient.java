@@ -1,6 +1,7 @@
 package com.phiro.sabercraft.client.ability;
 
 import java.util.EnumMap;
+import java.util.HashMap;
 import java.util.Map;
 
 import com.mojang.blaze3d.platform.InputConstants;
@@ -25,6 +26,7 @@ import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Input;
+import net.minecraft.world.phys.Vec3;
 
 import com.phiro.sabercraft.SaberCraft;
 import com.phiro.sabercraft.ability.DodgeDirection;
@@ -59,11 +61,20 @@ import com.phiro.sabercraft.network.UseAbilityPayload;
 public final class SaberAbilityClient {
 	public static final Identifier MOVE_PUSH = SaberCraft.id("force_push");
 	public static final Identifier MOVE_DASH = SaberCraft.id("dash");
+	public static final Identifier MOVE_GRIP = SaberCraft.id("force_grip");
+	public static final Identifier MOVE_PULL = SaberCraft.id("force_pull");
+	public static final Identifier MOVE_JUMP = SaberCraft.id("force_jump");
 
 	public static final KeyMapping GUARD_KEY = key("guard", InputConstants.KEY_R);
 	public static final KeyMapping SPIN_KEY = key("spin", InputConstants.KEY_Z);
 	public static final KeyMapping PUSH_KEY = key("push", InputConstants.KEY_B);
 	public static final KeyMapping DASH_KEY = key("dash", InputConstants.KEY_LALT);
+	public static final KeyMapping GRIP_KEY = key("grip", InputConstants.KEY_H);
+	public static final KeyMapping PULL_KEY = key("pull", InputConstants.KEY_J);
+	public static final KeyMapping JUMP_KEY = key("jump", InputConstants.KEY_K);
+
+	/** Upward speed of the force jump at strength 1, about five blocks high. */
+	private static final double JUMP_SPEED = 0.95;
 
 	/** Ticks after a predicted use in which the server's start event for yourself is skipped. */
 	private static final int PREDICTION_TICKS = 20;
@@ -75,8 +86,11 @@ public final class SaberAbilityClient {
 	private static boolean guardBlocked;
 	private static int ticks;
 	/** The server's settings, or the defaults until a server with SaberCraft sent them. */
-	private static AbilitySettingsPayload settings = new AbilitySettingsPayload(1.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F);
+	private static AbilitySettingsPayload settings = AbilitySettingsPayload.NONE;
 	private static float stamina;
+	private static boolean gripSent;
+	/** Who holds whom with the force grip: holder entity id to target entity id, with the age. */
+	private static final Map<Integer, int[]> GRIPS = new HashMap<>();
 
 	private SaberAbilityClient() {
 	}
@@ -94,6 +108,9 @@ public final class SaberAbilityClient {
 		KeyMappingHelper.registerKeyMapping(SPIN_KEY);
 		KeyMappingHelper.registerKeyMapping(PUSH_KEY);
 		KeyMappingHelper.registerKeyMapping(DASH_KEY);
+		KeyMappingHelper.registerKeyMapping(GRIP_KEY);
+		KeyMappingHelper.registerKeyMapping(PULL_KEY);
+		KeyMappingHelper.registerKeyMapping(JUMP_KEY);
 		ClientTickEvents.END_CLIENT_TICK.register(SaberAbilityClient::tick);
 		ClientPlayNetworking.registerGlobalReceiver(AbilityEventPayload.TYPE, (payload, context) -> onEvent(context.client(), payload));
 		ClientPlayNetworking.registerGlobalReceiver(AbilityCooldownPayload.TYPE, (payload, context) ->
@@ -107,7 +124,7 @@ public final class SaberAbilityClient {
 		ClientTickEvents.START_CLIENT_TICK.register(ManeuverController::tick);
 		ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> {
 			reset();
-			settings = new AbilitySettingsPayload(1.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F);
+			settings = AbilitySettingsPayload.NONE;
 			ManeuverController.setSpeedScale(1.0F);
 		});
 		// No attacks while the stance is up, the server would ignore them anyway.
@@ -123,6 +140,12 @@ public final class SaberAbilityClient {
 		return guardSent;
 	}
 
+	/** Whether your own force grip holds something right now. */
+	public static boolean isGripping() {
+		Minecraft client = Minecraft.getInstance();
+		return client.player != null && GRIPS.containsKey(client.player.getId());
+	}
+
 	/** The stamina the server last sent. */
 	public static float stamina() {
 		return stamina;
@@ -136,10 +159,8 @@ public final class SaberAbilityClient {
 	/** Stamina the ability would cost now, as the server counts it. */
 	public static float cost(SaberAbility ability, LocalPlayer player) {
 		return switch (ability) {
-			case GUARD -> settings.guardCost();
-			case SPIN -> settings.spinCost();
-			case PUSH -> settings.pushCost();
-			case DASH -> settings.dodgeCost() * StyleTraits.of(SaberVariant.styleOf(player.getMainHandItem())).dodgeCost();
+			case DASH -> settings.cost(ability) * StyleTraits.of(SaberVariant.styleOf(player.getMainHandItem())).dodgeCost();
+			default -> settings.cost(ability);
 		};
 	}
 
@@ -149,6 +170,9 @@ public final class SaberAbilityClient {
 			case SPIN -> SPIN_KEY;
 			case PUSH -> PUSH_KEY;
 			case DASH -> DASH_KEY;
+			case GRIP -> GRIP_KEY;
+			case PULL -> PULL_KEY;
+			case JUMP -> JUMP_KEY;
 		};
 	}
 
@@ -163,6 +187,8 @@ public final class SaberAbilityClient {
 		ManeuverController.reset();
 		guardSent = false;
 		guardBlocked = false;
+		gripSent = false;
+		GRIPS.clear();
 	}
 
 	private static void tick(Minecraft client) {
@@ -195,7 +221,23 @@ public final class SaberAbilityClient {
 			setGuarding(player, false);
 		}
 
+		// The grip is held like the stance; the server picks the target and starts the animation.
+		boolean wantGrip = GRIP_KEY.isDown() && lit && !screenOpen && player.isAlive() && !guardSent;
+
+		if (wantGrip && !gripSent && ready(SaberAbility.GRIP) && rested(player, SaberAbility.GRIP)) {
+			gripSent = send(player, SaberAbility.GRIP, true);
+		} else if (!wantGrip && gripSent) {
+			gripSent = false;
+			send(player, SaberAbility.GRIP, false);
+		}
+
+		while (GRIP_KEY.consumeClick()) {
+		}
+
+		tickGrips(client);
 		trigger(client, player, SPIN_KEY, SaberAbility.SPIN, lit);
+		trigger(client, player, PULL_KEY, SaberAbility.PULL, lit);
+		trigger(client, player, JUMP_KEY, SaberAbility.JUMP, lit);
 		trigger(client, player, PUSH_KEY, SaberAbility.PUSH, lit);
 		trigger(client, player, DASH_KEY, SaberAbility.DASH, lit);
 		// Clicks of the guard key itself are not needed, only whether it is held.
@@ -217,7 +259,7 @@ public final class SaberAbilityClient {
 			pressed = true;
 		}
 
-		if (!pressed || client.gui.screen() != null || !player.isAlive() || guardSent) {
+		if (!pressed || client.gui.screen() != null || !player.isAlive() || guardSent || gripSent) {
 			return;
 		}
 
@@ -237,14 +279,21 @@ public final class SaberAbilityClient {
 
 		int data = 0;
 
+		if (ability == SaberAbility.JUMP && !player.onGround()) {
+			return;
+		}
+
 		if (ability == SaberAbility.DASH) {
 			Input input = player.input.keyPresses;
 			data = DodgeDirection.fromInput(input.forward(), input.backward(), input.left(), input.right()).ordinal();
 		}
 
 		if (send(player, ability, true, data)) {
-			PREDICTED.put(ability, ticks);
-			start(player, ability, data);
+			// The pull needs the server to pick the target; everything else starts right away.
+			if (ability != SaberAbility.PULL) {
+				PREDICTED.put(ability, ticks);
+				start(player, ability, data);
+			}
 		}
 	}
 
@@ -304,11 +353,32 @@ public final class SaberAbilityClient {
 				}
 			}
 			case STOP -> {
+				if (payload.ability() == SaberAbility.GRIP) {
+					GRIPS.remove(entity.getId());
+					CombatState combat = SaberTracker.INSTANCE.combat(entity);
+
+					if (combat != null && combat.move() != null && MOVE_GRIP.equals(combat.move().id())) {
+						combat.stop(SaberTracker.INSTANCE.time(0.0F));
+					}
+
+					return;
+				}
+
 				setGuarding(entity, false);
 
 				if (self && guardSent) {
 					guardSent = false;
 					guardBlocked = true;
+				}
+			}
+			case DEFLECT -> {
+				boolean precise = payload.data() == 1;
+				play(entity, precise ? SaberSounds.PARRY : SaberSounds.CLASH, precise ? 0.9F : 0.75F, 1.15F);
+				SaberEffects.onBlock(entity, precise);
+				CombatState combat = SaberTracker.INSTANCE.combat(entity);
+
+				if (combat != null && combat.isGuarding()) {
+					react(entity, style -> precise ? style.parry() : style.guardHit());
 				}
 			}
 			case BLOCK, PARRY -> {
@@ -349,6 +419,27 @@ public final class SaberAbilityClient {
 				move = CombatLibrary.INSTANCE.move(MOVE_PUSH);
 				play(entity, SaberSounds.PUSH, 1.0F);
 			}
+			case GRIP -> {
+				move = CombatLibrary.INSTANCE.move(MOVE_GRIP);
+				GRIPS.put(entity.getId(), new int[] {data, 0});
+				play(entity, SaberSounds.FORCE_GRIP, 0.9F);
+			}
+			case PULL -> {
+				move = CombatLibrary.INSTANCE.move(MOVE_PULL);
+				play(entity, SaberSounds.FORCE_PULL, 1.0F);
+
+				if (entity.level().getEntity(data) instanceof Entity target) {
+					SaberEffects.onPull(entity, target);
+				}
+			}
+			case JUMP -> {
+				move = CombatLibrary.INSTANCE.move(MOVE_JUMP);
+				play(entity, SaberSounds.FORCE_JUMP, 1.0F);
+
+				if (entity instanceof LocalPlayer player) {
+					forceJump(player);
+				}
+			}
 			case DASH -> {
 				// Style and direction pick the move: a roll, a lunge, a step or a flip.
 				DodgeDirection direction = DodgeDirection.byId(data);
@@ -371,6 +462,39 @@ public final class SaberAbilityClient {
 		}
 
 		SaberEffects.onAbility(entity, ability);
+	}
+
+	/**
+	 * The force jump of your own player. Movement runs on the client in Minecraft, so the jump is
+	 * applied here, with the strength the server sent; the server waives the fall damage.
+	 */
+	private static void forceJump(LocalPlayer player) {
+		Vec3 look = player.getLookAngle();
+		Vec3 flat = new Vec3(look.x, 0.0, look.z);
+		flat = flat.lengthSqr() > 1.0E-4 ? flat.normalize() : Vec3.ZERO;
+		Input input = player.input.keyPresses;
+		double forward = input.forward() || player.isSprinting() ? 0.45 : 0.1;
+		Vec3 motion = player.getDeltaMovement();
+		player.setDeltaMovement(motion.x + flat.x * forward, JUMP_SPEED * settings.jumpStrength(), motion.z + flat.z * forward);
+		player.needsSync = true;
+	}
+
+	/** Effects of every running force grip, and its end if the target is gone on this client. */
+	private static void tickGrips(Minecraft client) {
+		if (client.level == null || GRIPS.isEmpty()) {
+			return;
+		}
+
+		GRIPS.values().removeIf(grip -> {
+			Entity target = client.level.getEntity(grip[0]);
+
+			if (target == null || !target.isAlive()) {
+				return false;
+			}
+
+			SaberEffects.onGripTick(target, grip[1]++);
+			return grip[1] > 20 * 60;
+		});
 	}
 
 	/** Plays a reaction move of the entity's style, if it has one. */

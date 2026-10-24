@@ -58,7 +58,8 @@ final class AbilityHud implements HudElement {
 
 		for (SaberAbility ability : SaberAbility.values()) {
 			SaberAbilityClient.Cooldown cooldown = SaberAbilityClient.cooldown(ability);
-			boolean active = ability == SaberAbility.GUARD && SaberAbilityClient.isGuarding();
+			boolean active = ability == SaberAbility.GUARD && SaberAbilityClient.isGuarding()
+					|| ability == SaberAbility.GRIP && SaberAbilityClient.isGripping();
 
 			if (!active && (cooldown == null || cooldown.left() <= 0)) {
 				continue;
