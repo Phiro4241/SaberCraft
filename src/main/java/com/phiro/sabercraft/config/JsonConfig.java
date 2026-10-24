@@ -64,4 +64,19 @@ public final class JsonConfig {
 
 		return config;
 	}
+
+	/** Writes settings changed in a menu back to {@code config/sabercraft/<name>.json}. */
+	public static void save(String name, Object config) {
+		Path path = path(name);
+
+		try {
+			Files.createDirectories(path.getParent());
+
+			try (Writer writer = Files.newBufferedWriter(path)) {
+				GSON.toJson(config, writer);
+			}
+		} catch (IOException e) {
+			SaberCraft.LOGGER.warn("Could not write {}", path, e);
+		}
+	}
 }

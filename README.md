@@ -2,7 +2,7 @@
 
 Fabric-Mod für Minecraft Java 26.2, die das Netherite-Schwert in ein filmreifes Energieschwert verwandelt.
 
-**Stand:** Phase 6. Nimmst du ein Netherite-Schwert in die Hand, kommt der Griff hoch und die Energieklinge fährt mit einem Zündgeräusch aus. Solange sie leuchtet, summt sie. Mit der Taste **V** wählst du für jedes Schwert einzeln einen Griff (Standard, Hüter, Dunkler Lord, Wächter, Doppelklinge), eine von sechs Klingenfarben und einen Kampfstil. Angriffe sind eigene, filmreife Bewegungen mit Lichtspur und Funken, dazu kommen Abwehrhaltung mit Parade, Drehangriff, Machtstoß und Ausfallschritt. Das Konfigurationsmenü folgt. Details: [docs/phase-6-status.md](docs/phase-6-status.md), zu Farben und Griffen [docs/phase-5-status.md](docs/phase-5-status.md), zur Animation [docs/phase-4-status.md](docs/phase-4-status.md), zur Klinge selbst [docs/phase-3-status.md](docs/phase-3-status.md).
+**Stand:** Phase 7. Nimmst du ein Netherite-Schwert in die Hand, kommt der Griff hoch und die Energieklinge fährt mit einem Zündgeräusch aus. Solange sie leuchtet, summt sie. Griff, Klingenfarbe und einer von fünf Kampfstilen sind pro Schwert wählbar. Du kämpfst mit eigenen Bewegungen samt Lichtspur und Funken, mit Ganzkörper-Ausweichen und Abwehr samt Parade und Konter, alles mit Ausdauer. Dazu kommen Machtkräfte (Stoß, Griff, Zug, Sprung) und das Abwehren von Geschossen. Optional gibt es einen Weltraum-Himmel und eigene Musik. Fünf Outfits liegen über deinem eigenen Skin. Die Taste **V** öffnet das SaberCraft-Menü mit allen Einstellungen. Details: [docs/phase-7-status.md](docs/phase-7-status.md), zum Kampf [docs/phase-6-status.md](docs/phase-6-status.md), zu Farben und Griffen [docs/phase-5-status.md](docs/phase-5-status.md), zur Animation [docs/phase-4-status.md](docs/phase-4-status.md), zur Klinge selbst [docs/phase-3-status.md](docs/phase-3-status.md).
 
 ![Alle sechs Klingenfarben](docs/images/phase5/aufstellung_nacht.png)
 
@@ -15,13 +15,15 @@ Fabric-Mod für Minecraft Java 26.2, die das Netherite-Schwert in ein filmreifes
 | Fabric Loader | 0.19.5 oder neuer |
 | Fabric API | 0.161.0+26.2 |
 
-Für Aussehen, Animationen und Effekte musst du die Mod nicht auf dem Server installieren. Die Fähigkeiten (Abwehr, Drehangriff, Machtstoß, Ausfallschritt) entscheidet der Server, dafür braucht er SaberCraft. Griff und Farbe stehen im Vanilla-Feld `minecraft:custom_model_data` des Schwerts, das Minecraft ohnehin an alle Spieler schickt. Andere Spieler sehen und hören dein Lichtschwert, wenn sie SaberCraft ebenfalls installiert haben. Nur wer auf einem Server im Überlebensmodus Griff oder Farbe ändern will, braucht SaberCraft auch auf dem Server. Im Einzelspieler und im Kreativmodus geht es immer.
+Für Aussehen, Animationen, Effekte, Himmel, Musik und dein eigenes Outfit musst du die Mod nicht auf dem Server installieren. Ohne die Mod auf dem Server sieht nur du dein Outfit. Kräfte, Abwehr, Ausdauer, abgewehrte Geschosse und das Teilen der Outfits entscheidet der Server, dafür braucht er SaberCraft. Griff und Farbe stehen im Vanilla-Feld `minecraft:custom_model_data` des Schwerts, das Minecraft ohnehin an alle Spieler schickt. Andere Spieler sehen und hören dein Lichtschwert, wenn sie SaberCraft ebenfalls installiert haben. Nur wer auf einem Server im Überlebensmodus Griff oder Farbe ändern will, braucht SaberCraft auch auf dem Server. Im Einzelspieler und im Kreativmodus geht es immer. Eine genaue Tabelle steht in [docs/phase-7-status.md](docs/phase-7-status.md#was-der-client-macht-und-was-der-server).
 
 ## Lichtschwert anpassen
 
 1. Nimm ein Netherite-Schwert in die Hand.
-2. Drück **V** (änderbar unter Optionen → Steuerung → SaberCraft).
-3. Wähle links den Griff und rechts die Klingenfarbe, dann **Übernehmen**.
+2. Drück **V** (änderbar unter Optionen → Steuerung → SaberCraft). Das SaberCraft-Menü öffnet sich im Bereich **Schwert**.
+3. Wähle den Griff, die Klingenfarbe und den Kampfstil, dann **Übernehmen**.
+
+Die anderen Bereiche des Menüs: **Kampf** (Tasten und Kampfoptionen), **Charakter** (Outfits mit Vorschau), **Weltraum** (Himmel), **Musik**, **Grafik** (Effekte und Qualität).
 
 Die Werte jeder Farbe (Kern-, Bloom- und Halofarbe, Länge, Dicke, Leuchtstärke, Flimmern) stehen in `config/sabercraft/blade_styles.json`.
 
@@ -33,9 +35,12 @@ Die Werte jeder Farbe (Kern-, Bloom- und Halofarbe, Länge, Dicke, Leuchtstärke
 | **R** (halten) | Abwehrhaltung, direkt nach dem Hochnehmen eine Parade |
 | **Z** | Drehangriff, mit der Doppelklinge der Klingenwirbel |
 | **B** | Machtstoß |
-| **Linke Alt-Taste** | Ausfallschritt |
+| **Linke Alt-Taste** | Ausweichen: Rolle, Seitschritt, Rückschritt, Ausfallschritt oder Salto, je nach Stil und gedrückter Laufrichtung (WASD) |
+| **H** (halten) | Machtgriff |
+| **J** | Machtzug |
+| **K** | Machtsprung |
 
-Alle Tasten sind unter Optionen → Steuerung → SaberCraft änderbar. Abklingzeiten und Stärken stehen in `config/sabercraft/abilities.json`, Effekte und Animationen in `config/sabercraft/combat_client.json`.
+Alle Tasten sind unter Optionen → Steuerung → SaberCraft änderbar. Abklingzeiten, Stärken und Ausdauer stehen in `config/sabercraft/abilities.json` (Server). Effekte und Animationen stehen in `config/sabercraft/combat_client.json`, Himmel und Musik in `immersion_client.json`, das Outfit in `character_client.json`. Fast alles davon lässt sich auch im Menü einstellen.
 
 ## Bauen
 
@@ -116,6 +121,16 @@ src/gametest/  Automatischer Client-Test mit Screenshots
 | `resources/assets/sabercraft/sounds.json` | Sound-Definitionen, vier Varianten für Schwünge |
 | `tools/synth_sounds.py` | Erzeugt alle Sounds neu (`python3 tools/synth_sounds.py`, braucht numpy und ffmpeg) |
 
+### Phase 7: Immersion
+
+| Datei | Aufgabe |
+| --- | --- |
+| `client/sky/` | Weltraum-Himmel je Dimension |
+| `client/music/` | Musik mit Stimmungen und Überblendung, eigene Dateien |
+| `client/character/`, `src/main/.../character/` | Outfits über dem eigenen Skin, Abgleich über den Server |
+| `client/menu/` | SaberCraft-Menü (Taste V) |
+| `tools/synth_music.py`, `tools/paint_outfits.py` | erzeugen Musik und Outfits neu |
+
 ### Kampf und Fähigkeiten
 
 | Datei | Aufgabe |
@@ -133,4 +148,4 @@ src/gametest/  Automatischer Client-Test mit Screenshots
 
 ## Rechtliches
 
-Alle Sounds, Modelle und Texturen dieser Mod sind selbst erstellt. Die Griffe und ihre Texturen erzeugt `tools/gen_hilts.py`. Die Namen der Griffe im Spiel sind bewusst neutral gehalten (Hüter, Dunkler Lord, Wächter). Die Sounds werden mit `tools/synth_sounds.py` vollständig aus Sinuswellen, Rauschen und Hüllkurven berechnet. Sie enthalten keine Filmaufnahmen, Samples oder Originalmusik.
+Alle Sounds, Modelle und Texturen dieser Mod sind selbst erstellt. Die Griffe und ihre Texturen erzeugt `tools/gen_hilts.py`. Die Namen der Griffe im Spiel sind bewusst neutral gehalten (Hüter, Dunkler Lord, Wächter). Die Sounds werden mit `tools/synth_sounds.py` vollständig aus Sinuswellen, Rauschen und Hüllkurven berechnet. Sie enthalten keine Filmaufnahmen, Samples oder Originalmusik. Die sechs Musikstücke sind eigene Kompositionen aus `tools/synth_music.py`, die Outfits eigene Entwürfe aus `tools/paint_outfits.py`. Kein Spieler-Skin wird ersetzt.

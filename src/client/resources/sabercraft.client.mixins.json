@@ -4,10 +4,16 @@
   "compatibilityLevel": "JAVA_25",
   "client": [
     "ArmedEntityRenderStateMixin",
+    "AvatarRendererMixin",
     "ClientPacketListenerMixin",
+    "GameRendererMixin",
     "HumanoidModelMixin",
     "ItemInHandLayerMixin",
-    "ItemInHandRendererMixin"
+    "ItemInHandRendererMixin",
+    "LivingEntityRendererMixin",
+    "MusicManagerMixin",
+    "SkyRendererMixin",
+    "SoundBufferLibraryMixin"
   ],
   "injectors": {
     "defaultRequire": 1

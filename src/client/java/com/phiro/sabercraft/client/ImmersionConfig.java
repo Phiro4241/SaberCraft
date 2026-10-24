@@ -1,0 +1,68 @@
+package com.phiro.sabercraft.client;
+
+import com.google.gson.annotations.SerializedName;
+
+import net.minecraft.util.Mth;
+
+import com.phiro.sabercraft.config.JsonConfig;
+
+/**
+ * Client settings of the Phase 7 surroundings, in {@code config/sabercraft/immersion_client.json}:
+ * the space sky and the background music. Both are purely visual or audible and only on this
+ * client; the server is not involved.
+ */
+public final class ImmersionConfig {
+	private static final String NAME = "immersion_client";
+	private static ImmersionConfig current = new ImmersionConfig();
+
+	/** The space sky: stars, nebulae, galaxies, planets and moons instead of the plain night sky. */
+	@SerializedName("space_sky")
+	public boolean spaceSky = true;
+	/** Detail of the sky: 0 = low (256 px per side), 1 = medium (512), 2 = high (1024). */
+	@SerializedName("space_sky_quality")
+	public int spaceSkyQuality = 1;
+	/** Also a space sky in the End, over the vanilla End sky. */
+	@SerializedName("space_sky_in_end")
+	public boolean spaceSkyInEnd = true;
+	/**
+	 * Keep the space sky while an Iris shader pack is active. Off by default: shader packs draw
+	 * their own sky, and two skies on top of each other look wrong.
+	 */
+	@SerializedName("space_sky_with_shaders")
+	public boolean spaceSkyWithShaders = false;
+
+	/** Background music of SaberCraft, instead of the vanilla music. */
+	@SerializedName("music")
+	public boolean music = true;
+	/** Volume of the SaberCraft music, 0..1, on top of the master and music sliders. */
+	@SerializedName("music_volume")
+	public float musicVolume = 0.6F;
+	/** Also play your own .ogg files from config/sabercraft/music/<mood>/. */
+	@SerializedName("music_user_files")
+	public boolean musicUserFiles = true;
+	/** Length of the crossfade between two pieces, in seconds. */
+	@SerializedName("music_crossfade_seconds")
+	public float musicCrossfadeSeconds = 4.0F;
+
+	public static ImmersionConfig get() {
+		return current;
+	}
+
+	public static void load() {
+		ImmersionConfig config = JsonConfig.load(NAME, ImmersionConfig.class, ImmersionConfig::new);
+		config.clamp();
+		current = config;
+	}
+
+	/** Writes the current settings, after a change in the menu. */
+	public static void save() {
+		current.clamp();
+		JsonConfig.save(NAME, current);
+	}
+
+	private void clamp() {
+		this.spaceSkyQuality = Mth.clamp(this.spaceSkyQuality, 0, 2);
+		this.musicVolume = Mth.clamp(this.musicVolume, 0.0F, 1.0F);
+		this.musicCrossfadeSeconds = Mth.clamp(this.musicCrossfadeSeconds, 0.5F, 20.0F);
+	}
+}

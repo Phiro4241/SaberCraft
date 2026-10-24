@@ -14,9 +14,9 @@ import com.phiro.sabercraft.client.combat.CombatConfig;
 import com.phiro.sabercraft.saber.SaberVariant;
 
 /**
- * Small cooldown display next to the hotbar: one line per ability that is cooling down, with its
- * key and a bar that runs out. Nothing is shown while every ability is ready, so the HUD stays
- * clean.
+ * Small cooldown display next to the hotbar: the stamina while it is not full, then one line per
+ * ability that is cooling down, with its key and a bar that runs out. Nothing is shown while
+ * everything is ready, so the HUD stays clean.
  */
 final class AbilityHud implements HudElement {
 	private static final int BAR_WIDTH = 30;
@@ -37,9 +37,29 @@ final class AbilityHud implements HudElement {
 		int y = graphics.guiHeight() - 12;
 		float partial = delta.getGameTimeDeltaPartialTick(false);
 
+		// Stamina, only while it is not full.
+		float max = SaberAbilityClient.maxStamina();
+		float stamina = SaberAbilityClient.stamina();
+
+		if (max > 0.0F && stamina < max - 0.01F) {
+			Component label = Component.translatable("sabercraft.hud.stamina");
+			int labelWidth = Math.min(font.width(label), 50);
+			int width = labelWidth + 3 + BAR_WIDTH;
+			int x = right ? graphics.guiWidth() / 2 + 96 : graphics.guiWidth() / 2 - 96 - width;
+			float share = Math.clamp(stamina / max, 0.0F, 1.0F);
+			// Red once a dodge is no longer possible.
+			boolean low = stamina < SaberAbilityClient.cost(SaberAbility.DASH, client.player);
+			graphics.text(font, label, x, y - 1, low ? 0xFFFF8080 : 0xFFE0E0A0, true);
+			int barX = x + labelWidth + 3;
+			graphics.fill(barX, y + 2, barX + BAR_WIDTH, y + 5, 0x90000000);
+			graphics.fill(barX, y + 2, barX + Math.round(BAR_WIDTH * share), y + 5, low ? 0xFFE04040 : 0xFFE8D040);
+			y -= LINE;
+		}
+
 		for (SaberAbility ability : SaberAbility.values()) {
 			SaberAbilityClient.Cooldown cooldown = SaberAbilityClient.cooldown(ability);
-			boolean active = ability == SaberAbility.GUARD && SaberAbilityClient.isGuarding();
+			boolean active = ability == SaberAbility.GUARD && SaberAbilityClient.isGuarding()
+					|| ability == SaberAbility.GRIP && SaberAbilityClient.isGripping();
 
 			if (!active && (cooldown == null || cooldown.left() <= 0)) {
 				continue;

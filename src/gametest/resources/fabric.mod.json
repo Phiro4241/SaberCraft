@@ -10,7 +10,13 @@
 			"com.phiro.sabercraft.gametest.SaberAnimationGameTest",
 			"com.phiro.sabercraft.gametest.SaberVariantGameTest",
 			"com.phiro.sabercraft.gametest.CombatGalleryGameTest",
-			"com.phiro.sabercraft.gametest.CombatAbilityGameTest"
+			"com.phiro.sabercraft.gametest.CombatAbilityGameTest",
+			"com.phiro.sabercraft.gametest.ManeuverGameTest",
+			"com.phiro.sabercraft.gametest.DefenseGameTest",
+			"com.phiro.sabercraft.gametest.ForceGameTest",
+			"com.phiro.sabercraft.gametest.SpaceSkyGameTest",
+			"com.phiro.sabercraft.gametest.MusicGameTest",
+			"com.phiro.sabercraft.gametest.CharacterGameTest"
 		]
 	},
 	"depends": {

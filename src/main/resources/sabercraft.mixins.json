@@ -3,7 +3,8 @@
   "package": "com.phiro.sabercraft.mixin",
   "compatibilityLevel": "JAVA_25",
   "mixins": [
-    "LivingEntityMixin"
+    "LivingEntityMixin",
+    "ProjectileMixin"
   ],
   "injectors": {
     "defaultRequire": 1

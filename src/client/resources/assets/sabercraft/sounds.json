@@ -174,5 +174,80 @@
         "attenuation_distance": 16
       }
     ]
+  },
+  "force.grip": {
+    "subtitle": "subtitles.sabercraft.force.grip",
+    "sounds": [
+      {
+        "name": "sabercraft:combat/force_grip",
+        "attenuation_distance": 16
+      }
+    ]
+  },
+  "force.pull": {
+    "subtitle": "subtitles.sabercraft.force.pull",
+    "sounds": [
+      {
+        "name": "sabercraft:combat/force_pull",
+        "attenuation_distance": 20
+      }
+    ]
+  },
+  "force.jump": {
+    "subtitle": "subtitles.sabercraft.force.jump",
+    "sounds": [
+      {
+        "name": "sabercraft:combat/force_jump",
+        "attenuation_distance": 16
+      }
+    ]
+  },
+  "music.exploration_horizon": {
+    "sounds": [
+      {
+        "name": "sabercraft:music/exploration_horizon",
+        "stream": true
+      }
+    ]
+  },
+  "music.exploration_wander": {
+    "sounds": [
+      {
+        "name": "sabercraft:music/exploration_wander",
+        "stream": true
+      }
+    ]
+  },
+  "music.night_stars": {
+    "sounds": [
+      {
+        "name": "sabercraft:music/night_stars",
+        "stream": true
+      }
+    ]
+  },
+  "music.combat_duel": {
+    "sounds": [
+      {
+        "name": "sabercraft:music/combat_duel",
+        "stream": true
+      }
+    ]
+  },
+  "music.combat_shadow": {
+    "sounds": [
+      {
+        "name": "sabercraft:music/combat_shadow",
+        "stream": true
+      }
+    ]
+  },
+  "music.event_rise": {
+    "sounds": [
+      {
+        "name": "sabercraft:music/event_rise",
+        "stream": true
+      }
+    ]
   }
 }
