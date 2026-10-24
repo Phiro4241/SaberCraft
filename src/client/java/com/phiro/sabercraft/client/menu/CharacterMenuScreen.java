@@ -4,6 +4,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
+import org.jspecify.annotations.Nullable;
+
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.Button;
@@ -15,6 +19,7 @@ import net.minecraft.util.Util;
 import net.minecraft.world.InteractionHand;
 
 import com.phiro.sabercraft.character.Outfit;
+import com.phiro.sabercraft.client.blade.BladeStyles;
 import com.phiro.sabercraft.client.character.CharacterConfig;
 import com.phiro.sabercraft.client.character.OutfitClient;
 import com.phiro.sabercraft.client.saber.SaberHilts;
@@ -27,14 +32,22 @@ import com.phiro.sabercraft.saber.SaberVariant;
  * other players with the mod; your own files only to you. Each outfit suggests a saber, which can
  * be taken over for the sword in hand; picking a film character does that right away, and hilt,
  * color and style can still be changed afterwards in the saber menu.
+ *
+ * <p>Since Phase 9 the characters are a grid of cards: each card shows the name, the blade color
+ * and the fighting style, and the column on the right shows the profile of the chosen one (side
+ * of the Force, hilt, color, style) under the preview.
  */
 public class CharacterMenuScreen extends SaberMenuScreen {
-	private static final int LIST_WIDTH = 130;
+	private static final int CARD_WIDTH = 95;
+	private static final int CARD_HEIGHT = 22;
+	private static final int CARD_GAP = 2;
+	private static final int GRID_WIDTH = 2 * CARD_WIDTH + CARD_GAP;
 	/** Which list is shown: the film characters (Phase 8) or the original outfits. Kept while the game runs. */
 	private static boolean showCharacters = true;
 	private final List<Choice> choices = new ArrayList<>();
 	private Component status = Component.empty();
 	private Button suggestButton;
+	private @Nullable AbstractWidget sizeButton;
 
 	private record Choice(String value, AbstractWidget button) {
 	}
@@ -52,39 +65,45 @@ public class CharacterMenuScreen extends SaberMenuScreen {
 	protected void initPanel() {
 		this.choices.clear();
 		OutfitClient.reloadCharacterSkins();
-		int half = LIST_WIDTH / 2 - 1;
+		int half = GRID_WIDTH / 2 - 1;
 		Button charactersTab = this.addRenderableWidget(Button.builder(Component.translatable("sabercraft.menu.character.characters"), b -> this.showList(true))
-				.bounds(this.left + 10, this.top + 22, half, 20)
+				.bounds(this.left + 10, this.top + 20, half, 20)
 				.tooltip(Tooltip.create(Component.translatable("sabercraft.menu.character.characters.description")))
 				.build());
 		Button outfitsTab = this.addRenderableWidget(Button.builder(Component.translatable("sabercraft.menu.character.outfits"), b -> this.showList(false))
-				.bounds(this.left + 12 + half, this.top + 22, half, 20)
+				.bounds(this.left + 12 + half, this.top + 20, half, 20)
 				.tooltip(Tooltip.create(Component.translatable("sabercraft.menu.character.outfits.description")))
 				.build());
 		charactersTab.active = !showCharacters;
 		outfitsTab.active = showCharacters;
 
-		int y = this.top + 48;
-		this.addChoice("", Component.translatable("sabercraft.outfit.none"), Component.translatable("sabercraft.outfit.none.description"), y);
+		int slot = 0;
+		this.addCard(null, "", Component.translatable("sabercraft.outfit.none"), Component.translatable("sabercraft.outfit.none.description"), slot++);
 
 		for (Outfit outfit : showCharacters ? Outfit.CHARACTERS : Outfit.OUTFITS) {
-			y += 22;
-			this.addChoice(outfit.id().toString(), Component.translatable(outfit.translationKey()),
-					Component.translatable(outfit.translationKey() + ".description"), y);
+			this.addCard(outfit, outfit.id().toString(), Component.translatable(outfit.translationKey()),
+					Component.translatable(outfit.translationKey() + ".description"), slot++);
 		}
 
 		if (!showCharacters) {
-			this.addFileChoice(y + 22);
+			this.addFileChoice(this.cardX(slot), this.cardY(slot));
 		}
 
-		int right = this.left + LIST_WIDTH + 20;
-		int rightWidth = PANEL_WIDTH - LIST_WIDTH - 30;
+		int right = this.rightX();
+		int rightWidth = this.rightWidth();
 		this.suggestButton = this.addRenderableWidget(Button.builder(Component.translatable("sabercraft.menu.character.take_saber"), b -> this.takeSaber())
-				.bounds(right, this.top + 168, rightWidth, 20)
+				.bounds(right, this.top + 184, rightWidth, 20)
 				.tooltip(Tooltip.create(Component.translatable("sabercraft.menu.character.take_saber.description")))
 				.build());
+		// Only for small characters (Yoda): drawn at their size or at the normal size.
+		this.sizeButton = this.addRenderableWidget(CycleButton.onOffBuilder(CharacterConfig.get().characterSize)
+				.withTooltip(v -> Tooltip.create(Component.translatable("sabercraft.option.character_size.description")))
+				.create(right, this.top + 162, rightWidth, 20, Component.translatable("sabercraft.option.character_size"), (button, v) -> {
+					CharacterConfig.get().characterSize = v;
+					CharacterConfig.save();
+				}));
 
-		int bottom = this.top + PANEL_HEIGHT - 28;
+		int bottom = this.top + PANEL_HEIGHT - 26;
 		this.addRenderableWidget(CycleButton.onOffBuilder(CharacterConfig.get().showOtherOutfits)
 				.withTooltip(v -> Tooltip.create(Component.translatable("sabercraft.option.show_other_outfits.description")))
 				.create(this.left + 10, bottom, 150, 20, Component.translatable("sabercraft.option.show_other_outfits"), (button, v) -> {
@@ -102,6 +121,22 @@ public class CharacterMenuScreen extends SaberMenuScreen {
 				.build());
 	}
 
+	private int cardX(int slot) {
+		return this.left + 10 + slot % 2 * (CARD_WIDTH + CARD_GAP);
+	}
+
+	private int cardY(int slot) {
+		return this.top + 44 + slot / 2 * (CARD_HEIGHT + CARD_GAP);
+	}
+
+	private int rightX() {
+		return this.left + 10 + GRID_WIDTH + 8;
+	}
+
+	private int rightWidth() {
+		return this.left + PANEL_WIDTH - 10 - this.rightX();
+	}
+
 	private void showList(boolean characters) {
 		showCharacters = characters;
 		this.status = Component.empty();
@@ -109,12 +144,12 @@ public class CharacterMenuScreen extends SaberMenuScreen {
 	}
 
 	/** Files of your own: one button that steps through them. */
-	private void addFileChoice(int y) {
+	private void addFileChoice(int x, int y) {
 		List<String> files = OutfitClient.ownFiles();
 
 		if (files.isEmpty()) {
 			Button none = this.addRenderableWidget(Button.builder(Component.translatable("sabercraft.outfit.file.none"), b -> {})
-					.bounds(this.left + 10, y, LIST_WIDTH, 20)
+					.bounds(x, y, CARD_WIDTH, CARD_HEIGHT)
 					.tooltip(Tooltip.create(Component.translatable("sabercraft.outfit.file.description")))
 					.build());
 			none.active = false;
@@ -125,14 +160,14 @@ public class CharacterMenuScreen extends SaberMenuScreen {
 					.withValues(files)
 					.withTooltip(v -> Tooltip.create(Component.translatable("sabercraft.outfit.file.description")))
 					.displayOnlyValue()
-					.create(this.left + 10, y, LIST_WIDTH, 20, Component.translatable("sabercraft.outfit.file"),
+					.create(x, y, CARD_WIDTH, CARD_HEIGHT, Component.translatable("sabercraft.outfit.file"),
 							(button, name) -> OutfitClient.choose(OutfitClient.FILE_PREFIX + name)));
 			this.choices.add(new Choice(OutfitClient.FILE_PREFIX, fileButton));
 		}
 	}
 
-	private void addChoice(String value, Component name, Component description, int y) {
-		Button button = this.addRenderableWidget(Button.builder(name, b -> {
+	private void addCard(@Nullable Outfit outfit, String value, Component name, Component description, int slot) {
+		Button button = this.addRenderableWidget(new Card(this.cardX(slot), this.cardY(slot), name, outfit, b -> {
 			OutfitClient.choose(value);
 			this.status = Component.empty();
 
@@ -141,7 +176,8 @@ public class CharacterMenuScreen extends SaberMenuScreen {
 					&& SaberSelection.saberHand(this.minecraft.player) != null) {
 				this.takeSaber();
 			}
-		}).bounds(this.left + 10, y, LIST_WIDTH, 20).tooltip(Tooltip.create(description)).build());
+		}));
+		button.setTooltip(Tooltip.create(description));
 		this.choices.add(new Choice(value, button));
 	}
 
@@ -169,6 +205,10 @@ public class CharacterMenuScreen extends SaberMenuScreen {
 	public void tick() {
 		Optional<Outfit> outfit = this.chosen();
 		this.suggestButton.active = outfit.isPresent() && this.minecraft.player != null && SaberSelection.saberHand(this.minecraft.player) != null;
+
+		if (this.sizeButton != null) {
+			this.sizeButton.visible = outfit.isPresent() && outfit.get().scale() != 1.0F;
+		}
 	}
 
 	@Override
@@ -185,43 +225,98 @@ public class CharacterMenuScreen extends SaberMenuScreen {
 		}
 
 		// Your character, turning towards the mouse like in the inventory.
-		int right = this.left + LIST_WIDTH + 20;
-		int rightWidth = PANEL_WIDTH - LIST_WIDTH - 30;
-		int previewTop = this.top + 22;
-		int previewBottom = this.top + 130;
+		int right = this.rightX();
+		int rightWidth = this.rightWidth();
+		int previewTop = this.top + 20;
+		int previewBottom = this.top + 104;
 		graphics.fill(right, previewTop, right + rightWidth, previewBottom, 0x60000000);
 
 		if (this.minecraft.player != null) {
-			InventoryScreen.extractEntityInInventoryFollowsMouse(graphics, right, previewTop, right + rightWidth, previewBottom, 46, 0.0625F,
+			InventoryScreen.extractEntityInInventoryFollowsMouse(graphics, right, previewTop, right + rightWidth, previewBottom, 36, 0.0625F,
 					mouseX, mouseY, this.minecraft.player);
 		}
 
-		// What the outfit suggests.
+		// The profile of the chosen character or outfit.
 		Optional<Outfit> outfit = this.chosen();
 		Component name = outfit.<Component>map(o -> Component.translatable(o.translationKey()))
 				.orElse(current.startsWith(OutfitClient.FILE_PREFIX) ? Component.literal(current.substring(OutfitClient.FILE_PREFIX.length()))
 						: Component.translatable("sabercraft.outfit.none"));
-		graphics.centeredText(this.font, name, right + rightWidth / 2, previewBottom + 6, 0xFFFFFFFF);
+		graphics.centeredText(this.font, name, right + rightWidth / 2, previewBottom + 4, 0xFFFFFFFF);
+		int y = previewBottom + 16;
 
 		if (outfit.isPresent()) {
-			SaberVariant saber = outfit.get().suggested();
-			Component line = SaberHilts.get(saber.hilt()).displayName().copy()
-					.append(" · ").append(Component.translatable("sabercraft.color." + saber.color().getPath()))
-					.append(" · ").append(Component.translatable("sabercraft.style." + saber.style().getPath()));
-			graphics.textWithWordWrap(this.font, Component.translatable("sabercraft.menu.character.suggests", line), right, previewBottom + 18,
-					rightWidth, 0xFFB0B0B8);
+			Outfit chosen = outfit.get();
+			SaberVariant saber = chosen.suggested();
 
-			if (outfit.get().character() && OutfitClient.hasOwnSkin(outfit.get())) {
-				graphics.text(this.font, Component.translatable("sabercraft.menu.character.own_skin", outfit.get().id().getPath() + ".png"),
-						right, previewBottom + 40, 0xFF80D080);
+			if (chosen.side() != Outfit.Side.NONE) {
+				graphics.text(this.font, Component.translatable(chosen.side().translationKey()), right, y, sideColor(chosen.side()));
+				y += 11;
+			}
+
+			graphics.text(this.font, Component.translatable("sabercraft.menu.character.hilt", SaberHilts.get(saber.hilt()).displayName()), right, y, 0xFFB0B0B8);
+			y += 11;
+			graphics.fill(right, y + 1, right + 7, y + 8, 0xFF000000 | BladeStyles.get(saber.color()).glowColor());
+			graphics.text(this.font, Component.translatable("sabercraft.color." + saber.color().getPath()), right + 10, y, 0xFFB0B0B8);
+			y += 11;
+
+			if (chosen.scale() == 1.0F) {
+				graphics.text(this.font, Component.translatable("sabercraft.menu.character.style",
+						Component.translatable("sabercraft.style." + saber.style().getPath())), right, y, 0xFFB0B0B8);
+			}
+
+			if (chosen.character() && OutfitClient.hasOwnSkin(chosen)) {
+				graphics.text(this.font, Component.translatable("sabercraft.menu.character.own_skin", chosen.id().getPath() + ".png"),
+						this.left + 10, this.top + 190, 0xFF80D080);
 			}
 		} else {
 			graphics.textWithWordWrap(this.font, Component.translatable(current.startsWith(OutfitClient.FILE_PREFIX)
-					? "sabercraft.outfit.file.description" : "sabercraft.outfit.none.description"), right, previewBottom + 18, rightWidth, 0xFFB0B0B8);
+					? "sabercraft.outfit.file.description" : "sabercraft.outfit.none.description"), right, y, rightWidth, 0xFFB0B0B8);
 		}
 
 		if (!this.status.getString().isEmpty()) {
-			graphics.textWithWordWrap(this.font, this.status, right, this.top + 192, rightWidth, 0xFFFFD060);
+			graphics.text(this.font, this.status, this.left + 10, this.top + 190, 0xFFFFD060);
+		}
+	}
+
+	private static int sideColor(Outfit.Side side) {
+		return switch (side) {
+			case LIGHT -> 0xFF80B8FF;
+			case DARK -> 0xFFFF6A5A;
+			case GREY -> 0xFFD8D8D8;
+			case NONE -> 0xFFB0B0B8;
+		};
+	}
+
+	/**
+	 * One card of the grid: the name, and below it the blade color as a small swatch with the
+	 * fighting style. The name stays the button's message (narration, tests).
+	 */
+	private static final class Card extends Button {
+		private final @Nullable Outfit outfit;
+
+		private Card(int x, int y, Component name, @Nullable Outfit outfit, OnPress onPress) {
+			super(x, y, CARD_WIDTH, CARD_HEIGHT, name, onPress, DEFAULT_NARRATION);
+			this.outfit = outfit;
+		}
+
+		@Override
+		protected void extractContents(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float a) {
+			this.extractDefaultSprite(graphics);
+			Font font = Minecraft.getInstance().font;
+			int x = this.getX() + 4;
+			String name = font.plainSubstrByWidth(this.getMessage().getString(), this.getWidth() - 8);
+
+			if (this.outfit == null) {
+				graphics.text(font, name, x, this.getY() + (this.getHeight() - 8) / 2, 0xFFFFFFFF);
+				return;
+			}
+
+			graphics.text(font, name, x, this.getY() + 2, 0xFFFFFFFF);
+			SaberVariant saber = this.outfit.suggested();
+			int swatch = 0xFF000000 | BladeStyles.get(saber.color()).glowColor();
+			graphics.fill(x, this.getY() + 13, x + 6, this.getY() + 19, swatch);
+			String style = font.plainSubstrByWidth(Component.translatable("sabercraft.style." + saber.style().getPath()).getString(), this.getWidth() - 18);
+			graphics.text(font, style, x + 9, this.getY() + 12, 0xFFB8B8C0);
 		}
 	}
 }

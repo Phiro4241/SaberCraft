@@ -31,10 +31,15 @@ import com.phiro.sabercraft.saber.SaberVariant;
  * {@link SaberSelection}.
  */
 public class SaberCustomizeScreen extends SaberMenuScreen {
-	private static final int HILT_BUTTON_WIDTH = 70;
 	private static final int COLOR_BUTTON_WIDTH = 60;
 	private static final int ROW = 22;
 	private static final int PREVIEW_SIZE = 32;
+	/** Since Phase 9 the hilts are a grid of icons (13 hilts no longer fit as named buttons). */
+	private static final int HILT_ICON = 22;
+	private static final int HILTS_PER_ROW = 7;
+	private static final int STYLE_BUTTON_WIDTH = 58;
+	private static final int STYLE_ROW = 18;
+	private static final int STYLES_PER_ROW = 3;
 
 	private final InteractionHand hand;
 	private Identifier hilt;
@@ -67,14 +72,13 @@ public class SaberCustomizeScreen extends SaberMenuScreen {
 		this.colorButtons.clear();
 		this.styleButtons.clear();
 
-		// Hilts in two columns, each button with a small icon of the hilt in front of it.
+		// Hilts as a grid of icon buttons; the name of each is its tooltip and is written below.
 		int index = 0;
 
 		for (SaberHilt option : SaberHilts.all().values()) {
-			int x = this.left + 28 + index % 2 * (HILT_BUTTON_WIDTH + 20);
-			Button button = Button.builder(option.displayName(), b -> this.selectHilt(option))
-					.bounds(x, this.top + 34 + index / 2 * ROW, HILT_BUTTON_WIDTH, 20)
-					.build();
+			int x = this.left + 10 + index % HILTS_PER_ROW * (HILT_ICON + 3);
+			Button button = new IconButton(x, this.top + 32 + index / HILTS_PER_ROW * (HILT_ICON + 2), option.displayName(), b -> this.selectHilt(option));
+			button.setTooltip(Tooltip.create(option.displayName().copy().append("\n").append(option.description())));
 			this.hiltButtons.add(new HiltButton(option, this.addRenderableWidget(button)));
 			index++;
 		}
@@ -92,30 +96,29 @@ public class SaberCustomizeScreen extends SaberMenuScreen {
 			index++;
 		}
 
-		// Fighting style: six buttons (2 x 3) for single blades, two for the staff, in the same place.
-		int styleY = this.top + 34 + 3 * ROW + 2 + PREVIEW_SIZE + 28;
+		// Fighting style: three columns under the hilt; the staff styles take the first places.
+		int styleY = this.styleTop();
 
 		for (Identifier id : SaberVariant.STYLES) {
 			int slot = SaberVariant.isStaffStyle(id) ? SaberVariant.DOUBLE_STYLES.indexOf(id) : SaberVariant.SINGLE_STYLES.indexOf(id);
-			int x = colorLeft + slot % 2 * (COLOR_BUTTON_WIDTH + 4);
-			int buttonY = styleY + slot / 2 * ROW;
+			int x = this.left + 10 + slot % STYLES_PER_ROW * (STYLE_BUTTON_WIDTH + 3);
+			int buttonY = styleY + slot / STYLES_PER_ROW * STYLE_ROW;
 			Button button = Button.builder(styleName(id), b -> this.style = id)
-					.bounds(x, buttonY, COLOR_BUTTON_WIDTH, 20)
-					.tooltip(Tooltip.create(Component.translatable("sabercraft.style." + id.getPath() + ".description")))
+					.bounds(x, buttonY, STYLE_BUTTON_WIDTH, STYLE_ROW - 2)
+					.tooltip(Tooltip.create(styleName(id).copy().append("\n").append(Component.translatable("sabercraft.style." + id.getPath() + ".description"))))
 					.build();
 			this.styleButtons.add(new StyleButton(id, this.addRenderableWidget(button)));
 		}
 
 		this.updateStyleButtons();
 
-		// Below the hilt column: the style buttons on the right reach down to the bottom of the panel.
-		int buttonsY = this.top + PANEL_HEIGHT - 28;
-		int buttonWidth = 86;
+		// Apply and cancel at the bottom of the color column.
+		int columnWidth = 2 * COLOR_BUTTON_WIDTH + 4;
 		this.addRenderableWidget(Button.builder(Component.translatable("sabercraft.customize.apply"), b -> this.apply())
-				.bounds(this.left + 10, buttonsY, buttonWidth, 20)
+				.bounds(colorLeft, this.top + PANEL_HEIGHT - 50, columnWidth, 20)
 				.build());
 		this.addRenderableWidget(Button.builder(Component.translatable("gui.cancel"), b -> this.onClose())
-				.bounds(this.left + 14 + buttonWidth, buttonsY, buttonWidth, 20)
+				.bounds(colorLeft, this.top + PANEL_HEIGHT - 27, columnWidth, 20)
 				.build());
 
 		if (this.minecraft != null && !SaberSelection.canChange(this.minecraft)) {
@@ -168,16 +171,22 @@ public class SaberCustomizeScreen extends SaberMenuScreen {
 		}
 	}
 
+	/** Top of the fighting style buttons, below the name and description of the hilt. */
+	private int styleTop() {
+		int hiltRows = (SaberHilts.all().size() + HILTS_PER_ROW - 1) / HILTS_PER_ROW;
+		return this.top + 32 + hiltRows * (HILT_ICON + 2) + 70;
+	}
+
 	@Override
 	protected void extractPanel(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float a) {
 		graphics.text(this.font, Component.translatable("sabercraft.customize.hilt"), this.left + 10, this.top + 22, 0xFFA0A0A8);
 		int colorLeft = this.left + PANEL_WIDTH - 10 - 2 * COLOR_BUTTON_WIDTH - 4;
 		graphics.text(this.font, Component.translatable("sabercraft.customize.color"), colorLeft, this.top + 22, 0xFFA0A0A8);
 
-		// Small icon of each hilt in the chosen color, and a frame around the current choices.
+		// Icon of each hilt in the chosen color, and a frame around the current choices.
 		for (HiltButton entry : this.hiltButtons) {
 			Button button = entry.button();
-			graphics.fakeItem(previewStack(entry.hilt().id(), this.color), button.getX() - 18, button.getY() + 2);
+			graphics.fakeItem(previewStack(entry.hilt().id(), this.color), button.getX() + (HILT_ICON - 16) / 2, button.getY() + (HILT_ICON - 16) / 2);
 
 			if (entry.hilt().id().equals(this.hilt)) {
 				graphics.outline(button.getX() - 1, button.getY() - 1, button.getWidth() + 2, button.getHeight() + 2, 0xFFFFFFFF);
@@ -199,14 +208,14 @@ public class SaberCustomizeScreen extends SaberMenuScreen {
 			}
 		}
 
-		int styleY = this.top + 34 + 3 * ROW + 2 + PREVIEW_SIZE + 28;
-		graphics.text(this.font, Component.translatable("sabercraft.customize.style"), colorLeft, styleY - 11, 0xFFA0A0A8);
+		graphics.text(this.font, Component.translatable("sabercraft.customize.style"), this.left + 10, this.styleTop() - 11, 0xFFA0A0A8);
 		this.extractPreview(graphics, colorLeft);
 
-		// Name and description of the chosen hilt below the hilt list.
+		// Name and description of the chosen hilt below the hilt grid.
 		SaberHilt chosen = SaberHilts.get(this.hilt);
 		Component line = chosen.displayName().copy().append(" · ").append(colorName(this.color)).append(" · ").append(styleName(this.style));
-		int textTop = this.top + 34 + (SaberHilts.all().size() + 1) / 2 * ROW + 6;
+		int hiltRows = (SaberHilts.all().size() + HILTS_PER_ROW - 1) / HILTS_PER_ROW;
+		int textTop = this.top + 32 + hiltRows * (HILT_ICON + 2) + 4;
 		graphics.text(this.font, line, this.left + 10, textTop, 0xFFFFFFFF);
 		// A problem (no server support, no saber) replaces the description, so nothing overlaps.
 		boolean problem = !this.status.getString().isEmpty();
@@ -257,6 +266,18 @@ public class SaberCustomizeScreen extends SaberMenuScreen {
 	/** Button text color: the blade color, lightened so it stays readable on dark buttons. */
 	private static int textColor(Identifier color) {
 		return BladeStyle.mix(BladeStyles.get(color).glowColor(), 0xFFFFFF, 0.35F);
+	}
+
+	/** A square button that shows only its frame; the hilt icon is drawn over it. The name stays its message. */
+	private static final class IconButton extends Button {
+		private IconButton(int x, int y, Component message, OnPress onPress) {
+			super(x, y, HILT_ICON, HILT_ICON, message, onPress, DEFAULT_NARRATION);
+		}
+
+		@Override
+		protected void extractContents(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float a) {
+			this.extractDefaultSprite(graphics);
+		}
 	}
 
 	private record HiltButton(SaberHilt hilt, Button button) {

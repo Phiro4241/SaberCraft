@@ -54,14 +54,17 @@ public final class SaberBladeSpecialRenderer implements SpecialModelRenderer<Bla
 	private final Vector3fc emitter;
 	private final float lengthOverride;
 	private final Quaternionf direction;
+	private final boolean unstable;
 
 	/**
 	 * @param defaultStyle   color for items without a stored color
 	 * @param emitter        where the blade starts, in model space
 	 * @param lengthOverride blade length, or 0 to use the length of the style
 	 * @param angle          turn of the blade in the item plane in degrees, 0 = along the diagonal
+	 * @param unstable       whether the blade crackles like a cracked crystal (Phase 9, crossguard hilt)
 	 */
-	public SaberBladeSpecialRenderer(Identifier defaultStyle, Vector3fc emitter, float lengthOverride, float angle) {
+	public SaberBladeSpecialRenderer(Identifier defaultStyle, Vector3fc emitter, float lengthOverride, float angle, boolean unstable) {
+		this.unstable = unstable;
 		this.defaultStyle = defaultStyle;
 		this.emitter = emitter;
 		this.lengthOverride = lengthOverride;
@@ -93,7 +96,7 @@ public final class SaberBladeSpecialRenderer implements SpecialModelRenderer<Bla
 		float build = Mth.clamp(state.extension() / 0.25F, 0.0F, 1.0F);
 		// An attack makes the blade glow a little brighter, strongest at the strike.
 		float swing = state.swing() != null ? state.swing().strength() : 0.0F;
-		float intensity = intensity(style) * (0.55F + 0.45F * build) * (1.0F + state.flare() + 0.22F * swing);
+		float intensity = (this.unstable ? unstableIntensity() : intensity(style)) * (0.55F + 0.45F * build) * (1.0F + state.flare() + 0.22F * swing);
 
 		boolean shader = SaberRenderTypes.beams();
 		poseStack.pushPose();
@@ -103,6 +106,15 @@ public final class SaberBladeSpecialRenderer implements SpecialModelRenderer<Bla
 		submitNodeCollector.order(0).submitCustomGeometry(
 				poseStack, SaberRenderTypes.haze(state.firstPerson()), (pose, buffer) -> BladeMesh.haze(pose, buffer, style, length, intensity * build, shader)
 		);
+		if (this.unstable) {
+			// Ragged flames of glow along the blade, new ones every few frames.
+			long frame = Util.getMillis() / 45L;
+			int seed = (int) (frame * 31L) ^ System.identityHashCode(this);
+			submitNodeCollector.order(0).submitCustomGeometry(
+					poseStack, SaberRenderTypes.haze(state.firstPerson()), (pose, buffer) -> BladeMesh.crackle(pose, buffer, style, length, intensity * build, seed, shader)
+			);
+		}
+
 		submitNodeCollector.order(1).submitCustomGeometry(
 				poseStack, SaberRenderTypes.core(state.firstPerson()), (pose, buffer) -> BladeMesh.core(pose, buffer, style, length, intensity, shader)
 		);
@@ -167,20 +179,32 @@ public final class SaberBladeSpecialRenderer implements SpecialModelRenderer<Bla
 		return 1.0F + style.shimmer() * wave;
 	}
 
+	/** The hard, irregular flicker of an unstable blade: mostly bright, with short dips and spikes. */
+	private static float unstableIntensity() {
+		long millis = Util.getMillis();
+		float time = (millis % 1_000_000L) / 1000.0F;
+		float wave = 0.5F * Mth.sin(time * 23.0F) + 0.5F * Mth.sin(time * 41.0F + 0.7F);
+		int step = (int) (millis / 60L);
+		float jolt = (step * 1103515245 + 12345 >>> 16 & 0xFF) / 255.0F;
+		return 1.0F + 0.12F * wave + (jolt > 0.85F ? 0.25F : jolt < 0.1F ? -0.2F : 0.0F);
+	}
+
 	/**
 	 * JSON form of the renderer. Example:
 	 * <pre>{@code {"type": "sabercraft:saber_blade", "style": "sabercraft:red"}}</pre>
 	 * Optional fields: {@code "emitter": [x, y, z]} for hilts of other shapes, {@code "length"} to
 	 * override the style's blade length and {@code "angle"} to turn the blade in the item plane,
-	 * for example 180 for the second blade of a double-bladed hilt.
+	 * for example 180 for the second blade of a double-bladed hilt. {@code "unstable": true} makes the
+	 * blade crackle (Phase 9).
 	 */
-	public record Unbaked(Identifier style, Vector3fc emitter, Optional<Float> length, float angle) implements SpecialModelRenderer.Unbaked<BladeRenderState> {
+	public record Unbaked(Identifier style, Vector3fc emitter, Optional<Float> length, float angle, boolean unstable) implements SpecialModelRenderer.Unbaked<BladeRenderState> {
 		public static final MapCodec<Unbaked> MAP_CODEC = RecordCodecBuilder.mapCodec(
 				instance -> instance.group(
 								Identifier.CODEC.optionalFieldOf("style", BladeStyles.RED.id()).forGetter(Unbaked::style),
 								ExtraCodecs.VECTOR3F.optionalFieldOf("emitter", DEFAULT_EMITTER).forGetter(Unbaked::emitter),
 								Codec.floatRange(0.1F, 4.0F).optionalFieldOf("length").forGetter(Unbaked::length),
-								Codec.floatRange(-360.0F, 360.0F).optionalFieldOf("angle", 0.0F).forGetter(Unbaked::angle)
+								Codec.floatRange(-360.0F, 360.0F).optionalFieldOf("angle", 0.0F).forGetter(Unbaked::angle),
+								Codec.BOOL.optionalFieldOf("unstable", false).forGetter(Unbaked::unstable)
 						)
 						.apply(instance, Unbaked::new)
 		);
@@ -189,7 +213,7 @@ public final class SaberBladeSpecialRenderer implements SpecialModelRenderer<Bla
 		public SaberBladeSpecialRenderer bake(SpecialModelRenderer.BakingContext context) {
 			// Unknown styles are reported once here; at render time they fall back to red.
 			BladeStyles.get(this.style);
-			return new SaberBladeSpecialRenderer(this.style, this.emitter, this.length.orElse(0.0F), this.angle);
+			return new SaberBladeSpecialRenderer(this.style, this.emitter, this.length.orElse(0.0F), this.angle, this.unstable);
 		}
 
 		@Override

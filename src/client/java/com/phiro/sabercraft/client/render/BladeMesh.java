@@ -95,6 +95,58 @@ public final class BladeMesh {
 		fins(pose, buffer, style.glowRadius(), length, glow, 0.2F * strength, shader ? SHADER_MIN_ALPHA : 0.0F);
 	}
 
+	/**
+	 * The ragged flames of an unstable blade (Phase 9): short glowing pieces of irregular width all
+	 * along the blade, with a few sparks sticking out sideways. {@code seed} changes a few times
+	 * per second, so the crackle moves.
+	 */
+	public static void crackle(PoseStack.Pose pose, VertexConsumer buffer, BladeStyle style, float length, float intensity, int seed, boolean shader) {
+		if (length <= 0.02F) {
+			return;
+		}
+
+		float strength = style.glowStrength() * intensity * (shader ? SHADER_GLOW_BOOST : 1.0F);
+		float core = style.coreRadius();
+		int glow = style.glowColor();
+		int hot = style.bloomColor();
+		int pieces = 18;
+		float step = length / pieces;
+
+		for (int i = 0; i < pieces; i++) {
+			float r = random(seed, i);
+			float y0 = BASE_OFFSET + i * step;
+			float y1 = Math.min(length, y0 + step * (0.6F + 0.8F * random(seed, i + 101)));
+			// Mostly thin, now and then a thick flare.
+			float radius = core * (2.2F + 3.2F * r * r);
+			int color = argb((0.1F + 0.2F * random(seed, i + 211)) * strength, r > 0.75F ? hot : glow);
+			ring(pose, buffer, radius, y0, radius * (0.7F + 0.5F * random(seed, i + 307)), y1, color, color);
+		}
+
+		// Sparks: thin spikes out of the blade.
+		for (int i = 0; i < 5; i++) {
+			float y = BASE_OFFSET + length * (0.08F + 0.88F * random(seed, i + 401));
+			float angle = random(seed, i + 503) * Mth.TWO_PI;
+			float reach = core * (4.0F + 6.0F * random(seed, i + 601));
+			float dx = Mth.cos(angle);
+			float dz = Mth.sin(angle);
+			float rise = (random(seed, i + 701) - 0.5F) * reach;
+			int color = argb(0.55F * Math.min(1.0F, strength), hot);
+			int clear = argb(shader ? SHADER_MIN_ALPHA : 0.0F, glow);
+			float w = core * 0.6F;
+			vertex(pose, buffer, -dz * w, y - w, dx * w, color, -dz, 0.0F, dx);
+			vertex(pose, buffer, -dz * -w, y + w, dx * -w, color, -dz, 0.0F, dx);
+			vertex(pose, buffer, dx * reach, y + rise + w * 0.3F, dz * reach, clear, -dz, 0.0F, dx);
+			vertex(pose, buffer, dx * reach, y + rise - w * 0.3F, dz * reach, clear, -dz, 0.0F, dx);
+		}
+	}
+
+	private static float random(int seed, int i) {
+		int h = seed * 374761393 + i * 668265263;
+		h = (h ^ h >>> 13) * 1274126177;
+		h ^= h >>> 16;
+		return (h & 0xFFFF) / 65535.0F;
+	}
+
 	/** A closed round tube along +Y with a dome-shaped tip. */
 	private static void tube(PoseStack.Pose pose, VertexConsumer buffer, float radius, float tipY, int bodyColor, int tipColor) {
 		float cylinderTop = Math.max(BASE_OFFSET, tipY - radius);

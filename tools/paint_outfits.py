@@ -374,6 +374,219 @@ def luke():
     o.save("luke")
 
 
+# ---------------- Phase 9: six more film characters ----------------
+
+def anakin():
+    """Young knight in dark robes: shoulder-length brown hair, a scar over one eye, a dark tunic
+    with black leather tabards and one black glove."""
+    o = Outfit(111)
+    skin, hair, eye, scar = "#dcae88", "#5a3a22", "#4a6a96", "#b98068"
+    tunic, leather, robe, belt, trousers, boots = "#3a2a20", "#1a1416", "#2c1e18", "#241a16", "#2a2420", "#141012"
+    o.fill("body", False, tunic)
+    o.fill(ARMS, False, tunic)
+    o.fill(LEGS, False, trousers)
+    o.fill(LEGS, False, boots, rows=(6, 12))
+    o.paint("body", False, lambda f, x, y, w, h: leather if f in ("front", "back") and x in (1, 2, 5, 6) and y < 7 else None)
+    o.paint("body", False, lambda f, x, y, w, h: ("#6a6a72" if f == "front" and x in (3, 4) else belt) if y in (7, 8) and f not in ("top", "bottom") else None)
+    # The right hand is a black glove (the mechanical hand), the left one bare.
+    o.fill("right_arm", False, leather, rows=(9, 12))
+    o.fill("left_arm", False, skin, rows=(11, 12))
+    # Dark robe open in front, long over the legs.
+    o.paint("body", True, lambda f, x, y, w, h: None if f == "bottom" or f == "front" and 1 < x < w - 2 else shade(robe, 0.9 if f == "back" else 1.0))
+    o.paint(ARMS, True, lambda f, x, y, w, h: None if f == "top" or y > 9 else shade(robe, 0.85 if y > 7 else 1.0))
+    o.paint(LEGS, True, lambda f, x, y, w, h: None if f in ("top", "bottom", "front") or y > 9 else shade(robe, 0.9))
+    head_from(o, False, {
+        "_": {"s": skin, "h": hair, "e": eye, "w": "#f0ece4", "c": scar, "m": "#a8705a"},
+        "front": ["hhhhhhhh", "hhhhhhhh", "hshhhhsh", "hssssssh", "hwessecw".replace("c", "e"), "hsssscsh", "hssmmssh", "hssssssh"],
+        "top": ["hhhhhhhh"] * 8, "bottom": ["hhssssh" + "h", "hssssssh", "ssssssss", "ssssssss", "ssssssss", "ssssssss", "ssssssss", "ssssssss"],
+        "right": ["hhhhhhhh", "hhhhhhhh", "hhhhhhhs", "hhhhhhss", "hhhhhsss", "hhhhssss", "hhhhhsss", "hhhhhhss"],
+        "left": ["hhhhhhhh", "hhhhhhhh", "shhhhhhh", "sshhhhhh", "ssshhhhh", "sssshhhh", "ssshhhhh", "sshhhhhh"],
+        "back": ["hhhhhhhh"] * 8,
+    })
+    # The scar: a thin line over the right eye down the cheek (drawn over the face).
+    o.paint("head", False, lambda f, x, y, w, h: scar if f == "front" and x == 5 and y in (3, 5) else None)
+    head_from(o, True, {
+        "_": {"h": hair, "d": "#4a2e1a"},
+        "front": ["hhhhhhhh", "hh.dh.hh", "h......h", "h......h", "h......h", "........", "........", "........"],
+        "right": ["hhhhhhhh", "hhhhhhhh", "hhhhhhh.", "hhhhhh..", "hhhhh...", "hhhhh...", "hhhhh...", "hhhh...."],
+        "left": ["hhhhhhhh", "hhhhhhhh", ".hhhhhhh", "..hhhhhh", "...hhhhh", "...hhhhh", "...hhhhh", "....hhhh"],
+        "back": ["hhhhhhhh"] * 8, "top": ["hdhhhhdh", "hhhhhhhh", "hhhdhhhh", "hhhhhhhh", "hhhhhhhh", "hhhhdhhh", "hhhhhhhh", "hhhhhhhh"],
+    })
+    o.save("anakin")
+
+
+def yoda():
+    """Small old master: green skin, wide ears on the sides of the head, a few white hairs, a
+    beige tunic under a coarse brown robe."""
+    o = Outfit(122)
+    green, dark, light, eye = "#7a9a52", "#5a7a3a", "#9ab870", "#3a2a1a"
+    tunic, robe, belt = "#c8b48a", "#6a4a2c", "#4a321e"
+    o.fill("body", False, tunic)
+    o.fill(ARMS, False, tunic)
+    o.fill(ARMS, False, green, rows=(10, 12))
+    o.fill(LEGS, False, tunic)
+    o.fill(LEGS, False, green, rows=(11, 12))
+    o.paint("body", False, lambda f, x, y, w, h: belt if y in (7, 8) and f not in ("top", "bottom") else None)
+    # Coarse robe over everything, long and wide.
+    o.paint("body", True, lambda f, x, y, w, h: None if f == "bottom" or f == "front" and 2 < x < w - 3 and y < 7 else shade(robe, 0.9 if f == "back" else 1.0))
+    o.paint(ARMS, True, lambda f, x, y, w, h: None if f == "bottom" or y > 9 else shade(robe, 0.9))
+    o.paint(LEGS, True, lambda f, x, y, w, h: None if f in ("top", "bottom") or y > 10 else shade(robe, 0.85))
+    head_from(o, False, {
+        "_": {"g": green, "d": dark, "l": light, "e": eye, "w": "#e8e0c8", "m": "#4a5a2a"},
+        "front": ["dglgglgd", "gggggggg", "gdggggdg", "gweggewg", "gggddggg", "ggglgggg", "ggdmmdgg", "dggggggd"],
+        "top": ["gglggggg", "gggggdgg", "gdgggggg", "ggggglgg", "gggggggg", "glgggdgg", "gggggggg", "ggdggggg"],
+        "bottom": ["gggggggg"] * 8,
+        "right": ["ddgggggg", "dlllgggg", "dllllggg", "lllllldg", "dllllggg", "dlllgggg", "ddgggggg", "gggggggg"],
+        "left": ["ggggggdd", "ggggllld", "gggllllld"[:8], "gdllllll", "gggllllld"[:8], "ggggllld", "ggggggdd", "gggggggg"],
+        "back": ["gggggggg", "ggdggggg", "gggggggg", "ggggggdg", "gggggggg", "gdgggggg", "gggggggg", "gggggggg"],
+    })
+    # Wispy white hair on the back and the sides.
+    head_from(o, True, {
+        "_": {"w": "#e8e4dc"},
+        "back": ["........", "w.w..w.w", ".w.ww.w.", "w......w", "........", "........", "........", "........"],
+        "top": ["........", "........", "........", "........", "........", ".w....w.", "w.w..w.w", ".w.ww.w."],
+    })
+    o.save("yoda")
+
+
+def dooku():
+    """Elegant count: white swept-back hair and a short white beard, a dark suit with a high
+    collar, a long cape with a silver clasp chain."""
+    o = Outfit(133)
+    skin, hair, eye = "#d4a888", "#dcdcd8", "#3a3a44"
+    suit, dark, cape, belt, metal, boots = "#24201e", "#181414", "#2e1a14", "#3a2a1c", "#b8b8c0", "#121010"
+    o.fill("body", False, suit)
+    o.fill(ARMS, False, suit)
+    o.fill(LEGS, False, dark)
+    o.fill(LEGS, False, boots, rows=(7, 12))
+    o.paint("body", False, lambda f, x, y, w, h: ("#8a7040" if f == "front" and x in (3, 4) else belt) if y in (7, 8) and f not in ("top", "bottom") else None)
+    o.paint("body", False, lambda f, x, y, w, h: dark if f == "front" and x in (3, 4) and y < 7 else None)
+    o.fill(ARMS, False, "#e8d8c8", rows=(11, 12))
+    # The cape: shoulders, back and sides, with the silver chain across the chest.
+    o.paint("body", True, lambda f, x, y, w, h: (metal if f == "front" and y == 1 and 1 <= x <= 6 else None) if f == "front"
+            else None if f == "bottom" else shade(cape, 0.85 if f == "back" else 1.0))
+    o.paint(ARMS, True, lambda f, x, y, w, h: shade(cape, 1.0) if f == "top" or y < 2 and f in ("right", "left", "back") else None)
+    o.paint(LEGS, True, lambda f, x, y, w, h: None if f in ("front", "top", "bottom") else shade(cape, 0.8))
+    head_from(o, False, {
+        "_": {"s": skin, "h": hair, "e": eye, "w": "#f0ece4", "b": "#e4e2dc", "m": "#a86a5a"},
+        "front": ["hhhhhhhh", "hhhhhhhh", "hsssssss", "ssssssss", "sweswesw"[:8].replace("we", "we"), "sssssss" + "s", "sbbmmbbs", "bbbbbbbb"],
+        "top": ["hhhhhhhh"] * 8, "bottom": ["ssbbbbss", "sbbbbbbs", "bbbbbbbb", "bbbbbbbb", "ssssssss", "ssssssss", "ssssssss", "ssssssss"],
+        "right": ["hhhhhhhh", "hhhhhhhh", "hhhhhhss", "hhhhhsss", "hhhhssss", "hhhssssb", "hhhssbbb", "hhhhsbbb"],
+        "left": ["hhhhhhhh", "hhhhhhhh", "sshhhhhh", "ssshhhhh", "sssshhhh", "bsssshhh", "bbbsshhh", "bbbshhhh"],
+        "back": ["hhhhhhhh"] * 8,
+    })
+    # High collar of the cape around the neck.
+    head_from(o, True, {
+        "_": {"c": cape},
+        "right": ["........"] * 6 + ["cc......", "ccc....."], "left": ["........"] * 6 + ["......cc", ".....ccc"],
+        "back": ["........"] * 6 + ["cccccccc", "cccccccc"],
+    })
+    o.save("dooku")
+
+
+def ahsoka():
+    """Togruta knight: orange skin with white face markings, tall striped montrals and head-tails
+    in blue and white, a dark grey top, a brown belt and arm wraps."""
+    o = Outfit(144)
+    skin, white, blue, dblue, eye = "#d4703a", "#f2f0ea", "#3a6ab0", "#28487a", "#4a7ab8"
+    top, wrap, belt, leggings, boots = "#3a3c42", "#6a5a4a", "#5a3a22", "#4a4038", "#2a2422"
+    o.fill("body", False, top)
+    o.fill(ARMS, False, skin)
+    o.fill(ARMS, False, wrap, rows=(6, 11))
+    o.fill(LEGS, False, leggings)
+    o.fill(LEGS, False, boots, rows=(8, 12))
+    o.paint("body", False, lambda f, x, y, w, h: ("#a8a8b0" if f == "front" and x in (3, 4) else belt) if y in (7, 8) and f not in ("top", "bottom") else None)
+    o.paint("body", False, lambda f, x, y, w, h: skin if f == "front" and y == 0 and 2 <= x <= 5 else None)
+    # The head-tails hang down over the chest and the back, striped blue and white.
+    o.paint("body", True, lambda f, x, y, w, h: ((white if y % 3 == 0 else blue) if y < 7 else None) if f == "front" and x in (1, 6)
+            else ((white if y % 3 == 1 else dblue) if y < 9 else None) if f == "back" and 2 <= x <= 5 else None)
+    head_from(o, False, {
+        "_": {"s": skin, "w": white, "b": blue, "e": eye, "k": "#1a1414", "m": "#a84a2a"},
+        "front": ["wbbwwbbw", "wbwsswbw", "swwssw" + "ws", "ssssssss", "swessews", "wsssssw" + "s", "swsmmsws", "ssssssss"],
+        "top": ["bbwwwwbb", "bwbbbbwb", "wbbbbbbw", "wbbwwbbw", "wbbwwbbw", "wbbbbbbw", "bwbbbbwb", "bbwwwwbb"],
+        "bottom": ["ssssssss"] * 8,
+        "right": ["bbwbbwbb", "bwbbwbbs", "wbbwbsss", "bbwbssss", "bwbsssss", "wbbsssss", "bbwsssss", "bwbsssss"],
+        "left": ["bbwbbwbb", "sbbwbbwb", "sssbwbbw", "ssssbwbb", "sssssbwb", "sssssbbw", "ssssswbb", "sssssbwb"],
+        "back": ["bbwbbwbb", "bwbbbbwb", "wbbwwbbw", "bbwbbwbb", "bwbbbbwb", "wbbwwbbw", "bbwbbwbb", "bwbbbbwb"],
+    })
+    # Montrals: two horn-like points on the outer layer of the head, striped.
+    head_from(o, True, {
+        "_": {"w": white, "b": blue},
+        "top": ["wb....bw", "bw....wb", "b......b", "........", "........", "........", "........", "........"],
+        "front": ["wb....bw", "b......b", "........", "........", "........", "........", "........", "........"],
+        "right": ["bwb.....", "wb......", "b.......", "........", "........", "........", "........", "........"],
+        "left": [".....bwb", "......bw", ".......b", "........", "........", "........", "........", "........"],
+    })
+    o.save("ahsoka")
+
+
+def kylo():
+    """Dark knight: a black helmet with a silver trim around the visor, black hooded robes and a
+    padded black tunic; black gloves."""
+    o = Outfit(155)
+    black, dark, silver, gray = "#0e0e10", "#1c1c20", "#a8aab2", "#3a3a40"
+    o.fill("body", False, dark)
+    o.fill(ARMS, False, black)
+    o.fill(LEGS, False, black)
+    # Padded, quilted tunic: darker lines across.
+    o.paint("body", False, lambda f, x, y, w, h: black if f in ("front", "back") and (y % 3 == 2) else None)
+    o.paint("body", False, lambda f, x, y, w, h: gray if y in (7, 8) and f not in ("top", "bottom") else None)
+    # Long hooded robe over everything, with a cape at the back.
+    o.paint("body", True, lambda f, x, y, w, h: None if f == "bottom" or f == "front" and 2 < x < w - 3 else shade(black, 0.9 if f == "back" else 1.0))
+    o.paint(ARMS, True, lambda f, x, y, w, h: None if f == "bottom" or y > 10 else black)
+    o.paint(LEGS, True, lambda f, x, y, w, h: None if f in ("top", "bottom") or y > 10 else shade(black, 0.9))
+    head_from(o, False, {
+        "_": {"k": black, "d": dark, "s": silver, "g": gray},
+        "front": ["kkkkkkkk", "kssssssk", "kskkkksk", "ksskkssk", "kkskkskk", "kkskkskk", "kksddskk", "kkkkkkkk"],
+        "top": ["kkkkkkkk"] * 8, "bottom": ["kkkkkkkk"] * 8,
+        "right": ["kkkkkkkk", "kkkkkkks", "kkkkkkks", "kkkgkkkk", "kkkkkkkk", "kkkkkkkk", "kkkkkkkk", "kkkkkkkk"],
+        "left": ["kkkkkkkk", "skkkkkkk", "skkkkkkk", "kkkkgkkk", "kkkkkkkk", "kkkkkkkk", "kkkkkkkk", "kkkkkkkk"],
+        "back": ["kkkkkkkk"] * 8,
+    })
+    # The hood lies over the back and the sides of the helmet.
+    head_from(o, True, {
+        "_": {"k": black},
+        "top": ["kkkkkkkk"] * 8, "back": ["kkkkkkkk"] * 8,
+        "right": ["kkkkkkkk", "kkkkkk..", "kkkkk...", "kkkkk...", "kkkkk...", "kkkkkk..", "kkkkkkk.", "kkkkkkkk"],
+        "left": ["kkkkkkkk", "..kkkkkk", "...kkkkk", "...kkkkk", "...kkkkk", "..kkkkkk", ".kkkkkkk", "kkkkkkkk"],
+        "front": ["kkkkkkkk", "k......k", "........", "........", "........", "........", "........", "........"],
+    })
+    o.save("kylo")
+
+
+def rey():
+    """Scavenger turned knight: light wrapped desert clothes, grey arm wraps, a brown belt, brown
+    hair tied in three buns at the back of the head."""
+    o = Outfit(166)
+    skin, hair, eye = "#dcae88", "#5a3a20", "#5a4a32"
+    wrap, light, arm, belt, trousers, boots = "#d8ccb0", "#ece4d0", "#9a9284", "#6a4a2c", "#c8b898", "#5a4a3a"
+    o.fill("body", False, wrap)
+    o.fill(ARMS, False, skin)
+    o.fill(ARMS, False, arm, rows=(3, 11))
+    o.fill(LEGS, False, trousers)
+    o.fill(LEGS, False, boots, rows=(8, 12))
+    # The wrap crossing over the chest, and the wide belt.
+    o.paint("body", False, lambda f, x, y, w, h: light if f == "front" and (x == y + 1 or x == 6 - y) and y < 7 else None)
+    o.paint("body", False, lambda f, x, y, w, h: belt if y in (7, 8, 9) and f not in ("top", "bottom") else None)
+    o.paint("body", True, lambda f, x, y, w, h: shade(wrap, 0.92) if f in ("left", "right", "back") and y > 8 else None)
+    o.paint(LEGS, True, lambda f, x, y, w, h: shade(wrap, 0.9) if f in ("left", "right", "back", "front") and y < 3 else None)
+    head_from(o, False, {
+        "_": {"s": skin, "h": hair, "e": eye, "w": "#f2eee8", "m": "#b97a64"},
+        "front": ["hhhhhhhh", "hhhhhhhh", "hsssssh" + "h", "ssssssss", "swessews", "ssssssss", "sssmmsss", "ssssssss"],
+        "top": ["hhhhhhhh"] * 8, "bottom": ["ssssssss"] * 8,
+        "right": ["hhhhhhhh", "hhhhhhhh", "hhhhhhhs", "hhhhhhss", "hhhhssss", "hhhsssss", "hhssssss", "hsssssss"],
+        "left": ["hhhhhhhh", "hhhhhhhh", "shhhhhhh", "sshhhhhh", "sssshhhh", "ssssshhh", "sssssshh", "ssssssh" + "h"],
+        "back": ["hhhhhhhh"] * 8,
+    })
+    # Three buns stacked at the back of the head.
+    head_from(o, True, {
+        "_": {"h": hair, "d": "#3e2814"},
+        "back": ["...hh...", "..hddh..", "...hh...", "..hddh..", "...hh...", "..hddh..", "...hh...", "........"],
+        "top": ["........"] * 6 + ["..hhhh..", "...hh..."],
+    })
+    o.save("rey")
+
+
 if __name__ == "__main__":
     wanderer()
     shadow()
@@ -384,3 +597,9 @@ if __name__ == "__main__":
     obi_wan()
     maul()
     luke()
+    anakin()
+    yoda()
+    dooku()
+    ahsoka()
+    kylo()
+    rey()

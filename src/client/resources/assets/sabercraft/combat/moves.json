@@ -506,6 +506,391 @@
         "right": "sabercraft:dodge_sidestep_right",
         "back": "sabercraft:dodge_backflip"
       }
+    },
+    "sabercraft:onslaught": {
+      "combo": [
+        "sabercraft:ons_overhead",
+        "sabercraft:ons_backhand",
+        "sabercraft:ons_double",
+        "sabercraft:ons_rising"
+      ],
+      "sprint": "sabercraft:ons_leap",
+      "jump": "sabercraft:ons_leap",
+      "special": "sabercraft:ons_spin",
+      "combo_window": 16,
+      "idle_first_person": {
+        "grip": [0.95, -0.45, 0.0],
+        "aim": [108, -35, 0]
+      },
+      "idle_third_person": {
+        "main_arm": [-130, -10, 5],
+        "off_arm": [-120, 35, 0],
+        "body": [0, 15],
+        "item": [10, 0, -25],
+        "main_leg": [-14, 0, 6],
+        "off_leg": [14, 0, -6],
+        "lean": 6,
+        "crouch": 0.04
+      },
+      "guard_first_person": {
+        "grip": [0.4, -0.5, 0.15],
+        "aim": [42, 80, 0]
+      },
+      "guard_third_person": {
+        "main_arm": [-100, -22, 0],
+        "off_arm": [-95, 38, 0],
+        "body": [4, -10],
+        "item": [0, 0, 58],
+        "main_leg": [-16, 0, 7],
+        "off_leg": [16, 0, -7],
+        "lean": 8,
+        "crouch": 0.06
+      },
+      "guard_hit": "sabercraft:guard_hit",
+      "parry": "sabercraft:parry",
+      "guard_break": "sabercraft:guard_break",
+      "run_third_person": {
+        "main_arm": [20, 5, 12],
+        "item": [75, 0, 0],
+        "lean": 14
+      },
+      "air_third_person": {
+        "main_arm": [-70, -10, 5],
+        "off_arm": [-35, 30, 25],
+        "item": [30, 0, -10],
+        "main_leg": [-30, 0, 4],
+        "off_leg": [18, 0, -4],
+        "lean": 4
+      },
+      "land": "sabercraft:land",
+      "land_heavy": "sabercraft:land_heavy",
+      "dodge": {
+        "forward": "sabercraft:dodge_lunge",
+        "left": "sabercraft:dodge_roll_left",
+        "right": "sabercraft:dodge_roll_right",
+        "back": "sabercraft:dodge_backflip"
+      }
+    },
+    "sabercraft:ataru": {
+      "combo": [
+        "sabercraft:ataru_spin_cut",
+        "sabercraft:ataru_flip_cut",
+        "sabercraft:ataru_twirl",
+        "sabercraft:ataru_spin_cut"
+      ],
+      "sprint": "sabercraft:ataru_leap",
+      "jump": "sabercraft:ataru_flip_cut",
+      "special": "sabercraft:ataru_whirlwind",
+      "combo_window": 14,
+      "idle_first_person": {
+        "grip": [0.7, -0.85, 0.15],
+        "aim": [55, 45, 0]
+      },
+      "idle_third_person": {
+        "main_arm": [-75, -30, 0],
+        "off_arm": [-60, 45, 15],
+        "body": [10, 0],
+        "item": [-20, 0, 45],
+        "main_leg": [-30, 0, 6],
+        "off_leg": [20, 0, -6],
+        "lean": 20,
+        "crouch": 0.18
+      },
+      "guard_first_person": {
+        "grip": [0.45, -0.6, 0.15],
+        "aim": [40, 78, 0]
+      },
+      "guard_third_person": {
+        "main_arm": [-92, -20, 0],
+        "off_arm": [-60, 40, 10],
+        "body": [10, -10],
+        "item": [0, 0, 55],
+        "main_leg": [-30, 0, 7],
+        "off_leg": [22, 0, -7],
+        "lean": 18,
+        "crouch": 0.18
+      },
+      "guard_hit": "sabercraft:guard_hit",
+      "parry": "sabercraft:parry",
+      "guard_break": "sabercraft:guard_break",
+      "run_third_person": {
+        "main_arm": [30, 10, 15],
+        "item": [80, 0, 0],
+        "lean": 22
+      },
+      "air_third_person": {
+        "main_arm": [-70, -10, 5],
+        "off_arm": [-35, 30, 25],
+        "item": [30, 0, -10],
+        "main_leg": [-30, 0, 4],
+        "off_leg": [18, 0, -4],
+        "lean": 4
+      },
+      "land": "sabercraft:land",
+      "land_heavy": "sabercraft:land_heavy",
+      "dodge": {
+        "forward": "sabercraft:dodge_spin_step",
+        "left": "sabercraft:dodge_roll_left",
+        "right": "sabercraft:dodge_roll_right",
+        "back": "sabercraft:dodge_backflip"
+      }
+    },
+    "sabercraft:makashi": {
+      "combo": [
+        "sabercraft:mak_thrust",
+        "sabercraft:mak_flick",
+        "sabercraft:mak_disengage",
+        "sabercraft:mak_cut"
+      ],
+      "sprint": "sabercraft:mak_fleche",
+      "jump": "sabercraft:mak_cut",
+      "special": "sabercraft:mak_flourish",
+      "combo_window": 15,
+      "idle_first_person": {
+        "grip": [0.55, -0.45, 0.25],
+        "aim": [18, 12, 0]
+      },
+      "idle_third_person": {
+        "main_arm": [-75, 10, 0],
+        "off_arm": [35, 25, -25],
+        "body": [0, -25],
+        "item": [-75, 0, 0],
+        "main_leg": [-14, 0, 4],
+        "off_leg": [12, 0, -4],
+        "lean": 2,
+        "crouch": 0.03
+      },
+      "guard_first_person": {
+        "grip": [0.42, -0.5, 0.2],
+        "aim": [55, 60, 0]
+      },
+      "guard_third_person": {
+        "main_arm": [-100, -10, 0],
+        "off_arm": [35, 25, -25],
+        "body": [0, -25],
+        "item": [-20, 0, 50],
+        "main_leg": [-16, 0, 4],
+        "off_leg": [14, 0, -4],
+        "lean": 3,
+        "crouch": 0.05
+      },
+      "guard_hit": "sabercraft:guard_hit",
+      "parry": "sabercraft:parry",
+      "guard_break": "sabercraft:guard_break",
+      "run_third_person": {
+        "main_arm": [-40, 10, 0],
+        "off_arm": [35, 25, -25],
+        "item": [-40, 0, 0],
+        "lean": 10
+      },
+      "air_third_person": {
+        "main_arm": [-70, -10, 5],
+        "off_arm": [-35, 30, 25],
+        "item": [30, 0, -10],
+        "main_leg": [-30, 0, 4],
+        "off_leg": [18, 0, -4],
+        "lean": 4
+      },
+      "land": "sabercraft:land",
+      "land_heavy": "sabercraft:land_heavy",
+      "dodge": {
+        "forward": "sabercraft:dodge_lunge",
+        "left": "sabercraft:dodge_sidestep_left",
+        "right": "sabercraft:dodge_sidestep_right",
+        "back": "sabercraft:dodge_backstep"
+      }
+    },
+    "sabercraft:reverse_shien": {
+      "combo": [
+        "sabercraft:rev_hook",
+        "sabercraft:rev_backstab",
+        "sabercraft:rev_uppercut",
+        "sabercraft:rev_spin"
+      ],
+      "sprint": "sabercraft:rev_dash_cut",
+      "jump": "sabercraft:rev_drop",
+      "special": "sabercraft:rev_cyclone",
+      "combo_window": 14,
+      "idle_first_person": {
+        "grip": [0.8, -0.3, 0.05],
+        "aim": [-45, -30, 0]
+      },
+      "idle_third_person": {
+        "main_arm": [-50, -20, 0],
+        "off_arm": [-60, 40, 10],
+        "body": [12, 5],
+        "item": [235, 0, -10],
+        "main_leg": [-24, 0, 6],
+        "off_leg": [18, 0, -6],
+        "lean": 16,
+        "crouch": 0.1
+      },
+      "guard_first_person": {
+        "grip": [0.5, -0.45, 0.15],
+        "aim": [-10, 85, 0]
+      },
+      "guard_third_person": {
+        "main_arm": [-100, -30, 0],
+        "off_arm": [-70, 40, 10],
+        "body": [8, -10],
+        "item": [180, 0, 70],
+        "main_leg": [-24, 0, 8],
+        "off_leg": [20, 0, -8],
+        "lean": 14,
+        "crouch": 0.12
+      },
+      "guard_hit": "sabercraft:guard_hit",
+      "parry": "sabercraft:parry",
+      "guard_break": "sabercraft:guard_break",
+      "run_third_person": {
+        "main_arm": [30, 10, 15],
+        "item": [235, 0, -10],
+        "lean": 20
+      },
+      "air_third_person": {
+        "main_arm": [-70, -10, 5],
+        "off_arm": [-35, 30, 25],
+        "item": [235, 0, -10],
+        "main_leg": [-30, 0, 4],
+        "off_leg": [18, 0, -4],
+        "lean": 4
+      },
+      "land": "sabercraft:land",
+      "land_heavy": "sabercraft:land_heavy",
+      "dodge": {
+        "forward": "sabercraft:dodge_roll",
+        "left": "sabercraft:dodge_roll_left",
+        "right": "sabercraft:dodge_roll_right",
+        "back": "sabercraft:dodge_backflip"
+      }
+    },
+    "sabercraft:unbridled": {
+      "combo": [
+        "sabercraft:wild_hammer",
+        "sabercraft:wild_wide",
+        "sabercraft:wild_rage",
+        "sabercraft:wild_slam"
+      ],
+      "sprint": "sabercraft:wild_charge",
+      "jump": "sabercraft:wild_hammer",
+      "special": "sabercraft:wild_frenzy",
+      "combo_window": 20,
+      "idle_first_person": {
+        "grip": [1.15, -0.95, 0.0],
+        "aim": [20, -60, 0]
+      },
+      "idle_third_person": {
+        "main_arm": [-30, -25, 10],
+        "off_arm": [-40, 15, 15],
+        "body": [15, 15],
+        "item": [-30, 0, -40],
+        "main_leg": [-16, 0, 8],
+        "off_leg": [14, 0, -8],
+        "lean": 14,
+        "crouch": 0.08
+      },
+      "guard_first_person": {
+        "grip": [0.45, -0.5, 0.15],
+        "aim": [46, 84, 0]
+      },
+      "guard_third_person": {
+        "main_arm": [-104, -20, 0],
+        "off_arm": [-100, 36, 0],
+        "body": [10, -6],
+        "item": [0, 0, 62],
+        "main_leg": [-18, 0, 9],
+        "off_leg": [16, 0, -9],
+        "lean": 12,
+        "crouch": 0.08
+      },
+      "guard_hit": "sabercraft:guard_hit",
+      "parry": "sabercraft:parry",
+      "guard_break": "sabercraft:guard_break",
+      "run_third_person": {
+        "main_arm": [-20, -20, 10],
+        "off_arm": [-20, 20, 0],
+        "item": [-30, 0, -40],
+        "lean": 16
+      },
+      "air_third_person": {
+        "main_arm": [-70, -10, 5],
+        "off_arm": [-35, 30, 25],
+        "item": [30, 0, -10],
+        "main_leg": [-30, 0, 4],
+        "off_leg": [18, 0, -4],
+        "lean": 4
+      },
+      "land": "sabercraft:land",
+      "land_heavy": "sabercraft:land_heavy",
+      "dodge": {
+        "forward": "sabercraft:dodge_lunge",
+        "left": "sabercraft:dodge_sidestep_left",
+        "right": "sabercraft:dodge_sidestep_right",
+        "back": "sabercraft:dodge_backstep"
+      }
+    },
+    "sabercraft:shii_cho": {
+      "combo": [
+        "sabercraft:shii_sweep",
+        "sabercraft:shii_return",
+        "sabercraft:shii_overhead",
+        "sabercraft:shii_twirl"
+      ],
+      "sprint": "sabercraft:shii_charge",
+      "jump": "sabercraft:shii_overhead",
+      "special": "sabercraft:shii_spin",
+      "combo_window": 17,
+      "idle_first_person": {
+        "grip": [0.55, -0.7, 0.15],
+        "aim": [55, 20, 0]
+      },
+      "idle_third_person": {
+        "main_arm": [-70, -15, 0],
+        "off_arm": [-70, 45, 0],
+        "item": [-45, 0, 15],
+        "main_leg": [-10, 0, 8],
+        "off_leg": [10, 0, -8],
+        "lean": 4,
+        "crouch": 0.04
+      },
+      "guard_first_person": {
+        "grip": [0.4, -0.55, 0.15],
+        "aim": [40, 80, 0]
+      },
+      "guard_third_person": {
+        "main_arm": [-96, -20, 0],
+        "off_arm": [-92, 40, 0],
+        "body": [0, -8],
+        "item": [0, 0, 60],
+        "main_leg": [-12, 0, 9],
+        "off_leg": [12, 0, -9],
+        "lean": 6,
+        "crouch": 0.06
+      },
+      "guard_hit": "sabercraft:guard_hit",
+      "parry": "sabercraft:parry",
+      "guard_break": "sabercraft:guard_break",
+      "run_third_person": {
+        "main_arm": [20, 5, 12],
+        "item": [75, 0, 0],
+        "lean": 14
+      },
+      "air_third_person": {
+        "main_arm": [-70, -10, 5],
+        "off_arm": [-35, 30, 25],
+        "item": [30, 0, -10],
+        "main_leg": [-30, 0, 4],
+        "off_leg": [18, 0, -4],
+        "lean": 4
+      },
+      "land": "sabercraft:land",
+      "land_heavy": "sabercraft:land_heavy",
+      "dodge": {
+        "forward": "sabercraft:dodge_roll",
+        "left": "sabercraft:dodge_roll_left",
+        "right": "sabercraft:dodge_roll_right",
+        "back": "sabercraft:dodge_backstep"
+      }
     }
   },
   "moves": {
@@ -6472,6 +6857,3715 @@
           "off_leg": [8, 0, -10],
           "lean": 4,
           "crouch": 0.02
+        }
+      ]
+    },
+    "sabercraft:ons_overhead": {
+      "duration": 10.4,
+      "strike": 3.6,
+      "sound": "heavy",
+      "first_person": [
+        {
+          "t": 0.0,
+          "grip": [0.4, 0.43, 0.0],
+          "aim": [137.7, -7.5, 0.0]
+        },
+        {
+          "t": 2.0,
+          "grip": [0.235, 0.375, 0.055],
+          "aim": [132.2, -2.0, 0.0]
+        },
+        {
+          "t": 3.6,
+          "grip": [0.015, -0.34, 0.275],
+          "aim": [5.7, 3.5, 0.0]
+        },
+        {
+          "t": 4.8,
+          "grip": [-0.04, -0.78, 0.275],
+          "aim": [-54.8, 3.5, 0.0]
+        },
+        {
+          "t": 6.8,
+          "grip": [0.015, -0.89, 0.22],
+          "aim": [-60.3, 3.5, 0.0]
+        }
+      ],
+      "third_person": [
+        {
+          "t": 0.0,
+          "main_arm": [-179.5, 6.5, 5.0],
+          "off_arm": [-177.2, 29.5, 0.0],
+          "body": [-16.5, 8.8],
+          "item": [21.0, 0.0, 2.5],
+          "main_leg": [-9.0, 0, 5],
+          "off_leg": [12.0, 0, -5],
+          "lean": -8,
+          "crouch": 0.03
+        },
+        {
+          "t": 2.0,
+          "main_arm": [-182.8, 1.0, 5.0],
+          "off_arm": [-180.5, 27.3, 0.0],
+          "body": [-19.8, 5.5],
+          "item": [26.5, 0.0, 2.5]
+        },
+        {
+          "t": 2.52,
+          "main_leg": [-22.5, 0.0, 3.75],
+          "off_leg": [18.0, 0.0, -3.75],
+          "lean": 12.0,
+          "crouch": 0.036
+        },
+        {
+          "t": 3.6,
+          "main_arm": [-86.0, -4.5, -0.5],
+          "off_arm": [-87.0, 27.3, 0.0],
+          "body": [22.0, 0.0],
+          "item": [-83.5, 0.0, 2.5],
+          "main_leg": [-30, 0, 5],
+          "off_leg": [24, 0, -5],
+          "lean": 20,
+          "crouch": 0.06
+        },
+        {
+          "t": 4.8,
+          "main_arm": [-36.5, -4.5, -0.5],
+          "off_arm": [-37.5, 24.0, 0.0],
+          "body": [33.0, 0.0],
+          "item": [-100.0, 0.0, 2.5]
+        },
+        {
+          "t": 6.8,
+          "main_arm": [-31.0, -4.5, -0.5],
+          "off_arm": [-32.0, 24.0, 0.0],
+          "body": [30.8, 0.0],
+          "item": [-100.0, 0.0, 2.5]
+        },
+        {
+          "t": 7.0,
+          "main_leg": [-25.5, 0.0, 4.25],
+          "off_leg": [20.4, 0.0, -4.25],
+          "lean": 14.0,
+          "crouch": 0.041999999999999996
+        }
+      ]
+    },
+    "sabercraft:ons_backhand": {
+      "duration": 7.65,
+      "strike": 2.12,
+      "sound": "swing",
+      "first_person": [
+        {
+          "t": 0.0,
+          "grip": [-1.09, -0.33, 0.18],
+          "aim": [-12.0, 127.0, 0.0]
+        },
+        {
+          "t": 1.27,
+          "grip": [-0.61, -0.21, 0.24],
+          "aim": [-9.6, 81.4, 0.0]
+        },
+        {
+          "t": 2.12,
+          "grip": [-0.01, -0.21, 0.264],
+          "aim": [-9.6, -50.6, 0.0]
+        },
+        {
+          "t": 3.4,
+          "grip": [0.71, -0.33, 0.18],
+          "aim": [-14.4, -113.0, 0.0]
+        },
+        {
+          "t": 5.1,
+          "grip": [1.01, -0.51, 0.12],
+          "aim": [-9.6, -131.0, 0.0]
+        }
+      ],
+      "third_person": [
+        {
+          "t": 0.0,
+          "main_arm": [-82.0, -70.0, -1.0],
+          "off_arm": [-78.0, -1.0, 0.0],
+          "body": [0.0, -30.0],
+          "item": [-98.0, 0.0, 5.0],
+          "main_leg": [-7.199999999999999, 0, 5],
+          "off_leg": [9.0, 0, -5],
+          "lean": -3,
+          "crouch": 0.03
+        },
+        {
+          "t": 1.27,
+          "main_arm": [-84.4, -34.0, -1.0],
+          "off_arm": [-81.6, 17.0, 0.0],
+          "body": [0.0, -14.4],
+          "item": [-100.4, 0.0, 5.0]
+        },
+        {
+          "t": 1.47,
+          "main_leg": [-18.0, 0.0, 3.75],
+          "off_leg": [13.5, 0.0, -3.75],
+          "lean": 6.0,
+          "crouch": 0.024
+        },
+        {
+          "t": 2.1,
+          "main_leg": [-24, 0, 5],
+          "off_leg": [18, 0, -5],
+          "lean": 10,
+          "crouch": 0.04
+        },
+        {
+          "t": 2.12,
+          "main_arm": [-84.4, 14.0, -1.0],
+          "off_arm": [-81.6, 41.0, 0.0],
+          "body": [0.0, 7.2],
+          "item": [-100.4, 0.0, 5.0]
+        },
+        {
+          "t": 3.4,
+          "main_arm": [-76.0, 62.0, 5.0],
+          "off_arm": [-66.0, 65.0, 0.0],
+          "body": [0.0, 26.4],
+          "item": [-98.0, 0.0, 5.0]
+        },
+        {
+          "t": 5.1,
+          "main_arm": [-64.0, 76.4, 11.0],
+          "off_arm": [-54.0, 71.0, 0.0],
+          "body": [0.0, 31.2],
+          "item": [-98.0, 0.0, 5.0],
+          "main_leg": [-20.4, 0.0, 4.25],
+          "off_leg": [15.299999999999999, 0.0, -4.25],
+          "lean": 7.0,
+          "crouch": 0.027999999999999997
+        }
+      ]
+    },
+    "sabercraft:ons_rising": {
+      "duration": 9.6,
+      "strike": 3.2,
+      "sound": "heavy",
+      "first_person": [
+        {
+          "t": 0.0,
+          "grip": [-0.865, -0.945, 0.11],
+          "aim": [-54.8, 113.5, 0.0]
+        },
+        {
+          "t": 1.6,
+          "grip": [-0.755, -0.835, 0.11],
+          "aim": [-49.3, 108.0, 0.0]
+        },
+        {
+          "t": 3.2,
+          "grip": [-0.095, -0.175, 0.22],
+          "aim": [22.2, -18.5, 0.0]
+        },
+        {
+          "t": 4.4,
+          "grip": [0.565, 0.21, 0.165],
+          "aim": [66.2, -90.0, 0.0]
+        },
+        {
+          "t": 6.4,
+          "grip": [0.785, 0.32, 0.11],
+          "aim": [82.7, -106.5, 0.0]
+        }
+      ],
+      "third_person": [
+        {
+          "t": 0.0,
+          "main_arm": [-20.0, -54.0, -0.5],
+          "off_arm": [-21.0, -14.5, 0.0],
+          "body": [0.0, -33.0],
+          "item": [-78.0, 0.0, 2.5],
+          "main_leg": [10.0, 0, 5],
+          "off_leg": [-7.199999999999999, 0, -5],
+          "lean": 16,
+          "crouch": 0.12
+        },
+        {
+          "t": 1.6,
+          "main_arm": [-22.2, -56.2, -0.5],
+          "off_arm": [-23.2, -16.7, 0.0],
+          "body": [0.0, -35.2],
+          "item": [-78.0, 0.0, 2.5]
+        },
+        {
+          "t": 2.2399999999999998,
+          "main_leg": [15.0, 0.0, 3.75],
+          "off_leg": [-18.0, 0.0, -3.75],
+          "lean": -3.5999999999999996,
+          "crouch": 0.0
+        },
+        {
+          "t": 3.2,
+          "main_arm": [-97.0, 1.0, -0.5],
+          "off_arm": [-95.8, 29.5, 0.0],
+          "body": [0.0, 0.0],
+          "item": [-56.0, 0.0, 2.5],
+          "main_leg": [20, 0, 5],
+          "off_leg": [-24, 0, -5],
+          "lean": -6,
+          "crouch": 0.0
+        },
+        {
+          "t": 4.4,
+          "main_arm": [-152.0, 34.0, 10.5],
+          "off_arm": [-147.5, 51.5, 0.0],
+          "body": [-5.5, 24.2],
+          "item": [-34.0, 0.0, 2.5]
+        },
+        {
+          "t": 6.4,
+          "main_arm": [-163.0, 39.5, 10.5],
+          "off_arm": [-158.5, 57.0, 0.0],
+          "body": [-8.8, 27.5],
+          "item": [-23.0, 0.0, 2.5],
+          "main_leg": [17.0, 0.0, 4.25],
+          "off_leg": [-20.4, 0.0, -4.25],
+          "lean": -4.199999999999999,
+          "crouch": 0.0
+        }
+      ]
+    },
+    "sabercraft:ons_spin": {
+      "duration": 12.8,
+      "strike": 4.8,
+      "sound": "spin",
+      "interrupt": 11.2,
+      "first_person": [
+        {
+          "t": 0.0,
+          "grip": [1.002, -0.398, 0.105],
+          "aim": [5.1, -119.0, 0.0]
+        },
+        {
+          "t": 2.0,
+          "grip": [1.318, -0.345, 0.21],
+          "aim": [3.0, -155.75, 0.0]
+        },
+        {
+          "t": 3.6,
+          "grip": [-0.258, -0.292, 0.315],
+          "aim": [3.0, 43.75, 0.0]
+        },
+        {
+          "t": 4.8,
+          "grip": [-1.097, -0.345, 0.21],
+          "aim": [3.0, 117.25, 0.0]
+        },
+        {
+          "t": 6.0,
+          "grip": [-1.727, -0.398, 0.105],
+          "aim": [3.0, 159.25, 0.0]
+        },
+        {
+          "t": 7.2,
+          "grip": [1.633, -0.398, 0.105],
+          "aim": [3.0, -155.75, 0.0]
+        },
+        {
+          "t": 8.8,
+          "grip": [0.583, -0.45, 0.158],
+          "aim": [5.1, -92.75, 0.0]
+        }
+      ],
+      "third_person": [
+        {
+          "t": 0.0,
+          "main_arm": [-88.0, 63.5, 5.0],
+          "off_arm": [-83.2, 77.0, 0.0],
+          "body": [0.0, 31.5],
+          "item": [-84.5, 0.0, 1.2],
+          "spin": 0,
+          "main_leg": [-8, 0, 7],
+          "off_leg": [10, 0, -7],
+          "lean": 6,
+          "crouch": 0.05
+        },
+        {
+          "t": 2.0,
+          "main_arm": [-88.0, 42.5, -0.2],
+          "off_arm": [-86.4, 61.2, 0.0],
+          "body": [0.0, 15.8],
+          "item": [-86.6, 0.0, 1.2],
+          "spin": -40,
+          "main_leg": [6, 0, 9],
+          "off_leg": [-6, 0, -9],
+          "lean": 10,
+          "crouch": 0.1
+        },
+        {
+          "t": 4.8,
+          "main_arm": [-90.1, -20.5, -0.2],
+          "off_arm": [-88.5, 19.2, 0.0],
+          "body": [0.0, -15.8],
+          "item": [-89.8, 0.0, 1.2],
+          "spin": -190,
+          "main_leg": [-12, 0, 9],
+          "off_leg": [14, 0, -9],
+          "lean": 14,
+          "crouch": 0.12
+        },
+        {
+          "t": 7.2,
+          "main_arm": [-88.0, -31.0, -0.2],
+          "off_arm": [-86.4, 8.8, 0.0],
+          "body": [0.0, -21.0],
+          "item": [-86.6, 0.0, 1.2],
+          "spin": -330,
+          "main_leg": [8, 0, 9],
+          "off_leg": [-8, 0, -9],
+          "lean": 10,
+          "crouch": 0.08
+        },
+        {
+          "t": 9.2,
+          "main_arm": [-61.8, -20.5, -0.2],
+          "off_arm": [-57.0, 19.2, 0.0],
+          "body": [0.0, -10.5],
+          "item": [-63.5, 0.0, 1.2],
+          "spin": -360,
+          "main_leg": [-22, 0, 7],
+          "off_leg": [18, 0, -7],
+          "lean": 10,
+          "crouch": 0.05
+        }
+      ]
+    },
+    "sabercraft:ons_double": {
+      "duration": 14,
+      "strike": 3,
+      "sound": "swing",
+      "interrupt": 10,
+      "more_strikes": [8.5],
+      "first_person": [
+        {
+          "t": 0,
+          "grip": [0.95, -0.25, 0.0],
+          "aim": [120, -35, 0]
+        },
+        {
+          "t": 1.5,
+          "grip": [0.55, -0.1, 0.15],
+          "aim": [70, -20, 0]
+        },
+        {
+          "t": 3,
+          "grip": [-0.35, -0.6, 0.2],
+          "aim": [-20, 70, 0]
+        },
+        {
+          "t": 5,
+          "grip": [-0.2, 0.1, 0.1],
+          "aim": [115, 40, 0]
+        },
+        {
+          "t": 7,
+          "grip": [0.15, -0.2, 0.2],
+          "aim": [30, -10, 0]
+        },
+        {
+          "t": 8.5,
+          "grip": [0.7, -0.7, 0.15],
+          "aim": [-30, -80, 0]
+        },
+        {
+          "t": 11,
+          "grip": [0.8, -0.75, 0.1],
+          "aim": [-35, -90, 0]
+        }
+      ],
+      "third_person": [
+        {
+          "t": 0,
+          "main_arm": [-130, -10, 5],
+          "off_arm": [-120, 35, 0],
+          "body": [0, 15],
+          "item": [10, 0, -25],
+          "main_leg": [10.0, 0, 5],
+          "off_leg": [-7.199999999999999, 0, -5],
+          "lean": -4,
+          "crouch": 0.03
+        },
+        {
+          "t": 1.5,
+          "main_arm": [-120, -5, 0],
+          "off_arm": [-112, 30, 0],
+          "body": [5, 5],
+          "item": [-40, 0, -20]
+        },
+        {
+          "t": 2.0999999999999996,
+          "main_leg": [15.0, 0.0, 3.75],
+          "off_leg": [-18.0, 0.0, -3.75],
+          "lean": 8.4,
+          "crouch": 0.03
+        },
+        {
+          "t": 3,
+          "main_arm": [-60, 25, 0],
+          "off_arm": [-55, 45, 0],
+          "body": [12, -20],
+          "item": [-85, 0, 30],
+          "main_leg": [20, 0, 5],
+          "off_leg": [-24, 0, -5],
+          "lean": 14,
+          "crouch": 0.05
+        },
+        {
+          "t": 5,
+          "main_arm": [-160, 0, 0],
+          "off_arm": [-150, 30, 0],
+          "body": [-5, 5],
+          "item": [10, 0, 10]
+        },
+        {
+          "t": 7,
+          "main_arm": [-110, -10, 0],
+          "off_arm": [-105, 25, 0],
+          "body": [8, 15],
+          "item": [-60, 0, -20],
+          "main_leg": [-30, 0, 5],
+          "off_leg": [22, 0, -5],
+          "lean": 8,
+          "crouch": 0.02
+        },
+        {
+          "t": 8.5,
+          "main_arm": [-55, -30, 0],
+          "off_arm": [-50, 20, 0],
+          "body": [18, 25],
+          "item": [-85, 0, -30]
+        },
+        {
+          "t": 11,
+          "main_arm": [-45, -30, 0],
+          "off_arm": [-45, 20, 0],
+          "body": [15, 25],
+          "item": [-85, 0, -30],
+          "main_leg": [17.0, 0.0, 4.25],
+          "off_leg": [-20.4, 0.0, -4.25],
+          "lean": 9.799999999999999,
+          "crouch": 0.034999999999999996
+        }
+      ]
+    },
+    "sabercraft:ons_leap": {
+      "duration": 16,
+      "strike": 9,
+      "sound": "heavy",
+      "interrupt": 13,
+      "blend_in": 1.0,
+      "blend_out": 3.0,
+      "first_person": [
+        {
+          "t": 0,
+          "grip": [0.95, -0.4, 0.0],
+          "aim": [110, -30, 0],
+          "camera": [0.15, 2, 0]
+        },
+        {
+          "t": 3,
+          "grip": [0.5, 0.35, 0.0],
+          "aim": [140, -5, 0],
+          "camera": [-0.15, -6, 0]
+        },
+        {
+          "t": 7,
+          "grip": [0.3, 0.45, 0.05],
+          "aim": [145, 0, 0],
+          "camera": [-0.3, -4, 0]
+        },
+        {
+          "t": 9,
+          "grip": [0.1, -0.35, 0.25],
+          "aim": [10, 0, 0],
+          "camera": [0.05, 8, 0]
+        },
+        {
+          "t": 11,
+          "grip": [0.05, -0.8, 0.25],
+          "aim": [-45, 0, 0],
+          "camera": [0.12, 6, 0]
+        },
+        {
+          "t": 14,
+          "grip": [0.1, -0.85, 0.2],
+          "aim": [-45, 0, 0]
+        },
+        {
+          "t": 15,
+          "camera": [0, 0, 0]
+        }
+      ],
+      "third_person": [
+        {
+          "t": 0,
+          "main_arm": [-110, -10, 5],
+          "off_arm": [-100, 35, 0],
+          "body": [10, 10],
+          "item": [20, 0, -20],
+          "main_leg": [-20, 0, 5],
+          "off_leg": [16, 0, -5],
+          "lean": 18,
+          "crouch": 0.14,
+          "root": [0, 0, 0]
+        },
+        {
+          "t": 3,
+          "main_arm": [-175, 0, 5],
+          "off_arm": [-172, 28, 0],
+          "body": [-15, 5],
+          "item": [30, 0, 0],
+          "main_leg": [-50, 0, 5],
+          "off_leg": [-10, 0, -5],
+          "lean": 4,
+          "crouch": 0.0,
+          "root": [-6, 0, 0.35]
+        },
+        {
+          "t": 6,
+          "main_leg": [-70, 0, 5],
+          "off_leg": [-40, 0, -5],
+          "lean": 0,
+          "crouch": 0.0,
+          "root": [-4, 0, 0.6]
+        },
+        {
+          "t": 7,
+          "main_arm": [-178, 0, 5],
+          "off_arm": [-175, 28, 0],
+          "body": [-20, 0],
+          "item": [35, 0, 0]
+        },
+        {
+          "t": 8,
+          "root": [4, 0, 0.35]
+        },
+        {
+          "t": 9,
+          "main_arm": [-90, -5, 0],
+          "off_arm": [-90, 28, 0],
+          "body": [25, 0],
+          "item": [-75, 0, 0],
+          "main_leg": [-40, 0, 6],
+          "off_leg": [30, 0, -6],
+          "lean": 24,
+          "crouch": 0.12,
+          "root": [8, 0, 0.0]
+        },
+        {
+          "t": 11,
+          "main_arm": [-45, -5, 0],
+          "off_arm": [-45, 25, 0],
+          "body": [35, 0],
+          "item": [-90, 0, 0],
+          "main_leg": [-40, 0, 6],
+          "off_leg": [32, 0, -6],
+          "lean": 30,
+          "crouch": 0.14
+        },
+        {
+          "t": 14,
+          "main_arm": [-40, -5, 0],
+          "off_arm": [-40, 25, 0],
+          "body": [30, 0],
+          "item": [-90, 0, 0],
+          "main_leg": [-32, 0, 6],
+          "off_leg": [26, 0, -6],
+          "lean": 24,
+          "crouch": 0.08,
+          "root": [0, 0, 0]
+        }
+      ]
+    },
+    "sabercraft:ataru_flip_cut": {
+      "duration": 13,
+      "strike": 7,
+      "sound": "spin",
+      "interrupt": 10,
+      "blend_in": 1.0,
+      "blend_out": 3.0,
+      "first_person": [
+        {
+          "t": 0,
+          "grip": [0.7, -0.85, 0.15],
+          "aim": [55, 45, 0],
+          "camera": [0.2, 0, 0]
+        },
+        {
+          "t": 2,
+          "grip": [0.6, -0.1, 0.1],
+          "aim": [130, 0, 0],
+          "camera": [0.05, 14, 0]
+        },
+        {
+          "t": 4,
+          "camera": [0.1, 22, 0]
+        },
+        {
+          "t": 5,
+          "grip": [0.3, 0.3, 0.2],
+          "aim": [100, -30, 0]
+        },
+        {
+          "t": 6,
+          "camera": [0.2, 8, 0]
+        },
+        {
+          "t": 7,
+          "grip": [0.0, -0.3, 0.25],
+          "aim": [10, 10, 0]
+        },
+        {
+          "t": 8,
+          "camera": [0.2, 2, 0]
+        },
+        {
+          "t": 8.5,
+          "grip": [-0.4, -0.7, 0.2],
+          "aim": [-35, 60, 0]
+        },
+        {
+          "t": 11,
+          "grip": [-0.2, -0.8, 0.15],
+          "aim": [-20, 60, 0],
+          "camera": [0.1, 0, 0]
+        }
+      ],
+      "third_person": [
+        {
+          "t": 0,
+          "main_arm": [-75, -30, 0],
+          "off_arm": [-60, 45, 15],
+          "body": [0, 0],
+          "item": [-20, 0, 45],
+          "main_leg": [-30, 0, 6],
+          "off_leg": [20, 0, -6],
+          "lean": 20,
+          "crouch": 0.18,
+          "root": [0.0, 0.0, 0.165]
+        },
+        {
+          "t": 1.0,
+          "root": [32.5, 0.0, 0.362]
+        },
+        {
+          "t": 2,
+          "main_arm": [-170, -5, 0],
+          "off_arm": [-150, 30, 0],
+          "body": [0, 0],
+          "item": [20, 0, 0],
+          "main_leg": [-70, 0, 5],
+          "off_leg": [-60, 0, -5],
+          "lean": 40,
+          "crouch": 0.0,
+          "root": [80.0, 0.0, 0.639]
+        },
+        {
+          "t": 3.0,
+          "root": [137.5, 0.0, 1.188]
+        },
+        {
+          "t": 4,
+          "main_leg": [-120, 0, 5],
+          "off_leg": [-115, 0, -5],
+          "lean": 70,
+          "crouch": 0.0,
+          "root": [200.0, 0.0, 0.351]
+        },
+        {
+          "t": 5,
+          "main_arm": [-165, -5, 0],
+          "off_arm": [-140, 40, 0],
+          "body": [0, 0],
+          "item": [0, 0, 0],
+          "root": [265.0, 0.0, -0.039]
+        },
+        {
+          "t": 6,
+          "main_leg": [-70, 0, 5],
+          "off_leg": [-50, 0, -5],
+          "lean": 35,
+          "crouch": 0.0,
+          "root": [320.0, 0.0, -0.285]
+        },
+        {
+          "t": 7,
+          "main_arm": [-90, 15, 0],
+          "off_arm": [-70, 40, 0],
+          "body": [10, -10],
+          "item": [-70, 0, 20],
+          "root": [352.59, 0.0, 0.218]
+        },
+        {
+          "t": 7.5,
+          "root": [360.0, 0.0, 0.15]
+        },
+        {
+          "t": 8,
+          "main_leg": [-36, 0, 6],
+          "off_leg": [26, 0, -6],
+          "lean": 22,
+          "crouch": 0.14
+        },
+        {
+          "t": 8.5,
+          "main_arm": [-50, 30, 0],
+          "off_arm": [-50, 40, 0],
+          "body": [15, -20],
+          "item": [-85, 0, 40]
+        },
+        {
+          "t": 11,
+          "main_arm": [-60, -10, 0],
+          "off_arm": [-55, 40, 10],
+          "body": [10, -10],
+          "item": [-40, 0, 40],
+          "main_leg": [-30, 0, 6],
+          "off_leg": [22, 0, -6],
+          "lean": 20,
+          "crouch": 0.16
+        }
+      ]
+    },
+    "sabercraft:ataru_spin_cut": {
+      "duration": 11,
+      "strike": 4.5,
+      "sound": "spin",
+      "interrupt": 8,
+      "first_person": [
+        {
+          "t": 0,
+          "grip": [0.7, -0.85, 0.15],
+          "aim": [55, 45, 0]
+        },
+        {
+          "t": 1.5,
+          "grip": [1.2, -0.5, 0.1],
+          "aim": [10, -130, 0]
+        },
+        {
+          "t": 3,
+          "grip": [1.6, -0.45, 0.1],
+          "aim": [8, -160, 0]
+        },
+        {
+          "t": 4.5,
+          "grip": [0.0, -0.4, 0.3],
+          "aim": [8, 30, 0]
+        },
+        {
+          "t": 6,
+          "grip": [-1.2, -0.45, 0.15],
+          "aim": [8, 120, 0]
+        },
+        {
+          "t": 8.5,
+          "grip": [-0.3, -0.75, 0.15],
+          "aim": [30, 70, 0]
+        }
+      ],
+      "third_person": [
+        {
+          "t": 0,
+          "main_arm": [-75, -30, 0],
+          "off_arm": [-60, 45, 15],
+          "body": [0, 0],
+          "item": [-20, 0, 45],
+          "spin": 0,
+          "main_leg": [-30, 0, 6],
+          "off_leg": [20, 0, -6],
+          "lean": 20,
+          "crouch": 0.18,
+          "root": [0, 0, 0]
+        },
+        {
+          "t": 1.5,
+          "main_arm": [-90, 45, 0],
+          "off_arm": [-60, 60, 0],
+          "body": [0, 25],
+          "item": [-80, 0, 0],
+          "spin": -30,
+          "main_leg": [-10, 0, 10],
+          "off_leg": [30, 0, -14],
+          "lean": 16,
+          "crouch": 0.16
+        },
+        {
+          "t": 2,
+          "root": [0, 0, 0.12]
+        },
+        {
+          "t": 4.5,
+          "main_arm": [-90, -15, 0],
+          "off_arm": [-70, 30, 0],
+          "body": [0, -15],
+          "item": [-82, 0, 0],
+          "spin": -200,
+          "main_leg": [-40, 0, 12],
+          "off_leg": [10, 0, -10],
+          "lean": 18,
+          "crouch": 0.2,
+          "root": [0, 0, 0.25]
+        },
+        {
+          "t": 7,
+          "main_arm": [-90, -35, 0],
+          "off_arm": [-70, 20, 0],
+          "body": [5, -20],
+          "item": [-80, 0, 0],
+          "spin": -330,
+          "main_leg": [-10, 0, 10],
+          "off_leg": [30, 0, -14],
+          "lean": 16,
+          "crouch": 0.16,
+          "root": [0, 0, 0.12]
+        },
+        {
+          "t": 8.5,
+          "main_arm": [-80, -30, 0],
+          "off_arm": [-60, 40, 10],
+          "body": [0, -10],
+          "item": [-40, 0, 40],
+          "spin": -360,
+          "main_leg": [-30, 0, 6],
+          "off_leg": [20, 0, -6],
+          "lean": 20,
+          "crouch": 0.18,
+          "root": [0, 0, 0]
+        }
+      ]
+    },
+    "sabercraft:ataru_leap": {
+      "duration": 16,
+      "strike": 11,
+      "sound": "spin",
+      "interrupt": 14,
+      "blend_in": 1.0,
+      "blend_out": 3.0,
+      "first_person": [
+        {
+          "t": 0,
+          "grip": [0.7, -0.85, 0.15],
+          "aim": [55, 45, 0],
+          "camera": [0.2, 0, 0]
+        },
+        {
+          "t": 3,
+          "grip": [0.8, -0.3, 0.1],
+          "aim": [110, 0, 0],
+          "camera": [-0.2, -8, 0]
+        },
+        {
+          "t": 6,
+          "camera": [-0.3, 10, 0]
+        },
+        {
+          "t": 8,
+          "grip": [0.6, 0.0, 0.1],
+          "aim": [120, -10, 0]
+        },
+        {
+          "t": 9,
+          "camera": [0.0, 4, 0]
+        },
+        {
+          "t": 11,
+          "grip": [0.05, -0.3, 0.3],
+          "aim": [5, 5, 0],
+          "camera": [0.2, 6, 0]
+        },
+        {
+          "t": 13,
+          "grip": [-0.3, -0.7, 0.2],
+          "aim": [-30, 50, 0]
+        },
+        {
+          "t": 15,
+          "grip": [-0.2, -0.8, 0.15],
+          "aim": [-20, 50, 0],
+          "camera": [0.1, 0, 0]
+        }
+      ],
+      "third_person": [
+        {
+          "t": 0,
+          "main_arm": [-75, -30, 0],
+          "off_arm": [-60, 45, 15],
+          "body": [0, 0],
+          "item": [-20, 0, 45],
+          "main_leg": [-30, 0, 6],
+          "off_leg": [20, 0, -6],
+          "lean": 24,
+          "crouch": 0.2,
+          "root": [0.0, 0.0, 0.178]
+        },
+        {
+          "t": 1.0,
+          "root": [-1.11, 0.0, 0.264]
+        },
+        {
+          "t": 2.0,
+          "root": [-1.11, 0.0, 0.405]
+        },
+        {
+          "t": 3,
+          "main_arm": [-150, -10, 0],
+          "off_arm": [-140, 30, 0],
+          "body": [0, 0],
+          "item": [10, 0, 0],
+          "main_leg": [-40, 0, 5],
+          "off_leg": [10, 0, -5],
+          "lean": 10,
+          "crouch": 0.0,
+          "root": [10.0, 0.0, 0.517]
+        },
+        {
+          "t": 4.0,
+          "root": [58.12, 0.0, 0.713]
+        },
+        {
+          "t": 5,
+          "main_leg": [-100, 0, 5],
+          "off_leg": [-95, 0, -5],
+          "lean": 60,
+          "crouch": 0.0,
+          "root": [120.0, 0.0, 1.434]
+        },
+        {
+          "t": 6.0,
+          "root": [180.62, 0.0, 0.903]
+        },
+        {
+          "t": 7.0,
+          "root": [240.0, 0.0, 0.289]
+        },
+        {
+          "t": 8,
+          "main_arm": [-160, -10, 0],
+          "off_arm": [-150, 30, 0],
+          "body": [0, 0],
+          "item": [10, 0, 0],
+          "main_leg": [-110, 0, 5],
+          "off_leg": [-105, 0, -5],
+          "lean": 60,
+          "crouch": 0.0,
+          "root": [296.25, 0.0, 0.188]
+        },
+        {
+          "t": 9.0,
+          "root": [340.0, 0.0, -0.119]
+        },
+        {
+          "t": 10,
+          "main_leg": [-50, 0, 5],
+          "off_leg": [-20, 0, -5],
+          "lean": 20,
+          "crouch": 0.0,
+          "root": [357.78, 0.0, 0.094]
+        },
+        {
+          "t": 10.5,
+          "root": [360.0, 0.0, 0.138]
+        },
+        {
+          "t": 11,
+          "main_arm": [-90, 10, 0],
+          "off_arm": [-75, 40, 0],
+          "body": [15, -10],
+          "item": [-80, 0, 15],
+          "main_leg": [-36, 0, 6],
+          "off_leg": [28, 0, -6],
+          "lean": 22,
+          "crouch": 0.16
+        },
+        {
+          "t": 13,
+          "main_arm": [-50, 25, 0],
+          "off_arm": [-50, 40, 0],
+          "body": [15, -15],
+          "item": [-85, 0, 35]
+        },
+        {
+          "t": 15,
+          "main_arm": [-55, -10, 0],
+          "off_arm": [-55, 40, 10],
+          "body": [10, -10],
+          "item": [-40, 0, 40],
+          "main_leg": [-30, 0, 6],
+          "off_leg": [22, 0, -6],
+          "lean": 20,
+          "crouch": 0.16
+        }
+      ]
+    },
+    "sabercraft:ataru_whirlwind": {
+      "duration": 20,
+      "strike": 7,
+      "sound": "spin",
+      "interrupt": 16,
+      "blend_out": 4.0,
+      "first_person": [
+        {
+          "t": 0,
+          "grip": [0.7, -0.85, 0.15],
+          "aim": [55, 45, 0]
+        },
+        {
+          "t": 2,
+          "grip": [1.3, -0.4, 0.1],
+          "aim": [10, -140, 0]
+        },
+        {
+          "t": 4,
+          "grip": [-0.4, -0.35, 0.3],
+          "aim": [8, 60, 0]
+        },
+        {
+          "t": 6,
+          "grip": [1.4, -0.4, 0.1],
+          "aim": [8, -150, 0]
+        },
+        {
+          "t": 8,
+          "grip": [-0.6, -0.35, 0.3],
+          "aim": [8, 80, 0]
+        },
+        {
+          "t": 10,
+          "grip": [1.3, -0.45, 0.1],
+          "aim": [8, -140, 0]
+        },
+        {
+          "t": 12,
+          "grip": [-0.5, -0.4, 0.25],
+          "aim": [8, 70, 0]
+        },
+        {
+          "t": 15,
+          "grip": [0.4, -0.8, 0.15],
+          "aim": [40, 50, 0]
+        }
+      ],
+      "third_person": [
+        {
+          "t": 0,
+          "main_arm": [-75, -30, 0],
+          "off_arm": [-60, 45, 15],
+          "body": [0, 0],
+          "item": [-20, 0, 45],
+          "spin": 0,
+          "main_leg": [-30, 0, 6],
+          "off_leg": [20, 0, -6],
+          "lean": 20,
+          "crouch": 0.2,
+          "root": [0, 0, 0]
+        },
+        {
+          "t": 2,
+          "main_arm": [-90, 30, 0],
+          "off_arm": [-85, 50, 0],
+          "body": [0, 15],
+          "item": [-82, 0, 0],
+          "spin": -60,
+          "main_leg": [-40, 0, 8],
+          "off_leg": [-20, 0, -8],
+          "lean": 10,
+          "crouch": 0.0,
+          "root": [0, 0, 0.6]
+        },
+        {
+          "t": 5,
+          "main_leg": [-60, 0, 10],
+          "off_leg": [-50, 0, -10],
+          "lean": 20,
+          "crouch": 0.0,
+          "root": [0, 0, 0.95]
+        },
+        {
+          "t": 6,
+          "main_arm": [-90, 0, 0],
+          "off_arm": [-88, 40, 0],
+          "body": [0, 0],
+          "item": [-82, 0, 0],
+          "spin": -300
+        },
+        {
+          "t": 10,
+          "main_arm": [-90, 0, 0],
+          "off_arm": [-88, 40, 0],
+          "body": [0, 0],
+          "item": [-82, 0, 0],
+          "spin": -560,
+          "main_leg": [-60, 0, 10],
+          "off_leg": [-50, 0, -10],
+          "lean": 20,
+          "crouch": 0.0,
+          "root": [0, 0, 0.95]
+        },
+        {
+          "t": 13,
+          "main_arm": [-90, -20, 0],
+          "off_arm": [-80, 30, 0],
+          "body": [0, -10],
+          "item": [-80, 0, 0],
+          "spin": -720,
+          "main_leg": [-30, 0, 8],
+          "off_leg": [10, 0, -8],
+          "lean": 10,
+          "crouch": 0.0,
+          "root": [0, 0, 0.4]
+        },
+        {
+          "t": 14.5,
+          "root": [0, 0, 0]
+        },
+        {
+          "t": 15,
+          "main_arm": [-75, -30, 0],
+          "off_arm": [-60, 45, 15],
+          "body": [0, 0],
+          "item": [-20, 0, 45],
+          "spin": -720,
+          "main_leg": [-30, 0, 6],
+          "off_leg": [20, 0, -6],
+          "lean": 20,
+          "crouch": 0.18
+        }
+      ]
+    },
+    "sabercraft:ataru_twirl": {
+      "duration": 7.84,
+      "strike": 2.8,
+      "sound": "spin",
+      "interrupt": 6.72,
+      "first_person": [
+        {
+          "t": 0.0,
+          "grip": [0.92, -0.41, 0.095],
+          "aim": [5.5, -125.5, 0.0]
+        },
+        {
+          "t": 1.12,
+          "grip": [1.25, -0.355, 0.205],
+          "aim": [3.3, -169.5, 0.0]
+        },
+        {
+          "t": 1.96,
+          "grip": [-0.29, -0.245, 0.315],
+          "aim": [3.3, 39.5, 0.0]
+        },
+        {
+          "t": 2.8,
+          "grip": [-1.17, -0.3, 0.205],
+          "aim": [3.3, 116.5, 0.0]
+        },
+        {
+          "t": 3.64,
+          "grip": [-1.83, -0.355, 0.095],
+          "aim": [3.3, 160.5, 0.0]
+        },
+        {
+          "t": 4.48,
+          "grip": [1.69, -0.355, 0.095],
+          "aim": [3.3, -169.5, 0.0]
+        },
+        {
+          "t": 5.32,
+          "grip": [0.59, -0.41, 0.15],
+          "aim": [5.5, -103.5, 0.0]
+        }
+      ],
+      "third_person": [
+        {
+          "t": 0.0,
+          "main_arm": [-91.5, 58.0, 0.0],
+          "off_arm": [-87.5, 67.0, -1.5],
+          "body": [0.0, 27.5],
+          "item": [-86.0, 0.0, -4.5],
+          "spin": 0,
+          "main_leg": [-30, 0, 6],
+          "off_leg": [20, 0, -6],
+          "lean": 18,
+          "crouch": 0.16,
+          "root": [0, 0, 0]
+        },
+        {
+          "t": 1.1,
+          "main_leg": [8, 0, 6],
+          "off_leg": [-8, 0, -6],
+          "lean": 10,
+          "crouch": 0.08,
+          "root": [0, 0, 0.3]
+        },
+        {
+          "t": 1.12,
+          "main_arm": [-91.5, 36.0, 0.0],
+          "off_arm": [-90.8, 56.0, -1.5],
+          "body": [0.0, 11.0],
+          "item": [-88.2, 0.0, -4.5],
+          "spin": -40
+        },
+        {
+          "t": 2.8,
+          "main_arm": [-91.5, -19.0, 0.0],
+          "off_arm": [-90.8, 17.5, -1.5],
+          "body": [0.0, -16.5],
+          "item": [-88.2, 0.0, -4.5],
+          "spin": -180,
+          "main_leg": [-12, 0, 6],
+          "off_leg": [12, 0, -6],
+          "lean": 12,
+          "crouch": 0.1,
+          "root": [0, 0, 0.45]
+        },
+        {
+          "t": 4.48,
+          "main_arm": [-91.5, -30.0, 0.0],
+          "off_arm": [-90.8, 6.5, -1.5],
+          "body": [0.0, -22.0],
+          "item": [-88.2, 0.0, -4.5],
+          "spin": -320
+        },
+        {
+          "t": 4.5,
+          "main_leg": [8, 0, 6],
+          "off_leg": [-8, 0, -6],
+          "lean": 10,
+          "crouch": 0.08,
+          "root": [0, 0, 0.2]
+        },
+        {
+          "t": 5.6,
+          "main_arm": [-69.5, -19.0, 0.0],
+          "off_arm": [-65.5, 17.5, -1.5],
+          "body": [0.0, -11.0],
+          "item": [-64.0, 0.0, -4.5],
+          "spin": -360,
+          "main_leg": [-28, 0, 6],
+          "off_leg": [20, 0, -6],
+          "lean": 18,
+          "crouch": 0.16,
+          "root": [0, 0, 0]
+        }
+      ]
+    },
+    "sabercraft:mak_thrust": {
+      "duration": 9,
+      "strike": 3,
+      "sound": "swing",
+      "interrupt": 6,
+      "first_person": [
+        {
+          "t": 0,
+          "grip": [0.55, -0.45, 0.25],
+          "aim": [18, 12, 0]
+        },
+        {
+          "t": 1.5,
+          "grip": [0.7, -0.4, 0.0],
+          "aim": [20, 14, 0]
+        },
+        {
+          "t": 3,
+          "grip": [0.2, -0.25, 0.55],
+          "aim": [3, 5, 0]
+        },
+        {
+          "t": 5,
+          "grip": [0.2, -0.25, 0.55],
+          "aim": [3, 5, 0]
+        },
+        {
+          "t": 7,
+          "grip": [0.5, -0.45, 0.25],
+          "aim": [15, 12, 0]
+        }
+      ],
+      "third_person": [
+        {
+          "t": 0,
+          "main_arm": [-75, 10, 0],
+          "off_arm": [35, 25, -25],
+          "body": [0, -25],
+          "item": [-75, 0, 0],
+          "main_leg": [-10.2, 0, 3],
+          "off_leg": [12.0, 0, -3],
+          "lean": -3,
+          "crouch": 0.03
+        },
+        {
+          "t": 1.5,
+          "main_arm": [-70, 25, 0],
+          "off_arm": [35, 25, -25],
+          "body": [0, -20],
+          "item": [-78, 0, 0]
+        },
+        {
+          "t": 2.0999999999999996,
+          "main_leg": [-25.5, 0.0, 2.25],
+          "off_leg": [18.0, 0.0, -2.25],
+          "lean": 3.5999999999999996,
+          "crouch": 0.024
+        },
+        {
+          "t": 3,
+          "main_arm": [-95, -5, 0],
+          "off_arm": [35, 25, -25],
+          "body": [8, -40],
+          "item": [-92, 0, 0],
+          "main_leg": [-34, 0, 3],
+          "off_leg": [24, 0, -3],
+          "lean": 6,
+          "crouch": 0.04
+        },
+        {
+          "t": 5,
+          "main_arm": [-95, -5, 0],
+          "off_arm": [35, 25, -25],
+          "body": [8, -40],
+          "item": [-92, 0, 0]
+        },
+        {
+          "t": 7,
+          "main_arm": [-78, 10, 0],
+          "off_arm": [35, 25, -25],
+          "body": [0, -25],
+          "item": [-75, 0, 0],
+          "main_leg": [-28.9, 0.0, 2.55],
+          "off_leg": [20.4, 0.0, -2.55],
+          "lean": 4.199999999999999,
+          "crouch": 0.027999999999999997
+        }
+      ]
+    },
+    "sabercraft:mak_flick": {
+      "duration": 7,
+      "strike": 2,
+      "sound": "swing",
+      "interrupt": 4,
+      "first_person": [
+        {
+          "t": 0,
+          "grip": [0.55, -0.45, 0.25],
+          "aim": [18, 12, 0]
+        },
+        {
+          "t": 1,
+          "grip": [0.75, -0.35, 0.2],
+          "aim": [30, -45, 0]
+        },
+        {
+          "t": 2,
+          "grip": [0.3, -0.35, 0.3],
+          "aim": [20, 50, 0]
+        },
+        {
+          "t": 3.5,
+          "grip": [0.15, -0.4, 0.28],
+          "aim": [15, 75, 0]
+        },
+        {
+          "t": 5.5,
+          "grip": [0.5, -0.45, 0.25],
+          "aim": [18, 15, 0]
+        }
+      ],
+      "third_person": [
+        {
+          "t": 0,
+          "main_arm": [-75, 10, 0],
+          "off_arm": [35, 25, -25],
+          "body": [0, -25],
+          "item": [-75, 0, 0],
+          "main_leg": [-5.3999999999999995, 0, 3],
+          "off_leg": [7.0, 0, -3],
+          "lean": -3,
+          "crouch": 0.03
+        },
+        {
+          "t": 1,
+          "main_arm": [-80, 20, 0],
+          "off_arm": [35, 25, -25],
+          "body": [0, -20],
+          "item": [-60, 0, -40]
+        },
+        {
+          "t": 1.4,
+          "main_leg": [-13.5, 0.0, 2.25],
+          "off_leg": [10.5, 0.0, -2.25],
+          "lean": 2.4,
+          "crouch": 0.018
+        },
+        {
+          "t": 2,
+          "main_arm": [-82, 0, 0],
+          "off_arm": [35, 25, -25],
+          "body": [0, -28],
+          "item": [-70, 0, 45],
+          "main_leg": [-18, 0, 3],
+          "off_leg": [14, 0, -3],
+          "lean": 4,
+          "crouch": 0.03
+        },
+        {
+          "t": 3.5,
+          "main_arm": [-80, -5, 0],
+          "off_arm": [35, 25, -25],
+          "body": [0, -30],
+          "item": [-72, 0, 60]
+        },
+        {
+          "t": 5.5,
+          "main_arm": [-76, 10, 0],
+          "off_arm": [35, 25, -25],
+          "body": [0, -25],
+          "item": [-75, 0, 0],
+          "main_leg": [-15.299999999999999, 0.0, 2.55],
+          "off_leg": [11.9, 0.0, -2.55],
+          "lean": 2.8,
+          "crouch": 0.020999999999999998
+        }
+      ]
+    },
+    "sabercraft:mak_disengage": {
+      "duration": 11,
+      "strike": 5,
+      "sound": "swing",
+      "interrupt": 8,
+      "first_person": [
+        {
+          "t": 0,
+          "grip": [0.55, -0.45, 0.25],
+          "aim": [18, 12, 0]
+        },
+        {
+          "t": 1.5,
+          "grip": [0.45, -0.6, 0.25],
+          "aim": [5, 40, 30]
+        },
+        {
+          "t": 3,
+          "grip": [0.65, -0.55, 0.2],
+          "aim": [0, -20, 60]
+        },
+        {
+          "t": 5,
+          "grip": [0.15, -0.3, 0.6],
+          "aim": [2, 3, 0]
+        },
+        {
+          "t": 7.5,
+          "grip": [0.15, -0.3, 0.6],
+          "aim": [2, 3, 0]
+        },
+        {
+          "t": 9.5,
+          "grip": [0.5, -0.45, 0.25],
+          "aim": [15, 12, 0]
+        }
+      ],
+      "third_person": [
+        {
+          "t": 0,
+          "main_arm": [-75, 10, 0],
+          "off_arm": [35, 25, -25],
+          "body": [0, -25],
+          "item": [-75, 0, 0],
+          "main_leg": [-10.799999999999999, 0, 3],
+          "off_leg": [13.0, 0, -3],
+          "lean": -3,
+          "crouch": 0.03
+        },
+        {
+          "t": 1.5,
+          "main_arm": [-72, 0, 0],
+          "off_arm": [35, 25, -25],
+          "body": [0, -25],
+          "item": [-80, 0, 40],
+          "spin": 0
+        },
+        {
+          "t": 3,
+          "main_arm": [-74, 20, 0],
+          "off_arm": [35, 25, -25],
+          "body": [0, -20],
+          "item": [-80, 0, -40]
+        },
+        {
+          "t": 3.5,
+          "main_leg": [-27.0, 0.0, 2.25],
+          "off_leg": [19.5, 0.0, -2.25],
+          "lean": 4.8,
+          "crouch": 0.03
+        },
+        {
+          "t": 5,
+          "main_arm": [-96, -5, 0],
+          "off_arm": [35, 25, -25],
+          "body": [10, -42],
+          "item": [-92, 0, 0],
+          "main_leg": [-36, 0, 3],
+          "off_leg": [26, 0, -3],
+          "lean": 8,
+          "crouch": 0.05
+        },
+        {
+          "t": 7.5,
+          "main_arm": [-96, -5, 0],
+          "off_arm": [35, 25, -25],
+          "body": [10, -42],
+          "item": [-92, 0, 0]
+        },
+        {
+          "t": 9.5,
+          "main_arm": [-78, 10, 0],
+          "off_arm": [35, 25, -25],
+          "body": [0, -25],
+          "item": [-75, 0, 0],
+          "main_leg": [-30.599999999999998, 0.0, 2.55],
+          "off_leg": [22.099999999999998, 0.0, -2.55],
+          "lean": 5.6,
+          "crouch": 0.034999999999999996
+        }
+      ]
+    },
+    "sabercraft:mak_fleche": {
+      "duration": 12,
+      "strike": 4.5,
+      "sound": "swing",
+      "interrupt": 9,
+      "first_person": [
+        {
+          "t": 0,
+          "grip": [0.55, -0.45, 0.25],
+          "aim": [18, 12, 0],
+          "camera": [0, 0, 0]
+        },
+        {
+          "t": 2,
+          "grip": [0.6, -0.5, 0.0],
+          "aim": [16, 10, 0]
+        },
+        {
+          "t": 4.5,
+          "grip": [0.15, -0.25, 0.7],
+          "aim": [2, 3, 0],
+          "camera": [0.25, 3, 0]
+        },
+        {
+          "t": 8,
+          "grip": [0.15, -0.25, 0.7],
+          "aim": [2, 3, 0],
+          "camera": [0.25, 3, 0]
+        },
+        {
+          "t": 10.5,
+          "grip": [0.5, -0.45, 0.25],
+          "aim": [15, 12, 0],
+          "camera": [0, 0, 0]
+        }
+      ],
+      "third_person": [
+        {
+          "t": 0,
+          "main_arm": [-75, 10, 0],
+          "off_arm": [35, 25, -25],
+          "body": [0, -25],
+          "item": [-75, 0, 0],
+          "main_leg": [-14, 0, 4],
+          "off_leg": [12, 0, -4],
+          "lean": 2,
+          "crouch": 0.03
+        },
+        {
+          "t": 2,
+          "main_arm": [-70, 25, 0],
+          "off_arm": [20, 30, -40],
+          "body": [0, -20],
+          "item": [-78, 0, 0],
+          "main_leg": [-10, 0, 4],
+          "off_leg": [16, 0, -4],
+          "lean": 4,
+          "crouch": 0.12
+        },
+        {
+          "t": 4.5,
+          "main_arm": [-100, -5, 0],
+          "off_arm": [40, 20, -50],
+          "body": [12, -45],
+          "item": [-95, 0, 0],
+          "main_leg": [-62, 0, 4],
+          "off_leg": [46, 0, -4],
+          "lean": 20,
+          "crouch": 0.24
+        },
+        {
+          "t": 8,
+          "main_arm": [-100, -5, 0],
+          "off_arm": [40, 20, -50],
+          "body": [12, -45],
+          "item": [-95, 0, 0],
+          "main_leg": [-62, 0, 4],
+          "off_leg": [46, 0, -4],
+          "lean": 20,
+          "crouch": 0.24
+        },
+        {
+          "t": 10.5,
+          "main_arm": [-78, 10, 0],
+          "off_arm": [35, 25, -25],
+          "body": [0, -25],
+          "item": [-75, 0, 0],
+          "main_leg": [-14, 0, 4],
+          "off_leg": [12, 0, -4],
+          "lean": 2,
+          "crouch": 0.03
+        }
+      ]
+    },
+    "sabercraft:mak_cut": {
+      "duration": 8.8,
+      "strike": 2.8,
+      "sound": "swing",
+      "first_person": [
+        {
+          "t": 0.0,
+          "grip": [0.375, 0.075, 0.11],
+          "aim": [92.9, 7.1, 0.0]
+        },
+        {
+          "t": 1.6,
+          "grip": [0.27, -0.03, 0.18],
+          "aim": [75.4, 3.6, 0.0]
+        },
+        {
+          "t": 2.8,
+          "grip": [0.2, -0.345, 0.25],
+          "aim": [19.4, 7.1, 0.0]
+        },
+        {
+          "t": 4.0,
+          "grip": [0.165, -0.555, 0.25],
+          "aim": [-12.1, 7.1, 0.0]
+        },
+        {
+          "t": 5.6,
+          "grip": [0.2, -0.66, 0.215],
+          "aim": [-19.1, 7.1, 0.0]
+        }
+      ],
+      "third_person": [
+        {
+          "t": 0.0,
+          "main_arm": [-141.5, -0.5, 0.0],
+          "off_arm": [35, 25, -25],
+          "body": [-7.0, 0.0],
+          "item": [-15.5, 0.0, 0.0],
+          "main_leg": [-6.0, 0, 3],
+          "off_leg": [8.0, 0, -3],
+          "lean": -3,
+          "crouch": 0.03
+        },
+        {
+          "t": 1.6,
+          "main_arm": [-134.5, -0.5, 0.0],
+          "off_arm": [35, 25, -25],
+          "body": [-5.6, 0.0],
+          "item": [-36.5, 0.0, 0.0]
+        },
+        {
+          "t": 1.9599999999999997,
+          "main_leg": [-15.0, 0.0, 2.25],
+          "off_leg": [12.0, 0.0, -2.25],
+          "lean": 4.8,
+          "crouch": 0.018
+        },
+        {
+          "t": 2.8,
+          "main_arm": [-89.0, -4.0, 0.0],
+          "off_arm": [35, 25, -25],
+          "body": [10.5, 0.0],
+          "item": [-71.5, 0.0, 0.0],
+          "main_leg": [-20, 0, 3],
+          "off_leg": [16, 0, -3],
+          "lean": 8,
+          "crouch": 0.03
+        },
+        {
+          "t": 4.0,
+          "main_arm": [-61.0, -4.0, 0.0],
+          "off_arm": [35, 25, -25],
+          "body": [14.0, 0.0],
+          "item": [-82.0, 0.0, 0.0]
+        },
+        {
+          "t": 5.6,
+          "main_arm": [-54.0, -4.0, 0.0],
+          "off_arm": [35, 25, -25],
+          "body": [10.5, 0.0],
+          "item": [-82.0, 0.0, 0.0],
+          "main_leg": [-17.0, 0.0, 2.55],
+          "off_leg": [13.6, 0.0, -2.55],
+          "lean": 5.6,
+          "crouch": 0.020999999999999998
+        }
+      ]
+    },
+    "sabercraft:mak_flourish": {
+      "duration": 13,
+      "strike": 5,
+      "sound": "spin",
+      "interrupt": 11,
+      "first_person": [
+        {
+          "t": 0,
+          "grip": [0.55, -0.45, 0.25],
+          "aim": [18, 12, 0]
+        },
+        {
+          "t": 1.5,
+          "grip": [0.7, -0.3, 0.2],
+          "aim": [80, 0, 90]
+        },
+        {
+          "t": 3,
+          "grip": [0.7, -0.3, 0.2],
+          "aim": [80, 0, 270]
+        },
+        {
+          "t": 4,
+          "grip": [1.3, -0.4, 0.1],
+          "aim": [8, -140, 0]
+        },
+        {
+          "t": 6,
+          "grip": [-0.6, -0.35, 0.3],
+          "aim": [8, 70, 0]
+        },
+        {
+          "t": 8,
+          "grip": [-1.3, -0.4, 0.15],
+          "aim": [8, 140, 0]
+        },
+        {
+          "t": 10.5,
+          "grip": [0.5, -0.45, 0.25],
+          "aim": [18, 12, 0]
+        }
+      ],
+      "third_person": [
+        {
+          "t": 0,
+          "main_arm": [-75, 10, 0],
+          "off_arm": [35, 25, -25],
+          "body": [0, -25],
+          "item": [-75, 0, 0],
+          "spin": 0,
+          "main_leg": [-14, 0, 4],
+          "off_leg": [12, 0, -4],
+          "lean": 2,
+          "crouch": 0.03
+        },
+        {
+          "t": 1.5,
+          "main_arm": [-110, 10, 0],
+          "off_arm": [35, 25, -25],
+          "body": [0, -25],
+          "item": [-75, 0, 90],
+          "spin": 0
+        },
+        {
+          "t": 3,
+          "main_arm": [-110, 10, 0],
+          "off_arm": [35, 25, -25],
+          "body": [0, -25],
+          "item": [-75, 0, 270],
+          "spin": 0
+        },
+        {
+          "t": 4,
+          "main_arm": [-90, 40, 0],
+          "off_arm": [35, 25, -25],
+          "body": [0, 20],
+          "item": [-82, 0, 360],
+          "spin": -40,
+          "main_leg": [6, 0, 6],
+          "off_leg": [-6, 0, -6],
+          "lean": 6,
+          "crouch": 0.06
+        },
+        {
+          "t": 7,
+          "main_arm": [-90, -20, 0],
+          "off_arm": [35, 25, -25],
+          "body": [0, -15],
+          "item": [-82, 0, 360],
+          "spin": -220,
+          "main_leg": [-10, 0, 6],
+          "off_leg": [12, 0, -6],
+          "lean": 8,
+          "crouch": 0.08
+        },
+        {
+          "t": 9.5,
+          "main_arm": [-90, -30, 0],
+          "off_arm": [35, 25, -25],
+          "body": [0, -20],
+          "item": [-80, 0, 360],
+          "spin": -360,
+          "main_leg": [8, 0, 6],
+          "off_leg": [-8, 0, -6],
+          "lean": 6,
+          "crouch": 0.06
+        },
+        {
+          "t": 10.5,
+          "main_arm": [-75, 10, 0],
+          "off_arm": [35, 25, -25],
+          "body": [0, -25],
+          "item": [-75, 0, 360],
+          "spin": -360,
+          "main_leg": [-14, 0, 4],
+          "off_leg": [12, 0, -4],
+          "lean": 2,
+          "crouch": 0.03
+        }
+      ]
+    },
+    "sabercraft:rev_hook": {
+      "duration": 9,
+      "strike": 3,
+      "sound": "swing",
+      "interrupt": 6,
+      "first_person": [
+        {
+          "t": 0,
+          "grip": [0.85, -0.55, 0.05],
+          "aim": [-55, -20, 0]
+        },
+        {
+          "t": 1.5,
+          "grip": [1.2, -0.45, 0.1],
+          "aim": [-20, -120, 0]
+        },
+        {
+          "t": 3,
+          "grip": [0.0, -0.4, 0.3],
+          "aim": [-10, 60, 0]
+        },
+        {
+          "t": 4.5,
+          "grip": [-0.8, -0.5, 0.15],
+          "aim": [-25, 120, 0]
+        },
+        {
+          "t": 7,
+          "grip": [-0.4, -0.6, 0.1],
+          "aim": [-45, 70, 0]
+        }
+      ],
+      "third_person": [
+        {
+          "t": 0,
+          "main_arm": [-55, -20, 0],
+          "off_arm": [-60, 40, 10],
+          "body": [0, 0],
+          "item": [235, 0, -10],
+          "main_leg": [9.0, 0, 6],
+          "off_leg": [-7.199999999999999, 0, -6],
+          "lean": -3,
+          "crouch": 0.1
+        },
+        {
+          "t": 1.5,
+          "main_arm": [-90, 45, 0],
+          "off_arm": [-55, 40, 10],
+          "body": [0, 30],
+          "item": [180, 0, 60]
+        },
+        {
+          "t": 2.0999999999999996,
+          "main_leg": [13.5, 0.0, 4.5],
+          "off_leg": [-18.0, 0.0, -4.5],
+          "lean": 9.6,
+          "crouch": 0.06
+        },
+        {
+          "t": 3,
+          "main_arm": [-95, -10, 0],
+          "off_arm": [-50, 40, 10],
+          "body": [5, -15],
+          "item": [180, 0, 80],
+          "main_leg": [18, 0, 6],
+          "off_leg": [-24, 0, -6],
+          "lean": 16,
+          "crouch": 0.1
+        },
+        {
+          "t": 4.5,
+          "main_arm": [-90, -45, 0],
+          "off_arm": [-50, 35, 10],
+          "body": [8, -35],
+          "item": [190, 0, 70]
+        },
+        {
+          "t": 7,
+          "main_arm": [-70, -35, 0],
+          "off_arm": [-55, 40, 10],
+          "body": [5, -20],
+          "item": [205, 0, 30],
+          "main_leg": [15.299999999999999, 0.0, 5.1],
+          "off_leg": [-20.4, 0.0, -5.1],
+          "lean": 11.2,
+          "crouch": 0.06999999999999999
+        }
+      ]
+    },
+    "sabercraft:rev_backstab": {
+      "duration": 10,
+      "strike": 4,
+      "sound": "swing",
+      "interrupt": 7,
+      "first_person": [
+        {
+          "t": 0,
+          "grip": [0.85, -0.55, 0.05],
+          "aim": [-55, -20, 0]
+        },
+        {
+          "t": 2,
+          "grip": [1.1, -0.7, -0.1],
+          "aim": [-40, -100, 0]
+        },
+        {
+          "t": 4,
+          "grip": [1.4, -0.8, -0.2],
+          "aim": [-10, -170, 0]
+        },
+        {
+          "t": 6,
+          "grip": [1.3, -0.8, -0.15],
+          "aim": [-15, -165, 0]
+        },
+        {
+          "t": 8,
+          "grip": [0.85, -0.6, 0.05],
+          "aim": [-50, -30, 0]
+        }
+      ],
+      "third_person": [
+        {
+          "t": 0,
+          "main_arm": [-55, -20, 0],
+          "off_arm": [-60, 40, 10],
+          "body": [0, 0],
+          "item": [235, 0, -10],
+          "spin": 0,
+          "main_leg": [-24, 0, 6],
+          "off_leg": [18, 0, -6],
+          "lean": 16,
+          "crouch": 0.1
+        },
+        {
+          "t": 2,
+          "main_arm": [-30, 20, 0],
+          "off_arm": [-70, 40, 10],
+          "body": [0, 20],
+          "item": [200, 0, 0],
+          "spin": -40,
+          "main_leg": [-10, 0, 8],
+          "off_leg": [24, 0, -8],
+          "lean": 12,
+          "crouch": 0.14
+        },
+        {
+          "t": 4,
+          "main_arm": [10, 10, 0],
+          "off_arm": [-80, 40, 10],
+          "body": [5, 30],
+          "item": [180, 0, 0],
+          "spin": -70,
+          "main_leg": [10, 0, 8],
+          "off_leg": [-30, 0, -8],
+          "lean": 18,
+          "crouch": 0.18
+        },
+        {
+          "t": 6,
+          "main_arm": [10, 10, 0],
+          "off_arm": [-80, 40, 10],
+          "body": [5, 30],
+          "item": [180, 0, 0],
+          "spin": -70,
+          "main_leg": [10, 0, 8],
+          "off_leg": [-30, 0, -8],
+          "lean": 18,
+          "crouch": 0.18
+        },
+        {
+          "t": 8,
+          "main_arm": [-50, -20, 0],
+          "off_arm": [-60, 40, 10],
+          "body": [0, 0],
+          "item": [235, 0, -10],
+          "spin": 0,
+          "main_leg": [-24, 0, 6],
+          "off_leg": [18, 0, -6],
+          "lean": 16,
+          "crouch": 0.1
+        }
+      ]
+    },
+    "sabercraft:rev_uppercut": {
+      "duration": 9,
+      "strike": 3,
+      "sound": "swing",
+      "interrupt": 6,
+      "first_person": [
+        {
+          "t": 0,
+          "grip": [0.85, -0.85, 0.05],
+          "aim": [-70, -10, 0]
+        },
+        {
+          "t": 1.5,
+          "grip": [0.6, -0.9, 0.1],
+          "aim": [-80, 10, 0]
+        },
+        {
+          "t": 3,
+          "grip": [0.2, -0.2, 0.25],
+          "aim": [-40, 20, 0]
+        },
+        {
+          "t": 4.5,
+          "grip": [0.0, 0.3, 0.2],
+          "aim": [-10, 30, 0]
+        },
+        {
+          "t": 7,
+          "grip": [0.6, -0.4, 0.1],
+          "aim": [-50, -10, 0]
+        }
+      ],
+      "third_person": [
+        {
+          "t": 0,
+          "main_arm": [-30, -10, 0],
+          "off_arm": [-60, 40, 10],
+          "body": [10, 10],
+          "item": [235, 0, -10],
+          "main_leg": [-30, 0, 6],
+          "off_leg": [20, 0, -6],
+          "lean": 24,
+          "crouch": 0.22,
+          "root": [0, 0, 0]
+        },
+        {
+          "t": 1.5,
+          "main_arm": [-20, -5, 0],
+          "off_arm": [-55, 40, 10],
+          "body": [20, 10],
+          "item": [230, 0, -10],
+          "main_leg": [-34, 0, 6],
+          "off_leg": [24, 0, -6],
+          "lean": 28,
+          "crouch": 0.26
+        },
+        {
+          "t": 3,
+          "main_arm": [-110, -10, 0],
+          "off_arm": [-50, 40, 10],
+          "body": [5, -5],
+          "item": [200, 0, -10],
+          "main_leg": [-30, 0, 6],
+          "off_leg": [20, 0, -6],
+          "lean": 6,
+          "crouch": 0.05,
+          "root": [0, 0, 0.12]
+        },
+        {
+          "t": 4.5,
+          "main_arm": [-160, -10, 0],
+          "off_arm": [-50, 40, 10],
+          "body": [-8, -10],
+          "item": [190, 0, -10],
+          "main_leg": [-20, 0, 6],
+          "off_leg": [10, 0, -6],
+          "lean": -4,
+          "crouch": 0.0,
+          "root": [0, 0, 0.2]
+        },
+        {
+          "t": 7,
+          "main_arm": [-70, -20, 0],
+          "off_arm": [-60, 40, 10],
+          "body": [0, 0],
+          "item": [210, 0, -10],
+          "main_leg": [-24, 0, 6],
+          "off_leg": [18, 0, -6],
+          "lean": 14,
+          "crouch": 0.1,
+          "root": [0, 0, 0]
+        }
+      ]
+    },
+    "sabercraft:rev_spin": {
+      "duration": 11,
+      "strike": 4.5,
+      "sound": "spin",
+      "interrupt": 8,
+      "first_person": [
+        {
+          "t": 0,
+          "grip": [0.85, -0.55, 0.05],
+          "aim": [-55, -20, 0]
+        },
+        {
+          "t": 2,
+          "grip": [1.3, -0.5, 0.1],
+          "aim": [-15, -140, 0]
+        },
+        {
+          "t": 3.5,
+          "grip": [-0.2, -0.45, 0.3],
+          "aim": [-10, 40, 0]
+        },
+        {
+          "t": 5,
+          "grip": [-1.2, -0.5, 0.15],
+          "aim": [-15, 130, 0]
+        },
+        {
+          "t": 8,
+          "grip": [0.6, -0.55, 0.05],
+          "aim": [-50, -20, 0]
+        }
+      ],
+      "third_person": [
+        {
+          "t": 0,
+          "main_arm": [-55, -20, 0],
+          "off_arm": [-60, 40, 10],
+          "body": [0, 0],
+          "item": [235, 0, -10],
+          "spin": 0,
+          "main_leg": [-24, 0, 6],
+          "off_leg": [18, 0, -6],
+          "lean": 16,
+          "crouch": 0.1
+        },
+        {
+          "t": 2,
+          "main_arm": [-90, 30, 0],
+          "off_arm": [-50, 40, 10],
+          "body": [0, 20],
+          "item": [180, 0, 70],
+          "spin": -60,
+          "main_leg": [6, 0, 8],
+          "off_leg": [-6, 0, -8],
+          "lean": 12,
+          "crouch": 0.14
+        },
+        {
+          "t": 5,
+          "main_arm": [-90, -10, 0],
+          "off_arm": [-50, 40, 10],
+          "body": [0, -10],
+          "item": [180, 0, 80],
+          "spin": -220,
+          "main_leg": [-12, 0, 8],
+          "off_leg": [14, 0, -8],
+          "lean": 14,
+          "crouch": 0.16
+        },
+        {
+          "t": 7.5,
+          "main_arm": [-85, -20, 0],
+          "off_arm": [-55, 40, 10],
+          "body": [0, -10],
+          "item": [190, 0, 60],
+          "spin": -340,
+          "main_leg": [8, 0, 8],
+          "off_leg": [-8, 0, -8],
+          "lean": 12,
+          "crouch": 0.12
+        },
+        {
+          "t": 8.5,
+          "main_arm": [-55, -20, 0],
+          "off_arm": [-60, 40, 10],
+          "body": [0, 0],
+          "item": [235, 0, -10],
+          "spin": -360,
+          "main_leg": [-24, 0, 6],
+          "off_leg": [18, 0, -6],
+          "lean": 16,
+          "crouch": 0.1
+        }
+      ]
+    },
+    "sabercraft:rev_dash_cut": {
+      "duration": 10,
+      "strike": 4,
+      "sound": "swing",
+      "interrupt": 7,
+      "first_person": [
+        {
+          "t": 0,
+          "grip": [0.85, -0.55, 0.05],
+          "aim": [-55, -20, 0]
+        },
+        {
+          "t": 2,
+          "grip": [1.2, -0.75, -0.05],
+          "aim": [-30, -100, 0]
+        },
+        {
+          "t": 4,
+          "grip": [-0.2, -0.65, 0.3],
+          "aim": [-20, 70, 0]
+        },
+        {
+          "t": 6,
+          "grip": [-1.0, -0.7, 0.15],
+          "aim": [-30, 130, 0]
+        },
+        {
+          "t": 8.5,
+          "grip": [0.5, -0.6, 0.05],
+          "aim": [-50, -10, 0]
+        }
+      ],
+      "third_person": [
+        {
+          "t": 0,
+          "main_arm": [-55, -20, 0],
+          "off_arm": [-60, 40, 10],
+          "body": [15, 0],
+          "item": [235, 0, -10],
+          "main_leg": [-13.2, 0, 6],
+          "off_leg": [17.0, 0, -6],
+          "lean": -3,
+          "crouch": 0.18
+        },
+        {
+          "t": 2,
+          "main_arm": [-80, 50, 0],
+          "off_arm": [-40, 40, 20],
+          "body": [25, 35],
+          "item": [180, 0, 60]
+        },
+        {
+          "t": 2.8,
+          "main_leg": [-33.0, 0.0, 4.5],
+          "off_leg": [25.5, 0.0, -4.5],
+          "lean": 18.0,
+          "crouch": 0.132
+        },
+        {
+          "t": 4,
+          "main_arm": [-90, -20, 0],
+          "off_arm": [-40, 40, 20],
+          "body": [25, -20],
+          "item": [180, 0, 80],
+          "main_leg": [-44, 0, 6],
+          "off_leg": [34, 0, -6],
+          "lean": 30,
+          "crouch": 0.22
+        },
+        {
+          "t": 6,
+          "main_arm": [-80, -50, 0],
+          "off_arm": [-45, 35, 20],
+          "body": [25, -35],
+          "item": [190, 0, 60]
+        },
+        {
+          "t": 8.5,
+          "main_arm": [-55, -20, 0],
+          "off_arm": [-60, 40, 10],
+          "body": [10, 0],
+          "item": [235, 0, -10],
+          "main_leg": [-37.4, 0.0, 5.1],
+          "off_leg": [28.9, 0.0, -5.1],
+          "lean": 21.0,
+          "crouch": 0.154
+        }
+      ]
+    },
+    "sabercraft:rev_drop": {
+      "duration": 10,
+      "strike": 4,
+      "sound": "heavy",
+      "interrupt": 7,
+      "first_person": [
+        {
+          "t": 0,
+          "grip": [0.6, 0.1, 0.1],
+          "aim": [-60, 0, 0]
+        },
+        {
+          "t": 2,
+          "grip": [0.3, 0.25, 0.2],
+          "aim": [-80, 0, 0]
+        },
+        {
+          "t": 4,
+          "grip": [0.15, -0.6, 0.35],
+          "aim": [-88, 0, 0]
+        },
+        {
+          "t": 7,
+          "grip": [0.2, -0.7, 0.3],
+          "aim": [-88, 0, 0]
+        },
+        {
+          "t": 9,
+          "grip": [0.8, -0.6, 0.05],
+          "aim": [-55, -20, 0]
+        }
+      ],
+      "third_person": [
+        {
+          "t": 0,
+          "main_arm": [-130, -10, 0],
+          "off_arm": [-90, 40, 10],
+          "body": [-5, 0],
+          "item": [200, 0, -5],
+          "main_leg": [-30, 0, 5],
+          "off_leg": [10, 0, -5],
+          "lean": 4,
+          "crouch": 0.0
+        },
+        {
+          "t": 2,
+          "main_arm": [-170, -5, 0],
+          "off_arm": [-120, 40, 10],
+          "body": [-10, 0],
+          "item": [190, 0, 0],
+          "main_leg": [-36, 0, 5],
+          "off_leg": [14, 0, -5],
+          "lean": 0,
+          "crouch": 0.0
+        },
+        {
+          "t": 4,
+          "main_arm": [-90, -5, 0],
+          "off_arm": [-60, 40, 10],
+          "body": [30, 0],
+          "item": [180, 0, 0],
+          "main_leg": [-50, 0, 6],
+          "off_leg": [40, 0, -6],
+          "lean": 34,
+          "crouch": 0.3
+        },
+        {
+          "t": 7,
+          "main_arm": [-80, -5, 0],
+          "off_arm": [-50, 40, 10],
+          "body": [35, 0],
+          "item": [180, 0, 0],
+          "main_leg": [-50, 0, 6],
+          "off_leg": [40, 0, -6],
+          "lean": 34,
+          "crouch": 0.3
+        },
+        {
+          "t": 9,
+          "main_arm": [-55, -20, 0],
+          "off_arm": [-60, 40, 10],
+          "body": [0, 0],
+          "item": [235, 0, -10],
+          "main_leg": [-24, 0, 6],
+          "off_leg": [18, 0, -6],
+          "lean": 16,
+          "crouch": 0.1
+        }
+      ]
+    },
+    "sabercraft:rev_cyclone": {
+      "duration": 16,
+      "strike": 5,
+      "sound": "spin",
+      "interrupt": 13,
+      "blend_out": 3.5,
+      "first_person": [
+        {
+          "t": 0,
+          "grip": [0.85, -0.55, 0.05],
+          "aim": [-55, -20, 0]
+        },
+        {
+          "t": 2,
+          "grip": [1.3, -0.6, 0.1],
+          "aim": [-15, -140, 0]
+        },
+        {
+          "t": 4,
+          "grip": [-1.2, -0.6, 0.15],
+          "aim": [-15, 130, 0]
+        },
+        {
+          "t": 6,
+          "grip": [1.3, -0.6, 0.1],
+          "aim": [-15, -140, 0]
+        },
+        {
+          "t": 8,
+          "grip": [-1.2, -0.6, 0.15],
+          "aim": [-15, 130, 0]
+        },
+        {
+          "t": 11,
+          "grip": [0.7, -0.55, 0.05],
+          "aim": [-50, -20, 0]
+        }
+      ],
+      "third_person": [
+        {
+          "t": 0,
+          "main_arm": [-55, -20, 0],
+          "off_arm": [-60, 40, 10],
+          "body": [10, 0],
+          "item": [235, 0, -10],
+          "spin": 0,
+          "main_leg": [-24, 0, 6],
+          "off_leg": [18, 0, -6],
+          "lean": 16,
+          "crouch": 0.1
+        },
+        {
+          "t": 2,
+          "main_arm": [-90, 10, 0],
+          "off_arm": [-90, 40, 20],
+          "body": [20, 0],
+          "item": [180, 0, 75],
+          "spin": -90,
+          "main_leg": [-30, 0, 14],
+          "off_leg": [30, 0, -14],
+          "lean": 24,
+          "crouch": 0.26
+        },
+        {
+          "t": 6,
+          "main_arm": [-90, 10, 0],
+          "off_arm": [-90, 40, 20],
+          "body": [20, 0],
+          "item": [180, 0, 75],
+          "spin": -400
+        },
+        {
+          "t": 9,
+          "main_arm": [-90, -10, 0],
+          "off_arm": [-80, 40, 20],
+          "body": [15, -10],
+          "item": [180, 0, 70],
+          "spin": -690,
+          "main_leg": [-30, 0, 14],
+          "off_leg": [30, 0, -14],
+          "lean": 24,
+          "crouch": 0.26
+        },
+        {
+          "t": 11,
+          "main_arm": [-55, -20, 0],
+          "off_arm": [-60, 40, 10],
+          "body": [10, 0],
+          "item": [235, 0, -10],
+          "spin": -720,
+          "main_leg": [-24, 0, 6],
+          "off_leg": [18, 0, -6],
+          "lean": 16,
+          "crouch": 0.1
+        }
+      ]
+    },
+    "sabercraft:wild_hammer": {
+      "duration": 14,
+      "strike": 6,
+      "sound": "heavy",
+      "interrupt": 12,
+      "first_person": [
+        {
+          "t": 0,
+          "grip": [1.15, -0.95, 0.0],
+          "aim": [20, -60, 0]
+        },
+        {
+          "t": 2.5,
+          "grip": [0.6, 0.45, -0.1],
+          "aim": [160, -20, 0]
+        },
+        {
+          "t": 4.5,
+          "grip": [0.4, 0.5, -0.05],
+          "aim": [165, -10, 0]
+        },
+        {
+          "t": 6,
+          "grip": [0.1, -0.5, 0.25],
+          "aim": [-10, 0, 0]
+        },
+        {
+          "t": 7.5,
+          "grip": [0.0, -0.95, 0.25],
+          "aim": [-60, 0, 0],
+          "camera": [0.18, 6, 2]
+        },
+        {
+          "t": 11,
+          "grip": [0.2, -0.95, 0.2],
+          "aim": [-55, -10, 0]
+        }
+      ],
+      "third_person": [
+        {
+          "t": 0,
+          "main_arm": [-30, -25, 10],
+          "off_arm": [-40, 15, 15],
+          "body": [10, 10],
+          "item": [-30, 0, -40],
+          "main_leg": [-10.799999999999999, 0, 9],
+          "off_leg": [15.0, 0, -9],
+          "lean": -16,
+          "crouch": 0.0
+        },
+        {
+          "t": 2.5,
+          "main_arm": [-185, 0, 10],
+          "off_arm": [-180, 25, 0],
+          "body": [-25, 10],
+          "item": [50, 0, 0]
+        },
+        {
+          "t": 4.199999999999999,
+          "main_leg": [-27.0, 0.0, 6.75],
+          "off_leg": [22.5, 0.0, -6.75],
+          "lean": 21.599999999999998,
+          "crouch": 0.084
+        },
+        {
+          "t": 4.5,
+          "main_arm": [-190, 0, 10],
+          "off_arm": [-185, 25, 0],
+          "body": [-30, 10],
+          "item": [55, 0, 0]
+        },
+        {
+          "t": 6,
+          "main_arm": [-90, -5, 0],
+          "off_arm": [-90, 25, 0],
+          "body": [30, 0],
+          "item": [-80, 0, 0],
+          "main_leg": [-36, 0, 9],
+          "off_leg": [30, 0, -9],
+          "lean": 36,
+          "crouch": 0.14
+        },
+        {
+          "t": 7.5,
+          "main_arm": [-35, -5, 0],
+          "off_arm": [-38, 25, 0],
+          "body": [42, 0],
+          "item": [-95, 0, 0]
+        },
+        {
+          "t": 11,
+          "main_arm": [-35, -10, 0],
+          "off_arm": [-38, 20, 0],
+          "body": [36, 0],
+          "item": [-90, 0, 0],
+          "main_leg": [-30.599999999999998, 0.0, 7.6499999999999995],
+          "off_leg": [25.5, 0.0, -7.6499999999999995],
+          "lean": 25.2,
+          "crouch": 0.098
+        }
+      ]
+    },
+    "sabercraft:wild_rage": {
+      "duration": 16,
+      "strike": 3,
+      "sound": "heavy",
+      "interrupt": 12,
+      "more_strikes": [6.5, 10],
+      "first_person": [
+        {
+          "t": 0,
+          "grip": [1.15, -0.95, 0.0],
+          "aim": [20, -60, 0],
+          "camera": [0, 0, 0]
+        },
+        {
+          "t": 1.5,
+          "grip": [0.5, 0.3, 0.0],
+          "aim": [150, -10, 0]
+        },
+        {
+          "t": 3,
+          "grip": [0.1, -0.8, 0.25],
+          "aim": [-50, 0, 0],
+          "camera": [0.12, 4, -2]
+        },
+        {
+          "t": 5,
+          "grip": [0.7, 0.35, 0.0],
+          "aim": [150, -30, -10]
+        },
+        {
+          "t": 6.5,
+          "grip": [-0.2, -0.8, 0.25],
+          "aim": [-45, 30, 0],
+          "camera": [0.12, 4, 2]
+        },
+        {
+          "t": 8.5,
+          "grip": [0.2, 0.4, 0.0],
+          "aim": [155, 20, 10]
+        },
+        {
+          "t": 10,
+          "grip": [0.3, -0.85, 0.25],
+          "aim": [-50, -20, 0],
+          "camera": [0.15, 5, -2]
+        },
+        {
+          "t": 13,
+          "grip": [0.6, -0.9, 0.15],
+          "aim": [-45, -40, 0]
+        },
+        {
+          "t": 14,
+          "camera": [0, 0, 0]
+        }
+      ],
+      "third_person": [
+        {
+          "t": 0,
+          "main_arm": [-30, -25, 10],
+          "off_arm": [-40, 15, 15],
+          "body": [10, 10],
+          "item": [-30, 0, -40],
+          "main_leg": [-16, 0, 8],
+          "off_leg": [14, 0, -8],
+          "lean": 14,
+          "crouch": 0.08
+        },
+        {
+          "t": 1.5,
+          "main_arm": [-170, 0, 5],
+          "off_arm": [-165, 25, 0],
+          "body": [-15, 5],
+          "item": [40, 0, 0],
+          "main_leg": [-10, 0, 8],
+          "off_leg": [18, 0, -8],
+          "lean": -6,
+          "crouch": 0.04
+        },
+        {
+          "t": 3,
+          "main_arm": [-45, -5, 0],
+          "off_arm": [-45, 25, 0],
+          "body": [35, 0],
+          "item": [-95, 0, 0],
+          "main_leg": [-34, 0, 8],
+          "off_leg": [28, 0, -8],
+          "lean": 30,
+          "crouch": 0.14
+        },
+        {
+          "t": 5,
+          "main_arm": [-170, 15, 5],
+          "off_arm": [-160, 30, 0],
+          "body": [-15, 15],
+          "item": [40, 0, -15],
+          "main_leg": [-14, 0, 8],
+          "off_leg": [20, 0, -8],
+          "lean": -4,
+          "crouch": 0.06
+        },
+        {
+          "t": 6.5,
+          "main_arm": [-45, -20, 0],
+          "off_arm": [-45, 25, 0],
+          "body": [35, -12],
+          "item": [-95, 0, 15],
+          "main_leg": [-36, 0, 8],
+          "off_leg": [30, 0, -8],
+          "lean": 32,
+          "crouch": 0.15
+        },
+        {
+          "t": 8.5,
+          "main_arm": [-175, -10, 5],
+          "off_arm": [-165, 20, 0],
+          "body": [-18, -8],
+          "item": [45, 0, 15],
+          "main_leg": [-16, 0, 8],
+          "off_leg": [22, 0, -8],
+          "lean": -6,
+          "crouch": 0.06
+        },
+        {
+          "t": 10,
+          "main_arm": [-40, 5, 0],
+          "off_arm": [-40, 25, 0],
+          "body": [40, 12],
+          "item": [-95, 0, -15],
+          "main_leg": [-40, 0, 8],
+          "off_leg": [32, 0, -8],
+          "lean": 36,
+          "crouch": 0.16
+        },
+        {
+          "t": 13,
+          "main_arm": [-38, -5, 0],
+          "off_arm": [-40, 20, 0],
+          "body": [34, 5],
+          "item": [-90, 0, -10],
+          "main_leg": [-30, 0, 8],
+          "off_leg": [24, 0, -8],
+          "lean": 26,
+          "crouch": 0.1
+        }
+      ]
+    },
+    "sabercraft:wild_slam": {
+      "duration": 14.36,
+      "strike": 4.97,
+      "sound": "heavy",
+      "first_person": [
+        {
+          "t": 0.0,
+          "grip": [0.126, 1.081, -0.039],
+          "aim": [179.575, 3.05, 0.0]
+        },
+        {
+          "t": 2.76,
+          "grip": [-0.117, 1.0, 0.043],
+          "aim": [171.45, 11.175, 0.0]
+        },
+        {
+          "t": 4.97,
+          "grip": [-0.442, -0.056, 0.367],
+          "aim": [-15.425, 19.3, 0.0]
+        },
+        {
+          "t": 6.63,
+          "grip": [-0.523, -0.706, 0.367],
+          "aim": [-104.8, 19.3, 0.0]
+        },
+        {
+          "t": 9.39,
+          "grip": [-0.442, -0.868, 0.286],
+          "aim": [-112.925, 19.3, 0.0]
+        }
+      ],
+      "third_person": [
+        {
+          "t": 0.0,
+          "main_arm": [-255.9, 22.8, 5.1],
+          "off_arm": [-248.0, 27.4, -4.5],
+          "body": [-24.4, 13.0],
+          "item": [37.0, 0.0, 11.4],
+          "main_leg": [-11.4, 0, 9],
+          "off_leg": [15.0, 0, -9],
+          "lean": -14,
+          "crouch": 0.0
+        },
+        {
+          "t": 2.76,
+          "main_arm": [-260.8, 14.6, 5.1],
+          "off_arm": [-252.9, 24.1, -4.5],
+          "body": [-29.2, 8.1],
+          "item": [45.1, 0.0, 11.4]
+        },
+        {
+          "t": 3.4789999999999996,
+          "main_leg": [-28.5, 0.0, 6.75],
+          "off_leg": [22.5, 0.0, -6.75],
+          "lean": 20.4,
+          "crouch": 0.084
+        },
+        {
+          "t": 4.97,
+          "main_arm": [-117.8, 6.5, -3.0],
+          "off_arm": [-114.8, 24.1, -4.5],
+          "body": [32.5, 0.0],
+          "item": [-117.4, 0.0, 11.4],
+          "main_leg": [-38, 0, 9],
+          "off_leg": [30, 0, -9],
+          "lean": 34,
+          "crouch": 0.14
+        },
+        {
+          "t": 6.63,
+          "main_arm": [-44.6, 6.5, -3.0],
+          "off_arm": [-41.6, 19.2, -4.5],
+          "body": [48.8, 0.0],
+          "item": [-141.8, 0.0, 11.4]
+        },
+        {
+          "t": 9.35,
+          "main_leg": [-32.3, 0.0, 7.6499999999999995],
+          "off_leg": [25.5, 0.0, -7.6499999999999995],
+          "lean": 23.799999999999997,
+          "crouch": 0.098
+        },
+        {
+          "t": 9.39,
+          "main_arm": [-36.5, 6.5, -3.0],
+          "off_arm": [-33.5, 19.2, -4.5],
+          "body": [45.5, 0.0],
+          "item": [-141.8, 0.0, 11.4]
+        }
+      ]
+    },
+    "sabercraft:wild_wide": {
+      "duration": 11.05,
+      "strike": 3.82,
+      "sound": "heavy",
+      "first_person": [
+        {
+          "t": 0.0,
+          "grip": [1.36, -0.04, 0.14],
+          "aim": [8.8, -151.0, 0.0]
+        },
+        {
+          "t": 2.12,
+          "grip": [1.08, 0.03, 0.21],
+          "aim": [8.8, -130.0, 0.0]
+        },
+        {
+          "t": 3.82,
+          "grip": [-0.46, -0.04, 0.35],
+          "aim": [3.2, 80.0, 0.0]
+        },
+        {
+          "t": 5.1,
+          "grip": [-1.72, -0.18, 0.28],
+          "aim": [-1.0, 171.0, 0.0]
+        },
+        {
+          "t": 7.22,
+          "grip": [-2.0, -0.39, 0.21],
+          "aim": [-8.0, 192.0, 0.0]
+        }
+      ],
+      "third_person": [
+        {
+          "t": 0.0,
+          "main_arm": [-107.0, 115.0, 10.0],
+          "off_arm": [-96.0, 120.0, -6.0],
+          "body": [0.0, 53.2],
+          "item": [-100.0, 0.0, 16.0],
+          "main_leg": [12.0, 0, 10],
+          "off_leg": [-8.4, 0, -10],
+          "lean": -3,
+          "crouch": 0.03
+        },
+        {
+          "t": 2.12,
+          "main_arm": [-111.2, 108.0, 10.0],
+          "off_arm": [-98.8, 117.2, -6.0],
+          "body": [0.0, 56.0],
+          "item": [-102.8, 0.0, 16.0]
+        },
+        {
+          "t": 2.681,
+          "main_leg": [18.0, 0.0, 7.5],
+          "off_leg": [-21.0, 0.0, -7.5],
+          "lean": 9.6,
+          "crouch": 0.048
+        },
+        {
+          "t": 3.82,
+          "main_arm": [-116.8, 10.0, -4.0],
+          "off_arm": [-110.0, 36.0, -6.0],
+          "body": [0.0, 0.0],
+          "item": [-107.0, 0.0, 16.0]
+        },
+        {
+          "t": 3.83,
+          "main_leg": [24, 0, 10],
+          "off_leg": [-28, 0, -10],
+          "lean": 16,
+          "crouch": 0.08
+        },
+        {
+          "t": 5.1,
+          "main_arm": [-111.2, -67.0, -4.0],
+          "off_arm": [-103.0, -27.0, -6.0],
+          "body": [0.0, -49.0],
+          "item": [-102.8, 0.0, 16.0]
+        },
+        {
+          "t": 7.2,
+          "main_leg": [20.4, 0.0, 8.5],
+          "off_leg": [-23.8, 0.0, -8.5],
+          "lean": 11.2,
+          "crouch": 0.055999999999999994
+        },
+        {
+          "t": 7.22,
+          "main_arm": [-100.0, -81.0, -4.0],
+          "off_arm": [-93.2, -34.0, -6.0],
+          "body": [0.0, -56.0],
+          "item": [-100.0, 0.0, 16.0]
+        }
+      ]
+    },
+    "sabercraft:wild_charge": {
+      "duration": 10.8,
+      "strike": 3.6,
+      "sound": "heavy",
+      "interrupt": 7.2,
+      "first_person": [
+        {
+          "t": 0.0,
+          "grip": [0.85, -0.35, -0.18],
+          "aim": [14.0, -18.0, 0.0]
+        },
+        {
+          "t": 2.25,
+          "grip": [0.79, -0.314, -0.216],
+          "aim": [10.4, -12.0, 0.0]
+        },
+        {
+          "t": 3.6,
+          "grip": [-0.11, -0.05, 0.6],
+          "aim": [-0.4, 19.2, 0.0]
+        },
+        {
+          "t": 6.3,
+          "grip": [-0.11, -0.05, 0.624],
+          "aim": [-0.4, 19.2, 0.0]
+        }
+      ],
+      "third_person": [
+        {
+          "t": 0.0,
+          "main_arm": [-60.0, 35.0, 12.4],
+          "off_arm": [-52.0, 57.0, -3.0],
+          "body": [0.0, 45.6],
+          "item": [-90.0, 0.0, 8.0],
+          "main_leg": [-13.2, 0, 7],
+          "off_leg": [17.0, 0, -7],
+          "lean": -3,
+          "crouch": 0.03
+        },
+        {
+          "t": 2.25,
+          "main_arm": [-63.6, 38.6, 12.4],
+          "off_arm": [-54.4, 59.4, -3.0],
+          "body": [0.0, 48.0],
+          "item": [-92.4, 0.0, 8.0]
+        },
+        {
+          "t": 2.52,
+          "main_leg": [-33.0, 0.0, 5.25],
+          "off_leg": [25.5, 0.0, -5.25],
+          "lean": 16.8,
+          "crouch": 0.072
+        },
+        {
+          "t": 3.6,
+          "main_arm": [-104.4, -1.0, -2.0],
+          "off_arm": [-100.0, 27.0, -3.0],
+          "body": [18.0, -30.0],
+          "item": [-99.6, 0.0, 8.0],
+          "main_leg": [-44, 0, 7],
+          "off_leg": [34, 0, -7],
+          "lean": 28,
+          "crouch": 0.12
+        },
+        {
+          "t": 6.3,
+          "main_arm": [-104.4, -1.0, -2.0],
+          "off_arm": [-100.0, 27.0, -3.0],
+          "body": [18.0, -30.0],
+          "item": [-99.6, 0.0, 8.0],
+          "main_leg": [-37.4, 0.0, 5.95],
+          "off_leg": [28.9, 0.0, -5.95],
+          "lean": 19.599999999999998,
+          "crouch": 0.08399999999999999
+        }
+      ]
+    },
+    "sabercraft:wild_frenzy": {
+      "duration": 14.4,
+      "strike": 5.4,
+      "sound": "spin",
+      "interrupt": 12.6,
+      "first_person": [
+        {
+          "t": 0.0,
+          "grip": [0.978, -0.318, 0.115],
+          "aim": [8.5, -123.25, 0.0]
+        },
+        {
+          "t": 2.25,
+          "grip": [1.323, -0.26, 0.23],
+          "aim": [6.2, -163.5, 0.0]
+        },
+        {
+          "t": 4.05,
+          "grip": [-0.402, -0.203, 0.345],
+          "aim": [6.2, 55.0, 0.0]
+        },
+        {
+          "t": 5.4,
+          "grip": [-1.322, -0.26, 0.23],
+          "aim": [6.2, 135.5, 0.0]
+        },
+        {
+          "t": 6.75,
+          "grip": [-2.012, -0.318, 0.115],
+          "aim": [6.2, 181.5, 0.0]
+        },
+        {
+          "t": 8.1,
+          "grip": [1.667, -0.318, 0.115],
+          "aim": [6.2, -163.5, 0.0]
+        },
+        {
+          "t": 9.9,
+          "grip": [0.518, -0.375, 0.172],
+          "aim": [8.5, -94.5, 0.0]
+        }
+      ],
+      "third_person": [
+        {
+          "t": 0.0,
+          "main_arm": [-99.0, 72.7, 4.2],
+          "off_arm": [-91.8, 84.0, -2.2],
+          "body": [0.0, 34.5],
+          "item": [-87.5, 0.0, 6.0],
+          "spin": 0,
+          "main_leg": [-8, 0, 10],
+          "off_leg": [10, 0, -10],
+          "lean": 10,
+          "crouch": 0.08
+        },
+        {
+          "t": 2.25,
+          "main_arm": [-99.0, 49.8, -1.5],
+          "off_arm": [-95.2, 66.8, -2.2],
+          "body": [0.0, 17.2],
+          "item": [-89.8, 0.0, 6.0],
+          "spin": -40
+        },
+        {
+          "t": 2.3,
+          "main_leg": [8, 0, 12],
+          "off_leg": [-8, 0, -12],
+          "lean": 16,
+          "crouch": 0.12
+        },
+        {
+          "t": 5.4,
+          "main_arm": [-101.3, -19.2, -1.5],
+          "off_arm": [-97.5, 20.8, -2.2],
+          "body": [0.0, -17.2],
+          "item": [-93.2, 0.0, 6.0],
+          "spin": -190,
+          "main_leg": [-14, 0, 12],
+          "off_leg": [16, 0, -12],
+          "lean": 20,
+          "crouch": 0.14
+        },
+        {
+          "t": 8.1,
+          "main_arm": [-99.0, -30.8, -1.5],
+          "off_arm": [-95.2, 9.2, -2.2],
+          "body": [0.0, -23.0],
+          "item": [-89.8, 0.0, 6.0],
+          "spin": -330,
+          "main_leg": [10, 0, 12],
+          "off_leg": [-10, 0, -12],
+          "lean": 16,
+          "crouch": 0.1
+        },
+        {
+          "t": 10.35,
+          "main_arm": [-70.2, -19.2, -1.5],
+          "off_arm": [-63.0, 20.8, -2.2],
+          "body": [0.0, -11.5],
+          "item": [-64.5, 0.0, 6.0],
+          "spin": -360
+        },
+        {
+          "t": 10.4,
+          "main_leg": [-22, 0, 10],
+          "off_leg": [18, 0, -10],
+          "lean": 14,
+          "crouch": 0.08
+        }
+      ]
+    },
+    "sabercraft:shii_sweep": {
+      "duration": 11,
+      "strike": 4,
+      "sound": "swing",
+      "interrupt": 8,
+      "first_person": [
+        {
+          "t": 0,
+          "grip": [0.55, -0.7, 0.15],
+          "aim": [55, 20, 0]
+        },
+        {
+          "t": 2,
+          "grip": [1.5, -0.35, 0.05],
+          "aim": [5, -140, 0]
+        },
+        {
+          "t": 4,
+          "grip": [0.0, -0.3, 0.3],
+          "aim": [2, 20, 0]
+        },
+        {
+          "t": 6,
+          "grip": [-1.5, -0.35, 0.1],
+          "aim": [2, 140, 0]
+        },
+        {
+          "t": 8.5,
+          "grip": [-0.6, -0.6, 0.15],
+          "aim": [30, 80, 0]
+        }
+      ],
+      "third_person": [
+        {
+          "t": 0,
+          "main_arm": [-70, -15, 0],
+          "off_arm": [-70, 45, 0],
+          "body": [0, 0],
+          "item": [-45, 0, 15],
+          "main_leg": [10.0, 0, 10],
+          "off_leg": [-6.6, 0, -10],
+          "lean": -3,
+          "crouch": 0.03
+        },
+        {
+          "t": 2,
+          "main_arm": [-85, 55, 0],
+          "off_arm": [-85, 70, 0],
+          "body": [0, 45],
+          "item": [-85, 0, 0]
+        },
+        {
+          "t": 2.8,
+          "main_leg": [15.0, 0.0, 7.5],
+          "off_leg": [-16.5, 0.0, -7.5],
+          "lean": 4.8,
+          "crouch": 0.036
+        },
+        {
+          "t": 4,
+          "main_arm": [-90, -10, 0],
+          "off_arm": [-88, 30, 0],
+          "body": [5, -10],
+          "item": [-88, 0, 0],
+          "main_leg": [20, 0, 10],
+          "off_leg": [-22, 0, -10],
+          "lean": 8,
+          "crouch": 0.06
+        },
+        {
+          "t": 6,
+          "main_arm": [-85, -60, 0],
+          "off_arm": [-82, -10, 0],
+          "body": [5, -50],
+          "item": [-85, 0, 0]
+        },
+        {
+          "t": 8.5,
+          "main_arm": [-75, -40, 0],
+          "off_arm": [-72, 10, 0],
+          "body": [0, -30],
+          "item": [-60, 0, 10],
+          "main_leg": [17.0, 0.0, 8.5],
+          "off_leg": [-18.7, 0.0, -8.5],
+          "lean": 5.6,
+          "crouch": 0.041999999999999996
+        }
+      ]
+    },
+    "sabercraft:shii_return": {
+      "duration": 11,
+      "strike": 4,
+      "sound": "swing",
+      "interrupt": 8,
+      "first_person": [
+        {
+          "t": 0,
+          "grip": [-0.6, -0.6, 0.15],
+          "aim": [30, 80, 0]
+        },
+        {
+          "t": 2,
+          "grip": [-1.5, -0.4, 0.1],
+          "aim": [2, 150, 0]
+        },
+        {
+          "t": 4,
+          "grip": [0.0, -0.35, 0.3],
+          "aim": [2, 0, 0]
+        },
+        {
+          "t": 6,
+          "grip": [1.5, -0.4, 0.05],
+          "aim": [2, -140, 0]
+        },
+        {
+          "t": 8.5,
+          "grip": [0.7, -0.7, 0.15],
+          "aim": [45, -20, 0]
+        }
+      ],
+      "third_person": [
+        {
+          "t": 0,
+          "main_arm": [-75, -40, 0],
+          "off_arm": [-72, 10, 0],
+          "body": [0, -30],
+          "item": [-60, 0, 10],
+          "main_leg": [-6.6, 0, 10],
+          "off_leg": [10.0, 0, -10],
+          "lean": -3,
+          "crouch": 0.03
+        },
+        {
+          "t": 2,
+          "main_arm": [-85, -65, 0],
+          "off_arm": [-80, -15, 0],
+          "body": [0, -55],
+          "item": [-85, 0, 0]
+        },
+        {
+          "t": 2.8,
+          "main_leg": [-16.5, 0.0, 7.5],
+          "off_leg": [15.0, 0.0, -7.5],
+          "lean": 4.8,
+          "crouch": 0.036
+        },
+        {
+          "t": 4,
+          "main_arm": [-90, -5, 0],
+          "off_arm": [-88, 35, 0],
+          "body": [5, 0],
+          "item": [-88, 0, 0],
+          "main_leg": [-22, 0, 10],
+          "off_leg": [20, 0, -10],
+          "lean": 8,
+          "crouch": 0.06
+        },
+        {
+          "t": 6,
+          "main_arm": [-85, 55, 0],
+          "off_arm": [-85, 70, 0],
+          "body": [5, 45],
+          "item": [-85, 0, 0]
+        },
+        {
+          "t": 8.5,
+          "main_arm": [-72, 0, 0],
+          "off_arm": [-70, 50, 0],
+          "body": [0, 15],
+          "item": [-50, 0, 10],
+          "main_leg": [-18.7, 0.0, 8.5],
+          "off_leg": [17.0, 0.0, -8.5],
+          "lean": 5.6,
+          "crouch": 0.041999999999999996
+        }
+      ]
+    },
+    "sabercraft:shii_twirl": {
+      "duration": 12,
+      "strike": 6.5,
+      "sound": "spin",
+      "interrupt": 10,
+      "first_person": [
+        {
+          "t": 0,
+          "grip": [0.55, -0.7, 0.15],
+          "aim": [55, 20, 0]
+        },
+        {
+          "t": 2,
+          "grip": [0.3, -0.4, 0.2],
+          "aim": [60, 0, 120]
+        },
+        {
+          "t": 4,
+          "grip": [0.3, -0.4, 0.2],
+          "aim": [60, 0, 240]
+        },
+        {
+          "t": 5.5,
+          "grip": [0.3, -0.2, 0.2],
+          "aim": [100, 0, 360]
+        },
+        {
+          "t": 6.5,
+          "grip": [0.1, -0.4, 0.25],
+          "aim": [10, 5, 360]
+        },
+        {
+          "t": 8,
+          "grip": [0.05, -0.8, 0.25],
+          "aim": [-40, 5, 360]
+        },
+        {
+          "t": 10,
+          "grip": [0.4, -0.75, 0.15],
+          "aim": [30, 15, 360]
+        }
+      ],
+      "third_person": [
+        {
+          "t": 0,
+          "main_arm": [-70, -15, 0],
+          "off_arm": [-70, 45, 0],
+          "body": [0, 0],
+          "item": [-45, 0, 15],
+          "main_leg": [-8.4, 0, 8],
+          "off_leg": [11.0, 0, -8],
+          "lean": -4,
+          "crouch": 0.04
+        },
+        {
+          "t": 2,
+          "main_arm": [-95, -5, 0],
+          "off_arm": [-90, 35, 0],
+          "body": [0, 0],
+          "item": [-90, 0, 120]
+        },
+        {
+          "t": 4,
+          "main_arm": [-95, -5, 0],
+          "off_arm": [-90, 35, 0],
+          "body": [0, 0],
+          "item": [-90, 0, 240]
+        },
+        {
+          "t": 4.55,
+          "main_leg": [-21.0, 0.0, 6.0],
+          "off_leg": [16.5, 0.0, -6.0],
+          "lean": 10.799999999999999,
+          "crouch": 0.048
+        },
+        {
+          "t": 5.5,
+          "main_arm": [-150, -5, 0],
+          "off_arm": [-145, 30, 0],
+          "body": [-8, 0],
+          "item": [-60, 0, 360]
+        },
+        {
+          "t": 6.5,
+          "main_arm": [-100, -5, 0],
+          "off_arm": [-98, 30, 0],
+          "body": [15, 0],
+          "item": [-75, 0, 360],
+          "main_leg": [-28, 0, 8],
+          "off_leg": [22, 0, -8],
+          "lean": 18,
+          "crouch": 0.08
+        },
+        {
+          "t": 8,
+          "main_arm": [-50, -5, 0],
+          "off_arm": [-50, 25, 0],
+          "body": [25, 0],
+          "item": [-90, 0, 360]
+        },
+        {
+          "t": 10,
+          "main_arm": [-65, -15, 0],
+          "off_arm": [-65, 45, 0],
+          "body": [5, 0],
+          "item": [-45, 0, 375],
+          "main_leg": [-23.8, 0.0, 6.8],
+          "off_leg": [18.7, 0.0, -6.8],
+          "lean": 12.6,
+          "crouch": 0.055999999999999994
+        }
+      ]
+    },
+    "sabercraft:shii_overhead": {
+      "duration": 11.0,
+      "strike": 3.5,
+      "sound": "swing",
+      "first_person": [
+        {
+          "t": 0.0,
+          "grip": [0.263, 0.45, 0.035],
+          "aim": [135.5, 2.75, 0.0]
+        },
+        {
+          "t": 2.0,
+          "grip": [0.09, 0.277, 0.15],
+          "aim": [106.75, -3.0, 0.0]
+        },
+        {
+          "t": 3.5,
+          "grip": [-0.025, -0.24, 0.265],
+          "aim": [14.75, 2.75, 0.0]
+        },
+        {
+          "t": 5.0,
+          "grip": [-0.082, -0.585, 0.265],
+          "aim": [-37.0, 2.75, 0.0]
+        },
+        {
+          "t": 7.0,
+          "grip": [-0.025, -0.757, 0.208],
+          "aim": [-48.5, 2.75, 0.0]
+        }
+      ],
+      "third_person": [
+        {
+          "t": 0.0,
+          "main_arm": [-185.0, -3.5, 0.0],
+          "off_arm": [-179.2, 27.8, 0.0],
+          "body": [-11.5, 0.0],
+          "item": [18.2, 0.0, -2.2],
+          "main_leg": [-8.4, 0, 8],
+          "off_leg": [11.0, 0, -8],
+          "lean": -6,
+          "crouch": 0.03
+        },
+        {
+          "t": 2.0,
+          "main_arm": [-173.5, -3.5, 0.0],
+          "off_arm": [-171.2, 27.8, 0.0],
+          "body": [-9.2, 0.0],
+          "item": [-16.3, 0.0, -2.2]
+        },
+        {
+          "t": 2.4499999999999997,
+          "main_leg": [-21.0, 0.0, 6.0],
+          "off_leg": [16.5, 0.0, -6.0],
+          "lean": 9.6,
+          "crouch": 0.03
+        },
+        {
+          "t": 3.5,
+          "main_arm": [-98.8, -9.2, 0.0],
+          "off_arm": [-98.8, 27.8, 0.0],
+          "body": [17.2, 0.0],
+          "item": [-73.8, 0.0, -2.2],
+          "main_leg": [-28, 0, 8],
+          "off_leg": [22, 0, -8],
+          "lean": 16,
+          "crouch": 0.05
+        },
+        {
+          "t": 5.0,
+          "main_arm": [-52.8, -9.2, 0.0],
+          "off_arm": [-52.8, 22.0, 0.0],
+          "body": [23.0, 0.0],
+          "item": [-91.0, 0.0, -2.2]
+        },
+        {
+          "t": 7.0,
+          "main_arm": [-41.2, -9.2, 0.0],
+          "off_arm": [-41.2, 22.0, 0.0],
+          "body": [17.2, 0.0],
+          "item": [-91.0, 0.0, -2.2],
+          "main_leg": [-23.8, 0.0, 6.8],
+          "off_leg": [18.7, 0.0, -6.8],
+          "lean": 11.2,
+          "crouch": 0.034999999999999996
+        }
+      ]
+    },
+    "sabercraft:shii_charge": {
+      "duration": 10.0,
+      "strike": 3.0,
+      "sound": "swing",
+      "interrupt": 6.0,
+      "first_person": [
+        {
+          "t": 0.0,
+          "grip": [0.88, -0.48, -0.147],
+          "aim": [7.7, -24.0, 0.0]
+        },
+        {
+          "t": 1.5,
+          "grip": [0.825, -0.425, -0.18],
+          "aim": [5.5, -21.8, 0.0]
+        },
+        {
+          "t": 3.0,
+          "grip": [0.11, -0.172, 0.48],
+          "aim": [-2.2, 6.8, 0.0]
+        },
+        {
+          "t": 5.5,
+          "grip": [0.077, -0.172, 0.513],
+          "aim": [-2.2, 6.8, 0.0]
+        }
+      ],
+      "third_person": [
+        {
+          "t": 0.0,
+          "main_arm": [-59.0, 23.5, 11.0],
+          "off_arm": [-53.5, 45.0, 0.0],
+          "body": [0.0, 33.0],
+          "item": [-83.5, 0.0, -1.5],
+          "main_leg": [-11.4, 0, 8],
+          "off_leg": [15.0, 0, -8],
+          "lean": -3,
+          "crouch": 0.03
+        },
+        {
+          "t": 1.5,
+          "main_arm": [-61.2, 25.7, 11.0],
+          "off_arm": [-56.8, 45.0, 0.0],
+          "body": [0.0, 35.2],
+          "item": [-85.7, 0.0, -1.5]
+        },
+        {
+          "t": 2.0999999999999996,
+          "main_leg": [-28.5, 0.0, 6.0],
+          "off_leg": [22.5, 0.0, -6.0],
+          "lean": 10.799999999999999,
+          "crouch": 0.036
+        },
+        {
+          "t": 3.0,
+          "main_arm": [-94.2, -4.0, 0.0],
+          "off_arm": [-89.8, 23.0, 0.0],
+          "body": [11.0, -22.0],
+          "item": [-92.3, 0.0, -1.5],
+          "main_leg": [-38, 0, 8],
+          "off_leg": [30, 0, -8],
+          "lean": 18,
+          "crouch": 0.06
+        },
+        {
+          "t": 5.5,
+          "main_arm": [-94.2, -4.0, 0.0],
+          "off_arm": [-89.8, 23.0, 0.0],
+          "body": [11.0, -22.0],
+          "item": [-92.3, 0.0, -1.5],
+          "main_leg": [-32.3, 0.0, 6.8],
+          "off_leg": [25.5, 0.0, -6.8],
+          "lean": 12.6,
+          "crouch": 0.041999999999999996
+        }
+      ]
+    },
+    "sabercraft:shii_spin": {
+      "duration": 14.0,
+      "strike": 5.0,
+      "sound": "spin",
+      "interrupt": 12.0,
+      "first_person": [
+        {
+          "t": 0.0,
+          "grip": [0.97, -0.4, 0.09],
+          "aim": [1.0, -136.0, 0.0]
+        },
+        {
+          "t": 2.0,
+          "grip": [1.33, -0.34, 0.21],
+          "aim": [-1.4, -184.0, 0.0]
+        },
+        {
+          "t": 3.5,
+          "grip": [-0.35, -0.22, 0.33],
+          "aim": [-1.4, 44.0, 0.0]
+        },
+        {
+          "t": 5.0,
+          "grip": [-1.31, -0.28, 0.21],
+          "aim": [-1.4, 128.0, 0.0]
+        },
+        {
+          "t": 6.5,
+          "grip": [-2.03, -0.34, 0.09],
+          "aim": [-1.4, 176.0, 0.0]
+        },
+        {
+          "t": 8.0,
+          "grip": [1.81, -0.34, 0.09],
+          "aim": [-1.4, -184.0, 0.0]
+        },
+        {
+          "t": 9.5,
+          "grip": [0.61, -0.4, 0.15],
+          "aim": [1.0, -112.0, 0.0]
+        }
+      ],
+      "third_person": [
+        {
+          "t": 0.0,
+          "main_arm": [-94.0, 63.0, 0.0],
+          "off_arm": [-88.0, 69.0, 0.0],
+          "body": [0.0, 30.0],
+          "item": [-87.0, 0.0, -3.0],
+          "spin": 0,
+          "main_leg": [-8, 0, 9],
+          "off_leg": [10, 0, -9],
+          "lean": 4,
+          "crouch": 0.05
+        },
+        {
+          "t": 2.0,
+          "main_arm": [-94.0, 39.0, 0.0],
+          "off_arm": [-91.6, 57.0, 0.0],
+          "body": [0.0, 12.0],
+          "item": [-89.4, 0.0, -3.0],
+          "spin": -40,
+          "main_leg": [6, 0, 10],
+          "off_leg": [-6, 0, -10],
+          "lean": 8,
+          "crouch": 0.08
+        },
+        {
+          "t": 5.0,
+          "main_arm": [-94.0, -21.0, 0.0],
+          "off_arm": [-91.6, 15.0, 0.0],
+          "body": [0.0, -18.0],
+          "item": [-89.4, 0.0, -3.0],
+          "spin": -180,
+          "main_leg": [-10, 0, 10],
+          "off_leg": [12, 0, -10],
+          "lean": 10,
+          "crouch": 0.1
+        },
+        {
+          "t": 8.0,
+          "main_arm": [-94.0, -33.0, 0.0],
+          "off_arm": [-91.6, 3.0, 0.0],
+          "body": [0.0, -24.0],
+          "item": [-89.4, 0.0, -3.0],
+          "spin": -320,
+          "main_leg": [8, 0, 10],
+          "off_leg": [-8, 0, -10],
+          "lean": 8,
+          "crouch": 0.08
+        },
+        {
+          "t": 10.0,
+          "main_arm": [-70.0, -21.0, 0.0],
+          "off_arm": [-64.0, 15.0, 0.0],
+          "body": [0.0, -12.0],
+          "item": [-63.0, 0.0, -3.0],
+          "spin": -360,
+          "main_leg": [-20, 0, 9],
+          "off_leg": [16, 0, -9],
+          "lean": 8,
+          "crouch": 0.05
         }
       ]
     },
