@@ -627,6 +627,48 @@ def rey():
     o.save("rey")
 
 
+def ezra():
+    """Ezra Bridger as in Star Wars Rebels, seasons 1 and 2: an orange jumpsuit with darker seams,
+    a light grey collar, a brown belt with pouches, the grey energy slingshot on the left forearm,
+    brown fingerless gloves and boots, dark blue hair over the ears and blue eyes. Own pixel art
+    after the look of the series."""
+    o = Outfit(177)
+    skin, hair, dhair, eye = "#c8946a", "#1e2a52", "#141c38", "#3a7ad8"
+    suit, seam, collar, belt, glove, boots, sling = "#d8782a", "#a85618", "#c8c4bc", "#5a3a22", "#6a4628", "#4a3020", "#6a6e76"
+    o.fill("body", False, suit)
+    o.fill(ARMS, False, suit)
+    o.fill(ARMS, False, glove, rows=(10, 12))
+    o.fill(LEGS, False, suit)
+    o.fill(LEGS, False, boots, rows=(8, 12))
+    # Seams down the front and along the sides, the collar and the belt with two pouches.
+    o.paint("body", False, lambda f, x, y, w, h: seam if f == "front" and x == 3 and 1 < y < 7 or f in ("left", "right") and x == 1 else None)
+    o.paint("body", False, lambda f, x, y, w, h: collar if y == 0 and f in ("front", "back") or f == "front" and y == 1 and x in (2, 5) else None)
+    o.paint("body", False, lambda f, x, y, w, h: (seam if f == "front" and x in (1, 6) else belt) if y in (8, 9) and f not in ("top", "bottom") else None)
+    o.paint(ARMS, False, lambda f, x, y, w, h: seam if y == 4 and f not in ("top", "bottom") else None)
+    o.paint(LEGS, False, lambda f, x, y, w, h: seam if f in ("left", "right") and x == 1 and y < 8 else None)
+    # The energy slingshot: a grey gauntlet on the left forearm, on the outer layer.
+    o.paint("left_arm", True, lambda f, x, y, w, h: (sling if (x + y) % 3 else shade(sling, 0.75)) if 6 <= y <= 9 and f not in ("top", "bottom") else None)
+    head_from(o, False, {
+        "_": {"s": skin, "h": hair, "d": dhair, "e": eye, "w": "#f2eee8", "m": "#a8644a", "b": "#8a6040"},
+        "front": ["hhhhhhhh", "hdhhhhdh", "hsssssh" + "h", "sbbssbbs", "swessews", "ssssssss", "sssmmsss", "ssssssss"],
+        "top": ["hhdhhdhh", "hhhhhhhh", "hdhhhhdh", "hhhhhhhh", "hhhdhhhh", "hhhhhhhh", "hdhhhdhh", "hhhhhhhh"],
+        "bottom": ["ssssssss"] * 8,
+        "right": ["hhhhhhhh", "hhhhhhhh", "hhhhhhhs", "hhhhhhss", "hhhhssss", "hhhsssss", "hhssssss", "hhssssss"],
+        "left": ["hhhhhhhh", "hhhhhhhh", "shhhhhhh", "sshhhhhh", "sssshhhh", "ssssshhh", "sssssshh", "sssssshh"],
+        "back": ["hhhhhhhh", "hhhdhhhh", "hhhhhhhh", "hdhhhhdh", "hhhhhhhh", "hhhhdhhh", "hhhhhhhh", "hhhhhhhh"],
+    })
+    # Spiky tufts on top and the hair reaching over the neck at the back.
+    head_from(o, True, {
+        "_": {"h": hair, "d": dhair},
+        "top": ["h.h..h.h", ".hdhhdh.", "hhhhhhhh", ".hhddhh.", "hhhhhhhh", ".h.hh.h.", "........", "........"],
+        "front": ["hh.hh.hh", "h......h", "........", "........", "........", "........", "........", "........"],
+        "back": ["hhhhhhhh", "hhdhhdhh", "hhhhhhhh", "hhhhhhhh", "hhhhhhhh", "hhhhhhhh", "hhhhhhhh", "h.hh.hh."],
+        "right": ["hhhhhhhh", "hhhhhhh.", "hhhhh...", "hhhh....", "hhh.....", "hh......", "h.......", "........"],
+        "left": ["hhhhhhhh", ".hhhhhhh", "...hhhhh", "....hhhh", ".....hhh", "......hh", ".......h", "........"],
+    })
+    o.save("ezra")
+
+
 if __name__ == "__main__":
     wanderer()
     shadow()
@@ -643,3 +685,4 @@ if __name__ == "__main__":
     ahsoka()
     kylo()
     rey()
+    ezra()

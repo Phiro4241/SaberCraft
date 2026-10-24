@@ -928,7 +928,8 @@ public final class SaberAbilities {
 	}
 
 	/** Sends to the player and to everyone who can see them. */
-	private static void broadcast(ServerPlayer player, CustomPacketPayload payload) {
+	/** Sends a payload to the player and to everyone who sees them. */
+	public static void broadcast(ServerPlayer player, CustomPacketPayload payload) {
 		if (ServerPlayNetworking.canSend(player, payload.type())) {
 			ServerPlayNetworking.send(player, payload);
 		}

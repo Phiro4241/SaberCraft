@@ -844,6 +844,60 @@ body("shii_spin", legs=[
     (8, [8, 0, 10], [-8, 0, -10], 8, 0.08), (10, [-20, 0, 9], [16, 0, -9], 8, 0.05)])
 
 
+# ---------------- Phase 10: Ezra Bridger ----------------
+# Improvisiert (Ezra, Star Wars Rebels): a street kid's fighting, one-handed, the blade held low
+# and forward, the free hand open in front for a push or a shot. Quick cuts with a hop, a low
+# slide under the guard, a cartwheel over the top, and a shot from the stun blaster in the hilt.
+IMP_FP = ([0.95, -0.55, 0.05], [80, -20, 0])
+IMP_TP = ([-80, -15, 5], [-60, 35, 10], [20, 0, -10])
+for src, name, time, amp in (("flow_diagonal", "imp_slash", 0.8, 1.05), ("flow_backhand", "imp_hook", 0.8, 1.1),
+                             ("flow_rising", "imp_rising", 0.8, 1.1), ("flow_spin", "imp_spin", 0.8, 1.1)):
+    derive(src, name, time, amp, IMP_FP, IMP_TP)
+step("imp_slash", 2.4, 5.2, lead="off", front=-24, back=18, lean=10, prep=-3, side=3, crouch=0.05, prep_crouch=0.08)
+body("imp_hook",
+    legs=[(0, [-12, 0, 3], [10, 0, -3], 6, 0.08), (1.2, [-24, 0, 4], [6, 0, -4], 4, 0.0), (2.4, [-10, 0, 4], [-14, 0, -4], 6, 0.0),
+          (4.0, [-14, 0, 3], [12, 0, -3], 8, 0.05), (5.6, [-12, 0, 3], [10, 0, -3], 6, 0.04)],
+    root=[(0, [0, 0, 0]), (1.2, [0, 0, 0.18]), (2.4, [0, 0, 0.12]), (4.0, [0, 0, 0])])
+step("imp_rising", 2.0, 4.8, lead="main", front=-22, back=18, lean=6, side=3, crouch=0.03)
+body("imp_spin", legs=[
+    (0, [-12, 0, 4], [10, 0, -4], 6, 0.05), (1.6, [8, 0, 6], [-8, 0, -6], 8, 0.08), (4.0, [-12, 0, 6], [12, 0, -6], 10, 0.1),
+    (6.4, [8, 0, 6], [-8, 0, -6], 8, 0.06), (8.0, [-14, 0, 4], [12, 0, -4], 6, 0.04)],
+    root=[(0, [0, 0, 0]), (1.6, [0, 0, 0.1]), (4.0, [0, 0, 0.2]), (6.4, [0, 0, 0.08]), (8.0, [0, 0, 0])])
+# The slide: down low on one knee, sliding forward with a flat cut at knee height.
+M["imp_slide"] = move(13, 5, "swing",
+    [(0, [0.95, -0.55, 0.05], [80, -20, 0]), (2, [1.3, -0.75, 0.05], [10, -120, 0]), (5, [0.1, -0.7, 0.3], [0, 20, 0]),
+     (7, [-1.1, -0.75, 0.15], [0, 120, 0]), (10, [0.6, -0.6, 0.1], [60, -10, 0])],
+    [(0, [-80, -15, 5], [-60, 35, 10], [0, 0], [20, 0, -10]), (2, [-70, 60, 0], [-30, 40, 30], [0, 35], [-85, 0, 0]),
+     (5, [-75, -10, 0], [-20, 30, 40], [0, -5], [-88, 0, 0]), (7, [-70, -60, 0], [-20, 30, 40], [0, -45], [-85, 0, 0]),
+     (10, [-80, -20, 5], [-55, 35, 10], [0, -10], [10, 0, -10])],
+    interrupt=10, blend_in=1.0, blend_out=3.0)
+body("imp_slide",
+    legs=[(0, [-12, 0, 3], [10, 0, -3], 6, 0.05), (2, [-70, 0, 6], [60, 0, -4], 24, 0.45), (5, [-80, 0, 6], [70, 0, -4], 26, 0.55),
+          (8, [-60, 0, 6], [50, 0, -4], 20, 0.4), (11, [-14, 0, 3], [12, 0, -3], 8, 0.06)],
+    root=[(0, [0, 0, 0]), (2, [-8, 0, 0]), (5, [-12, 0, 0]), (8, [-6, 0, 0]), (11, [0, 0, 0])],
+    cam=[(0, [0, 0, 0]), (2, [0.45, -4, 0]), (5, [0.55, -6, 0]), (8, [0.4, -3, 0]), (11, [0, 0, 0])])
+# The cartwheel: a sideways turn over the hands, the blade sweeping down at the end.
+M["imp_cartwheel"] = move(13, 7, "swing",
+    [(0, [0.95, -0.55, 0.05], [80, -20, 0]), (2, [0.8, -0.1, 0.1], [120, -10, 40]), (5, [0.4, -0.2, 0.2], [110, 0, 200]),
+     (7, [0.1, -0.35, 0.25], [20, 5, 360]), (9, [0.05, -0.7, 0.2], [-35, 5, 360]), (11, [0.9, -0.55, 0.05], [80, -20, 360])],
+    [(0, [-80, -15, 5], [-60, 35, 10], [0, 0], [20, 0, -10]), (2, [-170, -10, 20], [-170, 20, -20], [0, 0], [10, 0, 0]),
+     (5, [-175, -10, 30], [-175, 20, -30], [0, 0], [0, 0, 0]), (7, [-95, -10, 0], [-90, 30, 0], [10, 0], [-70, 0, 0]),
+     (9, [-55, -10, 0], [-50, 25, 0], [12, 0], [-85, 0, 0]), (11, [-80, -15, 5], [-60, 35, 10], [0, 0], [20, 0, -10])],
+    interrupt=10, blend_in=1.0, blend_out=3.0)
+body("imp_cartwheel",
+    legs=[(0, [-10, 0, 3], [10, 0, -3], 6, 0.08), (2, [-10, 0, 40], [10, 0, -40], 4, 0.0), (5, [-5, 0, 50], [5, 0, -50], 0, 0.0),
+          (7, [-10, 0, 30], [10, 0, -30], 6, 0.0), (9, [-24, 0, 4], [20, 0, -4], 12, 0.06), (11, [-12, 0, 3], [10, 0, -3], 6, 0.04)],
+    root=[(0, [0, 0, 0]), (2, [0, 90, 0.35]), (4, [0, 200, 0.55]), (6, [0, 320, 0.3]), (7, [0, 360, 0])],
+    cam=[(0, [0, 0, 0]), (2, [0.1, 0, 20]), (4, [0.15, 0, 10]), (6, [0.1, 0, 4]), (8, [0, 0, 0])])
+# The shot from the hilt: the arm snaps forward, the hilt points at the target, a short recoil.
+M["imp_blast"] = move(10, 2, "none",
+    [(0, [0.95, -0.55, 0.05], [80, -20, 0]), (1.5, [0.35, -0.35, 0.35], [5, 4, 0]), (2.5, [0.38, -0.3, 0.28], [16, 4, 0]),
+     (5, [0.36, -0.35, 0.33], [6, 4, 0]), (8, [0.95, -0.55, 0.05], [80, -20, 0])],
+    [(0, [-80, -15, 5], [-60, 35, 10], [0, 0], [20, 0, -10]), (1.5, [-92, -5, 0], [-55, 35, 10], [5, -10], [-88, 0, 0]),
+     (2.5, [-104, -5, 0], [-55, 35, 10], [0, -10], [-80, 0, 0]), (5, [-94, -5, 0], [-55, 35, 10], [5, -10], [-88, 0, 0]),
+     (8, [-80, -15, 5], [-60, 35, 10], [0, 0], [20, 0, -10])],
+    interrupt=4, trail=False, blend_in=1.0, blend_out=2.0)
+
 # ---------------- Phase 7: force powers ----------------
 # Grip: the free hand reaches out and holds, the saber is kept low and back. It lasts as long as
 # the server holds the target and is stopped when the grip ends.
@@ -1019,6 +1073,13 @@ styles = {
         "idle_third_person": {"main_arm": WILD_TP[0], "off_arm": WILD_TP[1], "body": [15, 15], "item": WILD_TP[2]},
         "guard_first_person": {"grip": [0.45, -0.5, 0.15], "aim": [46, 84, 0]},
         "guard_third_person": {"main_arm": [-104, -20, 0], "off_arm": [-100, 36, 0], "body": [10, -6], "item": [0, 0, 62]}},
+    "sabercraft:improvised": {
+        "combo": ["imp_slash", "imp_hook", "imp_rising", "imp_slash"],
+        "sprint": "imp_slide", "jump": "imp_cartwheel", "special": "imp_spin", "combo_window": 14,
+        "idle_first_person": {"grip": IMP_FP[0], "aim": IMP_FP[1]},
+        "idle_third_person": {"main_arm": IMP_TP[0], "off_arm": IMP_TP[1], "body": [0, 10], "item": IMP_TP[2]},
+        "guard_first_person": {"grip": [0.45, -0.5, 0.15], "aim": [42, 80, 0]},
+        "guard_third_person": {"main_arm": [-98, -22, 0], "off_arm": [-70, 40, 10], "body": [4, -8], "item": [0, 0, 58]}},
     "sabercraft:shii_cho": {
         "combo": ["shii_sweep", "shii_return", "shii_overhead", "shii_twirl"],
         "sprint": "shii_charge", "jump": "shii_overhead", "special": "shii_spin", "combo_window": 17,
@@ -1056,6 +1117,8 @@ LEGS = {
                                  {"main_leg": [-24, 0, 8], "off_leg": [20, 0, -8], "lean": 14, "crouch": 0.12}),
     "sabercraft:unbridled": ({"main_leg": [-16, 0, 8], "off_leg": [14, 0, -8], "lean": 14, "crouch": 0.08},
                              {"main_leg": [-18, 0, 9], "off_leg": [16, 0, -9], "lean": 12, "crouch": 0.08}),
+    "sabercraft:improvised": ({"main_leg": [-16, 0, 4], "off_leg": [14, 0, -4], "lean": 8, "crouch": 0.04},
+                              {"main_leg": [-18, 0, 5], "off_leg": [16, 0, -5], "lean": 10, "crouch": 0.06}),
     "sabercraft:shii_cho": ({"main_leg": [-10, 0, 8], "off_leg": [10, 0, -8], "lean": 4, "crouch": 0.04},
                             {"main_leg": [-12, 0, 9], "off_leg": [12, 0, -9], "lean": 6, "crouch": 0.06}),
 }
@@ -1064,7 +1127,7 @@ for sid, (idle, guard) in LEGS.items():
     styles[sid]["guard_third_person"].update(guard)
 for sid in ("sabercraft:flowing", "sabercraft:heavy", "sabercraft:defensive", "sabercraft:agile", "sabercraft:djem_so", "sabercraft:soresu",
             "sabercraft:onslaught", "sabercraft:ataru", "sabercraft:makashi", "sabercraft:reverse_shien", "sabercraft:unbridled",
-            "sabercraft:shii_cho"):
+            "sabercraft:shii_cho", "sabercraft:improvised"):
     styles[sid]["guard_hit"] = "guard_hit"
     styles[sid]["parry"] = "parry"
     styles[sid]["guard_break"] = "guard_break"
@@ -1101,6 +1164,9 @@ styles["sabercraft:makashi"]["dodge"] = dict(styles["sabercraft:heavy"]["dodge"]
 styles["sabercraft:reverse_shien"]["dodge"] = {"forward": "dodge_roll", "left": "dodge_roll_left", "right": "dodge_roll_right", "back": "dodge_backflip"}
 styles["sabercraft:unbridled"]["dodge"] = dict(styles["sabercraft:heavy"]["dodge"])
 styles["sabercraft:shii_cho"]["dodge"] = dict(styles["sabercraft:flowing"]["dodge"])
+# Phase 10: Ezra rolls forward and aside and flips back, like the reverse grip (SaberManeuver.of).
+styles["sabercraft:improvised"]["dodge"] = dict(styles["sabercraft:reverse_shien"]["dodge"])
+styles["sabercraft:improvised"]["run_third_person"] = {"main_arm": [30, 10, 15], "item": [80, 0, 0], "lean": 20}
 styles["sabercraft:makashi"]["run_third_person"] = {"main_arm": [-40, 10, 0], "off_arm": MAK_OFF, "item": [-40, 0, 0], "lean": 10}
 styles["sabercraft:reverse_shien"]["run_third_person"] = {"main_arm": [30, 10, 15], "item": [235, 0, -10], "lean": 20}
 styles["sabercraft:reverse_shien"]["air_third_person"] = {"main_arm": [-70, -10, 5], "off_arm": [-35, 30, 25], "item": [235, 0, -10],

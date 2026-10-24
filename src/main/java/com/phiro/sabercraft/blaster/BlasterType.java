@@ -12,6 +12,7 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.item.component.CustomModelData;
 
 import com.phiro.sabercraft.SaberCraft;
+import com.phiro.sabercraft.saber.SaberVariant;
 
 /**
  * A kind of blaster (Phase 10). A bow becomes a blaster with {@code /sabercraft blaster <type>};
@@ -77,6 +78,20 @@ public record BlasterType(Identifier id, float damage, float speed, int interval
 		CustomModelData data = stack.get(DataComponents.CUSTOM_MODEL_DATA);
 		String value = data != null ? data.getString(0) : null;
 		return value == null || value.isEmpty() ? null : byId(Identifier.tryParse(value)).orElse(null);
+	}
+
+	/**
+	 * The blaster a stack fires on right-click: a converted bow, or a saber on Ezra Bridger's hilt,
+	 * which has his stun blaster built in (Phase 10). Null for everything else.
+	 */
+	public static @Nullable BlasterType firing(ItemStack stack) {
+		BlasterType type = of(stack);
+
+		if (type == null && SaberVariant.canHold(stack) && SaberVariant.EZRA.equals(SaberVariant.hiltOf(stack))) {
+			return EZRA;
+		}
+
+		return type;
 	}
 
 	/** The translation key of the name, {@code sabercraft.blaster.<path>}. */

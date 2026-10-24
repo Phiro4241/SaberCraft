@@ -48,6 +48,8 @@ public class ManeuverGameTest implements FabricClientGameTest {
 			{"reverse_shien", "tano", "white"},
 			{"unbridled", "crossguard", "red"},
 			{"shii_cho", "rey", "yellow"},
+			// Phase 10: Ezra Bridger.
+			{"improvised", "ezra", "blue"},
 	};
 	private static final String[] DIRECTIONS = {"forward", "left", "right", "back"};
 

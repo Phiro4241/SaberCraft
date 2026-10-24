@@ -524,6 +524,46 @@
         }
       },
       {
+        "when": "sabercraft:ezra",
+        "model": {
+          "type": "minecraft:select",
+          "property": "minecraft:display_context",
+          "cases": [
+            {
+              "when": [
+                "gui",
+                "ground",
+                "fixed",
+                "on_shelf"
+              ],
+              "model": {
+                "type": "minecraft:model",
+                "model": "sabercraft:item/hilt/ezra"
+              }
+            }
+          ],
+          "fallback": {
+            "type": "minecraft:composite",
+            "models": [
+              {
+                "type": "minecraft:model",
+                "model": "sabercraft:item/hilt/ezra"
+              },
+              {
+                "type": "sabercraft:saber_blade",
+                "base": "sabercraft:item/hilt/ezra",
+                "style": "sabercraft:blue",
+                "emitter": [
+                  0.5795,
+                  0.5795,
+                  0.5
+                ]
+              }
+            ]
+          }
+        }
+      },
+      {
         "when": "sabercraft:standard",
         "model": {
           "type": "minecraft:select",

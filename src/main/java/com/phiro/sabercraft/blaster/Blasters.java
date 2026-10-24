@@ -34,6 +34,9 @@ import net.minecraft.world.phys.Vec3;
 
 import com.phiro.sabercraft.SaberCraft;
 import com.phiro.sabercraft.ability.AbilityConfig;
+import com.phiro.sabercraft.ability.SaberAbilities;
+import com.phiro.sabercraft.ability.SaberAbility;
+import com.phiro.sabercraft.network.AbilityEventPayload;
 import com.phiro.sabercraft.network.BlasterHeatPayload;
 
 /**
@@ -45,7 +48,8 @@ import com.phiro.sabercraft.network.BlasterHeatPayload;
  *
  * <p>No arrows are needed. Instead every shot heats the blaster up; at 100 it overheats and
  * locks until it has cooled down completely. Each shot also costs one point of durability, so
- * Unbreaking and Mending matter. Power adds damage (+25 % per level), Flame sets targets on fire
+ * Unbreaking and Mending matter (the stun blaster in Ezra Bridger's saber hilt, Phase 10, costs
+ * none). Power adds damage (+25 % per level), Flame sets targets on fire
  * and Punch pushes them back. All enchantments and other item data stay on the bow.
  */
 public final class Blasters {
@@ -68,7 +72,7 @@ public final class Blasters {
 	public static void init() {
 		UseItemCallback.EVENT.register((player, level, hand) -> {
 			ItemStack stack = player.getItemInHand(hand);
-			BlasterType type = BlasterType.of(stack);
+			BlasterType type = BlasterType.firing(stack);
 
 			if (type == null || level.isClientSide() || !(player instanceof ServerPlayer serverPlayer)) {
 				return InteractionResult.PASS;
@@ -80,6 +84,7 @@ public final class Blasters {
 
 			fire(serverPlayer, hand, stack, type);
 			// Never start drawing the bow, whether the shot went off or not.
+			// A saber on Ezra's hilt fires its stun blaster the same way.
 			return InteractionResult.CONSUME;
 		});
 		ServerTickEvents.END_SERVER_TICK.register(Blasters::tick);
@@ -129,8 +134,15 @@ public final class Blasters {
 			player.addEffect(new MobEffectInstance(MobEffects.SLOWNESS, 12, 0, false, false, false));
 		}
 
-		if (!player.getAbilities().instabuild) {
+		boolean bow = BlasterType.of(stack) != null;
+
+		if (bow && !player.getAbilities().instabuild) {
 			stack.hurtAndBreak(1, player, hand);
+		}
+
+		if (!bow) {
+			// The blaster in Ezra's hilt: every client plays the shot from the hilt.
+			SaberAbilities.broadcast(player, new AbilityEventPayload(player.getId(), SaberAbility.GUARD, AbilityEventPayload.Event.SHOT));
 		}
 
 		// The muzzle flash a little in front of the barrel, small enough not to cover the view.

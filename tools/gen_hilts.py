@@ -518,6 +518,33 @@ def rey():
     return h
 
 
+def ezra():
+    """Ezra Bridger's first hilt (Star Wars Rebels, seasons 1 and 2): grey metal with orange bands,
+    the folding grip of the built-in stun blaster lying along one side, and a short barrel next to
+    the emitter. Own pixel art after the look of the series."""
+    h = Hilt("ezra", 101)
+    h.material("grey", metal((150, 154, 160), 0.1))
+    h.material("dark", metal((62, 64, 70), 0.08))
+    h.material("orange", metal((214, 112, 40), 0.06))
+    h.material("brown", wrapped((96, 60, 36), (64, 40, 24), period=4))
+    h.material("emitter", emitter_top((150, 154, 160)))
+
+    h.box(-11.2, -10.4, 1.15, "dark")
+    h.box(-10.4, -9.8, 1.08, "orange")
+    h.box(-9.8, -5.0, 1.0, "grey")
+    h.box(-8.8, -6.0, 1.06, "dark", hz=0.6, oz=-0.5)
+    h.box(-5.0, -4.4, 1.12, "orange")
+    h.box(-4.4, -0.6, 1.04, "grey")
+    # The folded blaster grip along the side, with its trigger.
+    h.box(-9.4, -2.2, 0.45, "brown", hz=0.4, oz=1.3)
+    h.box(-3.0, -2.5, 0.2, "orange", hz=0.22, oz=1.75)
+    h.box(-0.6, 0.0, 1.12, "dark")
+    h.box(0.0, EMITTER_D, 1.3, "grey", cap="emitter")
+    # The short blaster barrel beside the emitter.
+    h.box(-1.8, EMITTER_D - 0.2, 0.3, "dark", hz=0.3, oz=-1.5)
+    return h
+
+
 def side_emitter(side):
     """Model point of a side vent of the crossguard hilt (axis point CROSS_D, CROSS_X across)."""
     x = side * CROSS_X
@@ -576,6 +603,8 @@ HILTS = [
                                       (None, 90, {"emitter": side_emitter(1), "length": 0.24, "unstable": True}),
                                       (None, -90, {"emitter": side_emitter(-1), "length": 0.24, "unstable": True})]),
     ("rey", rey, "yellow", [(EMITTER_D, 0)]),
+    # Phase 10.
+    ("ezra", ezra, "blue", [(EMITTER_D, 0)]),
 ]
 
 # Inventory icon size. The 3D hilts are slimmer than a sword sprite, so the one-handed hilts are

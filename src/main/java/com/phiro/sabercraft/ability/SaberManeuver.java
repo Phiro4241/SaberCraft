@@ -65,14 +65,14 @@ public enum SaberManeuver {
 		boolean staff = SaberVariant.isStaffStyle(style);
 
 		// Phase 9: mixed sets. Ansturm (Anakin) lunges forward but rolls aside; the reverse grip
-		// rolls forward and flips back.
+		// (and Ezra's improvised style, Phase 10) rolls forward and flips back.
 		if (SaberVariant.ONSLAUGHT.equals(style)) {
 			return switch (direction) {
 				case FORWARD -> LUNGE;
 				case LEFT, RIGHT -> SIDE_ROLL;
 				case BACK -> BACKFLIP;
 			};
-		} else if (SaberVariant.REVERSE_SHIEN.equals(style)) {
+		} else if (SaberVariant.REVERSE_SHIEN.equals(style) || SaberVariant.IMPROVISED.equals(style)) {
 			return switch (direction) {
 				case FORWARD -> ROLL;
 				case LEFT, RIGHT -> SIDE_ROLL;

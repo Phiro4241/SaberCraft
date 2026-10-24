@@ -1,5 +1,8 @@
 package com.phiro.sabercraft.client.blaster;
 
+import org.jspecify.annotations.Nullable;
+
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.api.client.rendering.v1.EntityRendererRegistry;
@@ -29,6 +32,8 @@ public final class BlasterClient {
 	private static boolean overheated;
 	private static long lastShotMillis = Long.MIN_VALUE / 2;
 	private static InteractionHand lastShotHand = InteractionHand.MAIN_HAND;
+	/** The hand of a shot whose arm swing is still to come in this tick. */
+	private static @Nullable InteractionHand shotSwing;
 
 	private BlasterClient() {
 	}
@@ -46,7 +51,7 @@ public final class BlasterClient {
 		UseItemCallback.EVENT.register((player, level, hand) -> {
 			ItemStack stack = player.getItemInHand(hand);
 
-			if (!level.isClientSide() || BlasterType.of(stack) == null || !serverHasBlasters()) {
+			if (!level.isClientSide() || BlasterType.firing(stack) == null || !serverHasBlasters()) {
 				return InteractionResult.PASS;
 			}
 
@@ -56,11 +61,24 @@ public final class BlasterClient {
 
 			lastShotMillis = Util.getMillis();
 			lastShotHand = hand;
+			shotSwing = hand;
 			// Only SUCCESS is sent to the server as an item use. Its arm swing is left out for
 			// blasters (LocalPlayerMixin), and the bow is not drawn.
 			return InteractionResult.SUCCESS;
 		});
+		// The swing follows the shot in the same tick; never keep the mark longer.
+		ClientTickEvents.END_CLIENT_TICK.register(client -> shotSwing = null);
 		HudElementRegistry.addLast(SaberCraft.id("blaster_heat"), new BlasterHud());
+	}
+
+	/** True once for the arm swing that vanilla adds to a shot, which is then left out. */
+	public static boolean takeShotSwing(InteractionHand hand) {
+		if (shotSwing != hand) {
+			return false;
+		}
+
+		shotSwing = null;
+		return true;
 	}
 
 	/** Whether the server has SaberCraft, so it fires the blasters. */

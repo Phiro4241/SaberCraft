@@ -23,7 +23,7 @@ final class BlasterHud implements HudElement {
 		Minecraft client = Minecraft.getInstance();
 
 		if (!CombatConfig.get().abilityHud || client.player == null || client.gui.hud.isHidden()
-				|| BlasterType.of(client.player.getMainHandItem()) == null && BlasterType.of(client.player.getOffhandItem()) == null) {
+				|| BlasterType.firing(client.player.getMainHandItem()) == null && BlasterType.firing(client.player.getOffhandItem()) == null) {
 			return;
 		}
 

@@ -45,7 +45,9 @@ public record AbilityEventPayload(int entityId, SaberAbility ability, Event even
 		/** A parried attacker is thrown off balance. Sent with the attacker as the entity. */
 		UNBALANCED,
 		/** A projectile was sent back; data is 1 for a precise deflection along the look direction. */
-		DEFLECT;
+		DEFLECT,
+		/** The stun blaster in Ezra Bridger's hilt fired (Phase 10); the ability is not used. */
+		SHOT;
 
 		public static final StreamCodec<ByteBuf, Event> STREAM_CODEC = ByteBufCodecs.idMapper(i -> values()[i], Enum::ordinal);
 	}

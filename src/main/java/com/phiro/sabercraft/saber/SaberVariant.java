@@ -62,6 +62,11 @@ public record SaberVariant(Identifier hilt, Identifier color, Identifier style) 
 	public static final Identifier CROSSGUARD = SaberCraft.id("crossguard");
 	/** Wrapped, bronze hilt made from a staff, after Rey. Since Phase 9. */
 	public static final Identifier REY = SaberCraft.id("rey");
+	/**
+	 * Ezra Bridger's first hilt (Star Wars Rebels, seasons 1 and 2): grey metal with orange bands
+	 * and a folding grip, with a stun blaster built in. Since Phase 10.
+	 */
+	public static final Identifier EZRA = SaberCraft.id("ezra");
 
 	public static final Identifier RED = SaberCraft.id("red");
 	public static final Identifier BLUE = SaberCraft.id("blue");
@@ -98,17 +103,22 @@ public record SaberVariant(Identifier hilt, Identifier color, Identifier style) 
 	public static final Identifier UNBRIDLED = SaberCraft.id("unbridled");
 	/** Shii-Cho, Rey's style: wide sweeping two-handed cuts, trained with a staff. Since Phase 9. */
 	public static final Identifier SHII_CHO = SaberCraft.id("shii_cho");
+	/**
+	 * Improvisiert, Ezra Bridger's style: a street kid's quick, one-handed cuts, rolls and flips,
+	 * the free hand ready for a push or a shot from the hilt. Since Phase 10.
+	 */
+	public static final Identifier IMPROVISED = SaberCraft.id("improvised");
 
 	/** All hilts in menu order. The server only accepts these. */
-	public static final List<Identifier> HILTS = List.of(STANDARD, GUARDIAN, DARK_LORD, SENTINEL, KENOBI, SKYWALKER, ANAKIN, YODA, DOOKU, TANO, CROSSGUARD, REY, DOUBLE);
+	public static final List<Identifier> HILTS = List.of(STANDARD, GUARDIAN, DARK_LORD, SENTINEL, KENOBI, SKYWALKER, ANAKIN, YODA, DOOKU, TANO, CROSSGUARD, REY, EZRA, DOUBLE);
 	/** All blade colors in menu order. The server only accepts these. */
 	public static final List<Identifier> COLORS = List.of(RED, BLUE, GREEN, PURPLE, YELLOW, WHITE);
 	/** All fighting styles. The staff and Juyo styles belong to the double-bladed hilt only. */
 	public static final List<Identifier> STYLES = List.of(FLOWING, HEAVY, DEFENSIVE, AGILE, DJEM_SO, SORESU, ONSLAUGHT, ATARU, MAKASHI, REVERSE_SHIEN,
-			UNBRIDLED, SHII_CHO, STAFF, JUYO);
+			UNBRIDLED, SHII_CHO, IMPROVISED, STAFF, JUYO);
 	/** Styles a one-bladed hilt can use, in menu order. */
 	public static final List<Identifier> SINGLE_STYLES = List.of(FLOWING, HEAVY, DEFENSIVE, AGILE, DJEM_SO, SORESU, ONSLAUGHT, ATARU, MAKASHI,
-			REVERSE_SHIEN, UNBRIDLED, SHII_CHO);
+			REVERSE_SHIEN, UNBRIDLED, SHII_CHO, IMPROVISED);
 	/** Styles of the double-bladed hilt, in menu order. */
 	public static final List<Identifier> DOUBLE_STYLES = List.of(STAFF, JUYO);
 
@@ -153,6 +163,8 @@ public record SaberVariant(Identifier hilt, Identifier color, Identifier style) 
 			return UNBRIDLED;
 		} else if (REY.equals(hilt)) {
 			return SHII_CHO;
+		} else if (EZRA.equals(hilt)) {
+			return IMPROVISED;
 		}
 
 		return DARK_LORD.equals(hilt) ? HEAVY : FLOWING;

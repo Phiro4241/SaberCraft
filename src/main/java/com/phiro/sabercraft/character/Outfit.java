@@ -85,13 +85,20 @@ public record Outfit(Identifier id, SaberVariant suggested, boolean character, S
 	/** Kylo Ren: black helmet with silver trim, black hooded robes; unstable red crossguard blade, Ungezügelt. */
 	public static final Outfit KYLO = character("kylo",
 			new SaberVariant(SaberVariant.CROSSGUARD, SaberVariant.RED, SaberVariant.UNBRIDLED), Side.DARK);
+	/**
+	 * Ezra Bridger as in Star Wars Rebels, seasons 1 and 2: orange jumpsuit, dark blue hair, the
+	 * energy slingshot on the left wrist; blue blade on his hilt with the built-in stun blaster,
+	 * improvised style. Since Phase 10.
+	 */
+	public static final Outfit EZRA = character("ezra",
+			new SaberVariant(SaberVariant.EZRA, SaberVariant.BLUE, SaberVariant.IMPROVISED), Side.LIGHT);
 	/** Rey: light wrapped desert clothes, brown hair; yellow blade on her own hilt, Shii-Cho. */
 	public static final Outfit REY = character("rey",
 			new SaberVariant(SaberVariant.REY, SaberVariant.YELLOW, SaberVariant.SHII_CHO), Side.LIGHT);
 	/** The original outfits of Phase 7, in menu order. */
 	public static final List<Outfit> OUTFITS = List.of(WANDERER, SHADOW, SENTINEL, SCOUT, TWILIGHT);
-	/** The film characters of Phase 8 and 9, in menu order: by era, light and dark side in turns. */
-	public static final List<Outfit> CHARACTERS = List.of(YODA, DOOKU, OBI_WAN, MAUL, ANAKIN, AHSOKA, VADER, LUKE, KYLO, REY);
+	/** The film and series characters of Phases 8 to 10, in menu order: by era, light and dark side in turns. */
+	public static final List<Outfit> CHARACTERS = List.of(YODA, DOOKU, OBI_WAN, MAUL, ANAKIN, AHSOKA, EZRA, VADER, LUKE, KYLO, REY);
 	/** Everything a player can wear; the server only accepts these. */
 	public static final List<Outfit> ALL = java.util.stream.Stream.concat(OUTFITS.stream(), CHARACTERS.stream()).toList();
 

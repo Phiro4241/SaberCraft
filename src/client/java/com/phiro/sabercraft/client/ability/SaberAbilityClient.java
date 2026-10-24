@@ -62,6 +62,8 @@ public final class SaberAbilityClient {
 	public static final Identifier MOVE_PUSH = SaberCraft.id("force_push");
 	public static final Identifier MOVE_DASH = SaberCraft.id("dash");
 	public static final Identifier MOVE_GRIP = SaberCraft.id("force_grip");
+	/** The shot from the stun blaster in Ezra Bridger's hilt (Phase 10). */
+	public static final Identifier MOVE_HILT_SHOT = SaberCraft.id("imp_blast");
 	public static final Identifier MOVE_PULL = SaberCraft.id("force_pull");
 	public static final Identifier MOVE_JUMP = SaberCraft.id("force_jump");
 
@@ -402,6 +404,15 @@ public final class SaberAbilityClient {
 			}
 			case UNBALANCED -> SaberEffects.onUnbalanced(entity);
 			case EVADE -> play(entity, SaberSounds.DASH, 0.5F);
+			case SHOT -> {
+				// Ezra's hilt fired its stun blaster: the arm snaps forward, whatever the style.
+				CombatState combat = SaberTracker.INSTANCE.combat(entity);
+				CombatMove move = CombatLibrary.INSTANCE.move(MOVE_HILT_SHOT);
+
+				if (combat != null && move != null) {
+					combat.play(move, SaberTracker.INSTANCE.time(0.0F));
+				}
+			}
 		}
 	}
 

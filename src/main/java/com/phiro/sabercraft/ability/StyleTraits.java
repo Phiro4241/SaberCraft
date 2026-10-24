@@ -46,6 +46,8 @@ public record StyleTraits(float blockBonus, int parryBonus, float blockCost, flo
 	public static final StyleTraits UNBRIDLED = new StyleTraits(-0.1F, -2, 1.4F, 1.25F, 1.2F, 6, 0.45F);
 	/** Shii-Cho (Rey): wide, sweeping cuts and a solid, all-round guard. */
 	public static final StyleTraits SHII_CHO = new StyleTraits(0.06F, 1, 0.9F, 1.0F, 1.0F, 5, 0.12F);
+	/** Improvisiert (Ezra, Phase 10): an untrained guard, but the quickest, cheapest dodges after Ataru. */
+	public static final StyleTraits IMPROVISED = new StyleTraits(-0.12F, 0, 1.25F, 0.5F, 0.6F, 4, 0.05F);
 
 	public static StyleTraits of(@Nullable Identifier style) {
 		if (SaberVariant.HEAVY.equals(style)) {
@@ -74,6 +76,8 @@ public record StyleTraits(float blockBonus, int parryBonus, float blockCost, flo
 			return UNBRIDLED;
 		} else if (SaberVariant.SHII_CHO.equals(style)) {
 			return SHII_CHO;
+		} else if (SaberVariant.IMPROVISED.equals(style)) {
+			return IMPROVISED;
 		}
 
 		return FLOWING;

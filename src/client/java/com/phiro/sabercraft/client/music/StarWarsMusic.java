@@ -289,7 +289,7 @@ public final class StarWarsMusic {
 					  victory/      played once after you win a fight
 					  characters/   the theme of a character when they appear, named after the character:
 					                vader.ogg, obi_wan.ogg, maul.ogg, luke.ogg, anakin.ogg, yoda.ogg,
-					                dooku.ogg, ahsoka.ogg, kylo.ogg, rey.ogg (or a folder characters/vader/)
+					                dooku.ogg, ahsoka.ogg, kylo.ogg, rey.ogg, ezra.ogg (or a folder characters/vader/)
 
 					Music for a planet or a character (optional):
 					  planets/hoth/              exploring and calm moments while the Hoth sky is chosen
@@ -297,7 +297,7 @@ public final class StarWarsMusic {
 					                             duel, dramatic, boss, victory)
 					  characters/vader/duel/     duels while YOU play Vader (any situation folder works)
 					  Planets: tatooine, coruscant, endor, hoth, mustafar, naboo.
-					  Characters: vader, obi_wan, maul, luke, anakin, yoda, dooku, ahsoka, kylo, rey.
+					  Characters: vader, obi_wan, maul, luke, anakin, yoda, dooku, ahsoka, kylo, rey, ezra.
 					For a situation the first of these with files is used:
 					  1. characters/<you>/<situation>/   2. planets/<planet>/<situation>/
 					  3. planets/<planet>/ (exploration and calm only)   4. <situation>/

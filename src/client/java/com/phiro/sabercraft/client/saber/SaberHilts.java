@@ -40,6 +40,8 @@ public final class SaberHilts {
 	public static final SaberHilt CROSSGUARD = register(new SaberHilt(SaberVariant.CROSSGUARD, SaberProfiles.DARK, SaberVariant.RED, 1));
 	/** Bronze hilt made from a staff, after Rey (Phase 9). */
 	public static final SaberHilt REY = register(new SaberHilt(SaberVariant.REY, SaberProfiles.DEFAULT, SaberVariant.YELLOW, 1));
+	/** Ezra Bridger's hilt with the built-in stun blaster (Phase 10). */
+	public static final SaberHilt EZRA = register(new SaberHilt(SaberVariant.EZRA, SaberProfiles.DEFAULT, SaberVariant.BLUE, 1));
 	/** Experimental long hilt with a blade at each end. */
 	public static final SaberHilt DOUBLE = register(new SaberHilt(SaberVariant.DOUBLE, SaberProfiles.DOUBLE, SaberVariant.RED, 2));
 
