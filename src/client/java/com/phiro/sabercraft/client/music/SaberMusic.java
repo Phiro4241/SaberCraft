@@ -169,13 +169,15 @@ public final class SaberMusic {
 			return;
 		}
 
-		// Not the same piece twice in a row when there is a choice.
+		// Not the same piece twice in a row when there is a choice (a piece asked for by a test wins).
 		Identifier last = LAST.get(wanted);
-		if (choices.size() > 1 && last != null) {
+		if (testPick != null && choices.contains(testPick)) {
+			choices = List.of(testPick);
+		} else if (choices.size() > 1 && last != null) {
 			choices.remove(last);
 		}
 
-		Identifier pick = testPick != null && choices.contains(testPick) ? testPick : choices.get(RANDOM.nextInt(choices.size()));
+		Identifier pick = choices.get(RANDOM.nextInt(choices.size()));
 		LAST.put(wanted, pick);
 		MusicPiece piece = new MusicPiece(pick, wanted.loops(), crossfade);
 		current = piece;
