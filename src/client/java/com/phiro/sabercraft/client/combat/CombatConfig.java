@@ -52,4 +52,9 @@ public final class CombatConfig {
 		config.cameraMotion = Mth.clamp(config.cameraMotion, 0.0F, 1.0F);
 		current = config;
 	}
+
+	/** Writes the current settings, after a change in the menu. */
+	public static void save() {
+		JsonConfig.save("combat_client", current);
+	}
 }

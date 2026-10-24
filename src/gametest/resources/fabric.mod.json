@@ -15,7 +15,8 @@
 			"com.phiro.sabercraft.gametest.DefenseGameTest",
 			"com.phiro.sabercraft.gametest.ForceGameTest",
 			"com.phiro.sabercraft.gametest.SpaceSkyGameTest",
-			"com.phiro.sabercraft.gametest.MusicGameTest"
+			"com.phiro.sabercraft.gametest.MusicGameTest",
+			"com.phiro.sabercraft.gametest.CharacterGameTest"
 		]
 	},
 	"depends": {

@@ -6,10 +6,13 @@ import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
+import net.fabricmc.fabric.api.client.rendering.v1.LivingEntityRenderLayerRegistrationCallback;
+import net.fabricmc.fabric.api.client.rendering.v1.ModelLayerRegistry;
 import net.fabricmc.fabric.api.resource.v1.ResourceLoader;
 
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.entity.player.AvatarRenderer;
 import net.minecraft.client.renderer.item.ItemModels;
 import net.minecraft.client.renderer.special.SpecialModelRenderers;
 import net.minecraft.network.chat.Component;
@@ -20,8 +23,11 @@ import com.phiro.sabercraft.SaberCraft;
 import com.phiro.sabercraft.client.ability.SaberAbilityClient;
 import com.phiro.sabercraft.client.blade.BladeStyleConfig;
 import com.phiro.sabercraft.client.blade.BladeStyles;
+import com.phiro.sabercraft.client.character.OutfitClient;
+import com.phiro.sabercraft.client.character.OutfitLayer;
 import com.phiro.sabercraft.client.combat.CombatConfig;
 import com.phiro.sabercraft.client.combat.CombatLibrary;
+import com.phiro.sabercraft.client.menu.SaberMenuScreen;
 import com.phiro.sabercraft.client.music.SaberMusic;
 import com.phiro.sabercraft.client.music.UserMusic;
 import com.phiro.sabercraft.client.render.SaberBladeItemModel;
@@ -73,6 +79,15 @@ public class SaberCraftClient implements ClientModInitializer {
 		ClientTickEvents.END_CLIENT_TICK.register(SaberMusic::tick);
 		ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> UserMusic.scan());
 		ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> SaberMusic.reset());
+		// Phase 7: outfits, drawn as a layer over the normal skin of every player model.
+		OutfitClient.init();
+		ModelLayerRegistry.registerModelLayer(OutfitLayer.WIDE, () -> OutfitLayer.createLayer(false));
+		ModelLayerRegistry.registerModelLayer(OutfitLayer.SLIM, () -> OutfitLayer.createLayer(true));
+		LivingEntityRenderLayerRegistrationCallback.EVENT.register((type, renderer, helper, context) -> {
+			if (renderer instanceof AvatarRenderer<?> avatar) {
+				helper.register(new OutfitLayer(avatar, context));
+			}
+		});
 		ClientTickEvents.END_CLIENT_TICK.register(SaberCraftClient::handleKeys);
 
 		SaberCraft.LOGGER.info(
@@ -89,13 +104,8 @@ public class SaberCraftClient implements ClientModInitializer {
 				continue;
 			}
 
-			InteractionHand hand = SaberSelection.saberHand(client.player);
-
-			if (hand == null) {
-				client.player.sendOverlayMessage(Component.translatable("sabercraft.customize.no_saber"));
-			} else {
-				client.gui.setScreen(new SaberCustomizeScreen(hand, client.player.getItemInHand(hand)));
-			}
+			// The SaberCraft menu: the saber area with a sword in hand, the character otherwise.
+			SaberMenuScreen.open(client, SaberMenuScreen.Tab.SABER);
 		}
 	}
 }

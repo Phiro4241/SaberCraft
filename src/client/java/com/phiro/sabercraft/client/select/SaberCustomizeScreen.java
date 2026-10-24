@@ -6,7 +6,6 @@ import java.util.List;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.Tooltip;
-import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.InteractionHand;
@@ -15,13 +14,15 @@ import net.minecraft.world.item.Items;
 
 import com.phiro.sabercraft.client.blade.BladeStyle;
 import com.phiro.sabercraft.client.blade.BladeStyles;
+import com.phiro.sabercraft.client.menu.SaberMenuScreen;
 import com.phiro.sabercraft.client.saber.SaberHilt;
 import com.phiro.sabercraft.client.saber.SaberHilts;
 import com.phiro.sabercraft.saber.SaberVariant;
 
 /**
  * Menu for picking the hilt, blade color and fighting style of the saber in the hand. Opened with the
- * "Customize saber" key (V by default) while holding a netherite sword.
+ * "Customize saber" key (V by default) while holding a netherite sword; the first area of the
+ * {@link SaberMenuScreen SaberCraft menu}.
  *
  * <p>Picking a hilt also picks its usual color (blue for the guardian hilt, red for the dark one,
  * ...), which can then be changed freely. The fighting style decides the attack moves and the
@@ -29,9 +30,7 @@ import com.phiro.sabercraft.saber.SaberVariant;
  * fights in its own staff style. "Apply" sends the choice to the server, see
  * {@link SaberSelection}.
  */
-public class SaberCustomizeScreen extends Screen {
-	private static final int PANEL_WIDTH = 330;
-	private static final int PANEL_HEIGHT = 236;
+public class SaberCustomizeScreen extends SaberMenuScreen {
 	private static final int HILT_BUTTON_WIDTH = 112;
 	private static final int COLOR_BUTTON_WIDTH = 60;
 	private static final int ROW = 22;
@@ -45,8 +44,6 @@ public class SaberCustomizeScreen extends Screen {
 	private final List<HiltButton> hiltButtons = new ArrayList<>();
 	private final List<ColorButton> colorButtons = new ArrayList<>();
 	private final List<StyleButton> styleButtons = new ArrayList<>();
-	private int left;
-	private int top;
 
 	public SaberCustomizeScreen(InteractionHand hand, ItemStack stack) {
 		super(Component.translatable("sabercraft.customize.title"));
@@ -60,9 +57,12 @@ public class SaberCustomizeScreen extends Screen {
 	}
 
 	@Override
-	protected void init() {
-		this.left = (this.width - PANEL_WIDTH) / 2;
-		this.top = Math.max(4, (this.height - PANEL_HEIGHT) / 2);
+	protected Tab tab() {
+		return Tab.SABER;
+	}
+
+	@Override
+	protected void initPanel() {
 		this.hiltButtons.clear();
 		this.colorButtons.clear();
 		this.styleButtons.clear();
@@ -109,11 +109,12 @@ public class SaberCustomizeScreen extends Screen {
 		this.updateStyleButtons();
 
 		int buttonsY = this.top + PANEL_HEIGHT - 28;
+		int center = this.left + PANEL_WIDTH / 2;
 		this.addRenderableWidget(Button.builder(Component.translatable("sabercraft.customize.apply"), b -> this.apply())
-				.bounds(this.width / 2 - 104, buttonsY, 100, 20)
+				.bounds(center - 104, buttonsY, 100, 20)
 				.build());
 		this.addRenderableWidget(Button.builder(Component.translatable("gui.cancel"), b -> this.onClose())
-				.bounds(this.width / 2 + 4, buttonsY, 100, 20)
+				.bounds(center + 4, buttonsY, 100, 20)
 				.build());
 
 		if (this.minecraft != null && !SaberSelection.canChange(this.minecraft)) {
@@ -167,15 +168,10 @@ public class SaberCustomizeScreen extends Screen {
 	}
 
 	@Override
-	public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float a) {
-		graphics.fill(this.left, this.top, this.left + PANEL_WIDTH, this.top + PANEL_HEIGHT, 0xD0101014);
-		graphics.outline(this.left, this.top, PANEL_WIDTH, PANEL_HEIGHT, 0xFF4A4A55);
-		graphics.centeredText(this.font, this.title, this.width / 2, this.top + 8, 0xFFFFFFFF);
+	protected void extractPanel(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float a) {
 		graphics.text(this.font, Component.translatable("sabercraft.customize.hilt"), this.left + 10, this.top + 22, 0xFFA0A0A8);
 		int colorLeft = this.left + PANEL_WIDTH - 10 - 2 * COLOR_BUTTON_WIDTH - 4;
 		graphics.text(this.font, Component.translatable("sabercraft.customize.color"), colorLeft, this.top + 22, 0xFFA0A0A8);
-
-		super.extractRenderState(graphics, mouseX, mouseY, a);
 
 		// Small icon of each hilt in the chosen color, and a frame around the current choices.
 		for (HiltButton entry : this.hiltButtons) {
@@ -260,11 +256,6 @@ public class SaberCustomizeScreen extends Screen {
 	/** Button text color: the blade color, lightened so it stays readable on dark buttons. */
 	private static int textColor(Identifier color) {
 		return BladeStyle.mix(BladeStyles.get(color).glowColor(), 0xFFFFFF, 0.35F);
-	}
-
-	@Override
-	public boolean isPauseScreen() {
-		return false;
 	}
 
 	private record HiltButton(SaberHilt hilt, Button button) {
