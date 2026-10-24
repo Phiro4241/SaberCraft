@@ -46,5 +46,53 @@
         "attenuation_distance": 20
       }
     ]
+  },
+  "saber.dark.ignite": {
+    "subtitle": "subtitles.sabercraft.saber.ignite",
+    "sounds": [
+      {
+        "name": "sabercraft:saber/dark/ignite",
+        "attenuation_distance": 24
+      }
+    ]
+  },
+  "saber.dark.retract": {
+    "subtitle": "subtitles.sabercraft.saber.retract",
+    "sounds": [
+      {
+        "name": "sabercraft:saber/dark/retract",
+        "attenuation_distance": 24
+      }
+    ]
+  },
+  "saber.dark.hum": {
+    "subtitle": "subtitles.sabercraft.saber.hum",
+    "sounds": [
+      {
+        "name": "sabercraft:saber/dark/hum",
+        "attenuation_distance": 12
+      }
+    ]
+  },
+  "saber.dark.swing": {
+    "subtitle": "subtitles.sabercraft.saber.swing",
+    "sounds": [
+      {
+        "name": "sabercraft:saber/dark/swing1",
+        "attenuation_distance": 20
+      },
+      {
+        "name": "sabercraft:saber/dark/swing2",
+        "attenuation_distance": 20
+      },
+      {
+        "name": "sabercraft:saber/dark/swing3",
+        "attenuation_distance": 20
+      },
+      {
+        "name": "sabercraft:saber/dark/swing4",
+        "attenuation_distance": 20
+      }
+    ]
   }
 }

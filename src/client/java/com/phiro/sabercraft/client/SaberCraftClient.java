@@ -1,19 +1,30 @@
 package com.phiro.sabercraft.client;
 
+import com.mojang.blaze3d.platform.InputConstants;
+
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
+import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper;
 
+import net.minecraft.client.KeyMapping;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.item.ItemModels;
 import net.minecraft.client.renderer.special.SpecialModelRenderers;
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.InteractionHand;
 
 import com.phiro.sabercraft.SaberCraft;
+import com.phiro.sabercraft.client.blade.BladeStyleConfig;
 import com.phiro.sabercraft.client.blade.BladeStyles;
 import com.phiro.sabercraft.client.render.SaberBladeItemModel;
 import com.phiro.sabercraft.client.render.SaberBladeSpecialRenderer;
 import com.phiro.sabercraft.client.render.SaberRenderTypes;
 import com.phiro.sabercraft.client.saber.HolsterController;
 import com.phiro.sabercraft.client.saber.SaberAnimations;
+import com.phiro.sabercraft.client.saber.SaberHilts;
 import com.phiro.sabercraft.client.saber.SaberTracker;
+import com.phiro.sabercraft.client.select.SaberCustomizeScreen;
+import com.phiro.sabercraft.client.select.SaberSelection;
 
 /**
  * Client entrypoint for SaberCraft.
@@ -21,11 +32,19 @@ import com.phiro.sabercraft.client.saber.SaberTracker;
  * <p>Registers the energy blade: the netherite sword's item model
  * ({@code assets/minecraft/items/netherite_sword.json}) draws a hilt plus the animated blade
  * whenever the sword is held. Phase 4 adds the ignite and retract animation and the sounds, both
- * driven by {@link SaberTracker} once per tick. Keybindings and the config screen follow later.
+ * driven by {@link SaberTracker} once per tick. Phase 5 adds hilts and colors per sword, chosen in
+ * the {@link SaberCustomizeScreen} (key V), and the per-color settings file. The config screen
+ * follows later.
  */
 public class SaberCraftClient implements ClientModInitializer {
+	public static final KeyMapping.Category KEY_CATEGORY = KeyMapping.Category.register(SaberCraft.id("main"));
+	public static final KeyMapping CUSTOMIZE_KEY = new KeyMapping(
+			"key.sabercraft.customize", InputConstants.Type.KEYSYM, InputConstants.KEY_V, KEY_CATEGORY
+	);
+
 	@Override
 	public void onInitializeClient() {
+		BladeStyleConfig.load();
 		SaberRenderTypes.init();
 		ItemModels.ID_MAPPER.put(SaberCraft.id("saber_blade"), SaberBladeItemModel.Unbaked.MAP_CODEC);
 		SpecialModelRenderers.ID_MAPPER.put(SaberCraft.id("saber_blade"), SaberBladeSpecialRenderer.Unbaked.MAP_CODEC);
@@ -36,10 +55,30 @@ public class SaberCraftClient implements ClientModInitializer {
 		// After all entities ticked, so held items and swings are up to date.
 		ClientTickEvents.END_CLIENT_TICK.register(SaberTracker.INSTANCE::tick);
 
+		KeyMappingHelper.registerKeyMapping(CUSTOMIZE_KEY);
+		ClientTickEvents.END_CLIENT_TICK.register(SaberCraftClient::handleKeys);
+
 		SaberCraft.LOGGER.info(
-				"SaberCraft client initialized with {} blade style(s) and {} animation(s)",
+				"SaberCraft client initialized with {} blade style(s), {} hilt(s) and {} animation(s)",
 				BladeStyles.all().size(),
+				SaberHilts.all().size(),
 				SaberAnimations.all().size()
 		);
+	}
+
+	private static void handleKeys(Minecraft client) {
+		while (CUSTOMIZE_KEY.consumeClick()) {
+			if (client.player == null || client.gui.screen() != null) {
+				continue;
+			}
+
+			InteractionHand hand = SaberSelection.saberHand(client.player);
+
+			if (hand == null) {
+				client.player.sendOverlayMessage(Component.translatable("sabercraft.customize.no_saber"));
+			} else {
+				client.gui.setScreen(new SaberCustomizeScreen(hand, client.player.getItemInHand(hand)));
+			}
+		}
 	}
 }

@@ -31,6 +31,7 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
 
+import com.phiro.sabercraft.client.blade.BladeStyles;
 import com.phiro.sabercraft.client.saber.SaberTracker;
 
 /**
@@ -46,7 +47,8 @@ import com.phiro.sabercraft.client.saber.SaberTracker;
  * <p>Example:
  * <pre>{@code {"type": "sabercraft:saber_blade", "base": "sabercraft:item/saber_hilt", "style": "sabercraft:red"}}</pre>
  * {@code base} is the model whose display transforms the blade follows. The optional fields
- * {@code style}, {@code emitter} and {@code length} work as in {@link SaberBladeSpecialRenderer}.
+ * {@code style}, {@code emitter}, {@code length} and {@code angle} work as in
+ * {@link SaberBladeSpecialRenderer}. The blade color stored on the item wins over {@code style}.
  */
 public final class SaberBladeItemModel implements ItemModel {
 	private final SaberBladeSpecialRenderer renderer;
@@ -76,7 +78,8 @@ public final class SaberBladeItemModel implements ItemModel {
 			@Nullable ItemOwner owner,
 			int seed
 	) {
-		BladeRenderState blade = bladeState(displayContext, owner);
+		// Each sword carries its own blade color; without one, the model's style applies.
+		BladeRenderState blade = bladeState(displayContext, owner).withStyle(BladeStyles.colorOf(item));
 
 		output.appendModelIdentityElement(this);
 		output.appendModelIdentityElement(blade);

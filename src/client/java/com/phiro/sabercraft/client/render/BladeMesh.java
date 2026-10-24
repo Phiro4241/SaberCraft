@@ -59,9 +59,8 @@ public final class BladeMesh {
 
 	/** Additive bloom around the core, drawn with {@link SaberRenderTypes#BLADE_BLOOM}. */
 	public static void bloom(PoseStack.Pose pose, VertexConsumer buffer, BladeStyle style, float length, float intensity) {
-		float alpha = Math.min(1.0F, 0.6F * style.glowStrength() * intensity);
-		// Blade color mixed with white, so the core does not end in a hard edge.
-		int hot = mix(style.glowColor(), 0xFFFFFF, 0.3F);
+		float alpha = Math.min(1.0F, 0.6F * style.bloomStrength() * intensity);
+		int hot = style.bloomColor();
 		float core = style.coreRadius();
 		tube(pose, buffer, core * 1.7F, length + core * 0.4F, argb(alpha, hot), argb(alpha, hot));
 	}
@@ -164,13 +163,6 @@ public final class BladeMesh {
 		int r = Math.round((rgb >> 16 & 0xFF) * factor);
 		int g = Math.round((rgb >> 8 & 0xFF) * factor);
 		int b = Math.round((rgb & 0xFF) * factor);
-		return r << 16 | g << 8 | b;
-	}
-
-	private static int mix(int from, int to, float amount) {
-		int r = Math.round(Mth.lerp(amount, from >> 16 & 0xFF, to >> 16 & 0xFF));
-		int g = Math.round(Mth.lerp(amount, from >> 8 & 0xFF, to >> 8 & 0xFF));
-		int b = Math.round(Mth.lerp(amount, from & 0xFF, to & 0xFF));
 		return r << 16 | g << 8 | b;
 	}
 }
