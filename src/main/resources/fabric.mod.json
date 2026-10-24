@@ -1,0 +1,30 @@
+{
+	"schemaVersion": 1,
+	"id": "sabercraft",
+	"version": "${version}",
+	"name": "SaberCraft",
+	"description": "Turns the netherite sword into a cinematic energy saber with ignition animations, glowing blades and original sound design.",
+	"authors": [
+		"Phiro"
+	],
+	"contact": {
+		"sources": "https://github.com/Phiro4241/SaberCraft"
+	},
+	"license": "All-Rights-Reserved",
+	"icon": "assets/sabercraft/icon.png",
+	"environment": "*",
+	"entrypoints": {
+		"main": [
+			"com.phiro.sabercraft.SaberCraft"
+		],
+		"client": [
+			"com.phiro.sabercraft.client.SaberCraftClient"
+		]
+	},
+	"depends": {
+		"fabricloader": ">=0.19.5",
+		"minecraft": "~26.2",
+		"java": ">=25",
+		"fabric-api": "*"
+	}
+}
