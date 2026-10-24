@@ -10,6 +10,7 @@ import org.jspecify.annotations.Nullable;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.resources.Identifier;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.component.CustomModelData;
@@ -30,6 +31,10 @@ import com.phiro.sabercraft.SaberCraft;
  * <p>A sword without the component looks like before Phase 5: the standard hilt with a red blade.
  * Since Phase 6 {@code strings[2]} holds the fighting style. Swords without one fight in the
  * usual style of their hilt, see {@link #defaultStyle}.
+ *
+ * <p>Since Phase 10 every vanilla sword from wood to netherite can be a saber ({@link #SWORDS},
+ * {@link #canHold}); a converted sword stays the same item with the same material, durability and
+ * enchantments, only its model data changes (see {@code ItemConversion}).
  *
  * @param hilt  hilt id, one of {@link #HILTS}
  * @param color blade color id, one of {@link #COLORS}
@@ -168,9 +173,63 @@ public record SaberVariant(Identifier hilt, Identifier color, Identifier style) 
 		return HILTS.contains(this.hilt) && COLORS.contains(this.color) && styleFits(this.hilt, this.style);
 	}
 
-	/** Items that turn into a saber. */
+	/**
+	 * Marks a netherite sword that was turned back into a plain sword (Phase 10). Every other
+	 * netherite sword is a saber, as in Phases 1 to 9.
+	 */
+	public static final Identifier PLAIN = SaberCraft.id("plain");
+	/**
+	 * The swords that can become a saber (Phase 10), from wood to netherite. The netherite sword is
+	 * a saber from the start, the others after {@code /sabercraft convert}.
+	 */
+	public static final List<Item> SWORDS = List.of(Items.WOODEN_SWORD, Items.STONE_SWORD, Items.COPPER_SWORD, Items.IRON_SWORD,
+			Items.GOLDEN_SWORD, Items.DIAMOND_SWORD, Items.NETHERITE_SWORD);
+
+	/**
+	 * Items that are a saber: a netherite sword (unless turned back into a plain one), or any other
+	 * sword of {@link #SWORDS} that was converted and so carries a known hilt. The material stays
+	 * the sword's own: a wooden saber hits like a wooden sword.
+	 */
 	public static boolean canHold(ItemStack stack) {
-		return stack.is(Items.NETHERITE_SWORD);
+		if (stack.is(Items.NETHERITE_SWORD)) {
+			return !PLAIN.equals(hiltOf(stack));
+		}
+
+		Identifier hilt = isSword(stack) ? hiltOf(stack) : null;
+		return hilt != null && HILTS.contains(hilt);
+	}
+
+	/** True for the swords that can be converted into a saber. */
+	public static boolean isSword(ItemStack stack) {
+		for (Item sword : SWORDS) {
+			if (stack.is(sword)) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	/**
+	 * The hilt a sword gets when it is converted without choosing one: one that fits its material.
+	 * The netherite sword keeps the standard hilt of the earlier phases.
+	 */
+	public static Identifier hiltForMaterial(ItemStack stack) {
+		if (stack.is(Items.WOODEN_SWORD)) {
+			return REY;
+		} else if (stack.is(Items.STONE_SWORD)) {
+			return SENTINEL;
+		} else if (stack.is(Items.COPPER_SWORD)) {
+			return ANAKIN;
+		} else if (stack.is(Items.IRON_SWORD)) {
+			return GUARDIAN;
+		} else if (stack.is(Items.GOLDEN_SWORD)) {
+			return DOOKU;
+		} else if (stack.is(Items.DIAMOND_SWORD)) {
+			return KENOBI;
+		}
+
+		return STANDARD;
 	}
 
 	/** The hilt stored on the stack, or {@code null} if none is stored. */

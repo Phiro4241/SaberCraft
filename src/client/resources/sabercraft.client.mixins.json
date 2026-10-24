@@ -14,6 +14,7 @@
     "ItemInHandLayerMixin",
     "ItemInHandRendererMixin",
     "LivingEntityRendererMixin",
+    "LocalPlayerMixin",
     "MusicManagerMixin",
     "SkyRendererMixin",
     "SoundBufferLibraryMixin"

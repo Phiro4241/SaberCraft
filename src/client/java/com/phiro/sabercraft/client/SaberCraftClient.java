@@ -20,6 +20,7 @@ import com.phiro.sabercraft.SaberCraft;
 import com.phiro.sabercraft.client.ability.SaberAbilityClient;
 import com.phiro.sabercraft.client.blade.BladeStyleConfig;
 import com.phiro.sabercraft.client.blade.BladeStyles;
+import com.phiro.sabercraft.client.blaster.BlasterClient;
 import com.phiro.sabercraft.client.character.OutfitClient;
 import com.phiro.sabercraft.client.combat.CombatConfig;
 import com.phiro.sabercraft.client.combat.CombatLibrary;
@@ -83,6 +84,8 @@ public class SaberCraftClient implements ClientModInitializer {
 		ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> SaberMusic.reset());
 		// Phase 7: outfits and characters; since Phase 10 they replace the skin itself.
 		OutfitClient.init();
+		// Phase 10: blasters.
+		BlasterClient.init();
 		ClientTickEvents.END_CLIENT_TICK.register(SaberCraftClient::handleKeys);
 
 		SaberCraft.LOGGER.info(

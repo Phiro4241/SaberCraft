@@ -14,7 +14,7 @@ Needs numpy and Pillow. Writes into src/client/resources/assets/:
 
     sabercraft/models/item/hilt/<name>.json
     sabercraft/textures/item/hilt/<name>.png
-    minecraft/items/netherite_sword.json
+    minecraft/items/<material>_sword.json (all vanilla swords since Phase 10)
 
 The hilt and the blade color of each sword come from its minecraft:custom_model_data component:
 strings[0] is the hilt id, strings[1] the color id (see SaberVariant.java).
@@ -44,6 +44,9 @@ S = math.sqrt(0.5)
 # Where the blade starts on all one-handed hilts. Same place as the flat standard hilt, so held
 # swords keep their old proportions.
 EMITTER_D = 1.8
+
+# Phase 10: every vanilla sword can become a saber (see SaberVariant.SWORDS).
+SWORDS = ["wooden_sword", "stone_sword", "copper_sword", "iron_sword", "golden_sword", "diamond_sword", "netherite_sword"]
 
 DIAGONAL = {"origin": [8, 8, 8], "axis": "z", "angle": -45}
 
@@ -628,17 +631,29 @@ def main():
         write_json(os.path.join(MODELS, name + ".json"), hilt.model(display))
         cases.append({"when": "sabercraft:" + name, "model": held_model("sabercraft:item/hilt/" + name, color, blades)})
 
-    item = {
-        "model": {
-            "type": "minecraft:select",
-            "property": "minecraft:custom_model_data",
-            "index": 0,
-            "cases": cases,
+    standard = held_model("sabercraft:item/saber_hilt", "red", [(EMITTER_D, 0)])
+    for sword in SWORDS:
+        vanilla = {"type": "minecraft:model", "model": "minecraft:item/" + sword}
+        if sword == "netherite_sword":
             # No hilt chosen, or "sabercraft:standard": the flat hilt with the red blade of Phase 3.
-            "fallback": held_model("sabercraft:item/saber_hilt", "red", [(EMITTER_D, 0)]),
+            # Phase 10: "sabercraft:plain" is a netherite sword turned back into a plain one.
+            sword_cases = cases + [{"when": "sabercraft:plain", "model": vanilla}]
+            fallback = standard
+        else:
+            # Phase 10: the other swords are only sabers after /sabercraft convert, which always
+            # stores a hilt; without one they keep their vanilla look.
+            sword_cases = cases + [{"when": "sabercraft:standard", "model": standard}]
+            fallback = vanilla
+        item = {
+            "model": {
+                "type": "minecraft:select",
+                "property": "minecraft:custom_model_data",
+                "index": 0,
+                "cases": sword_cases,
+                "fallback": fallback,
+            }
         }
-    }
-    write_json(os.path.join(ITEMS, "netherite_sword.json"), item)
+        write_json(os.path.join(ITEMS, sword + ".json"), item)
 
 
 def write_json(path, data):

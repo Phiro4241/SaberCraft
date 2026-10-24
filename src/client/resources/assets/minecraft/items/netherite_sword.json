@@ -522,6 +522,13 @@
             ]
           }
         }
+      },
+      {
+        "when": "sabercraft:plain",
+        "model": {
+          "type": "minecraft:model",
+          "model": "minecraft:item/netherite_sword"
+        }
       }
     ],
     "fallback": {

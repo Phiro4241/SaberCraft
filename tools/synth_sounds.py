@@ -10,7 +10,8 @@ ships only its own audio. Run from the repository root:
 Needs numpy and ffmpeg with libvorbis. Writes mono 44.1 kHz Ogg Vorbis files into
 src/client/resources/assets/sabercraft/sounds/saber/ (default profile) and .../saber/dark/
 (the deeper, rougher profile of the dark hilt), and the combat sounds of Phase 6 into
-.../sounds/combat/. `--combat` writes only the combat sounds. Minecraft only attenuates mono
+.../sounds/combat/. `--combat` writes only the combat sounds, `--blaster` only the blaster sounds of Phase 10
+(.../sounds/blaster/). Minecraft only attenuates mono
 sounds by distance, so all files are mono.
 """
 import os
@@ -302,7 +303,55 @@ def force():
     write_ogg("force_jump", force_jump(rng), out)
 
 
+def blaster_shot(rng, seconds, start, end, ring, body, noise, decay):
+    """A blaster shot (Phase 10): a fast falling chirp, like a struck steel wire, with a short
+    burst of noise at the start and a metallic ring. start/end: chirp frequencies in Hz, ring:
+    level of the ringing partials, body: level of a low thump, noise: level of the crack, decay:
+    how fast it fades (larger = shorter)."""
+    t = t_axis(seconds)
+    # Exponential frequency fall; the phase is the integral of the frequency.
+    k = np.log(end / start) / seconds
+    phase = 2 * np.pi * start * (np.exp(k * t) - 1) / k
+    chirp = np.sin(phase) + 0.35 * np.sin(2.01 * phase) + ring * 0.25 * np.sin(3.3 * phase)
+    env = np.exp(-decay * t) * (1 - np.exp(-t * 900))
+    crack = bandpass_noise(seconds, 1800, 9000, rng) * np.exp(-t * 90) * noise
+    thump = np.sin(2 * np.pi * 90 * t) * np.exp(-t * 30) * body
+    return normalize(soft_clip(chirp * env + crack + thump, 1.6), 0.8)
+
+
+def blaster_impact(rng, seconds=0.35):
+    t = t_axis(seconds)
+    sizzle = bandpass_noise(seconds, 900, 7000, rng) * np.exp(-t * 14)
+    pop = np.sin(2 * np.pi * 180 * t * (1 - t)) * np.exp(-t * 40)
+    return normalize(sizzle * 0.7 + pop, 0.6)
+
+
+def blaster_overheat(rng, seconds=1.2):
+    t = t_axis(seconds)
+    hiss = bandpass_noise(seconds, 2500, 9000, rng) * np.exp(-t * 2.5) * (1 - np.exp(-t * 60))
+    whine = np.sin(2 * np.pi * (900 - 500 * t) * t) * np.exp(-t * 4) * 0.4
+    return normalize(hiss + whine, 0.6)
+
+
+def blasters():
+    """The blaster sounds of Phase 10, with their own random stream. Each type sounds different."""
+    rng = np.random.default_rng(1138)
+    out = os.path.join(os.path.dirname(OUT), "blaster")
+    write_ogg("e11", blaster_shot(rng, 0.42, 2400, 180, 0.6, 0.3, 0.5, 9), out)
+    write_ogg("dl44", blaster_shot(rng, 0.6, 1700, 110, 0.9, 0.8, 0.7, 6), out)
+    write_ogg("a280", blaster_shot(rng, 0.5, 3200, 240, 0.4, 0.25, 0.4, 8), out)
+    write_ogg("repeater", blaster_shot(rng, 0.32, 1500, 160, 0.5, 0.9, 0.8, 12), out)
+    write_ogg("rebel", blaster_shot(rng, 0.4, 2800, 300, 0.7, 0.2, 0.45, 10), out)
+    write_ogg("ezra", blaster_shot(rng, 0.38, 1400, 600, 1.2, 0.1, 0.3, 11), out)
+    write_ogg("impact", blaster_impact(rng), out)
+    write_ogg("overheat", blaster_overheat(rng), out)
+
+
 def main():
+    if "--blaster" in sys.argv:
+        blasters()
+        return
+
     if "--combat" in sys.argv:
         combat()
         return

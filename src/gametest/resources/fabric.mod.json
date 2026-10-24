@@ -20,7 +20,8 @@
 			"com.phiro.sabercraft.gametest.CharacterGameTest",
 			"com.phiro.sabercraft.gametest.ShaderBladeGameTest",
 			"com.phiro.sabercraft.gametest.PlanetVisibilityGameTest",
-			"com.phiro.sabercraft.gametest.SkinLayerGameTest"
+			"com.phiro.sabercraft.gametest.SkinLayerGameTest",
+			"com.phiro.sabercraft.gametest.ArsenalGameTest"
 		]
 	},
 	"depends": {

@@ -175,6 +175,28 @@ public final class AbilityConfig {
 	@SerializedName("exhaustion")
 	public float exhaustion = 1.0F;
 
+	/**
+	 * Phase 10: who may use {@code /sabercraft convert}, {@code revert} and {@code blaster}.
+	 * true: every player, for the item in their own hand. false: only operators (permission level 2).
+	 */
+	@SerializedName("commands_for_everyone")
+	public boolean commandsForEveryone = true;
+	/** Phase 10: blasters fire. false: converted bows do nothing on right-click (and stay blasters). */
+	@SerializedName("blasters_enabled")
+	public boolean blastersEnabled = true;
+	/** Damage of all blaster bolts, as a multiplier of their built-in damage. */
+	@SerializedName("blaster_damage")
+	public float blasterDamage = 1.0F;
+	/** Whether blasters heat up and overheat. false: only the fire rate limits them. */
+	@SerializedName("blaster_heat")
+	public boolean blasterHeat = true;
+	/** Heat lost per tick when not firing (out of 100). */
+	@SerializedName("blaster_cool_rate")
+	public float blasterCoolRate = 2.0F;
+	/** Heat lost per tick while overheated; firing is blocked until it is down to 0. */
+	@SerializedName("blaster_vent_rate")
+	public float blasterVentRate = 1.5F;
+
 	public static AbilityConfig get() {
 		return current;
 	}
@@ -226,6 +248,9 @@ public final class AbilityConfig {
 		config.jumpStrength = Mth.clamp(config.jumpStrength, 0.3F, 2.0F);
 		config.jumpCost = Mth.clamp(config.jumpCost, 0.0F, config.staminaMax);
 		config.deflectCost = Mth.clamp(config.deflectCost, 0.0F, config.staminaMax);
+		config.blasterDamage = Mth.clamp(config.blasterDamage, 0.0F, 10.0F);
+		config.blasterCoolRate = Mth.clamp(config.blasterCoolRate, 0.1F, 100.0F);
+		config.blasterVentRate = Mth.clamp(config.blasterVentRate, 0.1F, 100.0F);
 		current = config;
 	}
 }

@@ -249,5 +249,77 @@
         "stream": true
       }
     ]
+  },
+  "blaster.e11": {
+    "subtitle": "subtitles.sabercraft.blaster.shot",
+    "sounds": [
+      {
+        "name": "sabercraft:blaster/e11",
+        "attenuation_distance": 48
+      }
+    ]
+  },
+  "blaster.dl44": {
+    "subtitle": "subtitles.sabercraft.blaster.shot",
+    "sounds": [
+      {
+        "name": "sabercraft:blaster/dl44",
+        "attenuation_distance": 48
+      }
+    ]
+  },
+  "blaster.a280": {
+    "subtitle": "subtitles.sabercraft.blaster.shot",
+    "sounds": [
+      {
+        "name": "sabercraft:blaster/a280",
+        "attenuation_distance": 48
+      }
+    ]
+  },
+  "blaster.repeater": {
+    "subtitle": "subtitles.sabercraft.blaster.shot",
+    "sounds": [
+      {
+        "name": "sabercraft:blaster/repeater",
+        "attenuation_distance": 48
+      }
+    ]
+  },
+  "blaster.rebel": {
+    "subtitle": "subtitles.sabercraft.blaster.shot",
+    "sounds": [
+      {
+        "name": "sabercraft:blaster/rebel",
+        "attenuation_distance": 48
+      }
+    ]
+  },
+  "blaster.ezra": {
+    "subtitle": "subtitles.sabercraft.blaster.shot",
+    "sounds": [
+      {
+        "name": "sabercraft:blaster/ezra",
+        "attenuation_distance": 48
+      }
+    ]
+  },
+  "blaster.impact": {
+    "subtitle": "subtitles.sabercraft.blaster.impact",
+    "sounds": [
+      {
+        "name": "sabercraft:blaster/impact",
+        "attenuation_distance": 20
+      }
+    ]
+  },
+  "blaster.overheat": {
+    "subtitle": "subtitles.sabercraft.blaster.overheat",
+    "sounds": [
+      {
+        "name": "sabercraft:blaster/overheat",
+        "attenuation_distance": 20
+      }
+    ]
   }
 }
