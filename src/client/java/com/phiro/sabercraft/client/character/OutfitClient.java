@@ -34,11 +34,17 @@ import com.phiro.sabercraft.network.OutfitSyncPayload;
  * the server tells). An outfit is an extra layer over the normal skin ({@link OutfitLayer}); no
  * skin is replaced, and other players only ever show what they chose themselves. Files of your
  * own ({@code config/sabercraft/outfits/*.png}, 64 x 64 in the skin layout) are only seen by you.
+ *
+ * <p>The film characters (Phase 8) can be given a skin file of your own as well:
+ * {@code config/sabercraft/characters/<character>.png} (for example {@code vader.png}) replaces the
+ * built-in look of that character on this computer, for you and for everyone else who plays it.
  */
 public final class OutfitClient {
 	public static final String FILE_PREFIX = "file:";
 	private static final Identifier CUSTOM_TEXTURE = SaberCraft.id("outfit_custom");
 	private static final Map<UUID, Identifier> OTHERS = new HashMap<>();
+	/** Skin files of your own for the film characters, by character; empty when there is none. */
+	private static final Map<Identifier, Optional<Identifier>> CHARACTER_SKINS = new HashMap<>();
 	private static @Nullable String loadedFile;
 	private static @Nullable DynamicTexture customTexture;
 
@@ -73,6 +79,57 @@ public final class OutfitClient {
 
 	public static Path folder() {
 		return FabricLoader.getInstance().getConfigDir().resolve(SaberCraft.MOD_ID).resolve("outfits");
+	}
+
+	/** Folder for skin files of your own for the film characters. */
+	public static Path characterFolder() {
+		return FabricLoader.getInstance().getConfigDir().resolve(SaberCraft.MOD_ID).resolve("characters");
+	}
+
+	/** The file that replaces the look of a character, whether it exists or not. */
+	public static Path characterFile(Outfit character) {
+		return characterFolder().resolve(character.id().getPath() + ".png");
+	}
+
+	/** Whether a character is drawn with a skin file of your own. */
+	public static boolean hasOwnSkin(Outfit character) {
+		return character.character() && characterSkin(character) != null;
+	}
+
+	/** Forgets the loaded character skin files, so changed files are read again. */
+	public static void reloadCharacterSkins() {
+		for (Optional<Identifier> texture : CHARACTER_SKINS.values()) {
+			texture.ifPresent(id -> Minecraft.getInstance().getTextureManager().release(id));
+		}
+
+		CHARACTER_SKINS.clear();
+	}
+
+	private static @Nullable Identifier characterSkin(Outfit character) {
+		return CHARACTER_SKINS.computeIfAbsent(character.id(), id -> {
+			try {
+				Files.createDirectories(characterFolder());
+			} catch (IOException error) {
+				SaberCraft.LOGGER.warn("Could not create the character folder {}: {}", characterFolder(), error.toString());
+			}
+
+			Path file = characterFile(character);
+
+			if (!Files.isRegularFile(file)) {
+				return Optional.empty();
+			}
+
+			Identifier texture = SaberCraft.id("character_skin/" + id.getPath());
+			DynamicTexture loaded = readSkin(file, "SaberCraft character " + id.getPath());
+
+			if (loaded == null) {
+				return Optional.empty();
+			}
+
+			Minecraft.getInstance().getTextureManager().register(texture, loaded);
+			SaberCraft.LOGGER.info("Using your own skin {} for the character {}", file.getFileName(), id.getPath());
+			return Optional.of(texture);
+		}).orElse(null);
 	}
 
 	/** Your own outfit files, by name. */
@@ -140,7 +197,8 @@ public final class OutfitClient {
 	}
 
 	public static Look lookOf(Outfit outfit) {
-		return new Look(outfit.id().withPath(path -> "textures/outfit/" + path + ".png"), outfit.coversHead());
+		Identifier own = outfit.character() ? characterSkin(outfit) : null;
+		return new Look(own != null ? own : outfit.id().withPath(path -> "textures/outfit/" + path + ".png"), outfit.coversHead());
 	}
 
 	/** Loads a file of your own once (64 x 64 PNG), or null when it cannot be used. */
@@ -161,20 +219,30 @@ public final class OutfitClient {
 			return null;
 		}
 
+		customTexture = readSkin(file, "SaberCraft outfit " + name);
+
+		if (customTexture == null) {
+			return null;
+		}
+
+		Minecraft.getInstance().getTextureManager().register(CUSTOM_TEXTURE, customTexture);
+		return CUSTOM_TEXTURE;
+	}
+
+	/** Reads a 64 x 64 PNG in the skin layout, or returns null (and logs why) when it cannot be used. */
+	private static @Nullable DynamicTexture readSkin(Path file, String label) {
 		try (InputStream in = Files.newInputStream(file)) {
 			NativeImage image = NativeImage.read(in);
 
 			if (image.getWidth() != 64 || image.getHeight() != 64) {
-				SaberCraft.LOGGER.warn("The outfit {} is {} x {} pixels; it needs to be 64 x 64 like a skin", name, image.getWidth(), image.getHeight());
+				SaberCraft.LOGGER.warn("The skin file {} is {} x {} pixels; it needs to be 64 x 64 like a skin", file.getFileName(), image.getWidth(), image.getHeight());
 				image.close();
 				return null;
 			}
 
-			customTexture = new DynamicTexture(() -> "SaberCraft outfit " + name, image);
-			Minecraft.getInstance().getTextureManager().register(CUSTOM_TEXTURE, customTexture);
-			return CUSTOM_TEXTURE;
+			return new DynamicTexture(() -> label, image);
 		} catch (IOException error) {
-			SaberCraft.LOGGER.warn("Could not read the outfit {}: {}", name, error.toString());
+			SaberCraft.LOGGER.warn("Could not read the skin file {}: {}", file.getFileName(), error.toString());
 			return null;
 		}
 	}

@@ -41,10 +41,15 @@ final class MusicPiece extends AbstractTickableSoundInstance {
 		Path file = UserMusic.file(this.identifier);
 
 		if (file == null) {
+			file = StarWarsMusic.file(this.identifier);
+		}
+
+		if (file == null) {
 			return super.resolve(soundManager);
 		}
 
-		// A file of the player's own: streamed from the config folder (see SoundBufferLibraryMixin).
+		// A file of the player's own (SaberCraft or Star Wars mode): streamed from the config folder
+		// (see SoundBufferLibraryMixin).
 		this.sound = new Sound(this.identifier, ConstantFloat.of(1.0F), ConstantFloat.of(1.0F), 1, Sound.Type.FILE, true, false, 16);
 		return new WeighedSoundEvents(this.identifier, null);
 	}

@@ -95,6 +95,39 @@ public class CharacterGameTest implements FabricClientGameTest {
 			context.waitTicks(3);
 			context.takeScreenshot("character_own_file");
 
+			// A skin file of your own for a film character replaces its look on this computer.
+			context.runOnClient(client -> {
+				Path target = OutfitClient.characterFile(Outfit.VADER);
+				try (InputStream in = SaberCraft.class.getResourceAsStream("/assets/sabercraft/textures/outfit/twilight.png")) {
+					Files.createDirectories(target.getParent());
+					Files.copy(in, target, StandardCopyOption.REPLACE_EXISTING);
+				} catch (IOException error) {
+					throw new UncheckedIOException(error);
+				}
+				OutfitClient.reloadCharacterSkins();
+				OutfitClient.choose(Outfit.VADER.id().toString());
+			});
+			context.waitTicks(12);
+			check(context.computeOnClient(client -> OutfitClient.hasOwnSkin(Outfit.VADER)), "the character skin file is found");
+			check(context.computeOnClient(client -> OutfitClient.look(self).texture().getPath().startsWith("character_skin/")),
+					"the character is drawn with your own skin file");
+			check(server.computeOnServer(s -> OutfitSync.outfitOf(self)).equals(Optional.of(Outfit.VADER.id())),
+					"with your own skin the character is still sent to the server");
+			context.runOnClient(client -> client.options.setCameraType(CameraType.THIRD_PERSON_FRONT));
+			context.waitTicks(3);
+			context.takeScreenshot("character_vader_own_skin");
+			context.runOnClient(client -> {
+				client.options.setCameraType(CameraType.FIRST_PERSON);
+				try {
+					Files.deleteIfExists(OutfitClient.characterFile(Outfit.VADER));
+				} catch (IOException error) {
+					throw new UncheckedIOException(error);
+				}
+				OutfitClient.reloadCharacterSkins();
+			});
+			check(context.computeOnClient(client -> !OutfitClient.look(self).texture().getPath().startsWith("character_skin/")),
+					"without the file the built-in look is back");
+
 			// Back to the plain skin.
 			context.runOnClient(client -> OutfitClient.choose(""));
 			context.waitTicks(12);

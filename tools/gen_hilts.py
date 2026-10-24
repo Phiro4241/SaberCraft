@@ -307,6 +307,54 @@ def sentinel():
     return h
 
 
+def kenobi():
+    """Phase 8, Obi-Wan Kenobi: silver hilt with black grip rings, a dark neck and a flared, vented
+    emitter shroud. An own design in the spirit of a calm master's saber."""
+    h = Hilt("kenobi", 61)
+    h.material("silver", metal((206, 208, 214)))
+    h.material("rings", ridged((26, 26, 30), (196, 198, 204), period=3, ridge_px=2))
+    h.material("dark", metal((58, 54, 52), 0.06))
+    h.material("vent", vented((200, 202, 208), (24, 22, 22), period=5, slot_px=2))
+    h.material("emitter", emitter_top((200, 202, 208)))
+
+    h.box(-11.2, -10.6, 1.25, "silver")
+    h.box(-10.6, -10.0, 1.0, "dark")
+    h.box(-10.0, -5.0, 1.05, "rings")
+    h.box(-5.0, -4.4, 1.2, "silver")
+    h.box(-4.4, -2.2, 0.95, "dark")
+    h.box(-3.8, -2.8, 0.3, "silver", hz=0.25, oz=1.0)
+    h.box(-2.2, -1.6, 1.15, "silver")
+    h.box(-1.6, 0.2, 1.05, "silver")
+    # Flared shroud: two steps out, vented.
+    h.box(0.2, 1.0, 1.3, "vent")
+    h.box(1.0, EMITTER_D, 1.48, "silver", cap="emitter")
+    return h
+
+
+def skywalker():
+    """Phase 8, Luke Skywalker: black grip with fine ribs, a silver body and a long silver emitter
+    cone with a small control box. An own design after a young knight's self-built saber."""
+    h = Hilt("skywalker", 67)
+    h.material("silver", metal((212, 214, 220)))
+    h.material("black", ridged((22, 22, 26), (52, 52, 58), period=3, ridge_px=1))
+    h.material("steel", metal((110, 114, 122)))
+    h.material("emitter", emitter_top((212, 214, 220)))
+    h.material("green", flat((46, 160, 70)))
+
+    h.box(-11.2, -10.4, 1.15, "silver")
+    h.box(-10.4, -4.6, 1.05, "black")
+    h.box(-4.6, -4.0, 1.2, "steel")
+    h.box(-4.0, -1.4, 1.0, "silver")
+    # Control box with a green activator.
+    h.box(-3.6, -2.0, 0.55, "black", hz=0.3, oz=1.2)
+    h.box(-3.1, -2.5, 0.2, "green", hz=0.16, oz=1.55)
+    h.box(-1.4, -0.8, 1.15, "steel")
+    # Emitter cone, narrowing in two steps towards the blade.
+    h.box(-0.8, 0.5, 1.1, "silver")
+    h.box(0.5, EMITTER_D, 1.3, "silver", cap="emitter")
+    return h
+
+
 # The double-bladed hilt is centered on the hand. In the vanilla handheld transforms the hand
 # holds the item about 4.7 units below the model center on the diagonal.
 STAFF_CENTER = -4.7
@@ -347,6 +395,8 @@ HILTS = [
     ("dark_lord", dark_lord, "red", [(EMITTER_D, 0)]),
     ("sentinel", sentinel, "green", [(EMITTER_D, 0)]),
     ("double", double, "red", [(STAFF_CENTER + STAFF_HALF, 0), (STAFF_CENTER - STAFF_HALF, 180)]),
+    ("kenobi", kenobi, "blue", [(EMITTER_D, 0)]),
+    ("skywalker", skywalker, "green", [(EMITTER_D, 0)]),
 ]
 
 # Inventory icon size. The 3D hilts are slimmer than a sword sprite, so the one-handed hilts are

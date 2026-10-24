@@ -35,6 +35,9 @@ public class CombatGalleryGameTest implements FabricClientGameTest {
 			{"sabercraft:defensive", "sabercraft:sentinel", "sabercraft:green"},
 			{"sabercraft:agile", "sabercraft:standard", "sabercraft:yellow"},
 			{"sabercraft:staff", "sabercraft:double", "sabercraft:purple"},
+			{"sabercraft:djem_so", "sabercraft:dark_lord", "sabercraft:red"},
+			{"sabercraft:soresu", "sabercraft:kenobi", "sabercraft:blue"},
+			{"sabercraft:juyo", "sabercraft:double", "sabercraft:red"},
 	};
 
 	@Override

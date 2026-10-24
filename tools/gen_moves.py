@@ -465,6 +465,62 @@ body("agile_flip",
     cam=[(0, [0, 0, 0]), (2, [0.1, 12, 0]), (4, [0.15, 18, 0]), (6, [0.2, 6, 0]), (8, [0.1, 2, 0]), (10, [0, 0, 0])])
 
 
+# ---------------- Phase 8: character styles ----------------
+# Djem So (Vader): the saber held upright in both hands, slow and crushing blows from high above,
+# with the weight thrown into each cut. Bigger and slower than the heavy style.
+DJEM_FP = ([0.8, -0.7, 0.12], [104, -4, 0])
+DJEM_TP = ([-60, -22, 0], [-60, 52, 0], [14, 0, 2])
+for src, name, time, amp in (("heavy_overhead", "djem_overhead", 1.12, 1.12), ("heavy_wide", "djem_wide", 1.1, 1.15),
+                             ("heavy_rising", "djem_rising", 1.1, 1.1), ("heavy_overhead", "djem_crush", 1.3, 1.25),
+                             ("heavy_thrust", "djem_thrust", 1.1, 1.05), ("heavy_spin", "djem_spin", 1.1, 1.0)):
+    derive(src, name, time, amp, DJEM_FP, DJEM_TP)
+M["djem_crush"]["sound"] = "heavy"
+step("djem_overhead", 5.0, 9.5, lead="main", front=-32, back=28, lean=24, prep=-12, side=7, crouch=0.07)
+step("djem_wide", 4.95, 9.35, lead="off", front=-24, back=22, lean=12, side=9, crouch=0.05)
+step("djem_rising", 4.4, 8.8, lead="off", front=-24, back=22, lean=-6, prep=18, side=7, prep_crouch=0.12)
+step("djem_crush", 5.85, 11.0, lead="main", front=-38, back=30, lean=30, prep=-14, side=8, crouch=0.12, prep_crouch=0.0)
+step("djem_thrust", 4.4, 7.7, lead="main", front=-40, back=32, lean=20, side=6, crouch=0.08)
+body("djem_spin", legs=[
+    (0, [-8, 0, 9], [10, 0, -9], 6, 0.06), (2.75, [6, 0, 11], [-6, 0, -11], 10, 0.1), (6.6, [-12, 0, 11], [14, 0, -11], 14, 0.13),
+    (9.9, [8, 0, 11], [-8, 0, -11], 10, 0.08), (12.65, [-22, 0, 9], [18, 0, -9], 10, 0.05)])
+
+# Soresu (Obi-Wan): the signature raised guard, the blade held high over the head and pointing
+# forward, the free hand stretched out towards the opponent. Short, controlled cuts out of that
+# guard and quick ripostes.
+SOR_FP = ([0.75, -0.3, 0.05], [118, 30, 0])
+SOR_TP = ([-150, -18, 0], [-80, 25, 0], [-105, 0, -15])
+for src, name, time, amp in (("def_cut", "soresu_cut", 1.0, 0.85), ("def_backhand", "soresu_backhand", 1.0, 0.85),
+                             ("flow_overhead", "soresu_overhead", 0.9, 0.8), ("def_riposte", "soresu_riposte", 0.9, 0.9),
+                             ("def_spin", "soresu_spin", 0.95, 0.9)):
+    derive(src, name, time, amp, SOR_FP, SOR_TP)
+step("soresu_cut", 2.55, 5.5, lead="off", front=-16, back=14, lean=6, side=8, crouch=0.05, prep_crouch=0.05)
+step("soresu_backhand", 2.1, 5.1, lead="main", front=-14, back=12, lean=5, side=8, crouch=0.05, prep_crouch=0.05)
+step("soresu_overhead", 3.15, 6.3, lead="main", front=-22, back=18, lean=12, prep=-4, side=8, crouch=0.05)
+step("soresu_riposte", 2.16, 4.0, lead="main", front=-34, back=26, lean=14, side=8, crouch=0.07, prep_crouch=0.05)
+body("soresu_spin", legs=[
+    (0, [-8, 0, 9], [10, 0, -9], 6, 0.06), (1.9, [6, 0, 10], [-6, 0, -10], 8, 0.08), (4.5, [-10, 0, 10], [12, 0, -10], 10, 0.1),
+    (7.2, [8, 0, 9], [-8, 0, -9], 8, 0.08), (9.0, [-10, 0, 9], [12, 0, -9], 6, 0.06)])
+
+# Juyo (Maul): the double blade carried low and ready, fast sweeps that run into full spins.
+JUYO_FP = ([0.4, -0.8, 0.28], [16, 92, 0])
+JUYO_TP = ([-35, -25, 0], [-38, 45, 0], [0, 0, 70])
+for src, name, time, amp in (("staff_sweep", "juyo_sweep", 0.75, 1.15), ("staff_spin", "juyo_spin", 0.75, 1.0),
+                             ("staff_reverse", "juyo_reverse", 0.75, 1.15), ("staff_twirl", "juyo_twirl", 0.7, 1.0),
+                             ("staff_whirl", "juyo_whirl", 0.85, 1.0)):
+    derive(src, name, time, amp, JUYO_FP, JUYO_TP)
+step("juyo_sweep", 2.63, 5.6, lead="off", front=-20, back=16, lean=10, side=11, crouch=0.05)
+step("juyo_reverse", 2.63, 5.6, lead="main", front=-20, back=16, lean=10, side=11, crouch=0.05)
+body("juyo_spin", legs=[
+    (0, [-6, 0, 10], [8, 0, -10], 4, 0.04), (2.25, [8, 0, 12], [-8, 0, -12], 10, 0.1), (4.5, [-10, 0, 12], [10, 0, -12], 12, 0.12),
+    (6.75, [8, 0, 12], [-8, 0, -12], 10, 0.08), (8.6, [-8, 0, 10], [10, 0, -10], 6, 0.04)],
+    root=[(0, [0, 0, 0]), (2.25, [0, 0, 0.1]), (4.5, [0, 0, 0.16]), (6.75, [0, 0, 0.06]), (8.6, [0, 0, 0])])
+body("juyo_twirl", legs=[
+    (0, [-6, 0, 10], [8, 0, -10], 4, 0.02), (2.8, [-8, 0, 11], [10, 0, -11], 6, 0.06), (5.6, [-6, 0, 10], [8, 0, -10], 4, 0.02)])
+body("juyo_whirl", legs=[
+    (0, [-6, 0, 10], [8, 0, -10], 4, 0.02), (5.1, [-10, 0, 13], [12, 0, -13], 8, 0.08), (15.3, [-10, 0, 13], [12, 0, -13], 8, 0.08),
+    (17.85, [-6, 0, 10], [8, 0, -10], 4, 0.02)])
+
+
 # ---------------- Phase 7: force powers ----------------
 # Grip: the free hand reaches out and holds, the saber is kept low and back. It lasts as long as
 # the server holds the target and is stopped when the grip ends.
@@ -583,6 +639,27 @@ styles = {
         "idle_third_person": {"main_arm": AGI_TP[0], "off_arm": AGI_TP[1], "body": [0, 12], "item": AGI_TP[2]},
         "guard_first_person": {"grip": [0.5, -0.55, 0.12], "aim": [36, 76, 0]},
         "guard_third_person": {"main_arm": [-96, -20, 0], "off_arm": [-60, 40, 0], "body": [0, -12], "item": [0, 0, 52]}},
+    "sabercraft:djem_so": {
+        "combo": ["djem_overhead", "djem_wide", "djem_rising", "djem_crush"],
+        "sprint": "djem_thrust", "jump": "djem_crush", "special": "djem_spin", "combo_window": 22,
+        "idle_first_person": {"grip": DJEM_FP[0], "aim": DJEM_FP[1]},
+        "idle_third_person": {"main_arm": DJEM_TP[0], "off_arm": DJEM_TP[1], "body": [0, 6], "item": DJEM_TP[2]},
+        "guard_first_person": {"grip": [0.42, -0.5, 0.16], "aim": [44, 82, 0]},
+        "guard_third_person": {"main_arm": [-104, -18, 0], "off_arm": [-100, 38, 0], "body": [6, -8], "item": [0, 0, 62]}},
+    "sabercraft:soresu": {
+        "combo": ["soresu_cut", "soresu_backhand", "soresu_overhead", "soresu_riposte"],
+        "sprint": "soresu_riposte", "jump": "soresu_overhead", "special": "soresu_spin", "combo_window": 18,
+        "idle_first_person": {"grip": SOR_FP[0], "aim": SOR_FP[1]},
+        "idle_third_person": {"main_arm": SOR_TP[0], "off_arm": SOR_TP[1], "body": [0, -8], "item": SOR_TP[2]},
+        "guard_first_person": {"grip": [0.36, -0.52, 0.18], "aim": [44, 82, 0]},
+        "guard_third_person": {"main_arm": [-96, -24, 0], "off_arm": [-70, 30, 0], "body": [0, -8], "item": [0, 0, 64]}},
+    "sabercraft:juyo": {
+        "combo": ["juyo_sweep", "juyo_spin", "juyo_reverse", "juyo_twirl"],
+        "sprint": "juyo_sweep", "jump": "juyo_twirl", "special": "juyo_whirl", "combo_window": 14,
+        "idle_first_person": {"grip": JUYO_FP[0], "aim": JUYO_FP[1]},
+        "idle_third_person": {"main_arm": JUYO_TP[0], "off_arm": JUYO_TP[1], "body": [0, 10], "item": JUYO_TP[2]},
+        "guard_first_person": {"grip": [0.1, -0.45, 0.35], "aim": [65, 90, 0]},
+        "guard_third_person": {"main_arm": [-95, -15, 0], "off_arm": [-92, 40, 0], "item": [0, 0, 30]}},
 }
 
 # Phase 7: legs of the resting poses, running and jumping poses, dodges and landings.
@@ -597,11 +674,17 @@ LEGS = {
                              {"main_leg": [-10, 0, 10], "off_leg": [12, 0, -10], "lean": 7, "crouch": 0.07}),
     "sabercraft:agile": ({"main_leg": [-16, 0, 3], "off_leg": [14, 0, -3], "lean": 8, "crouch": 0.02},
                          {"main_leg": [-16, 0, 4], "off_leg": [16, 0, -4], "lean": 8, "crouch": 0.04}),
+    "sabercraft:djem_so": ({"main_leg": [16, 0, 7], "off_leg": [-14, 0, -7], "lean": 4, "crouch": 0.02},
+                           {"main_leg": [18, 0, 8], "off_leg": [-18, 0, -8], "lean": 8, "crouch": 0.06}),
+    "sabercraft:soresu": ({"main_leg": [-12, 0, 8], "off_leg": [14, 0, -8], "lean": 4, "crouch": 0.06},
+                          {"main_leg": [-12, 0, 10], "off_leg": [14, 0, -10], "lean": 7, "crouch": 0.08}),
+    "sabercraft:juyo": ({"main_leg": [-10, 0, 11], "off_leg": [12, 0, -11], "lean": 8, "crouch": 0.06},
+                        {"main_leg": [-8, 0, 12], "off_leg": [10, 0, -12], "lean": 8, "crouch": 0.05}),
 }
 for sid, (idle, guard) in LEGS.items():
     styles[sid]["idle_third_person"].update(idle)
     styles[sid]["guard_third_person"].update(guard)
-for sid in ("sabercraft:flowing", "sabercraft:heavy", "sabercraft:defensive", "sabercraft:agile"):
+for sid in ("sabercraft:flowing", "sabercraft:heavy", "sabercraft:defensive", "sabercraft:agile", "sabercraft:djem_so", "sabercraft:soresu"):
     styles[sid]["guard_hit"] = "guard_hit"
     styles[sid]["parry"] = "parry"
     styles[sid]["guard_break"] = "guard_break"
@@ -620,10 +703,17 @@ styles["sabercraft:agile"]["run_third_person"] = {"main_arm": [30, 10, 15], "ite
 styles["sabercraft:defensive"]["run_third_person"] = {"main_arm": [-30, -15, 0], "off_arm": [-20, 20, 0], "item": [60, 0, 0], "lean": 12}
 styles["sabercraft:staff"]["land"] = "land"
 styles["sabercraft:staff"]["land_heavy"] = "land_heavy"
+for key in ("run_third_person", "air_third_person", "guard_hit", "parry", "guard_break", "land", "land_heavy"):
+    styles["sabercraft:juyo"][key] = copy.deepcopy(styles["sabercraft:staff"][key])
+styles["sabercraft:djem_so"]["run_third_person"] = {"main_arm": [-35, -10, 0], "off_arm": [-30, 25, 0], "item": [55, 0, 0], "lean": 10}
+styles["sabercraft:soresu"]["run_third_person"] = {"main_arm": [-30, -15, 0], "off_arm": [-20, 20, 0], "item": [60, 0, 0], "lean": 12}
 styles["sabercraft:flowing"]["dodge"] = {"forward": "dodge_roll", "left": "dodge_roll_left", "right": "dodge_roll_right", "back": "dodge_backstep"}
 styles["sabercraft:heavy"]["dodge"] = {"forward": "dodge_lunge", "left": "dodge_sidestep_left", "right": "dodge_sidestep_right", "back": "dodge_backstep"}
 styles["sabercraft:defensive"]["dodge"] = {"forward": "dodge_lunge", "left": "dodge_sidestep_left", "right": "dodge_sidestep_right", "back": "dodge_backstep"}
 styles["sabercraft:agile"]["dodge"] = {"forward": "dodge_spin_step", "left": "dodge_roll_left", "right": "dodge_roll_right", "back": "dodge_backflip"}
+styles["sabercraft:djem_so"]["dodge"] = dict(styles["sabercraft:heavy"]["dodge"])
+styles["sabercraft:soresu"]["dodge"] = dict(styles["sabercraft:defensive"]["dodge"])
+styles["sabercraft:juyo"]["dodge"] = {"forward": "dodge_spin_step", "left": "dodge_sidestep_left", "right": "dodge_sidestep_right", "back": "dodge_backflip"}
 styles["sabercraft:staff"]["dodge"] = {"forward": "staff_roll", "left": "dodge_sidestep_left", "right": "dodge_sidestep_right", "back": "dodge_backstep"}
 for s in styles.values():
     for k in ("combo",):

@@ -41,6 +41,10 @@ public record SaberVariant(Identifier hilt, Identifier color, Identifier style) 
 	public static final Identifier DARK_LORD = SaberCraft.id("dark_lord");
 	public static final Identifier SENTINEL = SaberCraft.id("sentinel");
 	public static final Identifier DOUBLE = SaberCraft.id("double");
+	/** Silver hilt with a flared, vented emitter, after Obi-Wan Kenobi. Since Phase 8. */
+	public static final Identifier KENOBI = SaberCraft.id("kenobi");
+	/** Black and silver hilt with a long emitter cone, after Luke Skywalker. Since Phase 8. */
+	public static final Identifier SKYWALKER = SaberCraft.id("skywalker");
 
 	public static final Identifier RED = SaberCraft.id("red");
 	public static final Identifier BLUE = SaberCraft.id("blue");
@@ -59,15 +63,23 @@ public record SaberVariant(Identifier hilt, Identifier color, Identifier style) 
 	public static final Identifier DEFENSIVE = SaberCraft.id("defensive");
 	/** Agile style: short quick cuts, jumps and turns, fast dodges. Since Phase 7. */
 	public static final Identifier AGILE = SaberCraft.id("agile");
+	/** Djem So, Darth Vader's style: slow, crushing two-handed blows and a firm guard. Since Phase 8. */
+	public static final Identifier DJEM_SO = SaberCraft.id("djem_so");
+	/** Soresu, Obi-Wan Kenobi's style: controlled defense from a raised guard, quick ripostes. Since Phase 8. */
+	public static final Identifier SORESU = SaberCraft.id("soresu");
+	/** Juyo, Darth Maul's style with the double blade: fast spins and sweeps. Since Phase 8. */
+	public static final Identifier JUYO = SaberCraft.id("juyo");
 
 	/** All hilts in menu order. The server only accepts these. */
-	public static final List<Identifier> HILTS = List.of(STANDARD, GUARDIAN, DARK_LORD, SENTINEL, DOUBLE);
+	public static final List<Identifier> HILTS = List.of(STANDARD, GUARDIAN, DARK_LORD, SENTINEL, KENOBI, SKYWALKER, DOUBLE);
 	/** All blade colors in menu order. The server only accepts these. */
 	public static final List<Identifier> COLORS = List.of(RED, BLUE, GREEN, PURPLE, YELLOW, WHITE);
-	/** All fighting styles. The staff style belongs to the double-bladed hilt only. */
-	public static final List<Identifier> STYLES = List.of(FLOWING, HEAVY, DEFENSIVE, AGILE, STAFF);
+	/** All fighting styles. The staff and Juyo styles belong to the double-bladed hilt only. */
+	public static final List<Identifier> STYLES = List.of(FLOWING, HEAVY, DEFENSIVE, AGILE, DJEM_SO, SORESU, STAFF, JUYO);
 	/** Styles a one-bladed hilt can use, in menu order. */
-	public static final List<Identifier> SINGLE_STYLES = List.of(FLOWING, HEAVY, DEFENSIVE, AGILE);
+	public static final List<Identifier> SINGLE_STYLES = List.of(FLOWING, HEAVY, DEFENSIVE, AGILE, DJEM_SO, SORESU);
+	/** Styles of the double-bladed hilt, in menu order. */
+	public static final List<Identifier> DOUBLE_STYLES = List.of(STAFF, JUYO);
 
 	/** The look of a sword that was never changed. */
 	public static final SaberVariant DEFAULT = new SaberVariant(STANDARD, RED);
@@ -94,12 +106,21 @@ public record SaberVariant(Identifier hilt, Identifier color, Identifier style) 
 			return STAFF;
 		}
 
+		if (KENOBI.equals(hilt)) {
+			return SORESU;
+		}
+
 		return DARK_LORD.equals(hilt) ? HEAVY : FLOWING;
 	}
 
-	/** True if the style fits the hilt: the staff style for the double hilt, the others otherwise. */
+	/** True if the style fits the hilt: the staff styles for the double hilt, the others otherwise. */
 	public static boolean styleFits(Identifier hilt, Identifier style) {
-		return DOUBLE.equals(hilt) ? STAFF.equals(style) : SINGLE_STYLES.contains(style);
+		return DOUBLE.equals(hilt) ? DOUBLE_STYLES.contains(style) : SINGLE_STYLES.contains(style);
+	}
+
+	/** True for the styles of the double-bladed staff, which spin it in a whirl and never roll. */
+	public static boolean isStaffStyle(@Nullable Identifier style) {
+		return STAFF.equals(style) || JUYO.equals(style);
 	}
 
 	/** True if all ids are known and fit together. Everything sent to the server is checked with this. */

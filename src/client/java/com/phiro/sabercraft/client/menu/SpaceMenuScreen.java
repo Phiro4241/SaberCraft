@@ -6,8 +6,12 @@ import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.network.chat.Component;
 
 import com.phiro.sabercraft.client.ImmersionConfig;
+import com.phiro.sabercraft.client.sky.PlanetPreset;
 
-/** The space sky: on or off, its detail, the End, and shader packs. Only on this client. */
+/**
+ * The sky: the space sky (on or off, its detail, the End, shader packs) and since Phase 8 the Star
+ * Wars planet the Overworld sky turns into. Only on this client.
+ */
 public class SpaceMenuScreen extends SaberMenuScreen {
 	public SpaceMenuScreen() {
 		super(Component.translatable("sabercraft.menu.space.title"));
@@ -38,11 +42,27 @@ public class SpaceMenuScreen extends SaberMenuScreen {
 			config.spaceSkyWithShaders = v;
 			ImmersionConfig.save();
 		});
+		List<String> planets = new java.util.ArrayList<>();
+		planets.add("");
+		PlanetPreset.ALL.forEach(planet -> planets.add(planet.id()));
+		this.cycle(0, 2, "sabercraft.option.planet", planets, planets.contains(config.planet) ? config.planet : "",
+				v -> Component.translatable(v.isEmpty() ? "sabercraft.planet.none" : "sabercraft.planet." + v), v -> {
+					config.planet = v;
+					ImmersionConfig.save();
+				});
+		this.toggle(1, 2, "sabercraft.option.planet_particles", config.planetParticles, v -> {
+			config.planetParticles = v;
+			ImmersionConfig.save();
+		});
 		this.closeButton();
 	}
 
 	@Override
 	protected void extractPanel(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float a) {
-		this.note(graphics, Component.translatable("sabercraft.menu.space.note"), 3);
+		String planet = ImmersionConfig.get().planet;
+		Component text = PlanetPreset.byId(planet).<Component>map(p -> Component.translatable("sabercraft.planet." + p.id() + ".description"))
+				.orElse(Component.translatable("sabercraft.planet.none.description"));
+		this.note(graphics, text, 3);
+		this.note(graphics, Component.translatable("sabercraft.menu.space.note"), 5);
 	}
 }

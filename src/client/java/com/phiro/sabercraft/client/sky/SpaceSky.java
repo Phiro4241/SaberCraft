@@ -105,7 +105,18 @@ public final class SpaceSky {
 			return;
 		}
 
-		GpuBuffer vertices = cube();
+		if (cube == null) {
+			cube = createCube(cubeSize, "SaberCraft space sky cube");
+		}
+
+		drawCube(target, pose, cube, texture, visibility, "SaberCraft space sky");
+	}
+
+	/**
+	 * Draws a sky cube ({@link #createCube}) with a 3 x 2 tile picture, with the vanilla
+	 * {@code END_SKY} pipeline (textured, translucent), at the given opacity.
+	 */
+	static void drawCube(RenderTarget target, Matrix4f pose, GpuBuffer vertices, DynamicTexture picture, float visibility, String label) {
 		RenderSystem.AutoStorageIndexBuffer indices = RenderSystem.getSequentialBuffer(PrimitiveTopology.QUADS);
 		int count = 6 * 2 * 6;
 		GpuBuffer indexBuffer = indices.getBuffer(count);
@@ -117,12 +128,12 @@ public final class SpaceSky {
 
 		try (RenderPass pass = RenderSystem.getDevice()
 				.createCommandEncoder()
-				.createRenderPass(() -> "SaberCraft space sky", target.getColorTextureView(), Optional.empty(), target.getDepthTextureView(),
+				.createRenderPass(() -> label, target.getColorTextureView(), Optional.empty(), target.getDepthTextureView(),
 						OptionalDouble.empty())) {
 			pass.setPipeline(RenderPipelines.END_SKY);
 			RenderSystem.bindDefaultUniforms(pass);
 			pass.setUniform("DynamicTransforms", transforms);
-			pass.bindTexture("Sampler0", texture.getTextureView(), RenderSystem.getSamplerCache().getClampToEdge(FilterMode.LINEAR));
+			pass.bindTexture("Sampler0", picture.getTextureView(), RenderSystem.getSamplerCache().getClampToEdge(FilterMode.LINEAR));
 			pass.setVertexBuffer(0, vertices.slice());
 			pass.setIndexBuffer(indexBuffer, indices.type());
 			pass.drawIndexed(count, 1, 0, 0, 0);
@@ -134,7 +145,9 @@ public final class SpaceSky {
 	/** Starts painting the picture of a dimension, or uploads it once it is painted. */
 	private static void prepare(ResourceKey<Level> dimension, int quality) {
 		int size = SIZES[Math.clamp(quality, 0, SIZES.length - 1)];
-		String key = dimension.identifier() + "@" + size;
+		// On a Star Wars planet the night sky of the Overworld is that planet's.
+		SpaceSkyPreset preset = PlanetSky.nightSky(dimension).orElseGet(() -> SpaceSkyPreset.of(dimension));
+		String key = dimension.identifier() + "/" + preset.name() + "@" + size;
 
 		if (pending != null) {
 			if (!pending.isDone()) {
@@ -151,7 +164,6 @@ public final class SpaceSky {
 		}
 
 		if (!key.equals(shownKey) && !key.equals(pendingKey)) {
-			SpaceSkyPreset preset = SpaceSkyPreset.of(dimension);
 			pendingKey = key;
 			pendingSize = size;
 			long start = System.nanoTime();
@@ -169,19 +181,11 @@ public final class SpaceSky {
 	}
 
 	private static void upload(int[] pixels, int size) {
-		NativeImage image = new NativeImage(size * 3, size * 2, false);
-
-		for (int y = 0; y < size * 2; y++) {
-			for (int x = 0; x < size * 3; x++) {
-				image.setPixel(x, y, pixels[y * size * 3 + x]);
-			}
-		}
-
 		if (texture != null) {
 			texture.close();
 		}
 
-		texture = new DynamicTexture(() -> "SaberCraft space sky", image);
+		texture = texture(pixels, size, "SaberCraft space sky");
 		cubeSize = size;
 		if (cube != null) {
 			cube.close();
@@ -191,14 +195,23 @@ public final class SpaceSky {
 
 	private static int cubeSize = 512;
 
-	/** The six faces, each twice (both windings), with UVs into the 3 x 2 tiles of the picture. */
-	private static GpuBuffer cube() {
-		if (cube != null) {
-			return cube;
+	/** A texture from ARGB pixels laid out as 3 x 2 tiles of {@code size} pixels. */
+	static DynamicTexture texture(int[] pixels, int size, String label) {
+		NativeImage image = new NativeImage(size * 3, size * 2, false);
+
+		for (int y = 0; y < size * 2; y++) {
+			for (int x = 0; x < size * 3; x++) {
+				image.setPixel(x, y, pixels[y * size * 3 + x]);
+			}
 		}
 
+		return new DynamicTexture(() -> label, image);
+	}
+
+	/** The six faces, each twice (both windings), with UVs into the 3 x 2 tiles of a picture. */
+	static GpuBuffer createCube(int size, String label) {
 		// Half a pixel in from the tile edges, so the faces do not pick up their neighbours.
-		float inset = 0.5F / cubeSize;
+		float inset = 0.5F / size;
 		float[][] corners = {{0, 0}, {1, 0}, {1, 1}, {0, 1}};
 
 		try (ByteBufferBuilder bytes = ByteBufferBuilder.exactlySized(48 * DefaultVertexFormat.POSITION_TEX_COLOR.getVertexSize())) {
@@ -227,8 +240,7 @@ public final class SpaceSky {
 			}
 
 			try (MeshData mesh = builder.buildOrThrow()) {
-				cube = RenderSystem.getDevice().createBuffer(() -> "SaberCraft space sky cube", 40, mesh.vertexBuffer());
-				return cube;
+				return RenderSystem.getDevice().createBuffer(() -> label, 40, mesh.vertexBuffer());
 			}
 		}
 	}

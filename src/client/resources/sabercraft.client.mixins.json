@@ -6,6 +6,7 @@
     "ArmedEntityRenderStateMixin",
     "AvatarRendererMixin",
     "ClientPacketListenerMixin",
+    "FogRendererMixin",
     "GameRendererMixin",
     "HumanoidModelMixin",
     "ItemInHandLayerMixin",

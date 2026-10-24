@@ -353,7 +353,7 @@ public final class SpaceSkyPainter {
 	}
 
 	/** Two unit vectors across the sky at {@code center}, turned by {@code tilt} degrees. */
-	private static Vector3f[] tangents(Vector3f center, float tilt) {
+	static Vector3f[] tangents(Vector3f center, float tilt) {
 		Vector3f up = Math.abs(center.y) > 0.95F ? new Vector3f(1, 0, 0) : new Vector3f(0, 1, 0);
 		Vector3f right = new Vector3f(up).cross(center).normalize();
 		Vector3f down = new Vector3f(center).cross(right).normalize();

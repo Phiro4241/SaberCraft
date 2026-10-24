@@ -18,6 +18,10 @@ import net.minecraft.sounds.SoundSource;
 import com.phiro.sabercraft.SaberCraft;
 import com.phiro.sabercraft.client.ImmersionConfig;
 import com.phiro.sabercraft.client.music.SaberMusic;
+import com.phiro.sabercraft.character.Outfit;
+import com.phiro.sabercraft.client.character.OutfitClient;
+import com.phiro.sabercraft.client.menu.SaberMenuScreen;
+import com.phiro.sabercraft.client.music.StarWarsMusic;
 import com.phiro.sabercraft.client.music.UserMusic;
 
 /**
@@ -44,6 +48,25 @@ public class MusicGameTest implements FabricClientGameTest {
 			try (InputStream in = SaberCraft.class.getResourceAsStream("/assets/sabercraft/sounds/combat/force_grip.ogg")) {
 				Files.createDirectories(target.getParent());
 				Files.copy(in, target, StandardCopyOption.REPLACE_EXISTING);
+			} catch (IOException error) {
+				throw new UncheckedIOException(error);
+			}
+
+			// Star Wars mode files (Phase 8): an Ogg for exploration and as Vader's theme, a WAV for
+			// dramatic fights. The calm and boss folders stay empty, to be listed as missing.
+			Path sw = StarWarsMusic.folder();
+			try {
+				for (String name : new String[] {"exploration/test_explore.ogg", "characters/vader.ogg"}) {
+					// A long piece, so it still plays when the test looks.
+					Path file = sw.resolve(name);
+					Files.createDirectories(file.getParent());
+					try (InputStream in = SaberCraft.class.getResourceAsStream("/assets/sabercraft/sounds/music/night_stars.ogg")) {
+						Files.copy(in, file, StandardCopyOption.REPLACE_EXISTING);
+					}
+				}
+				writeWav(sw.resolve("dramatic").resolve("test_drama.wav"));
+				Files.createDirectories(sw.resolve("calm"));
+				Files.writeString(sw.resolve("calm").resolve("not_supported.mp3"), "x");
 			} catch (IOException error) {
 				throw new UncheckedIOException(error);
 			}
@@ -95,6 +118,8 @@ public class MusicGameTest implements FabricClientGameTest {
 					"your own file plays: " + context.computeOnClient(client -> SaberMusic.currentPiece()));
 			context.runOnClient(client -> SaberMusic.pickForTests(null));
 
+			this.starWars(context, server);
+
 			// Off: everything fades out and vanilla may play again.
 			context.runOnClient(client -> ImmersionConfig.get().music = false);
 			context.waitTicks(60);
@@ -104,6 +129,87 @@ public class MusicGameTest implements FabricClientGameTest {
 				ImmersionConfig.get().music = true;
 				client.options.getSoundSourceOptionInstance(SoundSource.MUSIC).set(0.0);
 			});
+		}
+	}
+
+	/** The Star Wars mode: its own files per situation, WAV playback, a character theme, and both modes kept apart. */
+	private void starWars(ClientGameTestContext context, TestServerContext server) {
+		float sabercraftVolume = context.computeOnClient(client -> ImmersionConfig.get().musicVolume);
+		context.runOnClient(client -> {
+			SaberMusic.reset();
+			ImmersionConfig config = ImmersionConfig.get();
+			config.musicMode = ImmersionConfig.MODE_STARWARS;
+			config.starWarsVolume = 1.0F;
+			StarWarsMusic.scan();
+		});
+		server.runCommand("time set day");
+		context.waitTicks(80);
+		check(context.computeOnClient(client -> SaberMusic.playing(client) == 0), "in the Star Wars mode no SaberCraft piece plays");
+		check(context.computeOnClient(client -> StarWarsMusic.tracks(StarWarsMusic.Situation.EXPLORATION).size() == 1), "the exploration file is found");
+		check(context.computeOnClient(client -> StarWarsMusic.tracks(StarWarsMusic.Situation.CALM).isEmpty()), "the calm folder is listed as empty");
+		check(context.computeOnClient(client -> StarWarsMusic.problems().stream().anyMatch(p -> p.contains("not_supported.mp3"))),
+				"an MP3 file is reported as not supported: " + context.computeOnClient(client -> StarWarsMusic.problems()));
+		check(context.computeOnClient(client -> StarWarsMusic.situation() == StarWarsMusic.Situation.EXPLORATION), "by day: exploration");
+		check(context.computeOnClient(client -> StarWarsMusic.currentTrack().map(t -> t.name().equals("exploration/test_explore.ogg")).orElse(false)
+				&& StarWarsMusic.playing(client) >= 1), "your exploration track plays: " + context.computeOnClient(client -> StarWarsMusic.currentTrack()));
+		check(context.computeOnClient(client -> client.getMusicManager().getCurrentMusicTranslationKey() == null), "the vanilla music is held back");
+		context.runOnClient(client -> SaberMenuScreen.open(client, SaberMenuScreen.Tab.MUSIC));
+		context.waitTicks(3);
+		context.takeScreenshot("menu_music_starwars");
+		context.runOnClient(client -> client.gui.setScreen(null));
+
+		// A character appears: you pick Vader, his theme plays.
+		context.runOnClient(client -> OutfitClient.choose(Outfit.VADER.id().toString()));
+		context.waitTicks(30);
+		check(context.computeOnClient(client -> StarWarsMusic.situation() == StarWarsMusic.Situation.CHARACTER
+				&& StarWarsMusic.currentTrack().map(t -> t.name().equals("characters/vader.ogg")).orElse(false)),
+				"picking Vader plays his theme: " + context.computeOnClient(client -> StarWarsMusic.currentTrack()));
+		context.runOnClient(client -> OutfitClient.choose(""));
+
+		// A fight without a lit blade: the dramatic WAV file.
+		context.runOnClient(SaberMusic::markCombatForTests);
+		context.waitTicks(40);
+		check(context.computeOnClient(client -> StarWarsMusic.situation() == StarWarsMusic.Situation.DRAMATIC), "a fight: dramatic");
+		check(context.computeOnClient(client -> StarWarsMusic.currentTrack().map(t -> t.name().endsWith(".wav")).orElse(false)
+				&& StarWarsMusic.playing(client) >= 1), "a WAV file plays: " + context.computeOnClient(client -> StarWarsMusic.currentTrack()));
+
+		// The mode is saved and survives a restart; the SaberCraft settings are untouched.
+		context.runOnClient(client -> {
+			ImmersionConfig.save();
+			ImmersionConfig.load();
+		});
+		check(context.computeOnClient(client -> ImmersionConfig.get().starWarsMode()), "the music mode is kept after loading the settings again");
+		check(context.computeOnClient(client -> ImmersionConfig.get().musicVolume) == sabercraftVolume, "the SaberCraft volume is untouched");
+
+		// Back to the SaberCraft mode: the Star Wars tracks fade out.
+		context.runOnClient(client -> {
+			ImmersionConfig.get().musicMode = ImmersionConfig.MODE_SABERCRAFT;
+			SaberMusic.reset();
+		});
+		context.waitTicks(60);
+		check(context.computeOnClient(client -> StarWarsMusic.playing(client) == 0), "in the SaberCraft mode no Star Wars track plays");
+		check(context.computeOnClient(client -> SaberMusic.currentPiece() != null), "the SaberCraft music is back");
+	}
+
+	/** Two seconds of a soft chord, 16 bit stereo, as a WAV file. */
+	private static void writeWav(Path file) throws IOException {
+		Files.createDirectories(file.getParent());
+		float rate = 22050.0F;
+		int frames = (int) (rate * 2);
+		byte[] data = new byte[frames * 4];
+
+		for (int i = 0; i < frames; i++) {
+			double t = i / rate;
+			short value = (short) (6000 * (Math.sin(2 * Math.PI * 220 * t) + Math.sin(2 * Math.PI * 330 * t)) / 2);
+			for (int channel = 0; channel < 2; channel++) {
+				data[i * 4 + channel * 2] = (byte) value;
+				data[i * 4 + channel * 2 + 1] = (byte) (value >> 8);
+			}
+		}
+
+		javax.sound.sampled.AudioFormat format = new javax.sound.sampled.AudioFormat(rate, 16, 2, true, false);
+		try (javax.sound.sampled.AudioInputStream stream = new javax.sound.sampled.AudioInputStream(new java.io.ByteArrayInputStream(data), format, frames)) {
+			javax.sound.sampled.AudioSystem.write(stream, javax.sound.sampled.AudioFileFormat.Type.WAVE, file.toFile());
 		}
 	}
 

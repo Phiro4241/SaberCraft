@@ -29,6 +29,7 @@ import com.phiro.sabercraft.client.combat.CombatConfig;
 import com.phiro.sabercraft.client.combat.CombatLibrary;
 import com.phiro.sabercraft.client.menu.SaberMenuScreen;
 import com.phiro.sabercraft.client.music.SaberMusic;
+import com.phiro.sabercraft.client.music.StarWarsMusic;
 import com.phiro.sabercraft.client.music.UserMusic;
 import com.phiro.sabercraft.client.render.SaberBladeItemModel;
 import com.phiro.sabercraft.client.render.SaberBladeSpecialRenderer;
@@ -39,6 +40,7 @@ import com.phiro.sabercraft.client.saber.SaberHilts;
 import com.phiro.sabercraft.client.saber.SaberTracker;
 import com.phiro.sabercraft.client.select.SaberCustomizeScreen;
 import com.phiro.sabercraft.client.select.SaberSelection;
+import com.phiro.sabercraft.client.sky.PlanetSky;
 
 /**
  * Client entrypoint for SaberCraft.
@@ -77,7 +79,11 @@ public class SaberCraftClient implements ClientModInitializer {
 		SaberAbilityClient.init();
 		// Phase 7: the optional music; your own files are read again on every join.
 		ClientTickEvents.END_CLIENT_TICK.register(SaberMusic::tick);
-		ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> UserMusic.scan());
+		ClientTickEvents.END_CLIENT_TICK.register(PlanetSky::tick);
+		ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> {
+			UserMusic.scan();
+			StarWarsMusic.scan();
+		});
 		ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> SaberMusic.reset());
 		// Phase 7: outfits, drawn as a layer over the normal skin of every player model.
 		OutfitClient.init();

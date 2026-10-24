@@ -9,6 +9,7 @@ import java.util.UUID;
 
 import org.jspecify.annotations.Nullable;
 
+import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
 import net.fabricmc.fabric.api.entity.event.v1.ServerPlayerEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
@@ -28,6 +29,7 @@ import net.minecraft.tags.TagKey;
 import net.minecraft.util.Mth;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.damagesource.DamageTypes;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.Entity;
@@ -152,6 +154,20 @@ public final class SaberAbilities {
 
 			return InteractionResult.PASS;
 		});
+		// Styles with heavy blows (Djem So above all) throw the target back a little further.
+		ServerLivingEntityEvents.AFTER_DAMAGE.register((entity, source, baseDamage, taken, blocked) -> {
+			if (taken <= 0.0F || blocked || !source.is(DamageTypes.PLAYER_ATTACK)
+					|| !(source.getDirectEntity() instanceof ServerPlayer player) || !SaberVariant.canHold(player.getMainHandItem())) {
+				return;
+			}
+
+			float knockback = StyleTraits.of(SaberVariant.styleOf(player.getMainHandItem())).hitKnockback();
+
+			if (knockback > 0.0F) {
+				entity.knockback(knockback, player.getX() - entity.getX(), player.getZ() - entity.getZ(), source, 0.0F);
+				entity.hurtMarked = true;
+			}
+		});
 	}
 
 	/** The stamina of a player, the maximum if they never used any. */
@@ -271,7 +287,7 @@ public final class SaberAbilities {
 			}
 			case SPIN -> {
 				state.spinStart = now;
-				state.whirl = SaberVariant.STAFF.equals(style);
+				state.whirl = SaberVariant.isStaffStyle(style);
 				startCooldown(player, state, ability, now, state.whirl ? config.whirlCooldown : config.spinCooldown);
 			}
 			case PUSH -> {

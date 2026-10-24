@@ -55,10 +55,12 @@ public enum SaberManeuver {
 
 	/** The maneuver for a fighting style and a direction. */
 	public static SaberManeuver of(@Nullable Identifier style, DodgeDirection direction) {
-		boolean heavy = SaberVariant.HEAVY.equals(style) || SaberVariant.DEFENSIVE.equals(style);
-		boolean agile = SaberVariant.AGILE.equals(style);
+		boolean heavy = SaberVariant.HEAVY.equals(style) || SaberVariant.DEFENSIVE.equals(style)
+				|| SaberVariant.DJEM_SO.equals(style) || SaberVariant.SORESU.equals(style);
+		// Juyo is the agile style of the double staff: spin steps and back flips.
+		boolean agile = SaberVariant.AGILE.equals(style) || SaberVariant.JUYO.equals(style);
 		// The long double staff would cut into the ground in a shoulder roll, so it steps aside.
-		boolean staff = SaberVariant.STAFF.equals(style);
+		boolean staff = SaberVariant.isStaffStyle(style);
 
 		return switch (direction) {
 			case FORWARD -> heavy ? LUNGE : agile ? SPIN_STEP : ROLL;
