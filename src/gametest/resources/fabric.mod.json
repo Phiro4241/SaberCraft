@@ -19,7 +19,8 @@
 			"com.phiro.sabercraft.gametest.MusicGameTest",
 			"com.phiro.sabercraft.gametest.CharacterGameTest",
 			"com.phiro.sabercraft.gametest.ShaderBladeGameTest",
-			"com.phiro.sabercraft.gametest.PlanetVisibilityGameTest"
+			"com.phiro.sabercraft.gametest.PlanetVisibilityGameTest",
+			"com.phiro.sabercraft.gametest.SkinLayerGameTest"
 		]
 	},
 	"depends": {

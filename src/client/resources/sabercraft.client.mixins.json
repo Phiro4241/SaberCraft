@@ -3,6 +3,8 @@
   "package": "com.phiro.sabercraft.mixin.client",
   "compatibilityLevel": "JAVA_25",
   "client": [
+    "AbstractClientPlayerMixin",
+    "AvatarMixin",
     "ArmedEntityRenderStateMixin",
     "AvatarRendererMixin",
     "ClientPacketListenerMixin",

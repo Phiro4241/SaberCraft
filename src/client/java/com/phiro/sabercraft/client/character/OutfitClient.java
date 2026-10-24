@@ -21,8 +21,13 @@ import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.loader.api.FabricLoader;
 
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.entity.state.AvatarRenderState;
 import net.minecraft.client.renderer.texture.DynamicTexture;
+import net.minecraft.core.ClientAsset;
 import net.minecraft.resources.Identifier;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.player.PlayerModelType;
+import net.minecraft.world.entity.player.PlayerSkin;
 
 import com.phiro.sabercraft.SaberCraft;
 import com.phiro.sabercraft.character.Outfit;
@@ -31,9 +36,17 @@ import com.phiro.sabercraft.network.OutfitSyncPayload;
 
 /**
  * The outfits on this client: your own choice, and the built-in outfits other players chose (as
- * the server tells). An outfit is an extra layer over the normal skin ({@link OutfitLayer}); no
- * skin is replaced, and other players only ever show what they chose themselves. Files of your
- * own ({@code config/sabercraft/outfits/*.png}, 64 x 64 in the skin layout) are only seen by you.
+ * the server tells). Other players only ever show what they chose themselves. Files of your own
+ * ({@code config/sabercraft/outfits/*.png}, 64 x 64 in the skin layout) are only seen by you.
+ *
+ * <p>Since Phase 10 an outfit or character replaces the player's skin itself: the
+ * {@link PlayerSkin} the game asks the player for ({@code AbstractClientPlayerMixin}) is the
+ * character's, with its own texture, model shape and no cape or elytra of the own skin, and the
+ * second layer that is shown is the character's ({@code AvatarMixin}). Before, the character was
+ * painted as a slightly larger body over the own skin, so whatever of the own skin's second layer
+ * was not hidden on purpose (the hat under outfits without a hood, the sleeves in first person,
+ * the cape) stayed visible. Now there is just one skin per player, so nothing of the old one can
+ * be left, and choosing your own skin again simply asks the game for it again.
  *
  * <p>The film characters (Phase 8) can be given a skin file of your own as well:
  * {@code config/sabercraft/characters/<character>.png} (for example {@code vader.png}) replaces the
@@ -48,10 +61,21 @@ public final class OutfitClient {
 	private static @Nullable String loadedFile;
 	private static @Nullable DynamicTexture customTexture;
 
-	/** What to draw over a player, and how big the figure is drawn (1 = normal, Phase 9). */
-	public record Look(Identifier texture, boolean coversHead, float scale) {
-		public Look(Identifier texture, boolean coversHead) {
-			this(texture, coversHead, 1.0F);
+	/** Skins made for a texture, so the game gets the same object every frame. */
+	private static final Map<Identifier, PlayerSkin> SKINS = new HashMap<>();
+
+	/**
+	 * The skin a player is drawn with, and how big the figure is drawn (1 = normal, Phase 9).
+	 * All characters and outfits are painted for the wide (Steve) model.
+	 */
+	public record Look(Identifier texture, float scale) {
+		public Look(Identifier texture) {
+			this(texture, 1.0F);
+		}
+
+		/** The complete skin: this texture, the wide model, and no cape or elytra. */
+		public PlayerSkin skin() {
+			return SKINS.computeIfAbsent(this.texture, id -> new PlayerSkin(new ClientAsset.ResourceTexture(id, id), null, null, PlayerModelType.WIDE, true));
 		}
 	}
 
@@ -101,6 +125,8 @@ public final class OutfitClient {
 
 	/** Forgets the loaded character skin files, so changed files are read again. */
 	public static void reloadCharacterSkins() {
+		SKINS.clear();
+
 		for (Optional<Identifier> texture : CHARACTER_SKINS.values()) {
 			texture.ifPresent(id -> Minecraft.getInstance().getTextureManager().release(id));
 		}
@@ -185,7 +211,7 @@ public final class OutfitClient {
 
 			if (choice.startsWith(FILE_PREFIX)) {
 				Identifier texture = customTexture(choice.substring(FILE_PREFIX.length()));
-				return texture == null ? null : new Look(texture, false);
+				return texture == null ? null : new Look(texture);
 			}
 
 			return builtIn(choice).map(OutfitClient::lookOf).orElse(null);
@@ -202,7 +228,14 @@ public final class OutfitClient {
 	public static Look lookOf(Outfit outfit) {
 		Identifier own = outfit.character() ? characterSkin(outfit) : null;
 		float scale = CharacterConfig.get().characterSize ? outfit.scale() : 1.0F;
-		return new Look(own != null ? own : outfit.id().withPath(path -> "textures/outfit/" + path + ".png"), outfit.coversHead(), scale);
+		return new Look(own != null ? own : outfit.id().withPath(path -> "textures/outfit/" + path + ".png"), scale);
+	}
+
+	/** The look for a render state, found through the entity id it was made from. */
+	public static @Nullable Look lookOf(AvatarRenderState state) {
+		Minecraft client = Minecraft.getInstance();
+		Entity entity = client.level == null ? null : client.level.getEntity(state.id);
+		return entity == null ? null : look(entity.getUUID());
 	}
 
 	/** Loads a file of your own once (64 x 64 PNG), or null when it cannot be used. */
@@ -244,10 +277,27 @@ public final class OutfitClient {
 				return null;
 			}
 
+			opaqueBase(image);
 			return new DynamicTexture(() -> label, image);
 		} catch (IOException error) {
 			SaberCraft.LOGGER.warn("Could not read the skin file {}: {}", file.getFileName(), error.toString());
 			return null;
+		}
+	}
+
+	/**
+	 * Makes the base layer of a skin file opaque, as vanilla does for every downloaded skin
+	 * ({@code SkinTextureDownloader.processLegacySkin}): only the second layer may be see-through.
+	 */
+	private static void opaqueBase(NativeImage image) {
+		int[][] base = {{0, 0, 32, 16}, {0, 16, 64, 32}, {16, 48, 48, 64}};
+
+		for (int[] box : base) {
+			for (int y = box[1]; y < box[3]; y++) {
+				for (int x = box[0]; x < box[2]; x++) {
+					image.setPixel(x, y, image.getPixel(x, y) | 0xFF000000);
+				}
+			}
 		}
 	}
 
