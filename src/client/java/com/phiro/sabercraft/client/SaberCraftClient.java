@@ -5,6 +5,7 @@ import com.mojang.blaze3d.platform.InputConstants;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper;
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.resource.v1.ResourceLoader;
 
 import net.minecraft.client.KeyMapping;
@@ -21,6 +22,8 @@ import com.phiro.sabercraft.client.blade.BladeStyleConfig;
 import com.phiro.sabercraft.client.blade.BladeStyles;
 import com.phiro.sabercraft.client.combat.CombatConfig;
 import com.phiro.sabercraft.client.combat.CombatLibrary;
+import com.phiro.sabercraft.client.music.SaberMusic;
+import com.phiro.sabercraft.client.music.UserMusic;
 import com.phiro.sabercraft.client.render.SaberBladeItemModel;
 import com.phiro.sabercraft.client.render.SaberBladeSpecialRenderer;
 import com.phiro.sabercraft.client.render.SaberRenderTypes;
@@ -51,6 +54,7 @@ public class SaberCraftClient implements ClientModInitializer {
 	@Override
 	public void onInitializeClient() {
 		BladeStyleConfig.load();
+		ImmersionConfig.load();
 		CombatConfig.load();
 		ResourceLoader.get(PackType.CLIENT_RESOURCES).registerReloadListener(SaberCraft.id("combat_moves"), CombatLibrary.INSTANCE);
 		SaberRenderTypes.init();
@@ -65,6 +69,10 @@ public class SaberCraftClient implements ClientModInitializer {
 
 		KeyMappingHelper.registerKeyMapping(CUSTOMIZE_KEY);
 		SaberAbilityClient.init();
+		// Phase 7: the optional music; your own files are read again on every join.
+		ClientTickEvents.END_CLIENT_TICK.register(SaberMusic::tick);
+		ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> UserMusic.scan());
+		ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> SaberMusic.reset());
 		ClientTickEvents.END_CLIENT_TICK.register(SaberCraftClient::handleKeys);
 
 		SaberCraft.LOGGER.info(
