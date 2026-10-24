@@ -22,11 +22,15 @@ import net.minecraft.client.CameraType;
 import net.minecraft.resources.Identifier;
 
 import com.phiro.sabercraft.SaberCraft;
+import com.phiro.sabercraft.character.Outfit;
+import com.phiro.sabercraft.client.ImmersionConfig;
 import com.phiro.sabercraft.client.blade.BladeStyle;
 import com.phiro.sabercraft.client.blade.BladeStyles;
+import com.phiro.sabercraft.client.character.OutfitClient;
 import com.phiro.sabercraft.client.render.ShaderCompat;
 import com.phiro.sabercraft.client.saber.SaberAnimations;
 import com.phiro.sabercraft.client.saber.SaberHilts;
+import com.phiro.sabercraft.client.sky.PlanetSky;
 import com.phiro.sabercraft.saber.SaberVariant;
 
 /**
@@ -83,6 +87,7 @@ public class ShaderBladeGameTest implements FabricClientGameTest {
 				String tag = pack.isEmpty() ? "vanilla" : shortName(pack);
 				this.colors(context, server, tag);
 				this.lineup(context, server, tag);
+				this.phase8(context, server, tag);
 			}
 
 			usePack(context, "");
@@ -186,6 +191,40 @@ public class ShaderBladeGameTest implements FabricClientGameTest {
 		}
 
 		context.runOnClient(client -> client.options.setCameraType(CameraType.FIRST_PERSON));
+		hideHud(context, false);
+	}
+
+	/**
+	 * The other Phase 8 looks with the same pack: a film character in third person and the planet
+	 * skies, so the shader compatibility of characters and planets is seen as well.
+	 */
+	private void phase8(ClientGameTestContext context, TestServerContext server, String tag) {
+		hideHud(context, true);
+		server.runCommand("time set day");
+		context.runOnClient(client -> {
+			OutfitClient.choose(Outfit.VADER.id().toString());
+			client.options.setCameraType(CameraType.THIRD_PERSON_FRONT);
+		});
+		context.getInput().lookAt(0.0F, 10.0F);
+		context.waitTicks(SETTLE);
+		context.takeScreenshot("shader_" + tag + "_character_vader");
+		context.runOnClient(client -> {
+			OutfitClient.choose("");
+			client.options.setCameraType(CameraType.FIRST_PERSON);
+		});
+
+		String[][] shots = {{"tatooine", "noon", "0"}, {"coruscant", "midnight", "0"}, {"mustafar", "12600", "90"}, {"endor", "noon", "90"}};
+
+		for (String[] shot : shots) {
+			context.runOnClient(client -> ImmersionConfig.get().planet = shot[0]);
+			server.runCommand("time set " + shot[1]);
+			context.waitFor(client -> PlanetSky.ready(), 1200);
+			context.getInput().lookAt(Float.parseFloat(shot[2]), -12.0F);
+			context.waitTicks(SETTLE);
+			context.takeScreenshot("shader_" + tag + "_planet_" + shot[0]);
+		}
+
+		context.runOnClient(client -> ImmersionConfig.get().planet = "");
 		hideHud(context, false);
 	}
 

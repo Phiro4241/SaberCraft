@@ -54,6 +54,36 @@ public final class ImmersionConfig {
 	@SerializedName("music_crossfade_seconds")
 	public float musicCrossfadeSeconds = 4.0F;
 
+	/**
+	 * Which music plays (Phase 8): {@code sabercraft} for the SaberCraft music above, or
+	 * {@code starwars} for the Star Wars mode, which plays your own files from
+	 * {@code config/sabercraft/starwars_music/}. The settings of the two modes are separate.
+	 */
+	@SerializedName("music_mode")
+	public String musicMode = MODE_SABERCRAFT;
+	/** Volume of the Star Wars mode, 0..1, on top of the master and music sliders. */
+	@SerializedName("starwars_volume")
+	public float starWarsVolume = 0.7F;
+	/** Crossfade between the tracks of the Star Wars mode; off = a short cut. */
+	@SerializedName("starwars_crossfade")
+	public boolean starWarsCrossfade = true;
+	/** Star Wars mode: music in fights, duels and boss fights. */
+	@SerializedName("starwars_combat")
+	public boolean starWarsCombat = true;
+	/** Star Wars mode: music while exploring and in calm moments. */
+	@SerializedName("starwars_exploration")
+	public boolean starWarsExploration = true;
+	/** Star Wars mode: a character's theme when they appear (you or another player). */
+	@SerializedName("starwars_character_themes")
+	public boolean starWarsCharacterThemes = true;
+
+	public static final String MODE_SABERCRAFT = "sabercraft";
+	public static final String MODE_STARWARS = "starwars";
+
+	public boolean starWarsMode() {
+		return MODE_STARWARS.equals(this.musicMode);
+	}
+
 	public static ImmersionConfig get() {
 		return current;
 	}
@@ -77,5 +107,9 @@ public final class ImmersionConfig {
 		}
 		this.musicVolume = Mth.clamp(this.musicVolume, 0.0F, 1.0F);
 		this.musicCrossfadeSeconds = Mth.clamp(this.musicCrossfadeSeconds, 0.5F, 20.0F);
+		this.starWarsVolume = Mth.clamp(this.starWarsVolume, 0.0F, 1.0F);
+		if (!MODE_STARWARS.equals(this.musicMode)) {
+			this.musicMode = MODE_SABERCRAFT;
+		}
 	}
 }

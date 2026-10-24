@@ -36,6 +36,10 @@ import com.phiro.sabercraft.client.saber.SaberTracker;
  * vanilla music), and its volume is its own slider on top of the vanilla music slider. The pieces
  * are original compositions ({@code tools/synth_music.py}); players can add their own Ogg files
  * ({@link UserMusic}).
+ *
+ * <p>Since Phase 8 there is a second mode, the Star Wars mode ({@link StarWarsMusic}), which plays
+ * only music files the player provides. The two modes have separate settings; switching fades
+ * the pieces of the other mode out. This class keeps the SaberCraft mode exactly as it was.
  */
 public final class SaberMusic {
 	/** Bosses that bring the event music. */
@@ -96,8 +100,11 @@ public final class SaberMusic {
 	public static void tick(Minecraft client) {
 		ticks++;
 		float crossfade = ImmersionConfig.get().musicCrossfadeSeconds * 20.0F;
+		// Phase 8: in the Star Wars mode the SaberCraft pieces step aside and StarWarsMusic plays.
+		boolean starWars = ImmersionConfig.get().starWarsMode();
+		StarWarsMusic.tick(client, starWars && replacesVanilla());
 
-		if (!replacesVanilla()) {
+		if (!replacesVanilla() || starWars) {
 			if (held) {
 				held = false;
 				fadeOutAll(client.level == null ? 1.0F : crossfade * 0.5F);
@@ -195,22 +202,41 @@ public final class SaberMusic {
 
 	/** The mood for this moment. */
 	private static Mood detect(Minecraft client) {
-		LocalPlayer player = client.player;
+		observe(client);
 
-		if (ticks % 10 == 0) {
-			scan(client, player);
-		}
-
-		if (bossNearby || client.gui.hud.getBossOverlay().shouldPlayMusic()) {
+		if (bossNow(client)) {
 			return Mood.EVENT;
-		} else if (client.level.getGameTime() < combatUntil) {
+		} else if (fightNow(client)) {
 			return Mood.COMBAT;
-		} else if (client.level.isDarkOutside() || client.level.dimensionType().hasFixedTime()
-				|| player.getY() < 40.0 && !client.level.canSeeSky(player.blockPosition())) {
+		} else if (darkNow(client)) {
 			return Mood.NIGHT;
 		}
 
 		return Mood.EXPLORATION;
+	}
+
+	/** Looks around every half second; shared by both music modes. */
+	static void observe(Minecraft client) {
+		if (ticks % 10 == 0) {
+			scan(client, client.player);
+		}
+	}
+
+	/** A boss is near or a boss bar asks for music. */
+	static boolean bossNow(Minecraft client) {
+		return bossNearby || client.gui.hud.getBossOverlay().shouldPlayMusic();
+	}
+
+	/** A fight is going on, or ended less than 15 seconds ago. */
+	static boolean fightNow(Minecraft client) {
+		return client.level.getGameTime() < combatUntil;
+	}
+
+	/** Night, a dimension without a day, or deep underground. */
+	static boolean darkNow(Minecraft client) {
+		LocalPlayer player = client.player;
+		return client.level.isDarkOutside() || client.level.dimensionType().hasFixedTime()
+				|| player.getY() < 40.0 && !client.level.canSeeSky(player.blockPosition());
 	}
 
 	/** Looks for bosses and enemies around the player; a fight keeps the combat music for 15 s. */
@@ -238,7 +264,7 @@ public final class SaberMusic {
 		}
 	}
 
-	private static boolean saberLit(LocalPlayer player) {
+	static boolean saberLit(LocalPlayer player) {
 		for (InteractionHand hand : InteractionHand.values()) {
 			SaberHandState state = SaberTracker.INSTANCE.state(player, hand);
 			if (state != null && state.isLit()) {
@@ -293,5 +319,6 @@ public final class SaberMusic {
 		held = false;
 		combatUntil = 0L;
 		bossNearby = false;
+		StarWarsMusic.reset();
 	}
 }
