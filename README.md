@@ -33,7 +33,7 @@ Die Werte jeder Farbe (Kern-, Bloom- und Halofarbe, Länge, Dicke, Leuchtstärke
 | **R** (halten) | Abwehrhaltung, direkt nach dem Hochnehmen eine Parade |
 | **Z** | Drehangriff, mit der Doppelklinge der Klingenwirbel |
 | **B** | Machtstoß |
-| **Linke Alt-Taste** | Ausfallschritt |
+| **Linke Alt-Taste** | Ausweichen: Rolle, Seitschritt, Rückschritt oder Ausfallschritt, je nach Stil und gedrückter Laufrichtung (WASD) |
 
 Alle Tasten sind unter Optionen → Steuerung → SaberCraft änderbar. Abklingzeiten und Stärken stehen in `config/sabercraft/abilities.json`, Effekte und Animationen in `config/sabercraft/combat_client.json`.
 

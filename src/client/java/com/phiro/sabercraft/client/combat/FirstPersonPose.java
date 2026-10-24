@@ -50,6 +50,11 @@ public final class FirstPersonPose {
 	public float elevation;
 	public float azimuth;
 	public float roll;
+	/**
+	 * Camera movement of the move (since Phase 7): how far the eyes dip in blocks, and a pitch and
+	 * roll of the view in degrees. Used for rolls and landings, see {@code SaberCombat.camera}.
+	 */
+	public final float[] camera = new float[3];
 
 	public FirstPersonPose() {
 		this.set(REST);
@@ -71,6 +76,7 @@ public final class FirstPersonPose {
 		this.elevation = other.elevation;
 		this.azimuth = other.azimuth;
 		this.roll = other.roll;
+		System.arraycopy(other.camera, 0, this.camera, 0, 3);
 		return this;
 	}
 
@@ -86,6 +92,11 @@ public final class FirstPersonPose {
 		this.elevation = Mth.lerp(amount, this.elevation, target.elevation);
 		this.azimuth = Mth.lerp(amount, this.azimuth, target.azimuth);
 		this.roll = Mth.lerp(amount, this.roll, target.roll);
+
+		for (int i = 0; i < 3; i++) {
+			this.camera[i] = Mth.lerp(amount, this.camera[i], target.camera[i]);
+		}
+
 		return this;
 	}
 
@@ -93,6 +104,10 @@ public final class FirstPersonPose {
 		this.gripX = values[0];
 		this.gripY = values[1];
 		this.gripZ = values[2];
+	}
+
+	void setCamera(float[] values) {
+		System.arraycopy(values, 0, this.camera, 0, 3);
 	}
 
 	void setAim(float[] values) {

@@ -220,6 +220,8 @@ public final class SaberTracker {
 		private float motion;
 		private final CombatState combat = new CombatState();
 		private InteractionHand combatHand = InteractionHand.MAIN_HAND;
+		private int airTicks;
+		private double peakY;
 
 		TrackedEntity(LivingEntity entity, boolean startLit) {
 			this.entity = entity;
@@ -240,6 +242,23 @@ public final class SaberTracker {
 			this.tickMotion(soundManager, audible);
 		}
 
+		/** Notices landings after a fall, for the landing move. */
+		private void tickLanding(boolean airborne, boolean ready, float now) {
+			double y = this.entity.getY();
+
+			if (airborne) {
+				this.peakY = this.airTicks == 0 ? y : Math.max(this.peakY, y);
+				this.airTicks++;
+				return;
+			}
+
+			if (this.airTicks > 0 && ready && CombatConfig.get().landingAnimation) {
+				this.combat.onLand((float) (this.peakY - y), now);
+			}
+
+			this.airTicks = 0;
+		}
+
 		/** Updates the fighting style and plays the strike of a running move. */
 		private void tickCombat(SoundManager soundManager, boolean audible) {
 			this.combatHand = SaberProfiles.isSaber(this.entity.getMainHandItem()) || !SaberProfiles.isSaber(this.entity.getOffhandItem())
@@ -255,14 +274,17 @@ public final class SaberTracker {
 			boolean ready = state != null
 					&& state.isActive()
 					&& CombatConfig.get().readyStance
-					&& !this.entity.isSprinting()
 					&& !this.entity.isSwimming()
 					&& !this.entity.isFallFlying()
 					&& !this.entity.isPassenger()
 					&& !this.entity.isSleeping()
 					&& !this.entity.isUsingItem();
 			float now = SaberTracker.this.time(0.0F);
-			this.combat.tick(style, now, ready ? 1.0F : 0.0F);
+			boolean airborne = !this.entity.onGround() && !this.entity.isInWater() && !this.entity.isFallFlying()
+					&& !this.entity.isPassenger() && !this.entity.onClimbable();
+			boolean running = this.entity.isSprinting() && !airborne;
+			this.combat.tick(style, now, ready ? 1.0F : 0.0F, ready && running ? 1.0F : 0.0F, ready && airborne && this.airTicks > 2 ? 1.0F : 0.0F);
+			this.tickLanding(airborne, ready, now);
 			CombatMove struck = this.combat.pollStrike(now);
 
 			if (struck != null && state != null) {

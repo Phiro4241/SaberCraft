@@ -65,10 +65,13 @@ public final class AbilityConfig {
 	public boolean dashEnabled = true;
 	@SerializedName("dash_cooldown")
 	public int dashCooldown = 100;
-	/** Speed of the lunge in blocks per tick. */
-	@SerializedName("dash_speed")
-	public float dashSpeed = 1.3F;
-	/** Damage of the stab at the end of the lunge, as a share of the player's attack damage. */
+	/**
+	 * Speed of the dodge moves (rolls, lunge, steps) as a multiplier of their built-in speed, 1 = a
+	 * roll of about 3.5 blocks. Sent to the clients, which move their own player.
+	 */
+	@SerializedName("dodge_speed")
+	public float dodgeSpeed = 1.0F;
+	/** Damage of the stab of the lunge and the cut of the spin step, as a share of the attack damage. */
 	@SerializedName("dash_damage_share")
 	public float dashDamageShare = 0.5F;
 
@@ -97,7 +100,7 @@ public final class AbilityConfig {
 		config.pushRange = Mth.clamp(config.pushRange, 1.0F, 12.0F);
 		config.pushStrength = Mth.clamp(config.pushStrength, 0.0F, 4.0F);
 		config.dashCooldown = Mth.clamp(config.dashCooldown, 10, 6000);
-		config.dashSpeed = Mth.clamp(config.dashSpeed, 0.2F, 2.5F);
+		config.dodgeSpeed = Mth.clamp(config.dodgeSpeed, 0.3F, 2.0F);
 		config.dashDamageShare = Mth.clamp(config.dashDamageShare, 0.0F, 2.0F);
 		config.exhaustion = Mth.clamp(config.exhaustion, 0.0F, 10.0F);
 		current = config;

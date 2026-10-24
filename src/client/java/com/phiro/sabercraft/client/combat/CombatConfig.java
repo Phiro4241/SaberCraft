@@ -34,6 +34,12 @@ public final class CombatConfig {
 	/** Shows the ability cooldowns next to the hotbar while a saber is held. */
 	@SerializedName("ability_hud")
 	public boolean abilityHud = true;
+	/** How much the first-person camera follows rolls and landings, 0 = not at all, 1 = full. */
+	@SerializedName("camera_motion")
+	public float cameraMotion = 1.0F;
+	/** Landing animation after higher jumps. */
+	@SerializedName("landing_animation")
+	public boolean landingAnimation = true;
 
 	public static CombatConfig get() {
 		return current;
@@ -43,6 +49,7 @@ public final class CombatConfig {
 		CombatConfig config = JsonConfig.load("combat_client", CombatConfig.class, CombatConfig::new);
 		config.trailStrength = Mth.clamp(config.trailStrength, 0.0F, 2.0F);
 		config.particles = Mth.clamp(config.particles, 0, 2);
+		config.cameraMotion = Mth.clamp(config.cameraMotion, 0.0F, 1.0F);
 		current = config;
 	}
 }

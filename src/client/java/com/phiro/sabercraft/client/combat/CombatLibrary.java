@@ -3,6 +3,7 @@ package com.phiro.sabercraft.client.combat;
 import java.io.Reader;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.EnumMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -22,6 +23,7 @@ import net.minecraft.server.packs.resources.ResourceManagerReloadListener;
 import net.minecraft.util.GsonHelper;
 
 import com.phiro.sabercraft.SaberCraft;
+import com.phiro.sabercraft.ability.DodgeDirection;
 
 /**
  * Loads the fighting styles and their moves from {@code assets/sabercraft/combat/moves.json}.
@@ -132,7 +134,13 @@ public final class CombatLibrary implements ResourceManagerReloadListener {
 				track(thirdPerson, "off_arm", 3),
 				track(thirdPerson, "body", 2),
 				track(thirdPerson, "spin", 1),
-				track(thirdPerson, "item", 3)
+				track(thirdPerson, "item", 3),
+				track(firstPerson, "camera", 3),
+				track(thirdPerson, "main_leg", 3),
+				track(thirdPerson, "off_leg", 3),
+				track(thirdPerson, "lean", 1),
+				track(thirdPerson, "root", 3),
+				track(thirdPerson, "crouch", 1)
 		);
 	}
 
@@ -181,6 +189,16 @@ public final class CombatLibrary implements ResourceManagerReloadListener {
 
 		FirstPersonPose idleFirst = firstPersonPose(GsonHelper.getAsJsonObject(json, "idle_first_person", new JsonObject()));
 		ThirdPersonPose idleThird = thirdPersonPose(GsonHelper.getAsJsonObject(json, "idle_third_person", new JsonObject()));
+		Map<DodgeDirection, CombatMove> dodges = new EnumMap<>(DodgeDirection.class);
+		JsonObject dodgeObject = GsonHelper.getAsJsonObject(json, "dodge", new JsonObject());
+
+		for (DodgeDirection direction : DodgeDirection.values()) {
+			String key = direction.name().toLowerCase(java.util.Locale.ROOT);
+
+			if (dodgeObject.has(key)) {
+				dodges.put(direction, requireMove(moves, GsonHelper.getAsString(dodgeObject, key)));
+			}
+		}
 
 		return new CombatStyle(
 				id,
@@ -192,7 +210,15 @@ public final class CombatLibrary implements ResourceManagerReloadListener {
 				idleFirst,
 				idleThird,
 				json.has("guard_first_person") ? firstPersonPose(GsonHelper.getAsJsonObject(json, "guard_first_person")) : idleFirst.copy(),
-				json.has("guard_third_person") ? thirdPersonPose(GsonHelper.getAsJsonObject(json, "guard_third_person")) : idleThird.copy()
+				json.has("guard_third_person") ? thirdPersonPose(GsonHelper.getAsJsonObject(json, "guard_third_person")) : idleThird.copy(),
+				json.has("run_third_person") ? thirdPersonPose(GsonHelper.getAsJsonObject(json, "run_third_person")) : null,
+				json.has("air_third_person") ? thirdPersonPose(GsonHelper.getAsJsonObject(json, "air_third_person")) : null,
+				Map.copyOf(dodges),
+				optionalMove(json, "land", moves),
+				optionalMove(json, "land_heavy", moves),
+				optionalMove(json, "guard_hit", moves),
+				optionalMove(json, "parry", moves),
+				optionalMove(json, "guard_break", moves)
 		);
 	}
 
@@ -242,6 +268,28 @@ public final class CombatLibrary implements ResourceManagerReloadListener {
 
 		if (json.has("item")) {
 			System.arraycopy(floats(json.get("item"), 3), 0, pose.item, 0, 3);
+		}
+
+		if (json.has("main_leg")) {
+			System.arraycopy(floats(json.get("main_leg"), 3), 0, pose.mainLeg, 0, 3);
+			pose.legWeight = 1.0F;
+		}
+
+		if (json.has("off_leg")) {
+			System.arraycopy(floats(json.get("off_leg"), 3), 0, pose.offLeg, 0, 3);
+			pose.legWeight = 1.0F;
+		}
+
+		if (json.has("lean")) {
+			pose.lean = GsonHelper.getAsFloat(json, "lean");
+		}
+
+		if (json.has("root")) {
+			System.arraycopy(floats(json.get("root"), 3), 0, pose.root, 0, 3);
+		}
+
+		if (json.has("crouch")) {
+			pose.crouch = GsonHelper.getAsFloat(json, "crouch");
 		}
 
 		return pose;

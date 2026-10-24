@@ -3,6 +3,7 @@ package com.phiro.sabercraft.client.combat;
 import org.jspecify.annotations.Nullable;
 
 import net.minecraft.resources.Identifier;
+import net.minecraft.util.Mth;
 
 /**
  * One attack movement, for example a diagonal cut or a spinning slash. Moves are defined in
@@ -29,6 +30,12 @@ import net.minecraft.resources.Identifier;
  * @param tpBody      third person: body lean and twist
  * @param tpSpin      third person: turn of the whole body
  * @param tpItem      third person: turn of the saber in the hand
+ * @param fpCamera    first person: dip, pitch and roll of the camera, or {@code null}
+ * @param tpMainLeg   third person: leg on the saber side, or {@code null} to keep the resting legs
+ * @param tpOffLeg    third person: the other leg
+ * @param tpLean      third person: bend of the upper body at the hips
+ * @param tpRoot      third person: pitch, roll and lift of the whole figure
+ * @param tpCrouch    third person: extra lowering of the figure in blocks
  */
 public record CombatMove(
 		Identifier id,
@@ -46,7 +53,13 @@ public record CombatMove(
 		@Nullable KeyTrack tpOffArm,
 		@Nullable KeyTrack tpBody,
 		@Nullable KeyTrack tpSpin,
-		@Nullable KeyTrack tpItem
+		@Nullable KeyTrack tpItem,
+		@Nullable KeyTrack fpCamera,
+		@Nullable KeyTrack tpMainLeg,
+		@Nullable KeyTrack tpOffLeg,
+		@Nullable KeyTrack tpLean,
+		@Nullable KeyTrack tpRoot,
+		@Nullable KeyTrack tpCrouch
 ) {
 	/** The sound played at the strike of a move. */
 	public enum StrikeSound {
@@ -75,6 +88,10 @@ public record CombatMove(
 			this.fpAim.sample(age, buffer);
 			out.setAim(buffer);
 		}
+
+		if (this.fpCamera != null) {
+			this.fpCamera.sample(age, out.camera);
+		}
 	}
 
 	/** Writes the raw third-person pose at {@code age} ticks into {@code out}. */
@@ -101,7 +118,8 @@ public record CombatMove(
 
 		if (this.tpSpin != null) {
 			this.tpSpin.sample(age, buffer);
-			out.spin = buffer[0];
+			// After the last keyframe a full turn counts as none, so blending out does not turn back.
+			out.spin = age >= this.tpSpin.lastTime() ? Mth.wrapDegrees(buffer[0]) : buffer[0];
 		} else {
 			out.spin = 0.0F;
 		}
@@ -112,6 +130,36 @@ public record CombatMove(
 			out.item[0] = 0.0F;
 			out.item[1] = 0.0F;
 			out.item[2] = 0.0F;
+		}
+
+		// The whole-body tracks keep the resting pose's values when a move does not set them.
+		if (this.tpMainLeg != null) {
+			this.tpMainLeg.sample(age, out.mainLeg);
+			out.legWeight = 1.0F;
+		}
+
+		if (this.tpOffLeg != null) {
+			this.tpOffLeg.sample(age, out.offLeg);
+			out.legWeight = 1.0F;
+		}
+
+		if (this.tpLean != null) {
+			this.tpLean.sample(age, buffer);
+			out.lean = buffer[0];
+		}
+
+		if (this.tpRoot != null) {
+			this.tpRoot.sample(age, out.root);
+
+			if (age >= this.tpRoot.lastTime()) {
+				out.root[0] = Mth.wrapDegrees(out.root[0]);
+				out.root[1] = Mth.wrapDegrees(out.root[1]);
+			}
+		}
+
+		if (this.tpCrouch != null) {
+			this.tpCrouch.sample(age, buffer);
+			out.crouch = buffer[0];
 		}
 	}
 }

@@ -55,6 +55,10 @@ public record SaberVariant(Identifier hilt, Identifier color, Identifier style) 
 	public static final Identifier HEAVY = SaberCraft.id("heavy");
 	/** Style of the double-bladed staff: spins and sweeps with both blades. */
 	public static final Identifier STAFF = SaberCraft.id("staff");
+	/** Defensive style: compact stance, long parry window, saves stamina. Since Phase 7. */
+	public static final Identifier DEFENSIVE = SaberCraft.id("defensive");
+	/** Agile style: short quick cuts, jumps and turns, fast dodges. Since Phase 7. */
+	public static final Identifier AGILE = SaberCraft.id("agile");
 
 	/** All hilts in menu order. The server only accepts these. */
 	public static final List<Identifier> HILTS = List.of(STANDARD, GUARDIAN, DARK_LORD, SENTINEL, DOUBLE);

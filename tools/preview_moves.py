@@ -165,7 +165,22 @@ def tp_points(pose, double):
     spin = rad(pose.get("spin", 0.0))
     item = [rad(v) for v in pose.get("item", [0, 0, 0])]
 
-    root = Ry(rad(180) - spin) @ S(-1, -1, 1) @ T(0, -1.501, 0)
+    # Whole-body movement (Phase 7), the same order as SaberCombat.applyRoot.
+    main_leg = [rad(v) for v in pose.get("main_leg", [0, 0, 0])]
+    off_leg = [rad(v) for v in pose.get("off_leg", [0, 0, 0])]
+    legs = 1.0 if ("main_leg" in pose or "off_leg" in pose) else 0.0
+    lean = rad(pose.get("lean", 0.0))
+    rp = pose.get("root", [0, 0, 0])
+    crouch = pose.get("crouch", 0.0)
+
+    def upright(leg):
+        return math.cos(leg[0] + lean) * math.cos(leg[2])
+
+    drop = 0.75 * (1 - max(upright(main_leg), upright(off_leg))) * legs + crouch
+    root = (Ry(rad(180) - spin) @ T(0, rp[2] - drop, 0) @ T(0, 0.9, 0) @ Rx(-rad(rp[0])) @ Rz(rad(rp[1])) @ T(0, -0.9, 0)
+            @ T(0, 0.75, 0) @ Rx(-lean) @ T(0, -0.75, 0) @ S(-1, -1, 1) @ T(0, -1.501, 0))
+    right_leg = arm_matrix((-1.9, 12, 0), (main_leg[0] - lean, main_leg[1], main_leg[2]))
+    left_leg = arm_matrix((1.9, 12, 0), (off_leg[0] - lean, off_leg[1], off_leg[2]))
     right_pivot = (-math.cos(body_y) * 5, 2, math.sin(body_y) * 5)
     left_pivot = (math.cos(body_y) * 5, 2, -math.sin(body_y) * 5)
     right = arm_matrix(right_pivot, (main[0], main[1] + body_y, main[2]))
@@ -181,6 +196,8 @@ def tp_points(pose, double):
         "rs": apply(root @ right, (0, 0, 0)), "rh": apply(root @ right, (-1 / 16, 10 / 16, 0)),
         "ls": apply(root @ left, (0, 0, 0)), "lh": apply(root @ left, (1 / 16, 10 / 16, 0)),
         "head": apply(root, (0, -4 / 16, 0)),
+        "rhip": apply(root @ right_leg, (0, 0, 0)), "rfoot": apply(root @ right_leg, (0, 12 / 16, 0)),
+        "lhip": apply(root @ left_leg, (0, 0, 0)), "lfoot": apply(root @ left_leg, (0, 12 / 16, 0)),
     }
     lines = [(apply(hand, a), apply(hand, b)) for a, b in blades(double)]
     hilt = (apply(hand, (0.2923 - 0.25 if double else 0.0, 0.2923 - 0.25 if double else 0.0, 0.5)), apply(hand, EMITTER if not double else (0.6458, 0.6458, 0.5)))
@@ -239,19 +256,24 @@ def draw_move(name, move, style_double, out, columns=3):
             if pg and k == 3:
                 d.ellipse([x0 + pg[0] - 4, y0 + pg[1] - 4, x0 + pg[0] + 4, y0 + pg[1] + 4], fill=(200, 200, 200))
         pose = {}
-        for key in ("main_arm", "off_arm", "body", "item"):
+        for key in ("main_arm", "off_arm", "body", "item", "main_leg", "off_leg", "root"):
             v = sample(tp, key, t, 3)
             if v is not None:
                 pose[key] = list(v)
-        v = sample(tp, "spin", t, 1)
-        if v is not None:
-            pose["spin"] = float(np.ravel(v)[0])
+        for key in ("spin", "lean", "crouch"):
+            v = sample(tp, key, t, 1)
+            if v is not None:
+                pose[key] = float(np.ravel(v)[0])
         pts, lines, hilt = tp_points(pose, style_double)
         for j, view in enumerate(("front", "side", "top")):
             vx, vy = x0 + j * tw, y0 + fh + 4
             d.rectangle([vx, vy, vx + tw - 2, vy + tw - 2], outline=(70, 70, 80))
             d.text((vx + 3, vy + 2), view, fill=(150, 150, 150))
             P = lambda p, vx=vx, vy=vy, view=view: (vx + ortho(p, view, tw, tw, 55)[0], vy + ortho(p, view, tw, tw, 55)[1])
+            if view != "top":
+                d.line([P(np.array([-3.0, 0, -3.0])), P(np.array([3.0, 0, 3.0]))], fill=(60, 90, 60), width=1)
+            d.line([P(pts["rhip"]), P(pts["rfoot"])], fill=(70, 120, 200), width=4)
+            d.line([P(pts["lhip"]), P(pts["lfoot"])], fill=(70, 170, 100), width=4)
             d.line([P(pts["neck"]), P(pts["hip"])], fill=(140, 140, 160), width=3)
             d.line([P(pts["rs"]), P(pts["ls"])], fill=(140, 140, 160), width=2)
             d.line([P(pts["rs"]), P(pts["rh"])], fill=(90, 160, 255), width=4)

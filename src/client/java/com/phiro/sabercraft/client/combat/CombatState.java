@@ -20,6 +20,10 @@ public final class CombatState {
 	private static final float IDLE_SPEED = 0.2F;
 	/** Ticks the defensive stance takes to come up or go down. */
 	private static final float GUARD_BLEND = 3.0F;
+	/** Change of the running and jumping pose weights per tick. */
+	private static final float LAYER_SPEED = 0.25F;
+	/** Ticks a move that was cut short takes to settle into the resting pose. */
+	private static final float RELEASE_BLEND = 3.0F;
 
 	private @Nullable CombatStyle style;
 	private @Nullable CombatMove move;
@@ -33,9 +37,18 @@ public final class CombatState {
 	private float previousIdleWeight;
 	private boolean guarding;
 	private float guardChanged = -1000.0F;
+	private float runWeight;
+	private float previousRunWeight;
+	private float airWeight;
+	private float previousAirWeight;
+	/** When a move was cut short, so the resting pose blends in from where the saber was. */
+	private float released = -1000.0F;
 
-	/** Runs once per tick. {@code idleTarget} is 1 when the resting pose should show. */
-	public void tick(@Nullable CombatStyle newStyle, float now, float idleTarget) {
+	/**
+	 * Runs once per tick. {@code idleTarget} is 1 when the resting pose should show,
+	 * {@code runTarget} and {@code airTarget} are 1 while sprinting or in the air.
+	 */
+	public void tick(@Nullable CombatStyle newStyle, float now, float idleTarget, float runTarget, float airTarget) {
 		if (newStyle != this.style) {
 			this.style = newStyle;
 			this.comboIndex = -1;
@@ -47,6 +60,41 @@ public final class CombatState {
 
 		this.previousIdleWeight = this.idleWeight;
 		this.idleWeight += Mth.clamp(idleTarget - this.idleWeight, -IDLE_SPEED, IDLE_SPEED);
+		this.previousRunWeight = this.runWeight;
+		this.runWeight += Mth.clamp(runTarget - this.runWeight, -LAYER_SPEED, LAYER_SPEED);
+		this.previousAirWeight = this.airWeight;
+		this.airWeight += Mth.clamp(airTarget - this.airWeight, -LAYER_SPEED, LAYER_SPEED);
+	}
+
+	/**
+	 * Ends the current move early and lets the saber settle into the resting pose, for example
+	 * when a roll hits a wall or the holder switches items.
+	 */
+	public void stop(float now) {
+		if (this.move != null) {
+			this.firstPerson(now, this.firstPersonFrom);
+			this.thirdPerson(now, this.thirdPersonFrom);
+			this.move = null;
+			this.released = now;
+		}
+	}
+
+	/**
+	 * Called when the holder lands after falling {@code height} blocks. Plays the landing move of
+	 * the style unless an attack or another move is running.
+	 */
+	public void onLand(float height, float now) {
+		CombatStyle current = this.style;
+
+		if (current == null || this.guarding || this.move != null && now - this.moveStart < this.move.interrupt()) {
+			return;
+		}
+
+		CombatMove landing = height >= 5.0F && current.landHeavy() != null ? current.landHeavy() : current.land();
+
+		if (landing != null && height >= 1.6F) {
+			this.play(landing, now);
+		}
 	}
 
 	/**
@@ -111,6 +159,7 @@ public final class CombatState {
 				this.firstPerson(now, this.firstPersonFrom);
 				this.thirdPerson(now, this.thirdPersonFrom);
 				this.move = null;
+				this.released = now;
 			}
 		}
 	}
@@ -169,7 +218,7 @@ public final class CombatState {
 		FirstPersonPose rest = current.idleFirstPerson().copy().lerpTo(current.guardFirstPerson(), this.guardAmount(now));
 
 		if (this.move == null) {
-			return out.set(rest);
+			return out.set(this.firstPersonFrom).lerpTo(rest, this.releaseAmount(now));
 		}
 
 		float age = now - this.moveStart;
@@ -187,10 +236,10 @@ public final class CombatState {
 			return out.set(ThirdPersonPose.rest());
 		}
 
-		ThirdPersonPose rest = current.idleThirdPerson().copy().lerpTo(current.guardThirdPerson(), this.guardAmount(now));
+		ThirdPersonPose rest = this.restThirdPerson(current, now);
 
 		if (this.move == null) {
-			return out.set(rest);
+			return out.set(this.thirdPersonFrom).lerpTo(rest, this.releaseAmount(now));
 		}
 
 		float age = now - this.moveStart;
@@ -208,6 +257,26 @@ public final class CombatState {
 		}
 
 		return smooth((age - (current.duration() - current.blendOut())) / current.blendOut());
+	}
+
+	/** The resting pose with running, jumping and the stance layered on top. */
+	private ThirdPersonPose restThirdPerson(CombatStyle current, float now) {
+		ThirdPersonPose rest = current.idleThirdPerson().copy();
+		float partial = Mth.frac(now);
+
+		if (current.runThirdPerson() != null) {
+			rest.lerpTo(current.runThirdPerson(), smooth(Mth.lerp(partial, this.previousRunWeight, this.runWeight)));
+		}
+
+		if (current.airThirdPerson() != null) {
+			rest.lerpTo(current.airThirdPerson(), smooth(Mth.lerp(partial, this.previousAirWeight, this.airWeight)));
+		}
+
+		return rest.lerpTo(current.guardThirdPerson(), this.guardAmount(now));
+	}
+
+	private float releaseAmount(float now) {
+		return smooth((now - this.released) / RELEASE_BLEND);
 	}
 
 	private float guardAmount(float now) {

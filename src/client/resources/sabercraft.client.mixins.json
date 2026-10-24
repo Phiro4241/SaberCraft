@@ -5,9 +5,11 @@
   "client": [
     "ArmedEntityRenderStateMixin",
     "ClientPacketListenerMixin",
+    "GameRendererMixin",
     "HumanoidModelMixin",
     "ItemInHandLayerMixin",
-    "ItemInHandRendererMixin"
+    "ItemInHandRendererMixin",
+    "LivingEntityRendererMixin"
   ],
   "injectors": {
     "defaultRequire": 1

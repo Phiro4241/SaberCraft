@@ -40,6 +40,10 @@ public final class SaberCombat {
 	 */
 	private static final float TP_PIVOT_Y = 0.0041208F;
 	private static final float TP_PIVOT_Z = 0.0746052F;
+	/** Length of a humanoid leg in blocks, from the hip to the sole. */
+	private static final float LEG_LENGTH = 0.75F;
+	/** Height of the middle of a humanoid figure, the point rolls and flips turn around. */
+	private static final float BODY_CENTER = 0.9F;
 
 	private SaberCombat() {
 	}
@@ -52,6 +56,25 @@ public final class SaberCombat {
 	 * @param moving     whether a move is running (not only the resting pose)
 	 */
 	public record ThirdPersonData(ThirdPersonPose pose, float weight, HumanoidArm saberArm, boolean offArmFree, boolean moving) {
+		/** How far the figure sinks so the spread legs still reach the ground, in blocks. */
+		public float drop() {
+			float legs = this.pose.legWeight * this.weight;
+
+			if (legs <= 0.0F && this.pose.crouch == 0.0F) {
+				return 0.0F;
+			}
+
+			// The more upright leg decides: the figure sinks as far as that leg rises, so neither
+			// foot goes into the ground. Leaning at the hips swings both legs back by the lean.
+			float lean = this.pose.lean * Mth.DEG_TO_RAD;
+			float main = upright(this.pose.mainLeg, lean);
+			float off = upright(this.pose.offLeg, lean);
+			return LEG_LENGTH * (1.0F - Math.max(main, off)) * legs + this.pose.crouch * this.weight;
+		}
+
+		private static float upright(float[] leg, float lean) {
+			return Mth.cos(leg[0] * Mth.DEG_TO_RAD + lean) * Mth.cos(leg[2] * Mth.DEG_TO_RAD);
+		}
 	}
 
 	/** The first-person pose of a saber in {@code hand}, or {@code null} for vanilla's animation. */
@@ -98,12 +121,45 @@ public final class SaberCombat {
 		return new ThirdPersonData(pose, weight, arm, entity.getItemInHand(other).isEmpty(), state.move() != null);
 	}
 
+	/**
+	 * Moves the whole figure: lowers it, turns it for rolls and flips and bends it at the hips.
+	 * Called from the renderer's body rotation, before the model is drawn.
+	 */
+	public static void applyRoot(PoseStack poseStack, ThirdPersonData data, float scale) {
+		ThirdPersonPose pose = data.pose();
+		float weight = data.weight();
+		float lift = (pose.root[2] * weight - data.drop()) * scale;
+
+		if (lift != 0.0F) {
+			poseStack.translate(0.0F, lift, 0.0F);
+		}
+
+		float pitch = pose.root[0] * weight;
+		float roll = pose.root[1] * weight;
+
+		if (pitch != 0.0F || roll != 0.0F) {
+			poseStack.translate(0.0F, BODY_CENTER * scale, 0.0F);
+			poseStack.mulPose(Axis.XP.rotationDegrees(-pitch));
+			poseStack.mulPose(Axis.ZP.rotationDegrees(roll));
+			poseStack.translate(0.0F, -BODY_CENTER * scale, 0.0F);
+		}
+
+		float lean = pose.lean * weight;
+
+		if (lean != 0.0F) {
+			poseStack.translate(0.0F, LEG_LENGTH * scale, 0.0F);
+			poseStack.mulPose(Axis.XP.rotationDegrees(-lean));
+			poseStack.translate(0.0F, -LEG_LENGTH * scale, 0.0F);
+		}
+	}
+
 	/** Poses the model in place of vanilla's attack animation. */
 	public static void applyThirdPerson(HumanoidModel<?> model, HumanoidRenderState state, ThirdPersonData data) {
 		ThirdPersonPose pose = data.pose();
 		float weight = data.weight();
 		boolean right = data.saberArm() == HumanoidArm.RIGHT;
 		float mirror = right ? 1.0F : -1.0F;
+		applyLegs(model, state, data, right, mirror);
 
 		float bodyYaw = pose.body[1] * Mth.DEG_TO_RAD * mirror * weight;
 		model.body.yRot = bodyYaw;
@@ -135,6 +191,57 @@ public final class SaberCombat {
 		} else {
 			otherArm.yRot += bodyYaw;
 		}
+	}
+
+	/**
+	 * The legs: the move's steps while standing, mostly vanilla's walking while moving, so a fighter
+	 * never slides over the ground with frozen legs. A bend at the hips turns the legs back
+	 * against it, so the feet stay where they are.
+	 */
+	private static void applyLegs(HumanoidModel<?> model, HumanoidRenderState state, ThirdPersonData data, boolean right, float mirror) {
+		ThirdPersonPose pose = data.pose();
+		float weight = data.weight();
+		float walk = Mth.clamp(state.walkAnimationSpeed / Math.max(0.01F, state.speedValue) * 1.6F, 0.0F, 1.0F);
+		float legWeight = weight * pose.legWeight * (1.0F - 0.7F * walk);
+		ModelPart mainLeg = right ? model.rightLeg : model.leftLeg;
+		ModelPart offLeg = right ? model.leftLeg : model.rightLeg;
+
+		if (legWeight > 0.0F && !state.isPassenger) {
+			leg(mainLeg, pose.mainLeg, mirror, legWeight);
+			leg(offLeg, pose.offLeg, mirror, legWeight);
+		}
+
+		float lean = pose.lean * weight * Mth.DEG_TO_RAD;
+
+		if (lean != 0.0F) {
+			model.rightLeg.xRot -= lean;
+			model.leftLeg.xRot -= lean;
+		}
+	}
+
+	private static void leg(ModelPart leg, float[] angles, float mirror, float weight) {
+		// Keeps vanilla's walking swing on top of the stance.
+		float walking = leg.xRot;
+		leg.xRot = Mth.lerp(weight, walking, angles[0] * Mth.DEG_TO_RAD + walking * 0.35F);
+		leg.yRot = Mth.lerp(weight, leg.yRot, angles[1] * Mth.DEG_TO_RAD * mirror);
+		leg.zRot = Mth.lerp(weight, leg.zRot, angles[2] * Mth.DEG_TO_RAD * mirror);
+	}
+
+	/**
+	 * The first-person camera movement of the local player's current move, written as dip
+	 * (blocks), pitch and roll (degrees) into {@code out}. Returns false when there is none.
+	 */
+	public static boolean camera(LivingEntity player, float partialTick, float[] out) {
+		SaberTracker tracker = SaberTracker.INSTANCE;
+		CombatState state = tracker.combat(player);
+
+		if (state == null || state.style() == null || state.move() == null) {
+			return false;
+		}
+
+		FirstPersonPose pose = state.firstPerson(tracker.time(partialTick), new FirstPersonPose());
+		System.arraycopy(pose.camera, 0, out, 0, 3);
+		return out[0] != 0.0F || out[1] != 0.0F || out[2] != 0.0F;
 	}
 
 	private static void pose(ModelPart arm, float[] angles, float mirror, float bodyYaw, float walk, float weight) {

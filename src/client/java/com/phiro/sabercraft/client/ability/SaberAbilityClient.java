@@ -24,9 +24,12 @@ import net.minecraft.sounds.SoundEvent;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.player.Input;
 
 import com.phiro.sabercraft.SaberCraft;
+import com.phiro.sabercraft.ability.DodgeDirection;
 import com.phiro.sabercraft.ability.SaberAbility;
+import com.phiro.sabercraft.ability.SaberManeuver;
 import com.phiro.sabercraft.client.SaberCraftClient;
 import com.phiro.sabercraft.client.combat.CombatLibrary;
 import com.phiro.sabercraft.client.combat.CombatMove;
@@ -38,6 +41,8 @@ import com.phiro.sabercraft.client.saber.SaberTracker;
 import com.phiro.sabercraft.client.sound.SaberSounds;
 import com.phiro.sabercraft.network.AbilityCooldownPayload;
 import com.phiro.sabercraft.network.AbilityEventPayload;
+import com.phiro.sabercraft.network.AbilitySettingsPayload;
+import com.phiro.sabercraft.saber.SaberVariant;
 import com.phiro.sabercraft.network.UseAbilityPayload;
 
 /**
@@ -88,6 +93,9 @@ public final class SaberAbilityClient {
 		ClientPlayNetworking.registerGlobalReceiver(AbilityEventPayload.TYPE, (payload, context) -> onEvent(context.client(), payload));
 		ClientPlayNetworking.registerGlobalReceiver(AbilityCooldownPayload.TYPE, (payload, context) ->
 				COOLDOWNS.put(payload.ability(), new Cooldown(payload.ticks(), Math.max(1, payload.total()))));
+		ClientPlayNetworking.registerGlobalReceiver(AbilitySettingsPayload.TYPE, (payload, context) ->
+				ManeuverController.setSpeedScale(payload.dodgeSpeed()));
+		ClientTickEvents.START_CLIENT_TICK.register(ManeuverController::tick);
 		ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> reset());
 		// No attacks while the stance is up, the server would ignore them anyway.
 		ClientPreAttackCallback.EVENT.register((client, player, clicks) -> guardSent);
@@ -119,6 +127,7 @@ public final class SaberAbilityClient {
 	private static void reset() {
 		COOLDOWNS.clear();
 		PREDICTED.clear();
+		ManeuverController.reset();
 		guardSent = false;
 		guardBlocked = false;
 	}
@@ -188,9 +197,16 @@ public final class SaberAbilityClient {
 			return;
 		}
 
-		if (send(player, ability, true)) {
+		int data = 0;
+
+		if (ability == SaberAbility.DASH) {
+			Input input = player.input.keyPresses;
+			data = DodgeDirection.fromInput(input.forward(), input.backward(), input.left(), input.right()).ordinal();
+		}
+
+		if (send(player, ability, true, data)) {
 			PREDICTED.put(ability, ticks);
-			start(player, ability);
+			start(player, ability, data);
 		}
 	}
 
@@ -200,6 +216,10 @@ public final class SaberAbilityClient {
 	}
 
 	private static boolean send(LocalPlayer player, SaberAbility ability, boolean pressed) {
+		return send(player, ability, pressed, 0);
+	}
+
+	private static boolean send(LocalPlayer player, SaberAbility ability, boolean pressed, int data) {
 		if (!ClientPlayNetworking.canSend(UseAbilityPayload.TYPE)) {
 			if (pressed) {
 				player.sendOverlayMessage(Component.translatable("sabercraft.ability.no_server"));
@@ -208,7 +228,7 @@ public final class SaberAbilityClient {
 			return false;
 		}
 
-		ClientPlayNetworking.send(new UseAbilityPayload(ability, pressed));
+		ClientPlayNetworking.send(new UseAbilityPayload(ability, pressed, data));
 		return true;
 	}
 
@@ -237,7 +257,7 @@ public final class SaberAbilityClient {
 				if (payload.ability() == SaberAbility.GUARD) {
 					setGuarding(entity, true);
 				} else {
-					start(entity, payload.ability());
+					start(entity, payload.ability(), payload.data());
 				}
 			}
 			case STOP -> {
@@ -253,28 +273,38 @@ public final class SaberAbilityClient {
 				play(entity, parry ? SaberSounds.PARRY : SaberSounds.CLASH, parry ? 1.0F : 0.85F);
 				SaberEffects.onBlock(entity, parry);
 			}
+			case EVADE -> play(entity, SaberSounds.DASH, 0.5F);
 		}
 	}
 
 	/** Plays the animation, sound and effect of an ability on any entity. */
-	private static void start(LivingEntity entity, SaberAbility ability) {
+	private static void start(LivingEntity entity, SaberAbility ability, int data) {
 		CombatState combat = SaberTracker.INSTANCE.combat(entity);
 		float now = SaberTracker.INSTANCE.time(0.0F);
 		CombatMove move = null;
+		CombatStyle style = combat != null ? combat.style() : null;
 
 		switch (ability) {
 			case GUARD -> setGuarding(entity, true);
-			case SPIN -> {
-				CombatStyle style = combat != null ? combat.style() : null;
-				move = style != null ? style.special() : null;
-			}
+			case SPIN -> move = style != null ? style.special() : null;
 			case PUSH -> {
 				move = CombatLibrary.INSTANCE.move(MOVE_PUSH);
 				play(entity, SaberSounds.PUSH, 1.0F);
 			}
 			case DASH -> {
-				move = CombatLibrary.INSTANCE.move(MOVE_DASH);
+				// Style and direction pick the move: a roll, a lunge, a step or a flip.
+				DodgeDirection direction = DodgeDirection.byId(data);
+				move = style != null ? style.dodges().get(direction) : null;
+
+				if (move == null) {
+					move = CombatLibrary.INSTANCE.move(MOVE_DASH);
+				}
+
 				play(entity, SaberSounds.DASH, 0.9F);
+
+				if (entity instanceof LocalPlayer player) {
+					ManeuverController.start(player, SaberManeuver.of(SaberVariant.styleOf(player.getMainHandItem()), direction), direction);
+				}
 			}
 		}
 

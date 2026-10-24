@@ -16,13 +16,15 @@ import com.phiro.sabercraft.ability.SaberAbility;
  * @param entityId id of the entity that used the ability
  * @param ability  which ability
  * @param event    what happened, see {@link Event}
+ * @param data     extra information: for the dodge the {@code DodgeDirection} ordinal
  */
-public record AbilityEventPayload(int entityId, SaberAbility ability, Event event) implements CustomPacketPayload {
+public record AbilityEventPayload(int entityId, SaberAbility ability, Event event, int data) implements CustomPacketPayload {
 	public static final CustomPacketPayload.Type<AbilityEventPayload> TYPE = new CustomPacketPayload.Type<>(SaberCraft.id("ability_event"));
 	public static final StreamCodec<ByteBuf, AbilityEventPayload> CODEC = StreamCodec.composite(
 			ByteBufCodecs.VAR_INT, AbilityEventPayload::entityId,
 			SaberAbility.STREAM_CODEC, AbilityEventPayload::ability,
 			Event.STREAM_CODEC, AbilityEventPayload::event,
+			ByteBufCodecs.VAR_INT, AbilityEventPayload::data,
 			AbilityEventPayload::new
 	);
 
@@ -34,9 +36,15 @@ public record AbilityEventPayload(int entityId, SaberAbility ability, Event even
 		/** A hit was blocked by the stance. */
 		BLOCK,
 		/** A hit was parried at the right moment. */
-		PARRY;
+		PARRY,
+		/** A melee hit missed because the player was rolling or stepping out of the way. */
+		EVADE;
 
 		public static final StreamCodec<ByteBuf, Event> STREAM_CODEC = ByteBufCodecs.idMapper(i -> values()[i], Enum::ordinal);
+	}
+
+	public AbilityEventPayload(int entityId, SaberAbility ability, Event event) {
+		this(entityId, ability, event, 0);
 	}
 
 	@Override

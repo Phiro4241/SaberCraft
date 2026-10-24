@@ -43,6 +43,7 @@ import net.minecraft.world.phys.Vec3;
 import com.phiro.sabercraft.SaberCraft;
 import com.phiro.sabercraft.network.AbilityCooldownPayload;
 import com.phiro.sabercraft.network.AbilityEventPayload;
+import com.phiro.sabercraft.network.AbilitySettingsPayload;
 import com.phiro.sabercraft.network.UseAbilityPayload;
 import com.phiro.sabercraft.saber.SaberVariant;
 
@@ -60,8 +61,6 @@ public final class SaberAbilities {
 	/** Ticks after the start of the staff whirl at which it hits. */
 	private static final int[] WHIRL_HITS = {4, 14, 24};
 	private static final int WHIRL_TICKS = 25;
-	/** Ticks after the start of the lunge at which its stab hits. */
-	private static final int DASH_HIT = 3;
 	/** Half angle of the area in front of the player for the push, the whirl and the stance. */
 	private static final double FRONT_COS = Math.cos(Math.toRadians(60.0));
 
@@ -77,6 +76,7 @@ public final class SaberAbilities {
 		long spinStart = -1;
 		boolean whirl;
 		long dashStart = -1;
+		SaberManeuver maneuver = SaberManeuver.ROLL;
 
 		boolean guarding() {
 			return this.guardStart >= 0;
@@ -85,7 +85,12 @@ public final class SaberAbilities {
 
 	public static void init() {
 		ServerLifecycleEvents.SERVER_STARTING.register(server -> AbilityConfig.load());
-		ServerPlayNetworking.registerGlobalReceiver(UseAbilityPayload.TYPE, (payload, context) -> use(context.player(), payload.ability(), payload.pressed()));
+		ServerPlayNetworking.registerGlobalReceiver(UseAbilityPayload.TYPE, (payload, context) -> use(context.player(), payload.ability(), payload.pressed(), payload.data()));
+		ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> {
+			if (ServerPlayNetworking.canSend(handler.getPlayer(), AbilitySettingsPayload.TYPE)) {
+				ServerPlayNetworking.send(handler.getPlayer(), new AbilitySettingsPayload(AbilityConfig.get().dodgeSpeed));
+			}
+		});
 		ServerTickEvents.END_SERVER_TICK.register(SaberAbilities::tick);
 		ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> STATES.remove(handler.getPlayer().getUUID()));
 		ServerPlayerEvents.AFTER_RESPAWN.register((oldPlayer, newPlayer, alive) -> STATES.remove(newPlayer.getUUID()));
@@ -100,7 +105,8 @@ public final class SaberAbilities {
 	}
 
 	/** Handles a key press or release from a client. Runs on the server thread. */
-	static void use(ServerPlayer player, SaberAbility ability, boolean pressed) {
+	static void use(ServerPlayer player, SaberAbility ability, boolean pressed, int requested) {
+		int data;
 		AbilityConfig config = AbilityConfig.get();
 		State state = STATES.computeIfAbsent(player.getUUID(), id -> new State());
 		long now = player.level().getGameTime();
@@ -121,6 +127,7 @@ public final class SaberAbilities {
 		}
 
 		ItemStack saber = player.getMainHandItem();
+		data = 0;
 
 		switch (ability) {
 			case GUARD -> {
@@ -145,24 +152,18 @@ public final class SaberAbilities {
 				startCooldown(player, state, ability, now, config.pushCooldown);
 			}
 			case DASH -> {
-				Vec3 look = player.getLookAngle();
-				Vec3 flat = new Vec3(look.x, 0.0, look.z);
-
-				if (flat.lengthSqr() < 1.0E-4) {
-					return;
-				}
-
-				flat = flat.normalize().scale(config.dashSpeed);
-				// Only a small hop: the lunge goes forward, not up.
-				player.setDeltaMovement(flat.x, Math.max(player.getDeltaMovement().y, player.onGround() ? 0.2 : 0.0), flat.z);
-				player.hurtMarked = true;
+				// The client of the player moves them (player movement is client side in Minecraft), with
+				// the speed the server sent on join. The server times the strike and the evasion.
+				DodgeDirection direction = DodgeDirection.byId(requested);
+				data = direction.ordinal();
+				state.maneuver = SaberManeuver.of(SaberVariant.styleOf(saber), direction);
 				state.dashStart = now;
 				startCooldown(player, state, ability, now, config.dashCooldown);
 			}
 		}
 
 		player.causeFoodExhaustion(config.exhaustion);
-		broadcast(player, new AbilityEventPayload(player.getId(), ability, AbilityEventPayload.Event.START));
+		broadcast(player, new AbilityEventPayload(player.getId(), ability, AbilityEventPayload.Event.START, data));
 	}
 
 	private static boolean enabled(AbilityConfig config, SaberAbility ability) {
@@ -203,13 +204,25 @@ public final class SaberAbilities {
 				tickSpin(player, state, config, now - state.spinStart);
 			}
 
-			if (state.dashStart >= 0 && now - state.dashStart >= DASH_HIT) {
-				state.dashStart = -1;
-
-				if (canUse(player)) {
-					hitArea(player, 2.6, 0.85, config.dashDamageShare, 1);
-				}
+			if (state.dashStart >= 0) {
+				tickManeuver(player, state, config, now - state.dashStart);
 			}
+		}
+	}
+
+	private static void tickManeuver(ServerPlayer player, State state, AbilityConfig config, long age) {
+		SaberManeuver maneuver = state.maneuver;
+
+		if (age == maneuver.strikeTick() && canUse(player)) {
+			if (maneuver == SaberManeuver.SPIN_STEP) {
+				hitArea(player, 2.8, -1.0, config.dashDamageShare * 0.9F, 2);
+			} else {
+				hitArea(player, 2.6, 0.85, config.dashDamageShare, 1);
+			}
+		}
+
+		if (age >= maneuver.duration() || !player.isAlive()) {
+			state.dashStart = -1;
 		}
 	}
 
@@ -271,7 +284,19 @@ public final class SaberAbilities {
 
 		State state = STATES.get(player.getUUID());
 
-		if (state == null || !(state.guarding() || state.whirl && state.spinStart >= 0)) {
+		if (state == null) {
+			return 0.0F;
+		}
+
+		// Rolling or stepping out of the way: melee hits from any side miss.
+		if (state.dashStart >= 0 && state.maneuver.evades(level.getGameTime() - state.dashStart)
+				&& source.getDirectEntity() instanceof LivingEntity attacker && source.getEntity() == attacker
+				&& !source.is(DamageTypeTags.BYPASSES_SHIELD)) {
+			broadcast(player, new AbilityEventPayload(player.getId(), SaberAbility.DASH, AbilityEventPayload.Event.EVADE));
+			return damage;
+		}
+
+		if (!(state.guarding() || state.whirl && state.spinStart >= 0)) {
 			return 0.0F;
 		}
 

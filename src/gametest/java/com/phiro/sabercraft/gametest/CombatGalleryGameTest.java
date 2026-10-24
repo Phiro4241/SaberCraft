@@ -75,7 +75,12 @@ public class CombatGalleryGameTest implements FabricClientGameTest {
 		context.takeScreenshot("gallery_" + name(styleId) + "_idle");
 		List<CombatMove> moves = new ArrayList<>(style.combo());
 
-		for (CombatMove extra : new CombatMove[] {style.sprint(), style.jump(), style.special()}) {
+		List<CombatMove> extras = new ArrayList<>(java.util.Arrays.asList(style.sprint(), style.jump(), style.special()));
+		extras.addAll(style.dodges().values());
+		extras.add(style.land());
+		extras.add(style.landHeavy());
+
+		for (CombatMove extra : extras) {
 			if (extra != null && !moves.contains(extra)) {
 				moves.add(extra);
 			}
