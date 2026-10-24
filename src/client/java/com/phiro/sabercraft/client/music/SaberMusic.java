@@ -300,6 +300,11 @@ public final class SaberMusic {
 		combatUntil = client.level.getGameTime() + COMBAT_LINGER;
 	}
 
+	/** Ends the fight at once, as if 15 s had passed; for tests. */
+	public static void endCombatForTests() {
+		combatUntil = 0L;
+	}
+
 	/** Makes the next piece of a mood this one, when the mood has it; for tests. */
 	public static void pickForTests(@Nullable Identifier piece) {
 		testPick = piece;

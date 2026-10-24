@@ -40,6 +40,18 @@ public final class ImmersionConfig {
 	/** Snow on Hoth and ash on Mustafar drifting through the air. */
 	@SerializedName("planet_particles")
 	public boolean planetParticles = true;
+	/**
+	 * The far landscape on the planet's horizon and the details in its sky (Phase 9): dunes, giant
+	 * trees, ice mountains, volcanoes, hills, air traffic, aurora, clouds. Only painted into the sky.
+	 */
+	@SerializedName("planet_horizon")
+	public boolean planetHorizon = true;
+	/**
+	 * With an Iris shader pack: an extra layer in the planet's sky color (Phase 9). Shader packs
+	 * draw their own sky color, so without it a planet keeps little of its tone.
+	 */
+	@SerializedName("planet_shader_tint")
+	public boolean planetShaderTint = true;
 
 	/** Background music of SaberCraft, instead of the vanilla music. */
 	@SerializedName("music")

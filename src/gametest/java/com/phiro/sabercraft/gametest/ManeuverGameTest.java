@@ -41,6 +41,13 @@ public class ManeuverGameTest implements FabricClientGameTest {
 			{"heavy", "dark_lord", "red"},
 			{"staff", "double", "purple"},
 			{"juyo", "double", "red"},
+			// Phase 9: the styles of the new characters.
+			{"onslaught", "anakin", "blue"},
+			{"ataru", "yoda", "green"},
+			{"makashi", "dooku", "red"},
+			{"reverse_shien", "tano", "white"},
+			{"unbridled", "crossguard", "red"},
+			{"shii_cho", "rey", "yellow"},
 	};
 	private static final String[] DIRECTIONS = {"forward", "left", "right", "back"};
 

@@ -265,8 +265,8 @@ public class CharacterMenuScreen extends SaberMenuScreen {
 			}
 
 			if (chosen.character() && OutfitClient.hasOwnSkin(chosen)) {
-				graphics.text(this.font, Component.translatable("sabercraft.menu.character.own_skin", chosen.id().getPath() + ".png"),
-						this.left + 10, this.top + 190, 0xFF80D080);
+				graphics.textWithWordWrap(this.font, Component.translatable("sabercraft.menu.character.own_skin", chosen.id().getPath() + ".png"),
+						this.left + 10, this.top + 189, this.rightX() - this.left - 16, 0xFF80D080);
 			}
 		} else {
 			graphics.textWithWordWrap(this.font, Component.translatable(current.startsWith(OutfitClient.FILE_PREFIX)
@@ -274,7 +274,8 @@ public class CharacterMenuScreen extends SaberMenuScreen {
 		}
 
 		if (!this.status.getString().isEmpty()) {
-			graphics.text(this.font, this.status, this.left + 10, this.top + 190, 0xFFFFD060);
+			// Under the cards only, so it never runs into the buttons of the right column.
+			graphics.textWithWordWrap(this.font, this.status, this.left + 10, this.top + 189, this.rightX() - this.left - 16, 0xFFFFD060);
 		}
 	}
 

@@ -15,6 +15,7 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.TestServerContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 
 import net.minecraft.client.CameraType;
+import net.minecraft.world.item.ItemStack;
 
 import com.phiro.sabercraft.SaberCraft;
 import com.phiro.sabercraft.character.Outfit;
@@ -25,6 +26,7 @@ import com.phiro.sabercraft.client.character.OutfitClient;
 import com.phiro.sabercraft.client.menu.CharacterMenuScreen;
 import com.phiro.sabercraft.client.menu.SaberMenuScreen;
 import com.phiro.sabercraft.client.select.SaberCustomizeScreen;
+import com.phiro.sabercraft.saber.SaberVariant;
 
 /**
  * Checks the character and the menu in a real client: every outfit over the player's own skin
@@ -144,6 +146,33 @@ public class CharacterGameTest implements FabricClientGameTest {
 			context.getInput().pressKey(SaberCraftClient.CUSTOMIZE_KEY);
 			context.waitTicks(3);
 			check(context.computeOnClient(client -> client.gui.screen() instanceof SaberCustomizeScreen), "V with a sword opens the saber area");
+
+			// Phase 9: picking a new character in the menu gives the saber in hand its hilt, color and style.
+			for (Outfit character : new Outfit[] {Outfit.ANAKIN, Outfit.YODA, Outfit.DOOKU, Outfit.AHSOKA, Outfit.KYLO, Outfit.REY}) {
+				context.runOnClient(client -> SaberMenuScreen.open(client, SaberMenuScreen.Tab.CHARACTER));
+				context.waitTicks(3);
+				context.clickScreenButton(character.translationKey());
+				context.waitTicks(10);
+				SaberVariant wanted = character.suggested();
+				String held = server.computeOnServer(s -> {
+					ItemStack stack = s.getPlayerList().getPlayer(self).getMainHandItem();
+					return SaberVariant.hiltOf(stack) + " " + SaberVariant.colorOf(stack) + " " + SaberVariant.styleOf(stack);
+				});
+				check(held.equals(wanted.hilt() + " " + wanted.color() + " " + wanted.style()),
+						character.id().getPath() + " gives the saber " + wanted + " (held: " + held + ")");
+				check(server.computeOnServer(s -> OutfitSync.outfitOf(self)).equals(Optional.of(character.id())), "the server knows " + character.id());
+				context.takeScreenshot("menu_character_" + character.id().getPath());
+			}
+
+			check(context.computeOnClient(client -> OutfitClient.lookOf(Outfit.YODA).scale() < 0.7F), "Yoda is drawn small");
+			context.runOnClient(client -> CharacterConfig.get().characterSize = false);
+			check(context.computeOnClient(client -> OutfitClient.lookOf(Outfit.YODA).scale() == 1.0F), "with the size option off Yoda has the normal size");
+			context.runOnClient(client -> {
+				CharacterConfig.get().characterSize = true;
+				client.gui.setScreen(null);
+				OutfitClient.choose(Outfit.SHADOW.id().toString());
+			});
+			context.waitTicks(5);
 
 			for (SaberMenuScreen.Tab tab : SaberMenuScreen.Tab.values()) {
 				context.runOnClient(client -> SaberMenuScreen.open(client, tab));

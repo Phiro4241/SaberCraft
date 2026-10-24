@@ -65,6 +65,19 @@ public class MusicGameTest implements FabricClientGameTest {
 					}
 				}
 				writeWav(sw.resolve("dramatic").resolve("test_drama.wav"));
+				// Phase 9: files of a planet, of a character you play, and a victory piece.
+				for (String name : new String[] {"planets/hoth/test_hoth.ogg", "characters/yoda/dramatic/test_yoda_fight.ogg", "victory/test_victory.ogg"}) {
+					Path file = sw.resolve(name);
+					Files.createDirectories(file.getParent());
+					try (InputStream in = SaberCraft.class.getResourceAsStream("/assets/sabercraft/sounds/music/night_stars.ogg")) {
+						Files.copy(in, file, StandardCopyOption.REPLACE_EXISTING);
+					}
+				}
+				// A mapping in the Phase 9 form: Mustafar gets the WAV for duels.
+				Files.writeString(sw.resolve("mapping.json"), """
+						{"planets": {"mustafar": {"duel": ["dramatic/test_drama.wav"]}},
+						 "characters": {"vader": ["characters/vader.ogg"]}}
+						""");
 				Files.createDirectories(sw.resolve("calm"));
 				Files.writeString(sw.resolve("calm").resolve("not_supported.mp3"), "x");
 			} catch (IOException error) {
@@ -172,6 +185,46 @@ public class MusicGameTest implements FabricClientGameTest {
 		check(context.computeOnClient(client -> StarWarsMusic.situation() == StarWarsMusic.Situation.DRAMATIC), "a fight: dramatic");
 		check(context.computeOnClient(client -> StarWarsMusic.currentTrack().map(t -> t.name().endsWith(".wav")).orElse(false)
 				&& StarWarsMusic.playing(client) >= 1), "a WAV file plays: " + context.computeOnClient(client -> StarWarsMusic.currentTrack()));
+
+		// Phase 9: a won fight plays the victory piece once.
+		context.runOnClient(client -> SaberMusic.endCombatForTests());
+		context.waitTicks(30);
+		check(context.computeOnClient(client -> StarWarsMusic.situation() == StarWarsMusic.Situation.VICTORY
+				&& StarWarsMusic.currentTrack().map(t -> t.name().equals("victory/test_victory.ogg")).orElse(false)),
+				"after the fight the victory piece plays: " + context.computeOnClient(client -> StarWarsMusic.situation() + " " + StarWarsMusic.currentTrack()));
+
+		// Phase 9: music of a planet and of the character you play, before the plain folders.
+		context.runOnClient(client -> ImmersionConfig.get().planet = "hoth");
+		check(context.computeOnClient(client -> {
+			StarWarsMusic.Choice choice = StarWarsMusic.resolve(StarWarsMusic.Situation.EXPLORATION);
+			return choice.source().equals(new StarWarsMusic.Source("planet", "hoth")) && choice.tracks().getFirst().name().equals("planets/hoth/test_hoth.ogg");
+		}), "on Hoth exploring plays the Hoth file");
+		check(context.computeOnClient(client -> StarWarsMusic.resolve(StarWarsMusic.Situation.DRAMATIC).source() == StarWarsMusic.Source.GENERAL),
+				"on Hoth a dramatic fight falls back to the plain folder");
+		context.runOnClient(client -> ImmersionConfig.get().planet = "mustafar");
+		check(context.computeOnClient(client -> StarWarsMusic.resolve(StarWarsMusic.Situation.DUEL).tracks().stream()
+				.anyMatch(t -> t.name().equals("dramatic/test_drama.wav"))), "the mapping gives Mustafar its duel music");
+		check(context.computeOnClient(client -> StarWarsMusic.resolve(StarWarsMusic.Situation.EXPLORATION).source() == StarWarsMusic.Source.GENERAL),
+				"on Mustafar exploring falls back to the plain folder");
+		context.runOnClient(client -> {
+			ImmersionConfig.get().planet = "";
+			OutfitClient.choose(Outfit.YODA.id().toString());
+		});
+		check(context.computeOnClient(client -> {
+			StarWarsMusic.Choice choice = StarWarsMusic.resolve(StarWarsMusic.Situation.DRAMATIC);
+			return choice.source().equals(new StarWarsMusic.Source("character", "yoda"))
+					&& choice.tracks().getFirst().name().equals("characters/yoda/dramatic/test_yoda_fight.ogg");
+		}), "playing Yoda, a dramatic fight plays Yoda's file");
+		check(context.computeOnClient(client -> StarWarsMusic.theme("vader").size() == 1), "the Phase 8 form of the mapping still works");
+		check(context.computeOnClient(client -> StarWarsMusic.contextCount("planet/hoth") == 1 && StarWarsMusic.contextCount("character/yoda") == 1),
+				"the menu counts the planet and character files");
+		context.runOnClient(client -> SaberMenuScreen.open(client, SaberMenuScreen.Tab.MUSIC));
+		context.waitTicks(3);
+		context.takeScreenshot("menu_music_starwars_phase9");
+		context.runOnClient(client -> {
+			client.gui.setScreen(null);
+			OutfitClient.choose("");
+		});
 
 		// The mode is saved and survives a restart; the SaberCraft settings are untouched.
 		context.runOnClient(client -> {

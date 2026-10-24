@@ -229,7 +229,7 @@ public class ShaderBladeGameTest implements FabricClientGameTest {
 	}
 
 	/** Copies a pack into the shaderpacks folder of the test client and returns its file name. */
-	private static String install(Path pack) {
+	static String install(Path pack) {
 		try {
 			Path folder = FabricLoader.getInstance().getGameDir().resolve("shaderpacks");
 			Files.createDirectories(folder);
@@ -244,7 +244,7 @@ public class ShaderBladeGameTest implements FabricClientGameTest {
 	 * Selects a pack ("" for none) the way the Iris menu does: writes {@code iris.properties} and
 	 * reloads Iris. Iris is reached through reflection, so the test also runs without it.
 	 */
-	private static void usePack(ClientGameTestContext context, String pack) {
+	static void usePack(ClientGameTestContext context, String pack) {
 		if (!FabricLoader.getInstance().isModLoaded("iris")) {
 			return;
 		}
@@ -263,13 +263,13 @@ public class ShaderBladeGameTest implements FabricClientGameTest {
 		check(inUse == !pack.isEmpty(), pack.isEmpty() ? "Iris runs without a shader pack" : "Iris really uses the shader pack " + pack);
 	}
 
-	private static String shortName(String pack) {
+	static String shortName(String pack) {
 		String name = pack.toLowerCase(Locale.ROOT);
 		int cut = name.indexOf('_');
 		return (cut > 0 ? name.substring(0, cut) : name.replace(".zip", "")).replaceAll("[^a-z0-9]", "");
 	}
 
-	private static void hideHud(ClientGameTestContext context, boolean hidden) {
+	static void hideHud(ClientGameTestContext context, boolean hidden) {
 		context.runOnClient(client -> {
 			if (client.gui.hud.isHidden() != hidden) {
 				client.gui.hud.toggle();
