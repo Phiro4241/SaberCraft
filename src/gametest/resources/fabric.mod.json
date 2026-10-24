@@ -8,7 +8,9 @@
 		"fabric-client-gametest": [
 			"com.phiro.sabercraft.gametest.BladeScreenshotGameTest",
 			"com.phiro.sabercraft.gametest.SaberAnimationGameTest",
-			"com.phiro.sabercraft.gametest.SaberVariantGameTest"
+			"com.phiro.sabercraft.gametest.SaberVariantGameTest",
+			"com.phiro.sabercraft.gametest.CombatGalleryGameTest",
+			"com.phiro.sabercraft.gametest.CombatAbilityGameTest"
 		]
 	},
 	"depends": {

@@ -5,6 +5,7 @@ import java.util.List;
 
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
@@ -19,11 +20,13 @@ import com.phiro.sabercraft.client.saber.SaberHilts;
 import com.phiro.sabercraft.saber.SaberVariant;
 
 /**
- * Menu for picking the hilt and blade color of the saber in the hand. Opened with the
+ * Menu for picking the hilt, blade color and fighting style of the saber in the hand. Opened with the
  * "Customize saber" key (V by default) while holding a netherite sword.
  *
  * <p>Picking a hilt also picks its usual color (blue for the guardian hilt, red for the dark one,
- * ...), which can then be changed freely. "Apply" sends the choice to the server, see
+ * ...), which can then be changed freely. The fighting style decides the attack moves: flowing
+ * (light, fast cuts) or heavy (slow, powerful blows) for single blades; the double-bladed hilt
+ * always fights in its own staff style. "Apply" sends the choice to the server, see
  * {@link SaberSelection}.
  */
 public class SaberCustomizeScreen extends Screen {
@@ -32,13 +35,16 @@ public class SaberCustomizeScreen extends Screen {
 	private static final int HILT_BUTTON_WIDTH = 112;
 	private static final int COLOR_BUTTON_WIDTH = 60;
 	private static final int ROW = 22;
+	private static final int PREVIEW_SIZE = 40;
 
 	private final InteractionHand hand;
 	private Identifier hilt;
 	private Identifier color;
+	private Identifier style;
 	private Component status = Component.empty();
 	private final List<HiltButton> hiltButtons = new ArrayList<>();
 	private final List<ColorButton> colorButtons = new ArrayList<>();
+	private final List<StyleButton> styleButtons = new ArrayList<>();
 	private int left;
 	private int top;
 
@@ -49,6 +55,8 @@ public class SaberCustomizeScreen extends Screen {
 		Identifier storedColor = BladeStyles.colorOf(stack);
 		this.hilt = current.id();
 		this.color = storedColor != null ? storedColor : current.defaultColor();
+		Identifier storedStyle = SaberVariant.styleOf(stack);
+		this.style = SaberVariant.styleFits(this.hilt, storedStyle) ? storedStyle : SaberVariant.defaultStyle(this.hilt);
 	}
 
 	@Override
@@ -57,6 +65,7 @@ public class SaberCustomizeScreen extends Screen {
 		this.top = Math.max(4, (this.height - PANEL_HEIGHT) / 2);
 		this.hiltButtons.clear();
 		this.colorButtons.clear();
+		this.styleButtons.clear();
 
 		int y = this.top + 34;
 
@@ -81,6 +90,22 @@ public class SaberCustomizeScreen extends Screen {
 			index++;
 		}
 
+		// Fighting style: two buttons for single blades, one for the staff, in the same place.
+		int styleY = this.top + 34 + 3 * ROW + 2 + PREVIEW_SIZE + 30;
+
+		for (Identifier id : SaberVariant.STYLES) {
+			boolean staff = SaberVariant.STAFF.equals(id);
+			int x = staff ? colorLeft : colorLeft + SaberVariant.SINGLE_STYLES.indexOf(id) * (COLOR_BUTTON_WIDTH + 4);
+			int width = staff ? 2 * COLOR_BUTTON_WIDTH + 4 : COLOR_BUTTON_WIDTH;
+			Button button = Button.builder(styleName(id), b -> this.style = id)
+					.bounds(x, styleY, width, 20)
+					.tooltip(Tooltip.create(Component.translatable("sabercraft.style." + id.getPath() + ".description")))
+					.build();
+			this.styleButtons.add(new StyleButton(id, this.addRenderableWidget(button)));
+		}
+
+		this.updateStyleButtons();
+
 		int buttonsY = this.top + PANEL_HEIGHT - 28;
 		this.addRenderableWidget(Button.builder(Component.translatable("sabercraft.customize.apply"), b -> this.apply())
 				.bounds(this.width / 2 - 104, buttonsY, 100, 20)
@@ -98,6 +123,18 @@ public class SaberCustomizeScreen extends Screen {
 		if (!option.id().equals(this.hilt)) {
 			this.hilt = option.id();
 			this.color = option.defaultColor();
+
+			if (!SaberVariant.styleFits(this.hilt, this.style)) {
+				this.style = SaberVariant.defaultStyle(this.hilt);
+			}
+
+			this.updateStyleButtons();
+		}
+	}
+
+	private void updateStyleButtons() {
+		for (StyleButton entry : this.styleButtons) {
+			entry.button().visible = SaberVariant.styleFits(this.hilt, entry.style());
 		}
 	}
 
@@ -110,7 +147,7 @@ public class SaberCustomizeScreen extends Screen {
 			return;
 		}
 
-		SaberSelection.Result result = SaberSelection.apply(this.minecraft, this.hand, new SaberVariant(this.hilt, this.color));
+		SaberSelection.Result result = SaberSelection.apply(this.minecraft, this.hand, new SaberVariant(this.hilt, this.color, this.style));
 
 		switch (result) {
 			case SENT, CREATIVE -> this.onClose();
@@ -155,11 +192,21 @@ public class SaberCustomizeScreen extends Screen {
 			}
 		}
 
+		for (StyleButton entry : this.styleButtons) {
+			Button button = entry.button();
+
+			if (button.visible && entry.style().equals(this.style)) {
+				graphics.outline(button.getX() - 1, button.getY() - 1, button.getWidth() + 2, button.getHeight() + 2, 0xFFFFFFFF);
+			}
+		}
+
+		int styleY = this.top + 34 + 3 * ROW + 2 + PREVIEW_SIZE + 30;
+		graphics.text(this.font, Component.translatable("sabercraft.customize.style"), colorLeft, styleY - 11, 0xFFA0A0A8);
 		this.extractPreview(graphics, colorLeft);
 
 		// Name and description of the chosen hilt below the hilt list.
 		SaberHilt chosen = SaberHilts.get(this.hilt);
-		Component line = chosen.displayName().copy().append(" · ").append(colorName(this.color));
+		Component line = chosen.displayName().copy().append(" · ").append(colorName(this.color)).append(" · ").append(styleName(this.style));
 		int textTop = this.top + 34 + SaberHilts.all().size() * ROW + 6;
 		graphics.text(this.font, line, this.left + 10, textTop, 0xFFFFFFFF);
 		// A problem (no server support, no saber) replaces the description, so nothing overlaps.
@@ -177,7 +224,7 @@ public class SaberCustomizeScreen extends Screen {
 	private void extractPreview(GuiGraphicsExtractor graphics, int colorLeft) {
 		int columnWidth = 2 * COLOR_BUTTON_WIDTH + 4;
 		int y = this.top + 34 + 3 * ROW + 2;
-		int iconSize = 48;
+		int iconSize = PREVIEW_SIZE;
 		graphics.pose().pushMatrix();
 		graphics.pose().translate(colorLeft + (columnWidth - iconSize) / 2.0F, y);
 		graphics.pose().scale(iconSize / 16.0F, iconSize / 16.0F);
@@ -200,6 +247,10 @@ public class SaberCustomizeScreen extends Screen {
 		return stack;
 	}
 
+	private static Component styleName(Identifier style) {
+		return Component.translatable("sabercraft.style." + style.getPath());
+	}
+
 	private static Component colorName(Identifier color) {
 		return Component.translatable("sabercraft.color." + color.getPath());
 	}
@@ -218,5 +269,8 @@ public class SaberCustomizeScreen extends Screen {
 	}
 
 	private record ColorButton(Identifier color, Button button) {
+	}
+
+	private record StyleButton(Identifier style, Button button) {
 	}
 }

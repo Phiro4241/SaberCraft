@@ -1,0 +1,15 @@
+{
+  "required": true,
+  "package": "com.phiro.sabercraft.mixin.client",
+  "compatibilityLevel": "JAVA_25",
+  "client": [
+    "ArmedEntityRenderStateMixin",
+    "ClientPacketListenerMixin",
+    "HumanoidModelMixin",
+    "ItemInHandLayerMixin",
+    "ItemInHandRendererMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

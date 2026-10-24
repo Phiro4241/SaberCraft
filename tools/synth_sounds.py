@@ -9,11 +9,13 @@ ships only its own audio. Run from the repository root:
 
 Needs numpy and ffmpeg with libvorbis. Writes mono 44.1 kHz Ogg Vorbis files into
 src/client/resources/assets/sabercraft/sounds/saber/ (default profile) and .../saber/dark/
-(the deeper, rougher profile of the dark hilt). Minecraft only attenuates mono sounds by
-distance, so all files are mono.
+(the deeper, rougher profile of the dark hilt), and the combat sounds of Phase 6 into
+.../sounds/combat/. `--combat` writes only the combat sounds. Minecraft only attenuates mono
+sounds by distance, so all files are mono.
 """
 import os
 import subprocess
+import sys
 import tempfile
 import wave
 from collections import namedtuple
@@ -145,6 +147,82 @@ def swing(rng, seconds, peak, bend, brightness, voice=DEFAULT_VOICE):
     return normalize(out * fade, 0.45)
 
 
+def spin(rng, seconds=0.9):
+    """A full turn of the blade: two Doppler swells close together on a long whoosh."""
+    t = t_axis(seconds)
+    out = np.zeros_like(t)
+    for peak, level in ((0.28, 0.8), (0.58, 1.0)):
+        pos = (t - peak) / 0.11
+        env = np.exp(-pos ** 2)
+        pitch = HUM_BASE * (1.0 + 0.32 * np.tanh(-pos * 1.3) * 0.5 + 0.16 * env)
+        out += level * soft_clip(hum_tone(t, pitch * 1.3) / 1.6, 3.0) * env
+    whoosh_env = np.clip(t / 0.12, 0, 1) * np.clip((seconds - t) / 0.3, 0, 1)
+    out += 0.4 * bandpass_noise(seconds, 300, 2800, rng) * whoosh_env
+    return normalize(out * np.clip((seconds - t) / 0.05, 0, 1), 0.45)
+
+
+def hit(rng, seconds=0.32):
+    """The blade cuts into something: a sharp sizzle with a short burnt crackle."""
+    t = t_axis(seconds)
+    sizzle = bandpass_noise(seconds, 1500, 9000, rng) * np.exp(-t / 0.06)
+    crackle = (rng.random(t.shape) < 0.04 * np.exp(-t / 0.12)) * rng.uniform(-1, 1, t.shape)
+    thump = np.sin(2 * np.pi * 120 * t * (1 - 0.4 * t / seconds)) * np.exp(-t / 0.04)
+    buzz = soft_clip(hum_tone(t, HUM_BASE * 1.6) / 1.5, 3.0) * np.exp(-t / 0.08)
+    out = 0.7 * sizzle + 0.4 * crackle + 0.5 * thump + 0.45 * buzz
+    return normalize(out * np.clip(t / 0.002, 0, 1), 0.5)
+
+
+def scorch(rng, seconds=0.5):
+    """The blade scrapes a wall: crackling sparks and a burning hiss."""
+    t = t_axis(seconds)
+    hiss = bandpass_noise(seconds, 2000, 8000, rng) * np.exp(-t / 0.16)
+    crackle = (rng.random(t.shape) < 0.06 * np.exp(-t / 0.2)) * rng.uniform(-1, 1, t.shape)
+    out = 0.5 * hiss + 0.6 * crackle
+    return normalize(out * np.clip(t / 0.003, 0, 1) * np.clip((seconds - t) / 0.1, 0, 1), 0.4)
+
+
+def guard(rng, seconds=0.45):
+    """Raising the stance: a short, rising swell of the hum."""
+    t = t_axis(seconds)
+    pitch = HUM_BASE * (1.0 + 0.25 * (1 - np.exp(-t / 0.08)))
+    env = np.clip(t / 0.05, 0, 1) * np.exp(-t / 0.18)
+    tone = soft_clip(hum_tone(t, pitch * 1.2) / 1.6, 3.0)
+    air = bandpass_noise(seconds, 300, 2000, rng) * env
+    return normalize(tone * env + 0.3 * air, 0.4)
+
+
+def clash(rng, seconds=0.6, ring=1.0):
+    """Two blades meet: a crack of energy and a metallic, buzzing ring."""
+    t = t_axis(seconds)
+    crack = bandpass_noise(seconds, 800, 10000, rng) * np.exp(-t / 0.025)
+    buzz = soft_clip(hum_tone(t, HUM_BASE * 2.1) / 1.2, 4.0) * np.exp(-t / 0.12)
+    tone = np.zeros_like(t)
+    for freq, level in ((1210, 0.5), (1873, 0.35), (2667, 0.22)):
+        tone += level * np.sin(2 * np.pi * freq * t) * np.exp(-t / (0.09 * ring))
+    crackle = (rng.random(t.shape) < 0.03 * np.exp(-t / 0.1)) * rng.uniform(-1, 1, t.shape)
+    out = 0.8 * crack + 0.6 * buzz + 0.5 * ring * tone + 0.3 * crackle
+    return normalize(out * np.clip(t / 0.001, 0, 1) * np.clip((seconds - t) / 0.1, 0, 1), 0.55)
+
+
+def push(rng, seconds=0.8):
+    """The force push: a deep thump and a rush of air moving away."""
+    t = t_axis(seconds)
+    thump = np.sin(2 * np.pi * (70 - 30 * t) * t) * np.exp(-t / 0.12)
+    rush_env = np.clip(t / 0.04, 0, 1) * np.exp(-t / 0.25)
+    rush = bandpass_noise(seconds, 150, 1800, rng) * rush_env
+    low = bandpass_noise(seconds, 30, 160, rng) * np.exp(-t / 0.2)
+    out = 0.9 * thump + 0.6 * rush + 0.5 * low
+    return normalize(out * np.clip((seconds - t) / 0.2, 0, 1), 0.55)
+
+
+def dash(rng, seconds=0.4):
+    """A quick lunge: a short rush of air."""
+    t = t_axis(seconds)
+    env = np.clip(t / 0.03, 0, 1) * np.exp(-t / 0.1)
+    rush = bandpass_noise(seconds, 400, 3500, rng) * env
+    return normalize(rush * np.clip((seconds - t) / 0.1, 0, 1), 0.4)
+
+
 def normalize(x, peak):
     """Scales to the given peak. Peaks stay well below 1.0, because in the game the hum, an
     ignition and a swing (or two sabers) can play at the same time and would clip otherwise."""
@@ -171,7 +249,27 @@ def write_ogg(name, samples, out=OUT):
         print("wrote", target)
 
 
+def combat():
+    """The Phase 6 combat sounds, with their own random stream so the sounds above never change."""
+    rng = np.random.default_rng(1977)
+    out = os.path.join(os.path.dirname(OUT), "combat")
+    write_ogg("spin", spin(rng), out)
+    write_ogg("hit1", hit(rng), out)
+    write_ogg("hit2", hit(rng, seconds=0.36), out)
+    write_ogg("scorch", scorch(rng), out)
+    write_ogg("guard", guard(rng), out)
+    write_ogg("clash1", clash(rng), out)
+    write_ogg("clash2", clash(rng, seconds=0.55, ring=0.8), out)
+    write_ogg("parry", clash(rng, seconds=1.0, ring=2.2), out)
+    write_ogg("push", push(rng), out)
+    write_ogg("dash", dash(rng), out)
+
+
 def main():
+    if "--combat" in sys.argv:
+        combat()
+        return
+
     rng = np.random.default_rng(4241)
     write_ogg("hum", hum(rng))
     write_ogg("ignite", ignite(rng))
@@ -189,6 +287,8 @@ def main():
     write_ogg("retract", retract(rng, DARK_VOICE, seconds=0.95), dark)
     for index, (seconds, peak, bend, brightness) in enumerate(variants, start=1):
         write_ogg("swing%d" % index, swing(rng, seconds * 1.1, peak * 1.1, bend * 0.85, brightness * 0.8, DARK_VOICE), dark)
+
+    combat()
 
 
 if __name__ == "__main__":

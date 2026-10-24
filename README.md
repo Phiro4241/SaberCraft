@@ -2,7 +2,7 @@
 
 Fabric-Mod für Minecraft Java 26.2, die das Netherite-Schwert in ein filmreifes Energieschwert verwandelt.
 
-**Stand:** Phase 5. Nimmst du ein Netherite-Schwert in die Hand, kommt der Griff hoch und die Energieklinge fährt mit einem Zündgeräusch aus. Solange sie leuchtet, summt sie, und Schwünge machen ein eigenes Geräusch. Beim Wegstecken fährt sie hörbar wieder in den Griff. Mit der Taste **V** wählst du für jedes Schwert einzeln einen Griff (Standard, Hüter, Dunkler Lord, Wächter, Doppelklinge) und eine von sechs Klingenfarben (Rot, Blau, Grün, Violett, Gelb, Weiß). Das Konfigurationsmenü folgt. Details: [docs/phase-5-status.md](docs/phase-5-status.md), zur Animation [docs/phase-4-status.md](docs/phase-4-status.md), zur Klinge selbst [docs/phase-3-status.md](docs/phase-3-status.md).
+**Stand:** Phase 6. Nimmst du ein Netherite-Schwert in die Hand, kommt der Griff hoch und die Energieklinge fährt mit einem Zündgeräusch aus. Solange sie leuchtet, summt sie. Mit der Taste **V** wählst du für jedes Schwert einzeln einen Griff (Standard, Hüter, Dunkler Lord, Wächter, Doppelklinge), eine von sechs Klingenfarben und einen Kampfstil. Angriffe sind eigene, filmreife Bewegungen mit Lichtspur und Funken, dazu kommen Abwehrhaltung mit Parade, Drehangriff, Machtstoß und Ausfallschritt. Das Konfigurationsmenü folgt. Details: [docs/phase-6-status.md](docs/phase-6-status.md), zu Farben und Griffen [docs/phase-5-status.md](docs/phase-5-status.md), zur Animation [docs/phase-4-status.md](docs/phase-4-status.md), zur Klinge selbst [docs/phase-3-status.md](docs/phase-3-status.md).
 
 ![Alle sechs Klingenfarben](docs/images/phase5/aufstellung_nacht.png)
 
@@ -15,7 +15,7 @@ Fabric-Mod für Minecraft Java 26.2, die das Netherite-Schwert in ein filmreifes
 | Fabric Loader | 0.19.5 oder neuer |
 | Fabric API | 0.161.0+26.2 |
 
-Auf dem Server musst du die Mod nicht installieren. Griff und Farbe stehen im Vanilla-Feld `minecraft:custom_model_data` des Schwerts, das Minecraft ohnehin an alle Spieler schickt. Andere Spieler sehen und hören dein Lichtschwert, wenn sie SaberCraft ebenfalls installiert haben. Nur wer auf einem Server im Überlebensmodus Griff oder Farbe ändern will, braucht SaberCraft auch auf dem Server. Im Einzelspieler und im Kreativmodus geht es immer.
+Für Aussehen, Animationen und Effekte musst du die Mod nicht auf dem Server installieren. Die Fähigkeiten (Abwehr, Drehangriff, Machtstoß, Ausfallschritt) entscheidet der Server, dafür braucht er SaberCraft. Griff und Farbe stehen im Vanilla-Feld `minecraft:custom_model_data` des Schwerts, das Minecraft ohnehin an alle Spieler schickt. Andere Spieler sehen und hören dein Lichtschwert, wenn sie SaberCraft ebenfalls installiert haben. Nur wer auf einem Server im Überlebensmodus Griff oder Farbe ändern will, braucht SaberCraft auch auf dem Server. Im Einzelspieler und im Kreativmodus geht es immer.
 
 ## Lichtschwert anpassen
 
@@ -24,6 +24,18 @@ Auf dem Server musst du die Mod nicht installieren. Griff und Farbe stehen im Va
 3. Wähle links den Griff und rechts die Klingenfarbe, dann **Übernehmen**.
 
 Die Werte jeder Farbe (Kern-, Bloom- und Halofarbe, Länge, Dicke, Leuchtstärke, Flimmern) stehen in `config/sabercraft/blade_styles.json`.
+
+## Kämpfen
+
+| Taste | Aktion |
+| --- | --- |
+| Linke Maustaste | Angriff, die Bewegung hängt vom Kampfstil ab (im Sprint ein Stich) |
+| **R** (halten) | Abwehrhaltung, direkt nach dem Hochnehmen eine Parade |
+| **Z** | Drehangriff, mit der Doppelklinge der Klingenwirbel |
+| **B** | Machtstoß |
+| **Linke Alt-Taste** | Ausfallschritt |
+
+Alle Tasten sind unter Optionen → Steuerung → SaberCraft änderbar. Abklingzeiten und Stärken stehen in `config/sabercraft/abilities.json`, Effekte und Animationen in `config/sabercraft/combat_client.json`.
 
 ## Bauen
 
@@ -47,7 +59,7 @@ Jeder Push auf GitHub baut die Mod auch automatisch über GitHub Actions. Die JA
 xvfb-run -a ./gradlew runClientGameTest
 ```
 
-Startet einen echten Minecraft-Client, legt eine Testwelt an und prüft die Klinge: Darstellung, Ein- und Ausfahren, Sounds, Itemwechsel, Tod und Respawn, Mobs mit Schwert, alle Griffe und Farben, das Auswahlmenü und das Spiel auf einem echten Dedicated Server. Die Screenshots (Ego-Perspektive und Third Person, Tag und Nacht, Bild für Bild beim Ein- und Ausfahren, jede Farbe und jeder Griff, Inventar und Menü) landen in `build/run/clientGameTest/screenshots`. Auf GitHub läuft dieser Test bei jedem Push mit, die Bilder findest du im Lauf unter **Artifacts → Screenshots**. Ohne `xvfb-run` öffnet sich ein normales Spielfenster.
+Startet einen echten Minecraft-Client, legt eine Testwelt an und prüft die Klinge: Darstellung, Ein- und Ausfahren, Sounds, Itemwechsel, Tod und Respawn, Mobs mit Schwert, alle Griffe und Farben, das Auswahlmenü, alle Kampfbewegungen, Lichtspuren und Funken, die Fähigkeiten mit Schaden und Abklingzeiten und das Spiel auf einem echten Dedicated Server. Die Screenshots (Ego-Perspektive und Third Person, Tag und Nacht, Bild für Bild beim Ein- und Ausfahren, jede Farbe und jeder Griff, Inventar und Menü) landen in `build/run/clientGameTest/screenshots`. Auf GitHub läuft dieser Test bei jedem Push mit, die Bilder findest du im Lauf unter **Artifacts → Screenshots**. Ohne `xvfb-run` öffnet sich ein normales Spielfenster.
 
 ## Installieren
 
@@ -59,7 +71,7 @@ Startet einen echten Minecraft-Client, legt eine Testwelt an und prüft die Klin
 ## Projektstruktur
 
 ```
-src/main/      Code für Client und Server (Variante am Item, Auswahl-Paket)
+src/main/      Code für Client und Server (Variante am Item, Pakete, Fähigkeiten)
 src/client/    Nur Client (Rendering, Animation, Audio, Menü, Tasten)
 src/gametest/  Automatischer Client-Test mit Screenshots
 ```
@@ -103,6 +115,21 @@ src/gametest/  Automatischer Client-Test mit Screenshots
 | `sound/SaberHumSoundInstance.java` | Das Summen: läuft in Schleife, blendet weich ein und aus, reagiert auf Bewegung |
 | `resources/assets/sabercraft/sounds.json` | Sound-Definitionen, vier Varianten für Schwünge |
 | `tools/synth_sounds.py` | Erzeugt alle Sounds neu (`python3 tools/synth_sounds.py`, braucht numpy und ffmpeg) |
+
+### Kampf und Fähigkeiten
+
+| Datei | Aufgabe |
+| --- | --- |
+| `resources/assets/sabercraft/combat/moves.json` | Alle Bewegungen und Kampfstile als Keyframes (Ego-Perspektive und Third Person) |
+| `combat/CombatLibrary.java`, `CombatMove.java`, `CombatStyle.java` | Lädt die Bewegungen und Stile |
+| `combat/CombatState.java` | Welche Bewegung eine Figur gerade macht, Kombination, Übergänge, Abwehrhaltung |
+| `combat/SaberCombat.java`, `mixin/client/` | Wendet die Posen in Ego-Perspektive und Third Person an |
+| `render/BladeTrails.java` | Lichtspur der Klinge |
+| `effect/SaberEffects.java` | Funken, Rauch, Luftstoß |
+| `ability/SaberAbilityClient.java`, `ability/AbilityHud.java` | Tasten, Animation und Sound der Fähigkeiten, Abklingzeit-Anzeige |
+| `src/main/.../ability/SaberAbilities.java` | Server: Schaden, Abwehr, Machtstoß, Ausfallschritt, Abklingzeiten |
+| `src/main/.../mixin/LivingEntityMixin.java` | Lässt die Abwehrhaltung Schaden blocken |
+| `tools/preview_moves.py` | Zeichnet Strichfiguren-Vorschauen der Bewegungen nach `build/move-previews` |
 
 ## Rechtliches
 

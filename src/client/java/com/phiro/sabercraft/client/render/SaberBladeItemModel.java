@@ -32,6 +32,7 @@ import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
 
 import com.phiro.sabercraft.client.blade.BladeStyles;
+import com.phiro.sabercraft.client.combat.CombatState;
 import com.phiro.sabercraft.client.saber.SaberTracker;
 
 /**
@@ -109,7 +110,18 @@ public final class SaberBladeItemModel implements ItemModel {
 		HumanoidArm arm = displayContext.leftHand() ? HumanoidArm.LEFT : HumanoidArm.RIGHT;
 		InteractionHand hand = arm == entity.getMainArm() ? InteractionHand.MAIN_HAND : InteractionHand.OFF_HAND;
 		float partialTick = Minecraft.getInstance().getDeltaTracker().getGameTimeDeltaPartialTick(true);
-		return SaberTracker.INSTANCE.renderState(entity, hand, partialTick);
+		BladeRenderState state = SaberTracker.INSTANCE.renderState(entity, hand, partialTick);
+		CombatState combat = SaberTracker.INSTANCE.combat(entity);
+
+		if (combat != null && state.isVisible() && SaberTracker.INSTANCE.combatHand(entity) == hand) {
+			float strength = combat.swing(SaberTracker.INSTANCE.time(partialTick));
+
+			if (strength > 0.01F) {
+				state = state.withSwing(new BladeRenderState.Swing(entity.getId(), hand.ordinal(), displayContext.firstPerson(), strength));
+			}
+		}
+
+		return state;
 	}
 
 	private static boolean isHand(ItemDisplayContext displayContext) {

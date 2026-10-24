@@ -136,7 +136,8 @@ public class SaberAnimationGameTest implements FabricClientGameTest {
 	private void swings(ClientGameTestContext context) {
 		this.sounds.clear();
 		context.runOnClient(client -> client.player.swing(InteractionHand.MAIN_HAND));
-		context.waitTicks(2);
+		// Since Phase 6 the swing sound comes at the strike of the attack move, a few ticks later.
+		context.waitTicks(5);
 		check(context, this.sounds.count("saber.swing") == 1, "an arm swing plays one swing sound: " + this.sounds);
 
 		// Turning fast with a lit blade also sounds like a swing.
