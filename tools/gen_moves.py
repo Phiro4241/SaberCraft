@@ -330,6 +330,141 @@ body("land_heavy",
     cam=[(0, [0, 0, 0]), (2, [0.55, 10, 0]), (8, [0.5, 8, 0]), (13, [0, 0, 0])])
 
 
+# ---------------- Phase 7: block, parry, guard break ----------------
+# Reactions to the server's verdict on a hit, played on top of the stance. One set for single
+# blades, one for the staff.
+GUARD_FP = ([0.45, -0.55, 0.15], [38, 78, 0])
+GUARD_TP = ([-95, -20, 0], [-90, 40, 0], [0, -10], [0, 0, 55])
+GUARD_LEGS = ([-14, 0, 5], [16, 0, -6], 6, 0.04)
+STAFF_GUARD_FP = ([0.1, -0.45, 0.35], [65, 90, 0])
+STAFF_GUARD_TP = ([-95, -15, 0], [-92, 40, 0], [0, 0], [0, 0, 30])
+
+
+def reactions(prefix, guard_fp, guard_tp, idle_fp, idle_tp, hit_item, parry_items, break_item):
+    """Block recoil, parry beat and guard break around the given stance."""
+    g, a = guard_fp
+    m, o, b, it = guard_tp
+    M[prefix + "guard_hit"] = move(7, 0.5, "none",
+        [(0, g, a), (1, [g[0] + 0.05, g[1] + 0.05, g[2] - 0.15], [a[0] + 7, a[1] + 7, 0]), (3, [g[0] + 0.02, g[1] + 0.02, g[2] - 0.05], [a[0] + 2, a[1] + 2, 0]),
+         (5, g, a)],
+        [(0, m, o, b, it), (1, [m[0] + 15, m[1] - 5, 0], [o[0] + 12, o[1] - 5, 0], [b[0], b[1] - 4], hit_item), (3.5, m, o, b, it)],
+        interrupt=3, trail=False, blend_in=0.5, blend_out=2.5)
+    body(prefix + "guard_hit",
+        legs=[(0,) + GUARD_LEGS, (1, [-6, 0, 6], [24, 0, -6], -4, 0.07), (4,) + GUARD_LEGS],
+        cam=[(0, [0, 0, 0]), (1, [0.04, -3, 2]), (4, [0, 0, 0])])
+    p1, p2, p3 = parry_items
+    M[prefix + "parry"] = move(9, 1.5, "none",
+        [(0, g, a), (1.5, [0.9, -0.4, 0.25], [30, -40, 0]), (4, [0.85, -0.6, 0.2], [60, -10, 0]), (7, idle_fp[0], idle_fp[1])],
+        [(0, m, o, b, it), (1.5, [-110, 35, 0], [-80, 40, 0], [0, 18], p1), (4, [-80, 20, 0], [-60, 40, 0], [0, 10], p2),
+         (7, idle_tp[0], idle_tp[1], [0, 0], p3)],
+        interrupt=4, blend_in=0.5, blend_out=2.5)
+    body(prefix + "parry",
+        legs=[(0,) + GUARD_LEGS, (1.5, [-24, 0, 5], [18, 0, -5], 10, 0.06), (4, [-20, 0, 5], [16, 0, -5], 8, 0.05), (7, [-12, 0, 5], [12, 0, -5], 4, 0.03)],
+        cam=[(0, [0, 0, 0]), (1.5, [0.03, 2, -2]), (5, [0, 0, 0])])
+    M[prefix + "guard_break"] = move(16, 1, "none",
+        [(0, g, a), (1.5, [1.2, -0.1, -0.1], [110, -40, 0]), (6, [1.15, -0.3, -0.05], [100, -30, 0]), (12, idle_fp[0], idle_fp[1])],
+        [(0, m, o, b, it), (1.5, [-150, 40, 15], [-30, 60, 30], [-12, 15], break_item), (6, [-120, 35, 15], [-25, 55, 25], [-10, 12], break_item),
+         (12, idle_tp[0], idle_tp[1], [0, 0], idle_tp[2])],
+        interrupt=12, trail=False, blend_in=0.5, blend_out=4.0)
+    body(prefix + "guard_break",
+        legs=[(0,) + GUARD_LEGS, (1.5, [4, 0, 6], [30, 0, -8], -14, 0.04), (4, [20, 0, 6], [-10, 0, -6], -10, 0.1),
+              (9, [-8, 0, 5], [14, 0, -5], 4, 0.06), (12, [-10, 0, 4], [12, 0, -5], 3, 0.0)],
+        root=[(0, [0, 0, 0]), (2, [-8, 4, 0]), (6, [-5, 2, 0]), (11, [0, 0, 0])],
+        cam=[(0, [0, 0, 0]), (1.5, [0.05, -8, 4]), (6, [0.1, -4, 2]), (12, [0, 0, 0])])
+
+
+reactions("", GUARD_FP, GUARD_TP, ([1.0, -0.9, 0.05], [82, 18, 0]), ([-40, -15, 0], [-45, 35, 0], [35, 0, -10]),
+          [0, 0, 62], ([0, 0, 10], [-20, 0, 0], [20, 0, -10]), [30, 0, 0])
+reactions("staff_", STAFF_GUARD_FP, STAFF_GUARD_TP, ([0.35, -0.75, 0.3], [22, 88, 0]), ([-45, -20, 0], [-45, 40, 0], [0, 0, 80]),
+          [0, 0, 36], ([0, 0, -40], [0, 0, -5], [0, 0, 80]), [0, 0, 120])
+
+# ---------------- Phase 7: new styles ----------------
+# Standhaft (defensive): compact, economical cuts close to the body, low wide stance.
+# Wendig (agile): fast, springy cuts with turns and hops, the blade carried high.
+import copy
+
+
+def derive(src, name, time=1.0, amp=1.0, fp_rest=None, tp_rest=None, **kw):
+    """A copy of a move, faster or slower (time) and smaller or bigger (amp) around a rest pose."""
+    m = copy.deepcopy(M[src])
+    # The body of the source move is left out, each new move gets its own footwork.
+    for frames, keys in ((m["first_person"], ("camera",)), (m["third_person"], ("main_leg", "off_leg", "lean", "crouch", "root"))):
+        for f in frames:
+            for k in keys:
+                f.pop(k, None)
+        frames[:] = [f for f in frames if len(f) > 1]
+    m["duration"] = round(m["duration"] * time, 2)
+    m["strike"] = round(m["strike"] * time, 2)
+    for k in ("interrupt", "blend_out"):
+        if k in m:
+            m[k] = round(m[k] * time, 2)
+    for f in m["first_person"]:
+        f["t"] = round(f["t"] * time, 2)
+        if fp_rest:
+            for key, rest in zip(("grip", "aim"), fp_rest):
+                f[key] = [round(r + (v - r) * amp, 3) for v, r in zip(f[key], rest)]
+    for f in m["third_person"]:
+        f["t"] = round(f["t"] * time, 2)
+        if tp_rest:
+            for key, rest in zip(("main_arm", "off_arm", "item"), tp_rest):
+                if key in f:
+                    f[key] = [round(r + (v - r) * amp, 1) for v, r in zip(f[key], rest)]
+            if "body" in f:
+                f["body"] = [round(v * amp, 1) for v in f["body"]]
+    m.update(kw)
+    M[name] = m
+
+
+DEF_FP = ([0.6, -0.75, 0.15], [88, 6, 0])
+DEF_TP = ([-62, -22, 0], [-58, 32, 0], [25, 0, 0])
+for src, name, time, amp in (("flow_diagonal", "def_cut", 0.85, 0.7), ("flow_backhand", "def_backhand", 0.85, 0.7),
+                             ("flow_stab", "def_riposte", 0.8, 0.85), ("heavy_rising", "def_rising", 0.75, 0.7),
+                             ("flow_spin", "def_spin", 0.95, 0.85)):
+    derive(src, name, time, amp, DEF_FP, DEF_TP)
+step("def_cut", 2.55, 5.5, lead="off", front=-16, back=14, lean=6, side=8, crouch=0.06, prep_crouch=0.06)
+step("def_backhand", 2.1, 5.1, lead="main", front=-14, back=12, lean=5, side=8, crouch=0.06, prep_crouch=0.06)
+step("def_riposte", 2.4, 4.4, lead="main", front=-34, back=26, lean=14, side=8, crouch=0.07, prep_crouch=0.06)
+step("def_rising", 3.0, 6.0, lead="off", front=-16, back=14, lean=0, prep=8, side=8, crouch=0.04, prep_crouch=0.08)
+body("def_spin", legs=[
+    (0, [-8, 0, 9], [10, 0, -9], 6, 0.06), (2, [6, 0, 10], [-6, 0, -10], 8, 0.08), (4.75, [-10, 0, 10], [12, 0, -10], 10, 0.1),
+    (7.6, [8, 0, 9], [-8, 0, -9], 8, 0.08), (9.5, [-10, 0, 9], [12, 0, -9], 6, 0.06)])
+
+AGI_FP = ([1.05, -0.65, 0.0], [100, -10, 0])
+AGI_TP = ([-115, -10, 10], [-35, 30, 10], [40, 0, -10])
+for src, name, time, amp in (("flow_diagonal", "agile_slash", 0.75, 1.1), ("flow_backhand", "agile_backhand", 0.75, 1.1),
+                             ("flow_rising", "agile_rising", 0.75, 1.15), ("flow_spin", "agile_twirl", 0.7, 1.0),
+                             ("flow_stab", "agile_leap", 0.8, 1.0)):
+    derive(src, name, time, amp, AGI_FP, AGI_TP)
+step("agile_slash", 2.25, 4.9, lead="off", front=-26, back=20, lean=12, prep=-4, side=3, crouch=0.04, prep_crouch=0.08)
+step("agile_backhand", 1.9, 4.5, lead="main", front=-24, back=18, lean=10, side=3, crouch=0.04)
+body("agile_rising",
+    legs=[(0, [-10, 0, 3], [10, 0, -3], 8, 0.12), (1.1, [-30, 0, 4], [-10, 0, -4], 4, 0.0), (1.9, [-50, 0, 4], [-30, 0, -4], 0, 0.0),
+          (3.0, [-40, 0, 4], [-20, 0, -4], 4, 0.0), (4.5, [-16, 0, 3], [14, 0, -3], 6, 0.03)],
+    root=[(0, [0, 0, 0]), (1.1, [0, 0, 0.1]), (1.9, [-6, 0, 0.3]), (3.0, [-3, 0, 0.18]), (4.5, [0, 0, 0])])
+body("agile_twirl", legs=[
+    (0, [-14, 0, 4], [12, 0, -4], 6, 0.03), (1.4, [8, 0, 6], [-8, 0, -6], 8, 0.05), (3.5, [-12, 0, 6], [12, 0, -6], 10, 0.06),
+    (5.6, [8, 0, 6], [-8, 0, -6], 8, 0.05), (7, [-18, 0, 4], [14, 0, -4], 6, 0.03)],
+    root=[(0, [0, 0, 0]), (1.4, [0, 0, 0.12]), (3.5, [0, 0, 0.18]), (5.6, [0, 0, 0.08]), (7, [0, 0, 0])])
+body("agile_leap",
+    legs=[(0, [-6, 0, 3], [8, 0, -3], 2, 0.1), (1.2, [-40, 0, 4], [30, 0, -4], 10, 0.0), (2.4, [-50, 0, 4], [36, 0, -4], 18, 0.0),
+          (4.4, [-34, 0, 4], [26, 0, -4], 14, 0.06)],
+    root=[(0, [0, 0, 0]), (1.2, [6, 0, 0.25]), (2.4, [10, 0, 0.3]), (3.6, [6, 0, 0.1]), (4.4, [0, 0, 0])])
+
+# Front flip with a downward cut, the agile jump attack.
+M["agile_flip"] = move(12, 6, "swing",
+    [(0, [1.0, -0.4, 0.0], [110, -10, 0]), (2, [0.6, -0.1, 0.1], [130, 0, 0]), (5, [0.2, -0.2, 0.25], [60, 5, 0]),
+     (6, [0.05, -0.3, 0.25], [20, 5, 0]), (7.5, [0.0, -0.6, 0.25], [-25, 5, 0]), (9.5, [0.05, -0.75, 0.2], [-35, 5, 0])],
+    [(0, [-120, -10, 10], [-40, 30, 10], [0, 0], [40, 0, -10]), (2, [-170, -5, 0], [-165, 30, 0], [0, 0], [20, 0, 0]),
+     (5, [-165, -5, 0], [-160, 30, 0], [0, 0], [0, 0, 0]), (6, [-95, -10, 0], [-95, 30, 0], [10, 0], [-70, 0, 0]),
+     (7.5, [-55, -10, 0], [-55, 25, 0], [15, 0], [-85, 0, 0]), (9.5, [-45, -10, 0], [-45, 25, 0], [12, 0], [-85, 0, 0])],
+    interrupt=9, blend_in=1.0, blend_out=3.0)
+body("agile_flip",
+    legs=[(0, [-10, 0, 3], [10, 0, -3], 6, 0.1), (2, [-60, 0, 4], [-50, 0, -4], 30, 0.0), (4, [-110, 0, 5], [-105, 0, -5], 60, 0.0),
+          (6, [-60, 0, 5], [-40, 0, -5], 30, 0.0), (8, [-30, 0, 4], [24, 0, -4], 16, 0.08), (9.5, [-24, 0, 4], [20, 0, -4], 14, 0.06)],
+    root=[(0, [0, 0, 0]), (2, [70, 0, 0.4]), (4, [200, 0, 0.6]), (6, [320, 0, 0.3]), (7, [360, 0, 0])],
+    cam=[(0, [0, 0, 0]), (2, [0.1, 12, 0]), (4, [0.15, 18, 0]), (6, [0.2, 6, 0]), (8, [0.1, 2, 0]), (10, [0, 0, 0])])
+
+
 # Rolls and flips turn the figure around its middle. The lift of every root keyframe is set here so
 # that the lowest point of the body (head, hands, feet) just touches the ground, plus the authored
 # lift, which is the height above the ground (for flips in the air). Uses the same math as the
@@ -376,7 +511,7 @@ def ground(name):
         put(frames, t, root=r)
 
 
-for name in ("dodge_roll", "dodge_roll_right", "dodge_roll_left", "staff_roll", "dodge_backflip"):
+for name in ("dodge_roll", "dodge_roll_right", "dodge_roll_left", "staff_roll", "dodge_backflip", "agile_flip"):
     ground(name)
 
 styles = {
@@ -401,6 +536,20 @@ styles = {
         "idle_third_person": {"main_arm": [-45, -20, 0], "off_arm": [-45, 40, 0], "item": [0, 0, 80]},
         "guard_first_person": {"grip": [0.1, -0.45, 0.35], "aim": [65, 90, 0]},
         "guard_third_person": {"main_arm": [-95, -15, 0], "off_arm": [-92, 40, 0], "item": [0, 0, 30]}},
+    "sabercraft:defensive": {
+        "combo": ["def_cut", "def_backhand", "def_rising", "def_riposte"],
+        "sprint": "def_riposte", "jump": "def_cut", "special": "def_spin", "combo_window": 18,
+        "idle_first_person": {"grip": DEF_FP[0], "aim": DEF_FP[1]},
+        "idle_third_person": {"main_arm": DEF_TP[0], "off_arm": DEF_TP[1], "item": DEF_TP[2]},
+        "guard_first_person": {"grip": [0.38, -0.55, 0.18], "aim": [42, 80, 0]},
+        "guard_third_person": {"main_arm": [-92, -22, 0], "off_arm": [-88, 38, 0], "body": [0, -6], "item": [0, 0, 60]}},
+    "sabercraft:agile": {
+        "combo": ["agile_slash", "agile_backhand", "agile_rising", "agile_twirl"],
+        "sprint": "agile_leap", "jump": "agile_flip", "special": "agile_twirl", "combo_window": 14,
+        "idle_first_person": {"grip": AGI_FP[0], "aim": AGI_FP[1]},
+        "idle_third_person": {"main_arm": AGI_TP[0], "off_arm": AGI_TP[1], "body": [0, 12], "item": AGI_TP[2]},
+        "guard_first_person": {"grip": [0.5, -0.55, 0.12], "aim": [36, 76, 0]},
+        "guard_third_person": {"main_arm": [-96, -20, 0], "off_arm": [-60, 40, 0], "body": [0, -12], "item": [0, 0, 52]}},
 }
 
 # Phase 7: legs of the resting poses, running and jumping poses, dodges and landings.
@@ -411,11 +560,18 @@ LEGS = {
                          {"main_leg": [16, 0, 7], "off_leg": [-16, 0, -7], "lean": 6, "crouch": 0.05}),
     "sabercraft:staff": ({"main_leg": [-6, 0, 10], "off_leg": [8, 0, -10], "lean": 4},
                          {"main_leg": [-8, 0, 12], "off_leg": [10, 0, -12], "lean": 8, "crouch": 0.05}),
+    "sabercraft:defensive": ({"main_leg": [-8, 0, 9], "off_leg": [10, 0, -9], "lean": 5, "crouch": 0.05},
+                             {"main_leg": [-10, 0, 10], "off_leg": [12, 0, -10], "lean": 7, "crouch": 0.07}),
+    "sabercraft:agile": ({"main_leg": [-16, 0, 3], "off_leg": [14, 0, -3], "lean": 8, "crouch": 0.02},
+                         {"main_leg": [-16, 0, 4], "off_leg": [16, 0, -4], "lean": 8, "crouch": 0.04}),
 }
 for sid, (idle, guard) in LEGS.items():
     styles[sid]["idle_third_person"].update(idle)
     styles[sid]["guard_third_person"].update(guard)
-for sid in ("sabercraft:flowing", "sabercraft:heavy"):
+for sid in ("sabercraft:flowing", "sabercraft:heavy", "sabercraft:defensive", "sabercraft:agile"):
+    styles[sid]["guard_hit"] = "guard_hit"
+    styles[sid]["parry"] = "parry"
+    styles[sid]["guard_break"] = "guard_break"
     styles[sid]["run_third_person"] = {"main_arm": [20, 5, 12], "item": [75, 0, 0], "lean": 14}
     styles[sid]["air_third_person"] = {"main_arm": [-70, -10, 5], "off_arm": [-35, 30, 25], "item": [30, 0, -10],
                                        "main_leg": [-30, 0, 4], "off_leg": [18, 0, -4], "lean": 4}
@@ -424,10 +580,17 @@ for sid in ("sabercraft:flowing", "sabercraft:heavy"):
 styles["sabercraft:staff"]["run_third_person"] = {"main_arm": [-25, -15, 0], "item": [0, 0, 80], "lean": 12}
 styles["sabercraft:staff"]["air_third_person"] = {"main_arm": [-60, -15, 0], "off_arm": [-60, 35, 0], "item": [0, 0, 80],
                                                   "main_leg": [-30, 0, 6], "off_leg": [18, 0, -6], "lean": 4}
+styles["sabercraft:staff"]["guard_hit"] = "staff_guard_hit"
+styles["sabercraft:staff"]["parry"] = "staff_parry"
+styles["sabercraft:staff"]["guard_break"] = "staff_guard_break"
+styles["sabercraft:agile"]["run_third_person"] = {"main_arm": [30, 10, 15], "item": [80, 0, 0], "lean": 18}
+styles["sabercraft:defensive"]["run_third_person"] = {"main_arm": [-30, -15, 0], "off_arm": [-20, 20, 0], "item": [60, 0, 0], "lean": 12}
 styles["sabercraft:staff"]["land"] = "land"
 styles["sabercraft:staff"]["land_heavy"] = "land_heavy"
 styles["sabercraft:flowing"]["dodge"] = {"forward": "dodge_roll", "left": "dodge_roll_left", "right": "dodge_roll_right", "back": "dodge_backstep"}
 styles["sabercraft:heavy"]["dodge"] = {"forward": "dodge_lunge", "left": "dodge_sidestep_left", "right": "dodge_sidestep_right", "back": "dodge_backstep"}
+styles["sabercraft:defensive"]["dodge"] = {"forward": "dodge_lunge", "left": "dodge_sidestep_left", "right": "dodge_sidestep_right", "back": "dodge_backstep"}
+styles["sabercraft:agile"]["dodge"] = {"forward": "dodge_spin_step", "left": "dodge_roll_left", "right": "dodge_roll_right", "back": "dodge_backflip"}
 styles["sabercraft:staff"]["dodge"] = {"forward": "staff_roll", "left": "dodge_sidestep_left", "right": "dodge_sidestep_right", "back": "dodge_backstep"}
 for s in styles.values():
     for k in ("combo",):

@@ -30,6 +30,7 @@ import com.phiro.sabercraft.SaberCraft;
 import com.phiro.sabercraft.ability.DodgeDirection;
 import com.phiro.sabercraft.ability.SaberAbility;
 import com.phiro.sabercraft.ability.SaberManeuver;
+import com.phiro.sabercraft.ability.StyleTraits;
 import com.phiro.sabercraft.client.SaberCraftClient;
 import com.phiro.sabercraft.client.combat.CombatLibrary;
 import com.phiro.sabercraft.client.combat.CombatMove;
@@ -42,6 +43,7 @@ import com.phiro.sabercraft.client.sound.SaberSounds;
 import com.phiro.sabercraft.network.AbilityCooldownPayload;
 import com.phiro.sabercraft.network.AbilityEventPayload;
 import com.phiro.sabercraft.network.AbilitySettingsPayload;
+import com.phiro.sabercraft.network.StaminaPayload;
 import com.phiro.sabercraft.saber.SaberVariant;
 import com.phiro.sabercraft.network.UseAbilityPayload;
 
@@ -72,6 +74,9 @@ public final class SaberAbilityClient {
 	/** The server ended the stance while the key was still held: wait for a release. */
 	private static boolean guardBlocked;
 	private static int ticks;
+	/** The server's settings, or the defaults until a server with SaberCraft sent them. */
+	private static AbilitySettingsPayload settings = new AbilitySettingsPayload(1.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F);
+	private static float stamina;
 
 	private SaberAbilityClient() {
 	}
@@ -93,10 +98,18 @@ public final class SaberAbilityClient {
 		ClientPlayNetworking.registerGlobalReceiver(AbilityEventPayload.TYPE, (payload, context) -> onEvent(context.client(), payload));
 		ClientPlayNetworking.registerGlobalReceiver(AbilityCooldownPayload.TYPE, (payload, context) ->
 				COOLDOWNS.put(payload.ability(), new Cooldown(payload.ticks(), Math.max(1, payload.total()))));
-		ClientPlayNetworking.registerGlobalReceiver(AbilitySettingsPayload.TYPE, (payload, context) ->
-				ManeuverController.setSpeedScale(payload.dodgeSpeed()));
+		ClientPlayNetworking.registerGlobalReceiver(AbilitySettingsPayload.TYPE, (payload, context) -> {
+			settings = payload;
+			stamina = payload.staminaMax();
+			ManeuverController.setSpeedScale(payload.dodgeSpeed());
+		});
+		ClientPlayNetworking.registerGlobalReceiver(StaminaPayload.TYPE, (payload, context) -> stamina = payload.stamina());
 		ClientTickEvents.START_CLIENT_TICK.register(ManeuverController::tick);
-		ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> reset());
+		ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> {
+			reset();
+			settings = new AbilitySettingsPayload(1.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F);
+			ManeuverController.setSpeedScale(1.0F);
+		});
 		// No attacks while the stance is up, the server would ignore them anyway.
 		ClientPreAttackCallback.EVENT.register((client, player, clicks) -> guardSent);
 		HudElementRegistry.addLast(SaberCraft.id("ability_cooldowns"), new AbilityHud());
@@ -108,6 +121,26 @@ public final class SaberAbilityClient {
 
 	public static boolean isGuarding() {
 		return guardSent;
+	}
+
+	/** The stamina the server last sent. */
+	public static float stamina() {
+		return stamina;
+	}
+
+	/** Most stamina, 0 if the server has none (turned off, or no SaberCraft on the server). */
+	public static float maxStamina() {
+		return settings.staminaMax();
+	}
+
+	/** Stamina the ability would cost now, as the server counts it. */
+	public static float cost(SaberAbility ability, LocalPlayer player) {
+		return switch (ability) {
+			case GUARD -> settings.guardCost();
+			case SPIN -> settings.spinCost();
+			case PUSH -> settings.pushCost();
+			case DASH -> settings.dodgeCost() * StyleTraits.of(SaberVariant.styleOf(player.getMainHandItem())).dodgeCost();
+		};
 	}
 
 	public static KeyMapping keyOf(SaberAbility ability) {
@@ -150,7 +183,7 @@ public final class SaberAbilityClient {
 			guardBlocked = false;
 		}
 
-		if (wantGuard && !guardSent && !guardBlocked && ready(SaberAbility.GUARD)) {
+		if (wantGuard && !guardSent && !guardBlocked && ready(SaberAbility.GUARD) && rested(player, SaberAbility.GUARD)) {
 			if (send(player, SaberAbility.GUARD, true)) {
 				guardSent = true;
 				setGuarding(player, true);
@@ -197,6 +230,11 @@ public final class SaberAbilityClient {
 			return;
 		}
 
+		if (!rested(player, ability)) {
+			player.sendOverlayMessage(Component.translatable("sabercraft.ability.exhausted"));
+			return;
+		}
+
 		int data = 0;
 
 		if (ability == SaberAbility.DASH) {
@@ -208,6 +246,11 @@ public final class SaberAbilityClient {
 			PREDICTED.put(ability, ticks);
 			start(player, ability, data);
 		}
+	}
+
+	/** Enough stamina for the ability, so the server will not refuse it. */
+	private static boolean rested(LocalPlayer player, SaberAbility ability) {
+		return settings.staminaMax() <= 0.0F || stamina >= cost(ability, player);
 	}
 
 	private static boolean ready(SaberAbility ability) {
@@ -272,7 +315,22 @@ public final class SaberAbilityClient {
 				boolean parry = payload.event() == AbilityEventPayload.Event.PARRY;
 				play(entity, parry ? SaberSounds.PARRY : SaberSounds.CLASH, parry ? 1.0F : 0.85F);
 				SaberEffects.onBlock(entity, parry);
+				react(entity, style -> parry ? style.parry() : style.guardHit());
 			}
+			case GUARD_BREAK -> {
+				// The block took more than the stamina left: the stance is gone and the blade knocked aside.
+				setGuarding(entity, false);
+
+				if (self && guardSent) {
+					guardSent = false;
+					guardBlocked = true;
+				}
+
+				play(entity, SaberSounds.CLASH, 1.0F, 0.7F);
+				SaberEffects.onBlock(entity, false);
+				react(entity, CombatStyle::guardBreak);
+			}
+			case UNBALANCED -> SaberEffects.onUnbalanced(entity);
 			case EVADE -> play(entity, SaberSounds.DASH, 0.5F);
 		}
 	}
@@ -315,6 +373,17 @@ public final class SaberAbilityClient {
 		SaberEffects.onAbility(entity, ability);
 	}
 
+	/** Plays a reaction move of the entity's style, if it has one. */
+	private static void react(LivingEntity entity, java.util.function.Function<CombatStyle, @Nullable CombatMove> pick) {
+		CombatState combat = SaberTracker.INSTANCE.combat(entity);
+		CombatStyle style = combat != null ? combat.style() : null;
+		CombatMove move = style != null ? pick.apply(style) : null;
+
+		if (move != null) {
+			combat.play(move, SaberTracker.INSTANCE.time(0.0F));
+		}
+	}
+
 	private static void setGuarding(LivingEntity entity, boolean guarding) {
 		CombatState combat = SaberTracker.INSTANCE.combat(entity);
 
@@ -328,7 +397,11 @@ public final class SaberAbilityClient {
 	}
 
 	private static void play(Entity entity, SoundEvent sound, float volume) {
-		float pitch = 0.95F + entity.getRandom().nextFloat() * 0.1F;
+		play(entity, sound, volume, 1.0F);
+	}
+
+	private static void play(Entity entity, SoundEvent sound, float volume, float basePitch) {
+		float pitch = basePitch * (0.95F + entity.getRandom().nextFloat() * 0.1F);
 		Minecraft.getInstance().getSoundManager().play(new EntityBoundSoundInstance(
 				sound, entity.getSoundSource(), volume, pitch, entity, entity.getRandom().nextLong()));
 	}

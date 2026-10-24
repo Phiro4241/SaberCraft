@@ -38,7 +38,11 @@ public record AbilityEventPayload(int entityId, SaberAbility ability, Event even
 		/** A hit was parried at the right moment. */
 		PARRY,
 		/** A melee hit missed because the player was rolling or stepping out of the way. */
-		EVADE;
+		EVADE,
+		/** A block took more than the stamina left: the stance breaks and the hit lands. */
+		GUARD_BREAK,
+		/** A parried attacker is thrown off balance. Sent with the attacker as the entity. */
+		UNBALANCED;
 
 		public static final StreamCodec<ByteBuf, Event> STREAM_CODEC = ByteBufCodecs.idMapper(i -> values()[i], Enum::ordinal);
 	}

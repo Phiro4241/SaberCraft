@@ -42,11 +42,17 @@
   "key.sabercraft.dash": "Dodge / lunge",
   "sabercraft.customize.style": "Fighting style",
   "sabercraft.style.flowing": "Flowing",
-  "sabercraft.style.flowing.description": "Quick, flowing cuts in a combo of diagonal, backhand, rising and overhead strikes. A stab while sprinting.",
+  "sabercraft.style.flowing.description": "Quick, flowing cuts in a combo of diagonal, backhand, rising and overhead strikes. A stab while sprinting. Dodges with rolls.",
   "sabercraft.style.heavy": "Heavy",
-  "sabercraft.style.heavy.description": "Slow, powerful blows from a high stance. A strong thrust while sprinting.",
+  "sabercraft.style.heavy.description": "Slow, powerful blows from a high stance. A strong thrust while sprinting. Dodges with side steps, forward with a deep lunge.",
   "sabercraft.style.staff": "Staff",
   "sabercraft.style.staff.description": "Wide sweeps with both blades and turns around the body. The special key starts the blade whirl in front of the body.",
   "sabercraft.ability.no_saber": "Ignite a saber in your main hand first.",
-  "sabercraft.ability.no_server": "Abilities need SaberCraft on the server."
+  "sabercraft.ability.no_server": "Abilities need SaberCraft on the server.",
+  "sabercraft.style.defensive": "Steadfast",
+  "sabercraft.style.defensive.description": "Low, wide stance with short, economical cuts close to the body. Longer parry window, blocks hold more and cost less stamina. Slower dodges.",
+  "sabercraft.style.agile": "Agile",
+  "sabercraft.style.agile.description": "Blade held high, fast springy cuts with turns, hops and a flip. Quick, cheap dodges, but weaker blocks.",
+  "sabercraft.ability.exhausted": "Too exhausted, wait a moment.",
+  "sabercraft.hud.stamina": "Stamina"
 }

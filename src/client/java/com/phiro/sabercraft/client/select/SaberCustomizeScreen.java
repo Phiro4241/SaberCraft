@@ -24,18 +24,18 @@ import com.phiro.sabercraft.saber.SaberVariant;
  * "Customize saber" key (V by default) while holding a netherite sword.
  *
  * <p>Picking a hilt also picks its usual color (blue for the guardian hilt, red for the dark one,
- * ...), which can then be changed freely. The fighting style decides the attack moves: flowing
- * (light, fast cuts) or heavy (slow, powerful blows) for single blades; the double-bladed hilt
- * always fights in its own staff style. "Apply" sends the choice to the server, see
+ * ...), which can then be changed freely. The fighting style decides the attack moves and the
+ * defense: flowing, heavy, steadfast or agile for single blades; the double-bladed hilt always
+ * fights in its own staff style. "Apply" sends the choice to the server, see
  * {@link SaberSelection}.
  */
 public class SaberCustomizeScreen extends Screen {
 	private static final int PANEL_WIDTH = 330;
-	private static final int PANEL_HEIGHT = 232;
+	private static final int PANEL_HEIGHT = 236;
 	private static final int HILT_BUTTON_WIDTH = 112;
 	private static final int COLOR_BUTTON_WIDTH = 60;
 	private static final int ROW = 22;
-	private static final int PREVIEW_SIZE = 40;
+	private static final int PREVIEW_SIZE = 32;
 
 	private final InteractionHand hand;
 	private Identifier hilt;
@@ -90,15 +90,17 @@ public class SaberCustomizeScreen extends Screen {
 			index++;
 		}
 
-		// Fighting style: two buttons for single blades, one for the staff, in the same place.
-		int styleY = this.top + 34 + 3 * ROW + 2 + PREVIEW_SIZE + 30;
+		// Fighting style: four buttons (2 x 2) for single blades, one for the staff, in the same place.
+		int styleY = this.top + 34 + 3 * ROW + 2 + PREVIEW_SIZE + 28;
 
 		for (Identifier id : SaberVariant.STYLES) {
 			boolean staff = SaberVariant.STAFF.equals(id);
-			int x = staff ? colorLeft : colorLeft + SaberVariant.SINGLE_STYLES.indexOf(id) * (COLOR_BUTTON_WIDTH + 4);
+			int slot = SaberVariant.SINGLE_STYLES.indexOf(id);
+			int x = staff ? colorLeft : colorLeft + slot % 2 * (COLOR_BUTTON_WIDTH + 4);
+			int buttonY = staff ? styleY : styleY + slot / 2 * ROW;
 			int width = staff ? 2 * COLOR_BUTTON_WIDTH + 4 : COLOR_BUTTON_WIDTH;
 			Button button = Button.builder(styleName(id), b -> this.style = id)
-					.bounds(x, styleY, width, 20)
+					.bounds(x, buttonY, width, 20)
 					.tooltip(Tooltip.create(Component.translatable("sabercraft.style." + id.getPath() + ".description")))
 					.build();
 			this.styleButtons.add(new StyleButton(id, this.addRenderableWidget(button)));
@@ -200,7 +202,7 @@ public class SaberCustomizeScreen extends Screen {
 			}
 		}
 
-		int styleY = this.top + 34 + 3 * ROW + 2 + PREVIEW_SIZE + 30;
+		int styleY = this.top + 34 + 3 * ROW + 2 + PREVIEW_SIZE + 28;
 		graphics.text(this.font, Component.translatable("sabercraft.customize.style"), colorLeft, styleY - 11, 0xFFA0A0A8);
 		this.extractPreview(graphics, colorLeft);
 

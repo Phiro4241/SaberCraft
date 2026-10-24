@@ -126,6 +126,23 @@ public final class SaberEffects {
 		sparks(level, at, forward, style(entity.getMainHandItem()), (parry ? 14 : 7) * amount(), parry ? 0.6 : 0.4, true);
 	}
 
+	/** A parried attacker staggers: little stars over its head for the moment it is off balance. */
+	public static void onUnbalanced(LivingEntity entity) {
+		ClientLevel level = Minecraft.getInstance().level;
+
+		if (level == null || amount() == 0 || isOwnFirstPerson(entity)) {
+			return;
+		}
+
+		double top = entity.getY() + entity.getBbHeight() + 0.2;
+
+		for (int i = 0; i < 4 * amount(); i++) {
+			double angle = i * Math.PI * 2.0 / (4 * amount());
+			level.addParticle(ParticleTypes.CRIT, entity.getX() + Math.cos(angle) * 0.4, top, entity.getZ() + Math.sin(angle) * 0.4,
+					-Math.sin(angle) * 0.1, 0.05, Math.cos(angle) * 0.1);
+		}
+	}
+
 	/** Visual part of an ability. The sounds are played by the ability client. */
 	public static void onAbility(LivingEntity entity, SaberAbility ability) {
 		ClientLevel level = Minecraft.getInstance().level;

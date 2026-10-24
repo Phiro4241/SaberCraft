@@ -75,6 +75,54 @@ public final class AbilityConfig {
 	@SerializedName("dash_damage_share")
 	public float dashDamageShare = 0.5F;
 
+	/**
+	 * Stamina (Phase 7): blocking, dodging, the spin and the push cost stamina, which comes back
+	 * after a short rest. Without stamina a block breaks and the other abilities wait. So no
+	 * defense lasts forever. false turns stamina off completely.
+	 */
+	@SerializedName("stamina_enabled")
+	public boolean staminaEnabled = true;
+	@SerializedName("stamina_max")
+	public float staminaMax = 100.0F;
+	/** Stamina regained per tick once the rest delay is over (20 ticks = 1 second). */
+	@SerializedName("stamina_regen")
+	public float staminaRegen = 1.0F;
+	/** Ticks without using stamina before it comes back. */
+	@SerializedName("stamina_regen_delay")
+	public int staminaRegenDelay = 20;
+	@SerializedName("guard_cost")
+	public float guardCost = 5.0F;
+	/** Stamina per point of damage a block takes, changed by the fighting style. */
+	@SerializedName("block_cost_per_damage")
+	public float blockCostPerDamage = 6.0F;
+	@SerializedName("parry_cost")
+	public float parryCost = 4.0F;
+	@SerializedName("dodge_cost")
+	public float dodgeCost = 25.0F;
+	@SerializedName("spin_cost")
+	public float spinCost = 30.0F;
+	@SerializedName("push_cost")
+	public float pushCost = 25.0F;
+
+	/**
+	 * Raising the stance again within this many ticks after the last raise gives no parry window,
+	 * only a normal block. Stops parrying by tapping the key all the time.
+	 */
+	@SerializedName("parry_lockout")
+	public int parryLockout = 16;
+	/** Ticks after a parry in which the next own hit is a counter with extra damage. */
+	@SerializedName("counter_ticks")
+	public int counterTicks = 30;
+	/** Extra damage of the counter, 0.5 = +50 %. */
+	@SerializedName("counter_bonus")
+	public float counterBonus = 0.5F;
+	/** Ticks a parried attacker is off balance (slowed and weakened). */
+	@SerializedName("unbalance_ticks")
+	public int unbalanceTicks = 30;
+	/** Cooldown of the stance after it was broken. */
+	@SerializedName("guard_break_cooldown")
+	public int guardBreakCooldown = 50;
+
 	/** Hunger cost (exhaustion) per ability use, like sprinting or jumping. */
 	@SerializedName("exhaustion")
 	public float exhaustion = 1.0F;
@@ -103,6 +151,20 @@ public final class AbilityConfig {
 		config.dodgeSpeed = Mth.clamp(config.dodgeSpeed, 0.3F, 2.0F);
 		config.dashDamageShare = Mth.clamp(config.dashDamageShare, 0.0F, 2.0F);
 		config.exhaustion = Mth.clamp(config.exhaustion, 0.0F, 10.0F);
+		config.staminaMax = Mth.clamp(config.staminaMax, 10.0F, 1000.0F);
+		config.staminaRegen = Mth.clamp(config.staminaRegen, 0.05F, 100.0F);
+		config.staminaRegenDelay = Mth.clamp(config.staminaRegenDelay, 0, 200);
+		config.guardCost = Mth.clamp(config.guardCost, 0.0F, config.staminaMax);
+		config.blockCostPerDamage = Mth.clamp(config.blockCostPerDamage, 0.0F, 100.0F);
+		config.parryCost = Mth.clamp(config.parryCost, 0.0F, config.staminaMax);
+		config.dodgeCost = Mth.clamp(config.dodgeCost, 0.0F, config.staminaMax);
+		config.spinCost = Mth.clamp(config.spinCost, 0.0F, config.staminaMax);
+		config.pushCost = Mth.clamp(config.pushCost, 0.0F, config.staminaMax);
+		config.parryLockout = Mth.clamp(config.parryLockout, 0, 200);
+		config.counterTicks = Mth.clamp(config.counterTicks, 0, 200);
+		config.counterBonus = Mth.clamp(config.counterBonus, 0.0F, 3.0F);
+		config.unbalanceTicks = Mth.clamp(config.unbalanceTicks, 0, 200);
+		config.guardBreakCooldown = Mth.clamp(config.guardBreakCooldown, 0, 1200);
 		current = config;
 	}
 }

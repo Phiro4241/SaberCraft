@@ -42,11 +42,17 @@
   "key.sabercraft.dash": "Ausweichen / Ausfallschritt",
   "sabercraft.customize.style": "Kampfstil",
   "sabercraft.style.flowing": "Fließend",
-  "sabercraft.style.flowing.description": "Schnelle, fließende Schnitte in einer Kombination aus Diagonal-, Rückhand-, Aufwärts- und Überkopfschlag. Im Sprint ein Stich.",
+  "sabercraft.style.flowing.description": "Schnelle, fließende Schnitte in einer Kombination aus Diagonal-, Rückhand-, Aufwärts- und Überkopfschlag. Im Sprint ein Stich. Weicht mit Rollen aus.",
   "sabercraft.style.heavy": "Schwer",
-  "sabercraft.style.heavy.description": "Langsame, wuchtige Hiebe aus einer hohen Haltung. Im Sprint ein kraftvoller Stoß.",
+  "sabercraft.style.heavy.description": "Langsame, wuchtige Hiebe aus einer hohen Haltung. Im Sprint ein kraftvoller Stoß. Weicht mit Seitschritten aus, nach vorn ein tiefer Ausfallschritt.",
   "sabercraft.style.staff": "Stab",
   "sabercraft.style.staff.description": "Weite Schwünge mit beiden Klingen und Drehungen um den Körper. Die Spezialtaste startet den Klingenwirbel vor dem Körper.",
   "sabercraft.ability.no_saber": "Zünde zuerst ein Lichtschwert in der Haupthand.",
-  "sabercraft.ability.no_server": "Fähigkeiten brauchen SaberCraft auf dem Server."
+  "sabercraft.ability.no_server": "Fähigkeiten brauchen SaberCraft auf dem Server.",
+  "sabercraft.style.defensive": "Standhaft",
+  "sabercraft.style.defensive.description": "Tiefe, breite Haltung, kurze sparsame Schnitte nah am Körper. Längeres Paradefenster, Blocks halten mehr aus und kosten weniger Ausdauer. Ausweichen ist langsamer.",
+  "sabercraft.style.agile": "Wendig",
+  "sabercraft.style.agile.description": "Hoch getragene Klinge, schnelle federnde Schnitte mit Drehungen, Sprüngen und Salto. Ausweichen ist schnell und billig, Blocks sind schwächer.",
+  "sabercraft.ability.exhausted": "Zu erschöpft, warte kurz.",
+  "sabercraft.hud.stamina": "Ausdauer"
 }

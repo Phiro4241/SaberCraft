@@ -32,6 +32,8 @@ public class CombatGalleryGameTest implements FabricClientGameTest {
 	private static final String[][] STYLES = {
 			{"sabercraft:flowing", "sabercraft:guardian", "sabercraft:blue"},
 			{"sabercraft:heavy", "sabercraft:dark_lord", "sabercraft:red"},
+			{"sabercraft:defensive", "sabercraft:sentinel", "sabercraft:green"},
+			{"sabercraft:agile", "sabercraft:standard", "sabercraft:yellow"},
 			{"sabercraft:staff", "sabercraft:double", "sabercraft:purple"},
 	};
 
@@ -79,6 +81,9 @@ public class CombatGalleryGameTest implements FabricClientGameTest {
 		extras.addAll(style.dodges().values());
 		extras.add(style.land());
 		extras.add(style.landHeavy());
+		extras.add(style.guardHit());
+		extras.add(style.parry());
+		extras.add(style.guardBreak());
 
 		for (CombatMove extra : extras) {
 			if (extra != null && !moves.contains(extra)) {

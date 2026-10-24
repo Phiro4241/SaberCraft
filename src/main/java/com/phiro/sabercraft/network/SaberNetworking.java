@@ -27,6 +27,7 @@ public final class SaberNetworking {
 		PayloadTypeRegistry.clientboundPlay().register(AbilityEventPayload.TYPE, AbilityEventPayload.CODEC);
 		PayloadTypeRegistry.clientboundPlay().register(AbilityCooldownPayload.TYPE, AbilityCooldownPayload.CODEC);
 		PayloadTypeRegistry.clientboundPlay().register(AbilitySettingsPayload.TYPE, AbilitySettingsPayload.CODEC);
+		PayloadTypeRegistry.clientboundPlay().register(StaminaPayload.TYPE, StaminaPayload.CODEC);
 	}
 
 	/**

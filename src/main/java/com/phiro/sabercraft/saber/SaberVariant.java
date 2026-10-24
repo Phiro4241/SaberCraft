@@ -65,9 +65,9 @@ public record SaberVariant(Identifier hilt, Identifier color, Identifier style) 
 	/** All blade colors in menu order. The server only accepts these. */
 	public static final List<Identifier> COLORS = List.of(RED, BLUE, GREEN, PURPLE, YELLOW, WHITE);
 	/** All fighting styles. The staff style belongs to the double-bladed hilt only. */
-	public static final List<Identifier> STYLES = List.of(FLOWING, HEAVY, STAFF);
+	public static final List<Identifier> STYLES = List.of(FLOWING, HEAVY, DEFENSIVE, AGILE, STAFF);
 	/** Styles a one-bladed hilt can use, in menu order. */
-	public static final List<Identifier> SINGLE_STYLES = List.of(FLOWING, HEAVY);
+	public static final List<Identifier> SINGLE_STYLES = List.of(FLOWING, HEAVY, DEFENSIVE, AGILE);
 
 	/** The look of a sword that was never changed. */
 	public static final SaberVariant DEFAULT = new SaberVariant(STANDARD, RED);

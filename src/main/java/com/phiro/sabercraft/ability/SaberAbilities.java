@@ -25,6 +25,8 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.tags.DamageTypeTags;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityReference;
 import net.minecraft.world.entity.LivingEntity;
@@ -44,6 +46,7 @@ import com.phiro.sabercraft.SaberCraft;
 import com.phiro.sabercraft.network.AbilityCooldownPayload;
 import com.phiro.sabercraft.network.AbilityEventPayload;
 import com.phiro.sabercraft.network.AbilitySettingsPayload;
+import com.phiro.sabercraft.network.StaminaPayload;
 import com.phiro.sabercraft.network.UseAbilityPayload;
 import com.phiro.sabercraft.saber.SaberVariant;
 
@@ -58,6 +61,7 @@ import com.phiro.sabercraft.saber.SaberVariant;
  */
 public final class SaberAbilities {
 	private static final Identifier GUARD_SLOWDOWN = SaberCraft.id("guard_slowdown");
+	private static final Identifier COUNTER_BONUS = SaberCraft.id("counter_bonus");
 	/** Ticks after the start of the staff whirl at which it hits. */
 	private static final int[] WHIRL_HITS = {4, 14, 24};
 	private static final int WHIRL_TICKS = 25;
@@ -77,6 +81,15 @@ public final class SaberAbilities {
 		boolean whirl;
 		long dashStart = -1;
 		SaberManeuver maneuver = SaberManeuver.ROLL;
+		final EnumMap<SaberAbility, Integer> totals = new EnumMap<>(SaberAbility.class);
+		float stamina = AbilityConfig.get().staminaMax;
+		long staminaUsedAt = Long.MIN_VALUE / 2;
+		float sentStamina = -1.0F;
+		long lastGuardRaise = Long.MIN_VALUE / 2;
+		/** Whether the current stance may parry, see {@code parry_lockout}. */
+		boolean parryWindow;
+		long counterUntil = -1;
+		boolean counterUsed;
 
 		boolean guarding() {
 			return this.guardStart >= 0;
@@ -88,15 +101,55 @@ public final class SaberAbilities {
 		ServerPlayNetworking.registerGlobalReceiver(UseAbilityPayload.TYPE, (payload, context) -> use(context.player(), payload.ability(), payload.pressed(), payload.data()));
 		ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> {
 			if (ServerPlayNetworking.canSend(handler.getPlayer(), AbilitySettingsPayload.TYPE)) {
-				ServerPlayNetworking.send(handler.getPlayer(), new AbilitySettingsPayload(AbilityConfig.get().dodgeSpeed));
+				AbilityConfig config = AbilityConfig.get();
+				ServerPlayNetworking.send(handler.getPlayer(), new AbilitySettingsPayload(config.dodgeSpeed,
+						config.staminaEnabled ? config.staminaMax : 0.0F, config.dodgeCost, config.spinCost, config.pushCost, config.guardCost));
 			}
 		});
 		ServerTickEvents.END_SERVER_TICK.register(SaberAbilities::tick);
 		ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> STATES.remove(handler.getPlayer().getUUID()));
 		ServerPlayerEvents.AFTER_RESPAWN.register((oldPlayer, newPlayer, alive) -> STATES.remove(newPlayer.getUUID()));
-		// No normal attacks while the stance is up: the blade is busy blocking.
-		AttackEntityCallback.EVENT.register((player, level, hand, entity, hit) ->
-				player instanceof ServerPlayer serverPlayer && isGuarding(serverPlayer) ? InteractionResult.FAIL : InteractionResult.PASS);
+		// No normal attacks while the stance is up: the blade is busy blocking. A hit after a parry
+		// is a counter, its extra damage ends with it.
+		AttackEntityCallback.EVENT.register((player, level, hand, entity, hit) -> {
+			if (!(player instanceof ServerPlayer serverPlayer)) {
+				return InteractionResult.PASS;
+			}
+
+			State state = STATES.get(serverPlayer.getUUID());
+
+			if (state != null && state.guarding()) {
+				return InteractionResult.FAIL;
+			}
+
+			if (state != null && state.counterUntil >= 0) {
+				state.counterUsed = true;
+			}
+
+			return InteractionResult.PASS;
+		});
+	}
+
+	/** The stamina of a player, the maximum if they never used any. */
+	public static float stamina(Player player) {
+		State state = STATES.get(player.getUUID());
+		return state != null ? state.stamina : AbilityConfig.get().staminaMax;
+	}
+
+	/** True for a short time after a parry, while the next hit is a counter. */
+	public static boolean hasCounter(Player player) {
+		State state = STATES.get(player.getUUID());
+		return state != null && state.counterUntil >= 0;
+	}
+
+	/** Stamina an ability costs with a fighting style. */
+	public static float cost(AbilityConfig config, SaberAbility ability, @Nullable Identifier style) {
+		return switch (ability) {
+			case GUARD -> config.guardCost;
+			case SPIN -> config.spinCost;
+			case PUSH -> config.pushCost;
+			case DASH -> config.dodgeCost * StyleTraits.of(style).dodgeCost();
+		};
 	}
 
 	public static boolean isGuarding(Player player) {
@@ -106,13 +159,12 @@ public final class SaberAbilities {
 
 	/** Handles a key press or release from a client. Runs on the server thread. */
 	static void use(ServerPlayer player, SaberAbility ability, boolean pressed, int requested) {
-		int data;
 		AbilityConfig config = AbilityConfig.get();
 		State state = STATES.computeIfAbsent(player.getUUID(), id -> new State());
 		long now = player.level().getGameTime();
 
 		if (ability == SaberAbility.GUARD && !pressed) {
-			stopGuard(player, state, now);
+			stopGuard(player, state, now, config.guardCooldown);
 			return;
 		}
 
@@ -127,15 +179,35 @@ public final class SaberAbilities {
 		}
 
 		ItemStack saber = player.getMainHandItem();
-		data = 0;
+		Identifier style = SaberVariant.styleOf(saber);
+		int data = 0;
+
+		if (ability == SaberAbility.GUARD && state.guarding()) {
+			return;
+		}
+
+		// Out of breath: the ability waits until enough stamina is back.
+		float cost = cost(config, ability, style);
+
+		if (config.staminaEnabled && state.stamina < cost) {
+			sendCooldown(player, state, ability, now);
+			sendStamina(player, state);
+
+			if (ability == SaberAbility.GUARD) {
+				// The client already shows the stance: take it down again.
+				broadcast(player, new AbilityEventPayload(player.getId(), SaberAbility.GUARD, AbilityEventPayload.Event.STOP));
+			}
+
+			return;
+		}
+
+		spend(state, config, cost, now);
 
 		switch (ability) {
 			case GUARD -> {
-				if (state.guarding()) {
-					return;
-				}
-
 				state.guardStart = now;
+				state.parryWindow = now - state.lastGuardRaise >= config.parryLockout;
+				state.lastGuardRaise = now;
 				AttributeInstance speed = player.getAttribute(Attributes.MOVEMENT_SPEED);
 
 				if (speed != null && !speed.hasModifier(GUARD_SLOWDOWN)) {
@@ -144,7 +216,7 @@ public final class SaberAbilities {
 			}
 			case SPIN -> {
 				state.spinStart = now;
-				state.whirl = SaberVariant.STAFF.equals(SaberVariant.styleOf(saber));
+				state.whirl = SaberVariant.STAFF.equals(style);
 				startCooldown(player, state, ability, now, state.whirl ? config.whirlCooldown : config.spinCooldown);
 			}
 			case PUSH -> {
@@ -156,9 +228,9 @@ public final class SaberAbilities {
 				// the speed the server sent on join. The server times the strike and the evasion.
 				DodgeDirection direction = DodgeDirection.byId(requested);
 				data = direction.ordinal();
-				state.maneuver = SaberManeuver.of(SaberVariant.styleOf(saber), direction);
+				state.maneuver = SaberManeuver.of(style, direction);
 				state.dashStart = now;
-				startCooldown(player, state, ability, now, config.dashCooldown);
+				startCooldown(player, state, ability, now, Math.round(config.dashCooldown * StyleTraits.of(style).dodgeCooldown()));
 			}
 		}
 
@@ -197,7 +269,13 @@ public final class SaberAbilities {
 			long now = player.level().getGameTime();
 
 			if (state.guarding() && (!canUse(player) || now - state.guardStart >= config.guardMaxTicks)) {
-				stopGuard(player, state, now);
+				stopGuard(player, state, now, config.guardCooldown);
+			}
+
+			tickStamina(player, state, config, now);
+
+			if (state.counterUntil >= 0 && (state.counterUsed || now > state.counterUntil || !canUse(player))) {
+				endCounter(player, state);
 			}
 
 			if (state.spinStart >= 0) {
@@ -208,6 +286,59 @@ public final class SaberAbilities {
 				tickManeuver(player, state, config, now - state.dashStart);
 			}
 		}
+	}
+
+	private static void tickStamina(ServerPlayer player, State state, AbilityConfig config, long now) {
+		if (!config.staminaEnabled) {
+			return;
+		}
+
+		if (!state.guarding() && now - state.staminaUsedAt >= config.staminaRegenDelay && state.stamina < config.staminaMax) {
+			state.stamina = Math.min(config.staminaMax, state.stamina + config.staminaRegen);
+		}
+
+		if (Math.abs(state.stamina - state.sentStamina) >= 1.0F || state.stamina >= config.staminaMax && state.sentStamina < config.staminaMax) {
+			sendStamina(player, state);
+		}
+	}
+
+	private static void spend(State state, AbilityConfig config, float cost, long now) {
+		if (config.staminaEnabled && cost > 0.0F) {
+			state.stamina = Math.max(0.0F, state.stamina - cost);
+			state.staminaUsedAt = now;
+		}
+	}
+
+	private static void sendStamina(ServerPlayer player, State state) {
+		state.sentStamina = state.stamina;
+
+		if (ServerPlayNetworking.canSend(player, StaminaPayload.TYPE)) {
+			ServerPlayNetworking.send(player, new StaminaPayload(state.stamina));
+		}
+	}
+
+	private static void startCounter(ServerPlayer player, State state, AbilityConfig config, long now) {
+		AttributeInstance damage = player.getAttribute(Attributes.ATTACK_DAMAGE);
+
+		if (damage == null || config.counterTicks <= 0 || config.counterBonus <= 0.0F) {
+			return;
+		}
+
+		damage.removeModifier(COUNTER_BONUS);
+		damage.addTransientModifier(new AttributeModifier(COUNTER_BONUS, config.counterBonus, AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL));
+		state.counterUntil = now + config.counterTicks;
+		state.counterUsed = false;
+	}
+
+	private static void endCounter(ServerPlayer player, State state) {
+		AttributeInstance damage = player.getAttribute(Attributes.ATTACK_DAMAGE);
+
+		if (damage != null) {
+			damage.removeModifier(COUNTER_BONUS);
+		}
+
+		state.counterUntil = -1;
+		state.counterUsed = false;
 	}
 
 	private static void tickManeuver(ServerPlayer player, State state, AbilityConfig config, long age) {
@@ -247,7 +378,7 @@ public final class SaberAbilities {
 			}
 		} else {
 			// The strike moment of the spin animations.
-			int strike = SaberVariant.HEAVY.equals(SaberVariant.styleOf(player.getMainHandItem())) ? 6 : 5;
+			int strike = StyleTraits.of(SaberVariant.styleOf(player.getMainHandItem())).spinStrike();
 
 			if (age >= strike) {
 				hitArea(player, config.spinRadius, -1.0, config.spinDamageShare, 2);
@@ -256,7 +387,7 @@ public final class SaberAbilities {
 		}
 	}
 
-	private static void stopGuard(ServerPlayer player, State state, long now) {
+	private static void stopGuard(ServerPlayer player, State state, long now, int cooldown) {
 		if (!state.guarding()) {
 			return;
 		}
@@ -268,7 +399,7 @@ public final class SaberAbilities {
 			speed.removeModifier(GUARD_SLOWDOWN);
 		}
 
-		startCooldown(player, state, SaberAbility.GUARD, now, AbilityConfig.get().guardCooldown);
+		startCooldown(player, state, SaberAbility.GUARD, now, cooldown);
 		broadcast(player, new AbilityEventPayload(player.getId(), SaberAbility.GUARD, AbilityEventPayload.Event.STOP));
 	}
 
@@ -312,17 +443,44 @@ public final class SaberAbilities {
 
 		AbilityConfig config = AbilityConfig.get();
 		long now = level.getGameTime();
-		boolean parry = state.guarding() && now - state.guardStart <= config.guardParryTicks;
+		StyleTraits traits = StyleTraits.of(SaberVariant.styleOf(player.getMainHandItem()));
+		boolean parry = state.guarding() && state.parryWindow && now - state.guardStart <= config.guardParryTicks + traits.parryBonus();
+		float share = traits.blockShare(config.guardBlockShare);
+
+		if (state.guarding()) {
+			// Every block costs stamina, a parry only a little. Without enough the stance breaks.
+			float cost = parry ? config.parryCost : damage * share * config.blockCostPerDamage * traits.blockCost();
+
+			if (config.staminaEnabled && state.stamina < cost) {
+				state.stamina = 0.0F;
+				state.staminaUsedAt = now;
+				stopGuard(player, state, now, config.guardBreakCooldown);
+				player.addEffect(new MobEffectInstance(MobEffects.SLOWNESS, 30, 1, false, false, true));
+				broadcast(player, new AbilityEventPayload(player.getId(), SaberAbility.GUARD, AbilityEventPayload.Event.GUARD_BREAK));
+				sendStamina(player, state);
+				return 0.0F;
+			}
+
+			spend(state, config, cost, now);
+		}
 
 		if (parry && source.getDirectEntity() instanceof LivingEntity attacker) {
-			// Throw the attacker off balance.
+			// Throw the attacker off balance and open a counter.
 			attacker.knockback(0.6, player.getX() - attacker.getX(), player.getZ() - attacker.getZ(), source, 0.0F);
 			attacker.hurtMarked = true;
+
+			if (config.unbalanceTicks > 0) {
+				attacker.addEffect(new MobEffectInstance(MobEffects.SLOWNESS, config.unbalanceTicks, 2, false, false, true), player);
+				attacker.addEffect(new MobEffectInstance(MobEffects.WEAKNESS, config.unbalanceTicks, 0, false, false, true), player);
+				broadcast(player, new AbilityEventPayload(attacker.getId(), SaberAbility.GUARD, AbilityEventPayload.Event.UNBALANCED));
+			}
+
+			startCounter(player, state, config, now);
 		}
 
 		broadcast(player, new AbilityEventPayload(player.getId(), SaberAbility.GUARD,
 				parry ? AbilityEventPayload.Event.PARRY : AbilityEventPayload.Event.BLOCK));
-		return parry ? damage : damage * config.guardBlockShare;
+		return parry ? damage : damage * share;
 	}
 
 	/**
@@ -439,13 +597,14 @@ public final class SaberAbilities {
 
 	private static void startCooldown(ServerPlayer player, State state, SaberAbility ability, long now, int ticks) {
 		state.readyAt.put(ability, now + ticks);
+		state.totals.put(ability, ticks);
 		sendCooldown(player, state, ability, now);
 	}
 
 	private static void sendCooldown(ServerPlayer player, State state, SaberAbility ability, long now) {
 		long readyAt = state.readyAt.getOrDefault(ability, 0L);
 		int left = (int) Math.max(0L, readyAt - now);
-		int total = switch (ability) {
+		int total = state.totals.containsKey(ability) ? state.totals.get(ability) : switch (ability) {
 			case GUARD -> AbilityConfig.get().guardCooldown;
 			case SPIN -> state.whirl ? AbilityConfig.get().whirlCooldown : AbilityConfig.get().spinCooldown;
 			case PUSH -> AbilityConfig.get().pushCooldown;
@@ -468,6 +627,14 @@ public final class SaberAbilities {
 				ServerPlayNetworking.send(other, payload);
 			}
 		}
+	}
+
+	/** Only for tests: sets the stamina of a player. */
+	public static void setStaminaForTests(ServerPlayer player, float stamina) {
+		State state = STATES.computeIfAbsent(player.getUUID(), id -> new State());
+		state.stamina = stamina;
+		state.staminaUsedAt = player.level().getGameTime();
+		sendStamina(player, state);
 	}
 
 	/** Only for tests: forgets all cooldowns and states. */
