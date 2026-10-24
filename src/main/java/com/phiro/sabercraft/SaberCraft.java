@@ -7,6 +7,7 @@ import net.minecraft.resources.Identifier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.phiro.sabercraft.ability.SaberAbilities;
 import com.phiro.sabercraft.network.SaberNetworking;
 
 /**
@@ -16,7 +17,8 @@ import com.phiro.sabercraft.network.SaberNetworking;
  * held items and swings that vanilla already syncs. The hilt and color of each saber are stored in
  * a vanilla item component (see {@link com.phiro.sabercraft.saber.SaberVariant}), so the server
  * does not need the mod to show them. The only server part is the packet that changes the variant
- * of a held saber in survival, registered here.
+ * of a held saber in survival, and the abilities (stance, spin, push, lunge), which the server
+ * decides about: damage, cooldowns and motion.
  */
 public class SaberCraft implements ModInitializer {
 	public static final String MOD_ID = "sabercraft";
@@ -26,6 +28,7 @@ public class SaberCraft implements ModInitializer {
 	@Override
 	public void onInitialize() {
 		SaberNetworking.init();
+		SaberAbilities.init();
 		LOGGER.info("SaberCraft initialized");
 	}
 

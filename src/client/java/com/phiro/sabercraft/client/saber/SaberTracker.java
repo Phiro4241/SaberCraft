@@ -19,9 +19,17 @@ import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 
+import com.phiro.sabercraft.client.combat.CombatConfig;
+import com.phiro.sabercraft.client.combat.CombatLibrary;
+import com.phiro.sabercraft.client.combat.CombatMove;
+import com.phiro.sabercraft.client.combat.CombatState;
+import com.phiro.sabercraft.client.combat.CombatStyle;
+import com.phiro.sabercraft.client.effect.SaberEffects;
 import com.phiro.sabercraft.client.render.BladeRenderState;
 import com.phiro.sabercraft.client.sound.SaberHumSoundInstance;
 import com.phiro.sabercraft.client.sound.SaberSoundSet;
+import com.phiro.sabercraft.client.sound.SaberSounds;
+import com.phiro.sabercraft.saber.SaberVariant;
 
 /**
  * Keeps the blade state of every entity that holds a saber, on the client only.
@@ -33,6 +41,10 @@ import com.phiro.sabercraft.client.sound.SaberSoundSet;
  *
  * <p>Runs once per client tick after the entities were ticked. Entities that are removed, die,
  * respawn or change dimension lose their state, and their hum is stopped right away.
+ *
+ * <p>Since Phase 6 every tracked entity also has a {@link CombatState}: a swing starts a move of
+ * the saber's fighting style, and the swing sound and hit effects follow the strike of that move
+ * instead of the click.
  */
 public final class SaberTracker {
 	public static final SaberTracker INSTANCE = new SaberTracker();
@@ -52,8 +64,20 @@ public final class SaberTracker {
 	private @Nullable ClientLevel level;
 	private BiPredicate<LivingEntity, InteractionHand> holstering = (entity, hand) -> false;
 	private int humCount;
+	private long ticks;
+	private float frozenTime = Float.NaN;
 
 	private SaberTracker() {
+	}
+
+	/** Animation time in ticks: counts client ticks while the game is not paused. */
+	public float time(float partialTick) {
+		return Float.isNaN(this.frozenTime) ? this.ticks + partialTick : this.frozenTime;
+	}
+
+	/** Stops the animation clock at {@code time}, or lets it run again with NaN. For screenshots in tests. */
+	public void freezeTime(float time) {
+		this.frozenTime = time;
 	}
 
 	/** Lets the holster logic force a blade to retract while the saber is still in the hand. */
@@ -72,6 +96,10 @@ public final class SaberTracker {
 
 		if (currentLevel == null) {
 			return;
+		}
+
+		if (!client.isPaused()) {
+			this.ticks++;
 		}
 
 		Entity listener = client.getCameraEntity() != null ? client.getCameraEntity() : client.player;
@@ -137,6 +165,18 @@ public final class SaberTracker {
 		return entry != null && entry.entity == entity ? entry.hands[hand.ordinal()] : null;
 	}
 
+	/** The fighting animation of an entity, or {@code null} if it holds no saber. */
+	public @Nullable CombatState combat(LivingEntity entity) {
+		TrackedEntity entry = this.tracked.get(entity.getId());
+		return entry != null && entry.entity == entity ? entry.combat : null;
+	}
+
+	/** The hand whose saber the fighting animation moves. */
+	public InteractionHand combatHand(LivingEntity entity) {
+		TrackedEntity entry = this.tracked.get(entity.getId());
+		return entry != null && entry.entity == entity ? entry.combatHand : InteractionHand.MAIN_HAND;
+	}
+
 	/** Blade length and flare for rendering the saber in the given hand. */
 	public BladeRenderState renderState(LivingEntity entity, InteractionHand hand, float partialTick) {
 		SaberHandState state = this.state(entity, hand);
@@ -178,6 +218,8 @@ public final class SaberTracker {
 		private float lastPitch;
 		private int swingCooldown;
 		private float motion;
+		private final CombatState combat = new CombatState();
+		private InteractionHand combatHand = InteractionHand.MAIN_HAND;
 
 		TrackedEntity(LivingEntity entity, boolean startLit) {
 			this.entity = entity;
@@ -194,7 +236,56 @@ public final class SaberTracker {
 			}
 
 			this.startLit = false;
+			this.tickCombat(soundManager, audible);
 			this.tickMotion(soundManager, audible);
+		}
+
+		/** Updates the fighting style and plays the strike of a running move. */
+		private void tickCombat(SoundManager soundManager, boolean audible) {
+			this.combatHand = SaberProfiles.isSaber(this.entity.getMainHandItem()) || !SaberProfiles.isSaber(this.entity.getOffhandItem())
+					? InteractionHand.MAIN_HAND
+					: InteractionHand.OFF_HAND;
+			SaberHandState state = this.hands[this.combatHand.ordinal()];
+			CombatStyle style = null;
+
+			if (state != null && CombatConfig.get().combatAnimations) {
+				style = CombatLibrary.INSTANCE.style(SaberVariant.styleOf(this.entity.getItemInHand(this.combatHand)));
+			}
+
+			boolean ready = state != null
+					&& state.isActive()
+					&& CombatConfig.get().readyStance
+					&& !this.entity.isSprinting()
+					&& !this.entity.isSwimming()
+					&& !this.entity.isFallFlying()
+					&& !this.entity.isPassenger()
+					&& !this.entity.isSleeping()
+					&& !this.entity.isUsingItem();
+			float now = SaberTracker.this.time(0.0F);
+			this.combat.tick(style, now, ready ? 1.0F : 0.0F);
+			CombatMove struck = this.combat.pollStrike(now);
+
+			if (struck != null && state != null) {
+				if (audible) {
+					this.playStrike(soundManager, state.profile().sounds(), struck);
+				}
+
+				SaberEffects.onStrike(this.entity, this.combatHand, struck);
+			}
+		}
+
+		private void playStrike(SoundManager soundManager, SaberSoundSet sounds, CombatMove move) {
+			float variation = 0.94F + this.entity.getRandom().nextFloat() * 0.12F;
+
+			switch (move.sound()) {
+				case SWING -> this.play(soundManager, sounds.swing(), sounds.swingVolume() * move.volume(), variation);
+				case HEAVY -> this.play(soundManager, sounds.swing(), sounds.swingVolume() * move.volume() * 1.1F, variation * 0.84F);
+				case SPIN -> this.play(soundManager, SaberSounds.SPIN, move.volume(), variation);
+				case NONE -> {
+				}
+			}
+
+			this.swingCooldown = SWING_COOLDOWN;
 		}
 
 		private void tickHand(SoundManager soundManager, InteractionHand hand, boolean audible) {
@@ -225,6 +316,7 @@ public final class SaberTracker {
 			if (audible) {
 				if (transition == SaberHandState.Transition.IGNITE) {
 					this.play(soundManager, sounds.ignite(), 1.0F, 1.0F);
+					SaberEffects.onIgnite(this.entity, hand);
 				} else if (transition == SaberHandState.Transition.RETRACT && before > 0.05F) {
 					this.play(soundManager, sounds.retract(), 1.0F, 1.0F);
 				}
@@ -302,6 +394,16 @@ public final class SaberTracker {
 
 			this.motion = Math.max(target, this.motion * 0.75F);
 
+			if (newSwing && this.combat.style() != null) {
+				InteractionHand hand = this.entity.swingingArm != null ? this.entity.swingingArm : InteractionHand.MAIN_HAND;
+
+				if (litHand(this.hands[hand.ordinal()]) != null) {
+					// The move plays the swing sound at its strike, see tickCombat.
+					this.combat.onSwing(this.entity, SaberTracker.this.time(0.0F));
+					newSwing = false;
+				}
+			}
+
 			if (this.swingCooldown > 0) {
 				this.swingCooldown--;
 			}
@@ -319,7 +421,7 @@ public final class SaberTracker {
 
 			float strength = 1.0F;
 
-			if (swingHand == null && turnSpeed > SWING_TURN_SPEED) {
+			if (swingHand == null && turnSpeed > SWING_TURN_SPEED && this.combat.move() == null) {
 				// A fast turn with a lit blade sounds like a swing, softer for slower turns.
 				swingHand = litHand(this.hands[InteractionHand.MAIN_HAND.ordinal()]);
 

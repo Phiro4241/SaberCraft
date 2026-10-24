@@ -94,5 +94,85 @@
         "attenuation_distance": 20
       }
     ]
+  },
+  "saber.spin": {
+    "subtitle": "subtitles.sabercraft.saber.spin",
+    "sounds": [
+      {
+        "name": "sabercraft:combat/spin",
+        "attenuation_distance": 20
+      }
+    ]
+  },
+  "saber.hit": {
+    "subtitle": "subtitles.sabercraft.saber.hit",
+    "sounds": [
+      {
+        "name": "sabercraft:combat/hit1",
+        "attenuation_distance": 16
+      },
+      {
+        "name": "sabercraft:combat/hit2",
+        "attenuation_distance": 16
+      }
+    ]
+  },
+  "saber.scorch": {
+    "subtitle": "subtitles.sabercraft.saber.scorch",
+    "sounds": [
+      {
+        "name": "sabercraft:combat/scorch",
+        "attenuation_distance": 16
+      }
+    ]
+  },
+  "saber.guard": {
+    "subtitle": "subtitles.sabercraft.saber.guard",
+    "sounds": [
+      {
+        "name": "sabercraft:combat/guard",
+        "attenuation_distance": 12
+      }
+    ]
+  },
+  "saber.clash": {
+    "subtitle": "subtitles.sabercraft.saber.clash",
+    "sounds": [
+      {
+        "name": "sabercraft:combat/clash1",
+        "attenuation_distance": 24
+      },
+      {
+        "name": "sabercraft:combat/clash2",
+        "attenuation_distance": 24
+      }
+    ]
+  },
+  "saber.parry": {
+    "subtitle": "subtitles.sabercraft.saber.parry",
+    "sounds": [
+      {
+        "name": "sabercraft:combat/parry",
+        "attenuation_distance": 24
+      }
+    ]
+  },
+  "saber.push": {
+    "subtitle": "subtitles.sabercraft.saber.push",
+    "sounds": [
+      {
+        "name": "sabercraft:combat/push",
+        "attenuation_distance": 24
+      }
+    ]
+  },
+  "saber.dash": {
+    "subtitle": "subtitles.sabercraft.saber.dash",
+    "sounds": [
+      {
+        "name": "sabercraft:combat/dash",
+        "attenuation_distance": 16
+      }
+    ]
   }
 }

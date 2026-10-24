@@ -90,7 +90,9 @@ public final class SaberBladeSpecialRenderer implements SpecialModelRenderer<Bla
 		// The glow builds up over the first part of the blade's way out, so a tiny stub does not
 		// already have a full-size halo. During ignition it flares up briefly.
 		float build = Mth.clamp(state.extension() / 0.25F, 0.0F, 1.0F);
-		float intensity = intensity(style) * (0.55F + 0.45F * build) * (1.0F + state.flare());
+		// An attack makes the blade glow a little brighter, strongest at the strike.
+		float swing = state.swing() != null ? state.swing().strength() : 0.0F;
+		float intensity = intensity(style) * (0.55F + 0.45F * build) * (1.0F + state.flare() + 0.22F * swing);
 
 		poseStack.pushPose();
 		this.applyBladeTransform(poseStack);
@@ -105,6 +107,11 @@ public final class SaberBladeSpecialRenderer implements SpecialModelRenderer<Bla
 		submitNodeCollector.order(2).submitCustomGeometry(
 				poseStack, SaberRenderTypes.BLADE_BLOOM, (pose, buffer) -> BladeMesh.bloom(pose, buffer, style, length, intensity * build)
 		);
+
+		if (state.swing() != null) {
+			BladeTrails.submit(state.swing(), this, poseStack, submitNodeCollector, style, length);
+		}
+
 		poseStack.popPose();
 	}
 

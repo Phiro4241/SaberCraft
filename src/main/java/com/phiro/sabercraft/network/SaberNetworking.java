@@ -10,10 +10,11 @@ import com.phiro.sabercraft.SaberCraft;
 import com.phiro.sabercraft.saber.SaberVariant;
 
 /**
- * Server side of the variant selection.
+ * Server side of the variant selection, and registration of all SaberCraft packets.
  *
  * <p>Only needed to change a saber in survival on a multiplayer server. Showing variants needs no
- * server support at all, and in singleplayer the built-in server always has the mod.
+ * server support at all, and in singleplayer the built-in server always has the mod. The ability
+ * packets are handled in {@link com.phiro.sabercraft.ability.SaberAbilities}.
  */
 public final class SaberNetworking {
 	private SaberNetworking() {
@@ -22,6 +23,9 @@ public final class SaberNetworking {
 	public static void init() {
 		PayloadTypeRegistry.serverboundPlay().register(SelectSaberVariantPayload.TYPE, SelectSaberVariantPayload.CODEC);
 		ServerPlayNetworking.registerGlobalReceiver(SelectSaberVariantPayload.TYPE, (payload, context) -> handle(context.player(), payload));
+		PayloadTypeRegistry.serverboundPlay().register(UseAbilityPayload.TYPE, UseAbilityPayload.CODEC);
+		PayloadTypeRegistry.clientboundPlay().register(AbilityEventPayload.TYPE, AbilityEventPayload.CODEC);
+		PayloadTypeRegistry.clientboundPlay().register(AbilityCooldownPayload.TYPE, AbilityCooldownPayload.CODEC);
 	}
 
 	/**
