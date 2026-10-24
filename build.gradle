@@ -79,3 +79,15 @@ publishing {
 		// retrieving dependencies.
 	}
 }
+
+fabricApi {
+	// Client game tests start a real Minecraft client, create a test world and take screenshots
+	// of the saber. Run them with ./gradlew runClientGameTest (needs a display, e.g. xvfb-run).
+	configureTests {
+		createSourceSet = true
+		modId = "sabercraft-gametest"
+		enableGameTests = false
+		enableClientGameTests = true
+		eula = true
+	}
+}

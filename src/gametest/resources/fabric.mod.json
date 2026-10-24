@@ -1,0 +1,15 @@
+{
+	"schemaVersion": 1,
+	"id": "sabercraft-gametest",
+	"version": "1.0.0",
+	"name": "SaberCraft Game Tests",
+	"environment": "*",
+	"entrypoints": {
+		"fabric-client-gametest": [
+			"com.phiro.sabercraft.gametest.BladeScreenshotGameTest"
+		]
+	},
+	"depends": {
+		"sabercraft": "*"
+	}
+}

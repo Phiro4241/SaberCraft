@@ -1,0 +1,37 @@
+{
+  "model": {
+    "type": "minecraft:select",
+    "property": "minecraft:display_context",
+    "cases": [
+      {
+        "when": [
+          "gui",
+          "ground",
+          "fixed",
+          "on_shelf"
+        ],
+        "model": {
+          "type": "minecraft:model",
+          "model": "sabercraft:item/saber_hilt"
+        }
+      }
+    ],
+    "fallback": {
+      "type": "minecraft:composite",
+      "models": [
+        {
+          "type": "minecraft:model",
+          "model": "sabercraft:item/saber_hilt"
+        },
+        {
+          "type": "minecraft:special",
+          "base": "sabercraft:item/saber_hilt",
+          "model": {
+            "type": "sabercraft:saber_blade",
+            "style": "sabercraft:red"
+          }
+        }
+      ]
+    }
+  }
+}
