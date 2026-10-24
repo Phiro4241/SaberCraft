@@ -80,7 +80,7 @@ public final class SaberBladeItemModel implements ItemModel {
 			int seed
 	) {
 		// Each sword carries its own blade color; without one, the model's style applies.
-		BladeRenderState blade = bladeState(displayContext, owner).withStyle(BladeStyles.colorOf(item));
+		BladeRenderState blade = bladeState(displayContext, owner).withStyle(BladeStyles.colorOf(item)).withFirstPerson(displayContext.firstPerson());
 
 		output.appendModelIdentityElement(this);
 		output.appendModelIdentityElement(blade);

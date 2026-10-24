@@ -17,8 +17,10 @@ import net.minecraft.util.Mth;
  *                  style (the default color of the hilt)
  * @param swing     where the blade is in a fighting move, or {@code null} while it is not moving:
  *                  drives the light trail and the brighter glow of an attack
+ * @param firstPerson whether it is drawn as the first-person hand item, which shader packs draw in
+ *                  a pass of its own (see {@link SaberRenderTypes})
  */
-public record BladeRenderState(float extension, float flare, @Nullable Identifier style, @Nullable Swing swing) {
+public record BladeRenderState(float extension, float flare, @Nullable Identifier style, @Nullable Swing swing, boolean firstPerson) {
 	/**
 	 * A blade in the middle of an attack.
 	 *
@@ -32,8 +34,8 @@ public record BladeRenderState(float extension, float flare, @Nullable Identifie
 
 	private static final float STEPS = 512.0F;
 
-	public static final BladeRenderState FULL = new BladeRenderState(1.0F, 0.0F, null, null);
-	public static final BladeRenderState RETRACTED = new BladeRenderState(0.0F, 0.0F, null, null);
+	public static final BladeRenderState FULL = new BladeRenderState(1.0F, 0.0F, null, null, false);
+	public static final BladeRenderState RETRACTED = new BladeRenderState(0.0F, 0.0F, null, null, false);
 
 	public static BladeRenderState of(float extension, float flare) {
 		float roundedExtension = Math.round(Mth.clamp(extension, 0.0F, 1.0F) * STEPS) / STEPS;
@@ -49,17 +51,22 @@ public record BladeRenderState(float extension, float flare, @Nullable Identifie
 			}
 		}
 
-		return new BladeRenderState(roundedExtension, roundedFlare, null, null);
+		return new BladeRenderState(roundedExtension, roundedFlare, null, null, false);
 	}
 
 	/** The same state with the given blade color, {@code null} keeps the model's own style. */
 	public BladeRenderState withStyle(@Nullable Identifier newStyle) {
-		return newStyle == null || newStyle.equals(this.style) ? this : new BladeRenderState(this.extension, this.flare, newStyle, this.swing);
+		return newStyle == null || newStyle.equals(this.style) ? this : new BladeRenderState(this.extension, this.flare, newStyle, this.swing, this.firstPerson);
 	}
 
 	/** The same state during an attack, {@code null} for a blade at rest. */
 	public BladeRenderState withSwing(@Nullable Swing newSwing) {
-		return newSwing == null && this.swing == null ? this : new BladeRenderState(this.extension, this.flare, this.style, newSwing);
+		return newSwing == null && this.swing == null ? this : new BladeRenderState(this.extension, this.flare, this.style, newSwing, this.firstPerson);
+	}
+
+	/** The same state drawn as the first-person hand item, or not. */
+	public BladeRenderState withFirstPerson(boolean newFirstPerson) {
+		return newFirstPerson == this.firstPerson ? this : new BladeRenderState(this.extension, this.flare, this.style, this.swing, newFirstPerson);
 	}
 
 	public boolean isVisible() {

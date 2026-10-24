@@ -139,7 +139,7 @@ public final class BladeTrails {
 		int glow = style.glowColor();
 		int bloom = style.bloomColor();
 
-		collector.order(0).submitCustomGeometry(poseStack, SaberRenderTypes.BLADE_HAZE, (p, buffer) -> ribbon(p, buffer, points, alphas, glow, bloom, opacity));
+		collector.order(0).submitCustomGeometry(poseStack, SaberRenderTypes.haze(swing.firstPerson()), (p, buffer) -> ribbon(p, buffer, points, alphas, glow, bloom, opacity));
 	}
 
 	private static void ribbon(PoseStack.Pose pose, VertexConsumer buffer, float[] points, float[] alphas, int glow, int bloom, float opacity) {
@@ -160,7 +160,7 @@ public final class BladeTrails {
 	}
 
 	private static void vertex(PoseStack.Pose pose, VertexConsumer buffer, float[] points, int offset, int argb) {
-		buffer.addVertex(pose, points[offset], points[offset + 1], points[offset + 2]).setColor(argb);
+		BladeMesh.vertex(pose, buffer, points[offset], points[offset + 1], points[offset + 2], argb, 0.0F, 1.0F, 0.0F);
 	}
 
 	private static int argb(float alpha, int rgb) {
