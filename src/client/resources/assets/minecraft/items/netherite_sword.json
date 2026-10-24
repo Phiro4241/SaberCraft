@@ -24,12 +24,9 @@
           "model": "sabercraft:item/saber_hilt"
         },
         {
-          "type": "minecraft:special",
+          "type": "sabercraft:saber_blade",
           "base": "sabercraft:item/saber_hilt",
-          "model": {
-            "type": "sabercraft:saber_blade",
-            "style": "sabercraft:red"
-          }
+          "style": "sabercraft:red"
         }
       ]
     }

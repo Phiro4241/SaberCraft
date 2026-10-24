@@ -1,3 +1,7 @@
 {
-	"modmenu.descriptionTranslation.sabercraft": "Turns the netherite sword into a cinematic energy saber."
+  "modmenu.descriptionTranslation.sabercraft": "Turns the netherite sword into a cinematic energy saber.",
+  "subtitles.sabercraft.saber.ignite": "Saber ignites",
+  "subtitles.sabercraft.saber.retract": "Saber retracts",
+  "subtitles.sabercraft.saber.hum": "Saber hums",
+  "subtitles.sabercraft.saber.swing": "Saber swings"
 }

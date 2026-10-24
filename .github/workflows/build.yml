@@ -29,8 +29,8 @@ jobs:
           name: Artifacts
           path: build/libs/
 
-  # Starts a real Minecraft client in a virtual display, checks that the blade renderer is active
-  # and takes screenshots of the saber in first and third person.
+  # Starts a real Minecraft client in a virtual display, checks the blade renderer, the ignite and
+  # retract animation and the sounds, and takes screenshots of the saber in first and third person.
   client-gametest:
     runs-on: ubuntu-24.04
     steps:
@@ -45,6 +45,12 @@ jobs:
         run: chmod +x ./gradlew
       - name: install virtual display
         run: sudo apt-get update && sudo apt-get install -y xvfb mesa-utils
+      # The runner has no sound card. OpenAL writes the game audio into a wave file instead, so the
+      # sound tests run against the real sound engine and the recording can be listened to.
+      - name: route game audio into a file
+        run: |
+          mkdir -p build/run/clientGameTest
+          printf '[general]\ndrivers = wave\nchannels = mono\n[wave]\nfile = %s/build/run/clientGameTest/game-audio.wav\n' "$PWD" > ~/.alsoftrc
       - name: run client game test
         run: xvfb-run -a -s "-screen 0 1280x720x24" ./gradlew runClientGameTest
       - name: upload screenshots
@@ -53,3 +59,9 @@ jobs:
         with:
           name: Screenshots
           path: build/run/clientGameTest/screenshots/
+      - name: upload audio recording
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: Audio
+          path: build/run/clientGameTest/game-audio.wav
