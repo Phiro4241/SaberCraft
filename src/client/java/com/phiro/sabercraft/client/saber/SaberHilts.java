@@ -24,6 +24,10 @@ public final class SaberHilts {
 	public static final SaberHilt DARK_LORD = register(new SaberHilt(SaberVariant.DARK_LORD, SaberProfiles.DARK, SaberVariant.RED, 1));
 	/** Black and silver hilt with a vented emitter. */
 	public static final SaberHilt SENTINEL = register(new SaberHilt(SaberVariant.SENTINEL, SaberProfiles.DEFAULT, SaberVariant.GREEN, 1));
+	/** Silver hilt with a flared, vented emitter, after Obi-Wan Kenobi (Phase 8). */
+	public static final SaberHilt KENOBI = register(new SaberHilt(SaberVariant.KENOBI, SaberProfiles.DEFAULT, SaberVariant.BLUE, 1));
+	/** Black grip and silver body with a long emitter cone, after Luke Skywalker (Phase 8). */
+	public static final SaberHilt SKYWALKER = register(new SaberHilt(SaberVariant.SKYWALKER, SaberProfiles.DEFAULT, SaberVariant.GREEN, 1));
 	/** Experimental long hilt with a blade at each end. */
 	public static final SaberHilt DOUBLE = register(new SaberHilt(SaberVariant.DOUBLE, SaberProfiles.DOUBLE, SaberVariant.RED, 2));
 

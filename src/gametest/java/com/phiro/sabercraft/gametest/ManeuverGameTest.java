@@ -40,6 +40,7 @@ public class ManeuverGameTest implements FabricClientGameTest {
 			{"flowing", "guardian", "blue"},
 			{"heavy", "dark_lord", "red"},
 			{"staff", "double", "purple"},
+			{"juyo", "double", "red"},
 	};
 	private static final String[] DIRECTIONS = {"forward", "left", "right", "back"};
 
