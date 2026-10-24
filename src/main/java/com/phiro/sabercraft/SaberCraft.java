@@ -7,12 +7,16 @@ import net.minecraft.resources.Identifier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.phiro.sabercraft.network.SaberNetworking;
+
 /**
  * Common entrypoint for SaberCraft. Runs on both the dedicated server and the client.
  *
  * <p>The saber itself (blade, animation, sounds) lives entirely on the client and works from the
- * held items and swings that vanilla already syncs, so nothing has to be registered here and the
- * server does not need the mod. Server-side features of later phases start here.
+ * held items and swings that vanilla already syncs. The hilt and color of each saber are stored in
+ * a vanilla item component (see {@link com.phiro.sabercraft.saber.SaberVariant}), so the server
+ * does not need the mod to show them. The only server part is the packet that changes the variant
+ * of a held saber in survival, registered here.
  */
 public class SaberCraft implements ModInitializer {
 	public static final String MOD_ID = "sabercraft";
@@ -21,6 +25,7 @@ public class SaberCraft implements ModInitializer {
 
 	@Override
 	public void onInitialize() {
+		SaberNetworking.init();
 		LOGGER.info("SaberCraft initialized");
 	}
 

@@ -1,34 +1,212 @@
 {
   "model": {
     "type": "minecraft:select",
-    "property": "minecraft:display_context",
+    "property": "minecraft:custom_model_data",
+    "index": 0,
     "cases": [
       {
-        "when": [
-          "gui",
-          "ground",
-          "fixed",
-          "on_shelf"
-        ],
+        "when": "sabercraft:guardian",
         "model": {
-          "type": "minecraft:model",
-          "model": "sabercraft:item/saber_hilt"
+          "type": "minecraft:select",
+          "property": "minecraft:display_context",
+          "cases": [
+            {
+              "when": [
+                "gui",
+                "ground",
+                "fixed",
+                "on_shelf"
+              ],
+              "model": {
+                "type": "minecraft:model",
+                "model": "sabercraft:item/hilt/guardian"
+              }
+            }
+          ],
+          "fallback": {
+            "type": "minecraft:composite",
+            "models": [
+              {
+                "type": "minecraft:model",
+                "model": "sabercraft:item/hilt/guardian"
+              },
+              {
+                "type": "sabercraft:saber_blade",
+                "base": "sabercraft:item/hilt/guardian",
+                "style": "sabercraft:blue",
+                "emitter": [
+                  0.5795,
+                  0.5795,
+                  0.5
+                ]
+              }
+            ]
+          }
+        }
+      },
+      {
+        "when": "sabercraft:dark_lord",
+        "model": {
+          "type": "minecraft:select",
+          "property": "minecraft:display_context",
+          "cases": [
+            {
+              "when": [
+                "gui",
+                "ground",
+                "fixed",
+                "on_shelf"
+              ],
+              "model": {
+                "type": "minecraft:model",
+                "model": "sabercraft:item/hilt/dark_lord"
+              }
+            }
+          ],
+          "fallback": {
+            "type": "minecraft:composite",
+            "models": [
+              {
+                "type": "minecraft:model",
+                "model": "sabercraft:item/hilt/dark_lord"
+              },
+              {
+                "type": "sabercraft:saber_blade",
+                "base": "sabercraft:item/hilt/dark_lord",
+                "style": "sabercraft:red",
+                "emitter": [
+                  0.5795,
+                  0.5795,
+                  0.5
+                ]
+              }
+            ]
+          }
+        }
+      },
+      {
+        "when": "sabercraft:sentinel",
+        "model": {
+          "type": "minecraft:select",
+          "property": "minecraft:display_context",
+          "cases": [
+            {
+              "when": [
+                "gui",
+                "ground",
+                "fixed",
+                "on_shelf"
+              ],
+              "model": {
+                "type": "minecraft:model",
+                "model": "sabercraft:item/hilt/sentinel"
+              }
+            }
+          ],
+          "fallback": {
+            "type": "minecraft:composite",
+            "models": [
+              {
+                "type": "minecraft:model",
+                "model": "sabercraft:item/hilt/sentinel"
+              },
+              {
+                "type": "sabercraft:saber_blade",
+                "base": "sabercraft:item/hilt/sentinel",
+                "style": "sabercraft:green",
+                "emitter": [
+                  0.5795,
+                  0.5795,
+                  0.5
+                ]
+              }
+            ]
+          }
+        }
+      },
+      {
+        "when": "sabercraft:double",
+        "model": {
+          "type": "minecraft:select",
+          "property": "minecraft:display_context",
+          "cases": [
+            {
+              "when": [
+                "gui",
+                "ground",
+                "fixed",
+                "on_shelf"
+              ],
+              "model": {
+                "type": "minecraft:model",
+                "model": "sabercraft:item/hilt/double"
+              }
+            }
+          ],
+          "fallback": {
+            "type": "minecraft:composite",
+            "models": [
+              {
+                "type": "minecraft:model",
+                "model": "sabercraft:item/hilt/double"
+              },
+              {
+                "type": "sabercraft:saber_blade",
+                "base": "sabercraft:item/hilt/double",
+                "style": "sabercraft:red",
+                "emitter": [
+                  0.6458,
+                  0.6458,
+                  0.5
+                ]
+              },
+              {
+                "type": "sabercraft:saber_blade",
+                "base": "sabercraft:item/hilt/double",
+                "style": "sabercraft:red",
+                "emitter": [
+                  -0.0613,
+                  -0.0613,
+                  0.5
+                ],
+                "angle": 180
+              }
+            ]
+          }
         }
       }
     ],
     "fallback": {
-      "type": "minecraft:composite",
-      "models": [
+      "type": "minecraft:select",
+      "property": "minecraft:display_context",
+      "cases": [
         {
-          "type": "minecraft:model",
-          "model": "sabercraft:item/saber_hilt"
-        },
-        {
-          "type": "sabercraft:saber_blade",
-          "base": "sabercraft:item/saber_hilt",
-          "style": "sabercraft:red"
+          "when": [
+            "gui",
+            "ground",
+            "fixed",
+            "on_shelf"
+          ],
+          "model": {
+            "type": "minecraft:model",
+            "model": "sabercraft:item/saber_hilt"
+          }
         }
-      ]
+      ],
+      "fallback": {
+        "type": "minecraft:composite",
+        "models": [
+          {
+            "type": "minecraft:model",
+            "model": "sabercraft:item/saber_hilt"
+          },
+          {
+            "type": "sabercraft:saber_blade",
+            "base": "sabercraft:item/saber_hilt",
+            "style": "sabercraft:red"
+          }
+        ]
+      }
     }
   }
 }

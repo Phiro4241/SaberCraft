@@ -8,7 +8,7 @@ import net.minecraft.resources.Identifier;
 
 import com.phiro.sabercraft.SaberCraft;
 
-/** Registry of the ignite and retract animations. Phase 4 ships the default film-like one. */
+/** Registry of the ignite and retract animations. */
 public final class SaberAnimations {
 	private static final Map<Identifier, SaberAnimation> ANIMATIONS = new LinkedHashMap<>();
 
@@ -19,6 +19,14 @@ public final class SaberAnimations {
 	 */
 	public static final SaberAnimation DEFAULT = register(
 			new SaberAnimation(SaberCraft.id("default"), 6, 10, 7, Easing.OUT_QUAD, Easing.LINEAR, 0.35F)
+	);
+
+	/**
+	 * For the dark hilt: the blade comes out a little slower, shoots out harder at first and settles
+	 * longer, with a stronger flash. It goes back in a bit slower as well.
+	 */
+	public static final SaberAnimation HEAVY = register(
+			new SaberAnimation(SaberCraft.id("heavy"), 6, 13, 9, Easing.OUT_CUBIC, Easing.LINEAR, 0.5F)
 	);
 
 	private SaberAnimations() {

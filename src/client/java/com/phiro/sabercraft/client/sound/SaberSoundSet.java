@@ -36,6 +36,26 @@ public record SaberSoundSet(
 			0.9F
 	);
 
+	/** Deeper, rougher hum and a heavier ignition for the dark hilt. */
+	public static final SaberSoundSet DARK = new SaberSoundSet(
+			event("saber.dark.ignite"),
+			event("saber.dark.retract"),
+			event("saber.dark.hum"),
+			event("saber.dark.swing"),
+			0.32F,
+			0.9F
+	);
+
+	/** Default sounds with a louder hum, because two blades are lit. */
+	public static final SaberSoundSet DOUBLE = new SaberSoundSet(
+			DEFAULT.ignite(),
+			DEFAULT.retract(),
+			DEFAULT.hum(),
+			DEFAULT.swing(),
+			0.42F,
+			1.0F
+	);
+
 	private static SoundEvent event(String name) {
 		return SoundEvent.createVariableRangeEvent(SaberCraft.id(name));
 	}

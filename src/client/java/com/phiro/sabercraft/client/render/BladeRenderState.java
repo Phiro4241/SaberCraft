@@ -1,5 +1,8 @@
 package com.phiro.sabercraft.client.render;
 
+import org.jspecify.annotations.Nullable;
+
+import net.minecraft.resources.Identifier;
 import net.minecraft.util.Mth;
 
 /**
@@ -10,12 +13,14 @@ import net.minecraft.util.Mth;
  *
  * @param extension how far the blade is out, 0 = only the hilt, 1 = full length
  * @param flare     extra brightness during the ignition, 0 = none
+ * @param style     the blade color stored on the item, or {@code null} for the item model's own
+ *                  style (the default color of the hilt)
  */
-public record BladeRenderState(float extension, float flare) {
+public record BladeRenderState(float extension, float flare, @Nullable Identifier style) {
 	private static final float STEPS = 512.0F;
 
-	public static final BladeRenderState FULL = new BladeRenderState(1.0F, 0.0F);
-	public static final BladeRenderState RETRACTED = new BladeRenderState(0.0F, 0.0F);
+	public static final BladeRenderState FULL = new BladeRenderState(1.0F, 0.0F, null);
+	public static final BladeRenderState RETRACTED = new BladeRenderState(0.0F, 0.0F, null);
 
 	public static BladeRenderState of(float extension, float flare) {
 		float roundedExtension = Math.round(Mth.clamp(extension, 0.0F, 1.0F) * STEPS) / STEPS;
@@ -31,7 +36,12 @@ public record BladeRenderState(float extension, float flare) {
 			}
 		}
 
-		return new BladeRenderState(roundedExtension, roundedFlare);
+		return new BladeRenderState(roundedExtension, roundedFlare, null);
+	}
+
+	/** The same state with the given blade color, {@code null} keeps the model's own style. */
+	public BladeRenderState withStyle(@Nullable Identifier newStyle) {
+		return newStyle == null || newStyle.equals(this.style) ? this : new BladeRenderState(this.extension, this.flare, newStyle);
 	}
 
 	public boolean isVisible() {
