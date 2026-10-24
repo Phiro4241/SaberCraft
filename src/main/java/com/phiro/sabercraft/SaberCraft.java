@@ -10,8 +10,9 @@ import org.slf4j.LoggerFactory;
 /**
  * Common entrypoint for SaberCraft. Runs on both the dedicated server and the client.
  *
- * <p>Phase 2 only sets up the mod skeleton. The saber state component, network payloads and
- * sound events are registered here in later phases, because the server owns the saber state.
+ * <p>The saber itself (blade, animation, sounds) lives entirely on the client and works from the
+ * held items and swings that vanilla already syncs, so nothing has to be registered here and the
+ * server does not need the mod. Server-side features of later phases start here.
  */
 public class SaberCraft implements ModInitializer {
 	public static final String MOD_ID = "sabercraft";

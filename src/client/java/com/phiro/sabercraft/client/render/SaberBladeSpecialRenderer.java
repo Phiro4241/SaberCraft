@@ -11,27 +11,32 @@ import com.mojang.serialization.codecs.RecordCodecBuilder;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
 import org.joml.Vector3fc;
+import org.jspecify.annotations.Nullable;
 
 import net.minecraft.client.renderer.SubmitNodeCollector;
-import net.minecraft.client.renderer.special.NoDataSpecialModelRenderer;
 import net.minecraft.client.renderer.special.SpecialModelRenderer;
 import net.minecraft.resources.Identifier;
 import net.minecraft.util.ExtraCodecs;
 import net.minecraft.util.Mth;
 import net.minecraft.util.Util;
+import net.minecraft.world.item.ItemStack;
 
 import com.phiro.sabercraft.client.blade.BladeStyle;
 import com.phiro.sabercraft.client.blade.BladeStyles;
 
 /**
- * Item model renderer for the energy blade, used as {@code "type": "sabercraft:saber_blade"} inside
- * a {@code minecraft:special} item model. It runs after the item display transform, so the blade
+ * Draws the energy blade at a given length. It runs after the item display transform, so the blade
  * follows the hilt in first person, third person and on armor stands without extra code.
+ *
+ * <p>Held sabers use it through {@link SaberBladeItemModel}, which passes in how far the blade is
+ * out. It can also be used as {@code "type": "sabercraft:saber_blade"} inside a vanilla
+ * {@code minecraft:special} item model. That shows the blade always at full length, which is handy
+ * for decoration in maps.
  *
  * <p>Model space is the usual item space: the 16x16 texture spans 0..1 on X and Y, and handheld
  * items point their blade along the diagonal from bottom left to top right.
  */
-public final class SaberBladeSpecialRenderer implements NoDataSpecialModelRenderer {
+public final class SaberBladeSpecialRenderer implements SpecialModelRenderer<BladeRenderState> {
 	/** Where the default hilt texture ends: the emitter, on the item diagonal. */
 	public static final Vector3fc DEFAULT_EMITTER = new Vector3f(0.58F, 0.58F, 0.5F);
 	/** Turns the local +Y axis onto the item diagonal (+X, +Y). */
@@ -47,6 +52,7 @@ public final class SaberBladeSpecialRenderer implements NoDataSpecialModelRender
 
 	@Override
 	public void submit(
+			@Nullable BladeRenderState blade,
 			PoseStack poseStack,
 			SubmitNodeCollector submitNodeCollector,
 			int lightCoords,
@@ -54,22 +60,39 @@ public final class SaberBladeSpecialRenderer implements NoDataSpecialModelRender
 			boolean hasFoil,
 			int outlineColor
 	) {
-		float intensity = this.intensity();
+		BladeRenderState state = blade != null ? blade : BladeRenderState.FULL;
+
+		if (!state.isVisible()) {
+			// Fully retracted: only the hilt is drawn, by the hilt model.
+			return;
+		}
+
+		float length = this.style.length() * state.extension();
+		// The glow builds up over the first part of the blade's way out, so a tiny stub does not
+		// already have a full-size halo. During ignition it flares up briefly.
+		float build = Mth.clamp(state.extension() / 0.25F, 0.0F, 1.0F);
+		float intensity = this.intensity() * (0.55F + 0.45F * build) * (1.0F + state.flare());
 
 		poseStack.pushPose();
 		this.applyBladeTransform(poseStack);
 		// Haze first, then the opaque core on top of it, so the core stays white instead of being
 		// tinted by the haze in front of it. The additive bloom comes last.
 		submitNodeCollector.order(0).submitCustomGeometry(
-				poseStack, SaberRenderTypes.BLADE_HAZE, (pose, buffer) -> BladeMesh.haze(pose, buffer, this.style, intensity)
+				poseStack, SaberRenderTypes.BLADE_HAZE, (pose, buffer) -> BladeMesh.haze(pose, buffer, this.style, length, intensity * build)
 		);
 		submitNodeCollector.order(1).submitCustomGeometry(
-				poseStack, SaberRenderTypes.BLADE_CORE, (pose, buffer) -> BladeMesh.core(pose, buffer, this.style, intensity)
+				poseStack, SaberRenderTypes.BLADE_CORE, (pose, buffer) -> BladeMesh.core(pose, buffer, this.style, length, intensity)
 		);
 		submitNodeCollector.order(2).submitCustomGeometry(
-				poseStack, SaberRenderTypes.BLADE_BLOOM, (pose, buffer) -> BladeMesh.bloom(pose, buffer, this.style, intensity)
+				poseStack, SaberRenderTypes.BLADE_BLOOM, (pose, buffer) -> BladeMesh.bloom(pose, buffer, this.style, length, intensity * build)
 		);
 		poseStack.popPose();
+	}
+
+	/** Outside of held items (see {@link SaberBladeItemModel}) the blade is always fully out. */
+	@Override
+	public BladeRenderState extractArgument(ItemStack stack) {
+		return BladeRenderState.FULL;
 	}
 
 	@Override
@@ -111,7 +134,7 @@ public final class SaberBladeSpecialRenderer implements NoDataSpecialModelRender
 	 * Optional fields: {@code "emitter": [x, y, z]} for hilts of other shapes and {@code "length"}
 	 * to override the style's blade length.
 	 */
-	public record Unbaked(Identifier style, Vector3fc emitter, Optional<Float> length) implements NoDataSpecialModelRenderer.Unbaked {
+	public record Unbaked(Identifier style, Vector3fc emitter, Optional<Float> length) implements SpecialModelRenderer.Unbaked<BladeRenderState> {
 		public static final MapCodec<Unbaked> MAP_CODEC = RecordCodecBuilder.mapCodec(
 				instance -> instance.group(
 								Identifier.CODEC.optionalFieldOf("style", BladeStyles.RED.id()).forGetter(Unbaked::style),

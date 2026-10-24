@@ -1,3 +1,7 @@
 {
-	"modmenu.descriptionTranslation.sabercraft": "Verwandelt das Netherite-Schwert in ein filmreifes Energieschwert."
+  "modmenu.descriptionTranslation.sabercraft": "Verwandelt das Netherite-Schwert in ein filmreifes Energieschwert.",
+  "subtitles.sabercraft.saber.ignite": "Energieschwert zündet",
+  "subtitles.sabercraft.saber.retract": "Energieschwert fährt ein",
+  "subtitles.sabercraft.saber.hum": "Energieschwert summt",
+  "subtitles.sabercraft.saber.swing": "Energieschwert schwingt"
 }

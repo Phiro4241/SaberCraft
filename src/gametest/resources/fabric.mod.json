@@ -6,7 +6,8 @@
 	"environment": "*",
 	"entrypoints": {
 		"fabric-client-gametest": [
-			"com.phiro.sabercraft.gametest.BladeScreenshotGameTest"
+			"com.phiro.sabercraft.gametest.BladeScreenshotGameTest",
+			"com.phiro.sabercraft.gametest.SaberAnimationGameTest"
 		]
 	},
 	"depends": {

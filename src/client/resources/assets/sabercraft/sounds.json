@@ -1,0 +1,50 @@
+{
+  "saber.ignite": {
+    "subtitle": "subtitles.sabercraft.saber.ignite",
+    "sounds": [
+      {
+        "name": "sabercraft:saber/ignite",
+        "attenuation_distance": 24
+      }
+    ]
+  },
+  "saber.retract": {
+    "subtitle": "subtitles.sabercraft.saber.retract",
+    "sounds": [
+      {
+        "name": "sabercraft:saber/retract",
+        "attenuation_distance": 24
+      }
+    ]
+  },
+  "saber.hum": {
+    "subtitle": "subtitles.sabercraft.saber.hum",
+    "sounds": [
+      {
+        "name": "sabercraft:saber/hum",
+        "attenuation_distance": 12
+      }
+    ]
+  },
+  "saber.swing": {
+    "subtitle": "subtitles.sabercraft.saber.swing",
+    "sounds": [
+      {
+        "name": "sabercraft:saber/swing1",
+        "attenuation_distance": 20
+      },
+      {
+        "name": "sabercraft:saber/swing2",
+        "attenuation_distance": 20
+      },
+      {
+        "name": "sabercraft:saber/swing3",
+        "attenuation_distance": 20
+      },
+      {
+        "name": "sabercraft:saber/swing4",
+        "attenuation_distance": 20
+      }
+    ]
+  }
+}

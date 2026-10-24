@@ -48,23 +48,26 @@ public final class BladeMesh {
 	private BladeMesh() {
 	}
 
-	/** Solid core, drawn with {@link SaberRenderTypes#BLADE_CORE}. */
-	public static void core(PoseStack.Pose pose, VertexConsumer buffer, BladeStyle style, float intensity) {
+	/**
+	 * Solid core, drawn with {@link SaberRenderTypes#BLADE_CORE}. {@code length} is the current
+	 * blade length: the style's length when fully out, less while it ignites or retracts.
+	 */
+	public static void core(PoseStack.Pose pose, VertexConsumer buffer, BladeStyle style, float length, float intensity) {
 		int color = argb(1.0F, scale(style.coreColor(), Math.min(1.0F, 0.94F + 0.06F * intensity)));
-		tube(pose, buffer, style.coreRadius(), style.length(), color, color);
+		tube(pose, buffer, style.coreRadius(), length, color, color);
 	}
 
 	/** Additive bloom around the core, drawn with {@link SaberRenderTypes#BLADE_BLOOM}. */
-	public static void bloom(PoseStack.Pose pose, VertexConsumer buffer, BladeStyle style, float intensity) {
-		float alpha = 0.6F * style.glowStrength() * intensity;
+	public static void bloom(PoseStack.Pose pose, VertexConsumer buffer, BladeStyle style, float length, float intensity) {
+		float alpha = Math.min(1.0F, 0.6F * style.glowStrength() * intensity);
 		// Blade color mixed with white, so the core does not end in a hard edge.
 		int hot = mix(style.glowColor(), 0xFFFFFF, 0.3F);
 		float core = style.coreRadius();
-		tube(pose, buffer, core * 1.7F, style.length() + core * 0.4F, argb(alpha, hot), argb(alpha, hot));
+		tube(pose, buffer, core * 1.7F, length + core * 0.4F, argb(alpha, hot), argb(alpha, hot));
 	}
 
 	/** Translucent colored glow, drawn with {@link SaberRenderTypes#BLADE_HAZE}. */
-	public static void haze(PoseStack.Pose pose, VertexConsumer buffer, BladeStyle style, float intensity) {
+	public static void haze(PoseStack.Pose pose, VertexConsumer buffer, BladeStyle style, float length, float intensity) {
 		float strength = style.glowStrength() * intensity;
 		float core = style.coreRadius();
 		int glow = style.glowColor();
@@ -72,9 +75,9 @@ public final class BladeMesh {
 		// Two thin shells give a stepped falloff from the core into the soft fins.
 		int inner = argb(0.24F * strength, glow);
 		int outer = argb(0.13F * strength, glow);
-		tube(pose, buffer, core * 2.3F, style.length() + core * 0.9F, inner, inner);
-		tube(pose, buffer, core * 3.4F, style.length() + core * 1.6F, outer, outer);
-		fins(pose, buffer, style.glowRadius(), style.length(), glow, 0.2F * strength);
+		tube(pose, buffer, core * 2.3F, length + core * 0.9F, inner, inner);
+		tube(pose, buffer, core * 3.4F, length + core * 1.6F, outer, outer);
+		fins(pose, buffer, style.glowRadius(), length, glow, 0.2F * strength);
 	}
 
 	/** A closed round tube along +Y with a dome-shaped tip. */
@@ -110,9 +113,10 @@ public final class BladeMesh {
 	/** Flat glow planes crossing on the blade axis, each with a soft falloff to both sides. */
 	private static void fins(PoseStack.Pose pose, VertexConsumer buffer, float radius, float length, int rgb, float alpha) {
 		// The glow fades in over the first part of the blade, so it does not swallow the emitter.
-		float fadeEnd = radius * 1.2F;
-		float tipStart = length - radius * 0.3F;
-		float tipEnd = length + radius * 0.8F;
+		// While the blade is still short, all three sections shrink with it.
+		float fadeEnd = Math.min(radius * 1.2F, length * 0.4F);
+		float tipStart = Math.max(fadeEnd, length - radius * 0.3F);
+		float tipEnd = tipStart + Math.min(radius * 1.1F, Math.max(length, 0.02F) * 0.8F);
 		int clear = argb(0.0F, rgb);
 
 		for (int fin = 0; fin < FINS; fin++) {
