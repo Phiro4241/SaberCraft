@@ -53,7 +53,11 @@ public final class SaberMusic {
 		EXPLORATION("exploration", false, "exploration_horizon", "exploration_wander"),
 		NIGHT("night", false, "night_stars"),
 		COMBAT("combat", true, "combat_duel", "combat_shadow"),
-		EVENT("event", true, "event_rise");
+		EVENT("event", true, "event_rise"),
+		/** Phase 10: once after a won fight. */
+		VICTORY("victory", false, "victory_fanfare"),
+		/** Phase 10: once when you fall. */
+		DEFEAT("defeat", false, "defeat_lament");
 
 		private final String folder;
 		private final boolean loops;
@@ -72,6 +76,11 @@ public final class SaberMusic {
 		public boolean loops() {
 			return this.loops;
 		}
+
+		/** Victory and defeat play once and then hand back to whatever is going on (Phase 10). */
+		public boolean stinger() {
+			return this == VICTORY || this == DEFEAT;
+		}
 	}
 
 	private static final RandomSource RANDOM = RandomSource.create();
@@ -87,6 +96,10 @@ public final class SaberMusic {
 	private static boolean held;
 	private static int ticks;
 	private static @Nullable Identifier testPick;
+	/** Phase 10: the victory or defeat piece that is due or playing, if any. */
+	private static @Nullable Mood stinger;
+	private static boolean wasFighting;
+	private static boolean wasAlive = true;
 
 	private SaberMusic() {
 	}
@@ -118,13 +131,14 @@ public final class SaberMusic {
 				silence = 40;
 			}
 
+			watchStingers(client);
 			Mood wanted = detect(client);
 			if (wanted != mood) {
 				candidateTicks = wanted == candidate ? candidateTicks + 1 : 0;
 				candidate = wanted;
 
-				// Fights and bosses start at once, calm music waits until the mood has settled.
-				if (mood == null || wanted == Mood.COMBAT || wanted == Mood.EVENT || candidateTicks >= MOOD_SETTLE) {
+				// Fights, bosses, victory and defeat start at once, calm music waits until the mood has settled.
+				if (mood == null || wanted == Mood.COMBAT || wanted == Mood.EVENT || wanted.stinger() || candidateTicks >= MOOD_SETTLE) {
 					switchTo(wanted, crossfade);
 				}
 			} else {
@@ -133,8 +147,16 @@ public final class SaberMusic {
 
 			if (current != null && !current.isPlaying(client) && !current.fadingOut()) {
 				current = null;
-				// After a calm piece a pause of 30 to 90 seconds, like the vanilla music.
-				silence = mood != null && mood.loops() ? 20 : 600 + RANDOM.nextInt(1200);
+
+				if (mood != null && mood.stinger()) {
+					// The victory or defeat piece has been played: back to what is going on, at once.
+					stinger = null;
+					mood = null;
+					silence = 40;
+				} else {
+					// After a calm piece a pause of 30 to 90 seconds, like the vanilla music.
+					silence = mood != null && mood.loops() ? 20 : 600 + RANDOM.nextInt(1200);
+				}
 			}
 
 			if (current == null && mood != null && --silence <= 0) {
@@ -159,8 +181,8 @@ public final class SaberMusic {
 			current = null;
 		}
 
-		// Calm music comes back after a short breath; combat and events start right away.
-		silence = mood == Mood.COMBAT && !wanted.loops() ? CALM_DELAY : 1;
+		// Calm music comes back after a short breath; combat, events, victory and defeat start right away.
+		silence = mood == Mood.COMBAT && !wanted.loops() && !wanted.stinger() ? CALM_DELAY : 1;
 		mood = wanted;
 		candidate = null;
 	}
@@ -200,14 +222,38 @@ public final class SaberMusic {
 		}
 	}
 
+	/**
+	 * Notices a won fight (it ends with you alive) and your fall (Phase 10). The piece is due until
+	 * it has been played; a new fight takes over from a victory piece.
+	 */
+	private static void watchStingers(Minecraft client) {
+		boolean alive = client.player.isAlive();
+		boolean fighting = bossNow(client) || fightNow(client);
+
+		if (ImmersionConfig.get().musicStingers) {
+			if (wasAlive && !alive) {
+				stinger = Mood.DEFEAT;
+			} else if (wasFighting && !fighting && alive && stinger == null) {
+				stinger = Mood.VICTORY;
+			}
+		}
+
+		wasAlive = alive;
+		wasFighting = fighting && alive;
+	}
+
 	/** The mood for this moment. */
 	private static Mood detect(Minecraft client) {
 		observe(client);
 
-		if (bossNow(client)) {
+		if (stinger == Mood.DEFEAT) {
+			return Mood.DEFEAT;
+		} else if (bossNow(client)) {
 			return Mood.EVENT;
-		} else if (fightNow(client)) {
+		} else if (fightNow(client) && client.player.isAlive()) {
 			return Mood.COMBAT;
+		} else if (stinger == Mood.VICTORY) {
+			return Mood.VICTORY;
 		} else if (darkNow(client)) {
 			return Mood.NIGHT;
 		}
@@ -324,6 +370,9 @@ public final class SaberMusic {
 		held = false;
 		combatUntil = 0L;
 		bossNearby = false;
+		stinger = null;
+		wasFighting = false;
+		wasAlive = true;
 		StarWarsMusic.reset();
 	}
 }

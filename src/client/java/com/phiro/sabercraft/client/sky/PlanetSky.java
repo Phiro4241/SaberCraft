@@ -39,10 +39,14 @@ import com.phiro.sabercraft.client.render.ShaderCompat;
  * <p>Since Phase 9 the layer also holds a far landscape on the horizon (option "Horizon and sky
  * details"), and with an Iris shader pack a plain tint layer in the planet's sky color is drawn
  * under it (option "Planet tint with shaders"), because shader packs replace the vanilla sky color.
+ *
+ * <p>Since Phase 10 a newly chosen planet fades in over the old sky (colors, layer, sun and moon),
+ * and switching the planet off fades back to vanilla. Each planet also has its own sun and moon
+ * ({@link PlanetCelestials}), and the layer can be painted at an "ultra" size.
  */
 public final class PlanetSky {
-	/** Pixels per cube side for the quality settings low, medium, high (shared with the space sky). */
-	private static final int[] SIZES = {256, 512, 1024};
+	/** Pixels per cube side for the quality settings low, medium, high and ultra (Phase 10; shared with the space sky). */
+	private static final int[] SIZES = {256, 512, 1024, 1536};
 	/** Luminance of a clear vanilla day sky and day fog, to tell how much daylight there is. */
 	private static final float DAY_SKY = luminance(0x78A7FF);
 	private static final float DAY_FOG = luminance(0xC0D8FF);
@@ -60,6 +64,13 @@ public final class PlanetSky {
 	private static @Nullable String pendingKey;
 	private static @Nullable CompletableFuture<int[][]> pending;
 	private static int pendingSize;
+	/** The planet whose pictures are shown, and the one that fades out (Phase 10). */
+	private static @Nullable PlanetPreset shown;
+	private static @Nullable PlanetPreset previous;
+	private static @Nullable DynamicTexture previousDay;
+	private static @Nullable DynamicTexture previousNight;
+	private static @Nullable GpuBuffer previousCube;
+	private static long transitionStart = Long.MIN_VALUE / 2;
 
 	private PlanetSky() {
 	}
@@ -74,6 +85,73 @@ public final class PlanetSky {
 		return dimension == Level.OVERWORLD ? PlanetPreset.byId(ImmersionConfig.get().planet) : Optional.empty();
 	}
 
+	/** How far the fade from the previous to the shown planet is, 0..1 (Phase 10). */
+	private static float transition() {
+		float seconds = ImmersionConfig.get().planetTransitionSeconds;
+
+		if (seconds <= 0.0F) {
+			return 1.0F;
+		}
+
+		return Mth.clamp((Util.getMillis() - transitionStart) / (seconds * 1000.0F), 0.0F, 1.0F);
+	}
+
+	/** Whether the camera is in the Overworld, the only dimension that becomes a planet. */
+	private static boolean inOverworld() {
+		Minecraft client = Minecraft.getInstance();
+		return client.level != null && client.level.dimension() == Level.OVERWORLD;
+	}
+
+	/**
+	 * Follows the choice in the settings. A new planet starts to fade in once its pictures are
+	 * painted (see {@link #prepare}); switching it off starts the fade back to vanilla at once.
+	 */
+	private static void follow() {
+		if (!inOverworld()) {
+			return;
+		}
+
+		Optional<PlanetPreset> target = PlanetPreset.byId(ImmersionConfig.get().planet);
+
+		if (target.isEmpty() && shown != null) {
+			startTransition(null);
+		}
+	}
+
+	private static void startTransition(@Nullable PlanetPreset next) {
+		// The pictures of the planet that fades out are kept until the fade is over.
+		closePrevious();
+		previous = shown;
+		previousDay = day;
+		previousNight = night;
+		previousCube = cube;
+		day = null;
+		night = null;
+		cube = null;
+		shownKey = null;
+		shown = next;
+		transitionStart = Util.getMillis();
+	}
+
+	private static void closePrevious() {
+		if (previousDay != null) {
+			previousDay.close();
+		}
+
+		if (previousNight != null) {
+			previousNight.close();
+		}
+
+		if (previousCube != null) {
+			previousCube.close();
+		}
+
+		previousDay = null;
+		previousNight = null;
+		previousCube = null;
+		previous = null;
+	}
+
 	/** The night sky of the chosen planet for the space sky, if the dimension is the Overworld. */
 	public static Optional<SpaceSkyPreset> nightSky(ResourceKey<Level> dimension) {
 		return of(dimension).map(PlanetPreset::night);
@@ -81,29 +159,66 @@ public final class PlanetSky {
 
 	/** The sky color: the planet's day or night color, as bright as the vanilla sky is right now. */
 	public static int skyColor(int vanilla) {
-		return current().map(planet -> blend(vanilla, planet.skyDay(), planet.skyNight(), DAY_SKY, planet.strength())).orElse(vanilla);
+		return faded(vanilla, planet -> blend(vanilla, planet.skyDay(), planet.skyNight(), DAY_SKY, planet.strength()));
 	}
 
 	/** The fog color in the open air, changed in place. */
 	public static void fogColor(Vector4f color) {
-		current().ifPresent(planet -> {
-			int vanilla = ARGB.colorFromFloat(1.0F, color.x, color.y, color.z);
-			int changed = blend(vanilla, planet.fogDay(), planet.fogNight(), DAY_FOG, planet.strength());
+		int vanilla = ARGB.colorFromFloat(1.0F, color.x, color.y, color.z);
+		int changed = faded(vanilla, planet -> blend(vanilla, planet.fogDay(), planet.fogNight(), DAY_FOG, planet.strength()));
+
+		if (changed != vanilla) {
 			color.set(ARGB.redFloat(changed), ARGB.greenFloat(changed), ARGB.blueFloat(changed), color.w);
-		});
+		}
 	}
 
 	/** The glow of sunrise and sunset, in the planet's color; the alpha (strength) stays vanilla. */
 	public static int sunsetColor(int vanilla) {
-		return current().map(planet -> {
-			int rgb = mix(vanilla & 0xFFFFFF, planet.sunset(), planet.strength());
-			return vanilla & 0xFF000000 | rgb;
-		}).orElse(vanilla);
+		int rgb = faded(vanilla & 0xFFFFFF, planet -> mix(vanilla & 0xFFFFFF, planet.sunset(), planet.strength()));
+		return vanilla & 0xFF000000 | rgb & 0xFFFFFF;
+	}
+
+	/**
+	 * A color of the shown planet, faded from the previous planet (or vanilla) while a new one comes
+	 * in. Vanilla outside the Overworld and without a planet.
+	 */
+	private static int faded(int vanilla, java.util.function.ToIntFunction<PlanetPreset> color) {
+		if (!inOverworld()) {
+			return vanilla;
+		}
+
+		follow();
+		float f = transition();
+		int to = shown != null ? color.applyAsInt(shown) : vanilla;
+
+		if (f >= 1.0F) {
+			return to;
+		}
+
+		int from = previous != null ? color.applyAsInt(previous) : vanilla;
+		return 0xFF000000 & to | mix(from & 0xFFFFFF, to & 0xFFFFFF, f);
+	}
+
+	/** The planet that rules the sun and moon right now: the new one from half-way through a fade. */
+	private static @Nullable PlanetPreset leading() {
+		if (!inOverworld()) {
+			return null;
+		}
+
+		follow();
+		return transition() >= 0.5F ? shown : previous;
 	}
 
 	/** Angle in degrees from the sun to the second sun, 0 when there is only one. */
 	public static float secondSun() {
-		return current().map(PlanetPreset::secondSun).orElse(0.0F);
+		PlanetPreset planet = leading();
+		return planet != null ? planet.secondSun() : 0.0F;
+	}
+
+	/** The planet's own sun and moon, or null for the vanilla ones (Phase 10). */
+	public static @Nullable PlanetCelestials celestials() {
+		PlanetPreset planet = leading();
+		return planet != null && ImmersionConfig.get().planetCelestials ? PlanetCelestials.of(planet) : null;
 	}
 
 	/**
@@ -111,15 +226,40 @@ public final class PlanetSky {
 	 * fade into each other with the height of the sun; rain thins them out.
 	 */
 	public static void render(RenderTarget target, Matrix4f pose, float sunAngle, float rainBrightness) {
-		Optional<PlanetPreset> planet = current();
-
-		if (planet.isEmpty()) {
+		if (!inOverworld()) {
 			return;
 		}
 
-		prepare(planet.get(), ImmersionConfig.get().spaceSkyQuality, ImmersionConfig.get().planetHorizon);
+		Optional<PlanetPreset> planet = current();
+		follow();
 
-		if (day == null || night == null) {
+		if (planet.isPresent()) {
+			prepare(planet.get(), ImmersionConfig.get().spaceSkyQuality, ImmersionConfig.get().planetHorizon);
+		}
+
+		// The sun angle is 0 at noon and half a turn at midnight.
+		float daylight = Mth.clamp(Mth.cos(sunAngle) * 2.2F + 0.5F, 0.0F, 1.0F);
+		float weather = 0.45F + 0.55F * rainBrightness;
+		float f = transition();
+
+		if (f >= 1.0F && previous != null) {
+			closePrevious();
+		}
+
+		if (previousDay != null && previousNight != null && previousCube != null) {
+			// The planet that fades out.
+			float fade = (1.0F - f) * weather;
+
+			if (daylight < 0.99F) {
+				SpaceSky.drawCube(target, pose, previousCube, previousNight, (1.0F - daylight) * fade, "SaberCraft planet sky (night, fading out)");
+			}
+
+			if (daylight > 0.01F) {
+				SpaceSky.drawCube(target, pose, previousCube, previousDay, daylight * fade, "SaberCraft planet sky (day, fading out)");
+			}
+		}
+
+		if (shown == null || day == null || night == null) {
 			return;
 		}
 
@@ -127,9 +267,7 @@ public final class PlanetSky {
 			cube = SpaceSky.createCube(cubeSize, "SaberCraft planet sky cube");
 		}
 
-		// The sun angle is 0 at noon and half a turn at midnight.
-		float daylight = Mth.clamp(Mth.cos(sunAngle) * 2.2F + 0.5F, 0.0F, 1.0F);
-		float weather = 0.45F + 0.55F * rainBrightness;
+		weather *= f;
 
 		if (tinting() && tintDay != null && tintNight != null) {
 			if (tintCube == null) {
@@ -168,6 +306,13 @@ public final class PlanetSky {
 			pending = null;
 
 			if (pixels != null) {
+				PlanetPreset painted = PlanetPreset.byId(pendingKey.substring(0, pendingKey.indexOf('@'))).orElse(planet);
+
+				if (painted != shown) {
+					// A new planet: the old pictures fade out under the new ones.
+					startTransition(painted);
+				}
+
 				upload(pixels, pendingSize);
 				shownKey = pendingKey;
 			}
@@ -200,6 +345,9 @@ public final class PlanetSky {
 			night.close();
 		}
 
+		day = null;
+		night = null;
+
 		if (tintDay != null) {
 			tintDay.close();
 		}
@@ -226,11 +374,16 @@ public final class PlanetSky {
 		return ImmersionConfig.get().planetShaderTint && ShaderCompat.shaderPackInUse();
 	}
 
-	/** Whether the pictures of the chosen planet are painted and uploaded, for tests. */
+	/** Whether the pictures of the chosen planet are painted, uploaded and faded in, for tests. */
 	public static boolean ready() {
 		ImmersionConfig config = ImmersionConfig.get();
 		int size = SIZES[Math.clamp(config.spaceSkyQuality, 0, SIZES.length - 1)];
-		return current().map(planet -> key(planet, size, config.planetHorizon).equals(shownKey) && pending == null).orElse(false);
+		return current().map(planet -> key(planet, size, config.planetHorizon).equals(shownKey) && pending == null && settled()).orElse(false);
+	}
+
+	/** Whether no fade between planets is running, for tests. */
+	public static boolean settled() {
+		return transition() >= 1.0F;
 	}
 
 	private static String key(PlanetPreset planet, int size, boolean details) {

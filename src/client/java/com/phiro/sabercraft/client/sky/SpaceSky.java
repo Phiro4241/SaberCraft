@@ -50,7 +50,7 @@ import com.phiro.sabercraft.client.render.ShaderCompat;
  */
 public final class SpaceSky {
 	/** Pixels per cube side for the quality settings low, medium, high. */
-	private static final int[] SIZES = {256, 512, 1024};
+	private static final int[] SIZES = {256, 512, 1024, 1536};
 	private static final float DISTANCE = 100.0F;
 
 	private static @Nullable GpuBuffer cube;

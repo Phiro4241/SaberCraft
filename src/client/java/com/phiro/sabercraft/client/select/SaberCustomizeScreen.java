@@ -2,16 +2,19 @@ package com.phiro.sabercraft.client.select;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 
+import com.phiro.sabercraft.ability.HiltTraits;
 import com.phiro.sabercraft.client.blade.BladeStyle;
 import com.phiro.sabercraft.client.blade.BladeStyles;
 import com.phiro.sabercraft.client.menu.SaberMenuScreen;
@@ -78,7 +81,8 @@ public class SaberCustomizeScreen extends SaberMenuScreen {
 		for (SaberHilt option : SaberHilts.all().values()) {
 			int x = this.left + 10 + index % HILTS_PER_ROW * (HILT_ICON + 3);
 			Button button = new IconButton(x, this.top + 32 + index / HILTS_PER_ROW * (HILT_ICON + 2), option.displayName(), b -> this.selectHilt(option));
-			button.setTooltip(Tooltip.create(option.displayName().copy().append("\n").append(option.description())));
+			button.setTooltip(Tooltip.create(option.displayName().copy().append("\n").append(option.description())
+					.append("\n").append(traitsLine(option.id()))));
 			this.hiltButtons.add(new HiltButton(option, this.addRenderableWidget(button)));
 			index++;
 		}
@@ -220,9 +224,52 @@ public class SaberCustomizeScreen extends SaberMenuScreen {
 		// A problem (no server support, no saber) replaces the description, so nothing overlaps.
 		boolean problem = !this.status.getString().isEmpty();
 		graphics.textWithWordWrap(
-				this.font, problem ? this.status : chosen.description(), this.left + 10, textTop + 12, colorLeft - this.left - 20,
+				this.font, problem ? this.status : chosen.description().copy().append(" ").append(traitsLine(chosen.id())), this.left + 10, textTop + 12,
+				colorLeft - this.left - 20,
 				problem ? 0xFFFF6060 : 0xFFB0B0B8
 		);
+	}
+
+	/** The fighting edge of a hilt in one line, for example "Damage +8 % · Parry +1" (Phase 10). */
+	public static Component traitsLine(Identifier hilt) {
+		HiltTraits traits = HiltTraits.of(hilt);
+		List<Component> parts = new ArrayList<>();
+
+		if (traits.damage() != 1.0F) {
+			parts.add(Component.translatable("sabercraft.hilt_traits.damage", percent(traits.damage() - 1.0F)));
+		}
+
+		if (traits.blockBonus() != 0.0F) {
+			parts.add(Component.translatable("sabercraft.hilt_traits.block", percent(traits.blockBonus())));
+		}
+
+		if (traits.parryBonus() != 0) {
+			parts.add(Component.translatable("sabercraft.hilt_traits.parry", String.format(Locale.ROOT, "%+d", traits.parryBonus())));
+		}
+
+		if (traits.knockback() != 0.0F) {
+			parts.add(Component.translatable("sabercraft.hilt_traits.knockback", String.format(Locale.ROOT, "%+.2f", traits.knockback())));
+		}
+
+		if (traits.dodgeCooldown() != 1.0F) {
+			parts.add(Component.translatable("sabercraft.hilt_traits.dodge", percent(traits.dodgeCooldown() - 1.0F)));
+		}
+
+		if (parts.isEmpty()) {
+			return Component.translatable("sabercraft.hilt_traits.none");
+		}
+
+		MutableComponent line = Component.empty();
+
+		for (int i = 0; i < parts.size(); i++) {
+			line.append(i == 0 ? Component.empty() : Component.literal(" · ")).append(parts.get(i));
+		}
+
+		return line;
+	}
+
+	private static String percent(float share) {
+		return String.format(Locale.ROOT, "%+d %%", Math.round(share * 100.0F));
 	}
 
 	/**

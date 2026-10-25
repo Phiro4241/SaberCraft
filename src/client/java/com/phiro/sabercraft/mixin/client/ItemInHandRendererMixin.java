@@ -19,6 +19,8 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
 
+import com.phiro.sabercraft.blaster.BlasterType;
+import com.phiro.sabercraft.client.blaster.BlasterClient;
 import com.phiro.sabercraft.client.combat.FirstPersonPose;
 import com.phiro.sabercraft.client.combat.SaberCombat;
 import com.phiro.sabercraft.client.saber.SaberProfiles;
@@ -83,5 +85,29 @@ public abstract class ItemInHandRendererMixin {
 	private float sabercraft$keepSaberRaised(LocalPlayer player, float a) {
 		float scale = player.getItemSwapScale(a);
 		return SaberCombat.firstPerson(player, InteractionHand.MAIN_HAND, 1.0F) != null && SaberProfiles.isSaber(player.getMainHandItem()) ? 1.0F : scale;
+	}
+
+	/** Phase 10: a short kick back and up of the blaster after each shot. Balanced by the pop below. */
+	@Inject(method = "submitArmWithItem", at = @At("HEAD"))
+	private void sabercraft$blasterRecoilPush(
+			AbstractClientPlayer player, float frameInterp, float xRot, InteractionHand hand, float attack, ItemStack itemStack,
+			float inverseArmHeight, PoseStack poseStack, SubmitNodeCollector submitNodeCollector, int lightCoords, CallbackInfo ci
+	) {
+		if (BlasterType.of(itemStack) != null) {
+			float kick = BlasterClient.recoil(hand);
+			poseStack.pushPose();
+			poseStack.translate(0.0F, 0.02F * kick, 0.09F * kick);
+			poseStack.mulPose(com.mojang.math.Axis.XP.rotationDegrees(7.0F * kick));
+		}
+	}
+
+	@Inject(method = "submitArmWithItem", at = @At("RETURN"))
+	private void sabercraft$blasterRecoilPop(
+			AbstractClientPlayer player, float frameInterp, float xRot, InteractionHand hand, float attack, ItemStack itemStack,
+			float inverseArmHeight, PoseStack poseStack, SubmitNodeCollector submitNodeCollector, int lightCoords, CallbackInfo ci
+	) {
+		if (BlasterType.of(itemStack) != null) {
+			poseStack.popPose();
+		}
 	}
 }

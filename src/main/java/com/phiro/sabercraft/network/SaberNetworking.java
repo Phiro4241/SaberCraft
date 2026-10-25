@@ -30,6 +30,7 @@ public final class SaberNetworking {
 		PayloadTypeRegistry.clientboundPlay().register(StaminaPayload.TYPE, StaminaPayload.CODEC);
 		PayloadTypeRegistry.serverboundPlay().register(ChooseOutfitPayload.TYPE, ChooseOutfitPayload.CODEC);
 		PayloadTypeRegistry.clientboundPlay().register(OutfitSyncPayload.TYPE, OutfitSyncPayload.CODEC);
+		PayloadTypeRegistry.clientboundPlay().register(BlasterHeatPayload.TYPE, BlasterHeatPayload.CODEC);
 	}
 
 	/**

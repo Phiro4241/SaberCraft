@@ -14,7 +14,7 @@ Needs numpy and Pillow. Writes into src/client/resources/assets/:
 
     sabercraft/models/item/hilt/<name>.json
     sabercraft/textures/item/hilt/<name>.png
-    minecraft/items/netherite_sword.json
+    minecraft/items/<material>_sword.json (all vanilla swords since Phase 10)
 
 The hilt and the blade color of each sword come from its minecraft:custom_model_data component:
 strings[0] is the hilt id, strings[1] the color id (see SaberVariant.java).
@@ -44,6 +44,9 @@ S = math.sqrt(0.5)
 # Where the blade starts on all one-handed hilts. Same place as the flat standard hilt, so held
 # swords keep their old proportions.
 EMITTER_D = 1.8
+
+# Phase 10: every vanilla sword can become a saber (see SaberVariant.SWORDS).
+SWORDS = ["wooden_sword", "stone_sword", "copper_sword", "iron_sword", "golden_sword", "diamond_sword", "netherite_sword"]
 
 DIAGONAL = {"origin": [8, 8, 8], "axis": "z", "angle": -45}
 
@@ -515,6 +518,33 @@ def rey():
     return h
 
 
+def ezra():
+    """Ezra Bridger's first hilt (Star Wars Rebels, seasons 1 and 2): grey metal with orange bands,
+    the folding grip of the built-in stun blaster lying along one side, and a short barrel next to
+    the emitter. Own pixel art after the look of the series."""
+    h = Hilt("ezra", 101)
+    h.material("grey", metal((150, 154, 160), 0.1))
+    h.material("dark", metal((62, 64, 70), 0.08))
+    h.material("orange", metal((214, 112, 40), 0.06))
+    h.material("brown", wrapped((96, 60, 36), (64, 40, 24), period=4))
+    h.material("emitter", emitter_top((150, 154, 160)))
+
+    h.box(-11.2, -10.4, 1.15, "dark")
+    h.box(-10.4, -9.8, 1.08, "orange")
+    h.box(-9.8, -5.0, 1.0, "grey")
+    h.box(-8.8, -6.0, 1.06, "dark", hz=0.6, oz=-0.5)
+    h.box(-5.0, -4.4, 1.12, "orange")
+    h.box(-4.4, -0.6, 1.04, "grey")
+    # The folded blaster grip along the side, with its trigger.
+    h.box(-9.4, -2.2, 0.45, "brown", hz=0.4, oz=1.3)
+    h.box(-3.0, -2.5, 0.2, "orange", hz=0.22, oz=1.75)
+    h.box(-0.6, 0.0, 1.12, "dark")
+    h.box(0.0, EMITTER_D, 1.3, "grey", cap="emitter")
+    # The short blaster barrel beside the emitter.
+    h.box(-1.8, EMITTER_D - 0.2, 0.3, "dark", hz=0.3, oz=-1.5)
+    return h
+
+
 def side_emitter(side):
     """Model point of a side vent of the crossguard hilt (axis point CROSS_D, CROSS_X across)."""
     x = side * CROSS_X
@@ -560,7 +590,10 @@ HILTS = [
     ("guardian", guardian, "blue", [(EMITTER_D, 0)]),
     ("dark_lord", dark_lord, "red", [(EMITTER_D, 0)]),
     ("sentinel", sentinel, "green", [(EMITTER_D, 0)]),
-    ("double", double, "red", [(STAFF_CENTER + STAFF_HALF, 0), (STAFF_CENTER - STAFF_HALF, 180)]),
+    # Phase 10: the two blades ignite one after the other ("ignite_from"/"ignite_to" are the part
+    # of the ignition each blade takes); retracting runs the other way round.
+    ("double", double, "red", [(STAFF_CENTER + STAFF_HALF, 0, {"ignite_to": 0.6}),
+                              (STAFF_CENTER - STAFF_HALF, 180, {"ignite_from": 0.4})]),
     ("kenobi", kenobi, "blue", [(EMITTER_D, 0)]),
     ("skywalker", skywalker, "green", [(EMITTER_D, 0)]),
     # Phase 9. A blade entry may carry extra fields for the blade renderer: length, unstable,
@@ -570,9 +603,11 @@ HILTS = [
     ("dooku", dooku, "red", [(EMITTER_D, 0)]),
     ("tano", tano, "white", [(EMITTER_D, 0)]),
     ("crossguard", crossguard, "red", [(EMITTER_D, 0, {"unstable": True}),
-                                      (None, 90, {"emitter": side_emitter(1), "length": 0.24, "unstable": True}),
-                                      (None, -90, {"emitter": side_emitter(-1), "length": 0.24, "unstable": True})]),
+                                      (None, 90, {"emitter": side_emitter(1), "length": 0.24, "unstable": True, "ignite_from": 0.25}),
+                                      (None, -90, {"emitter": side_emitter(-1), "length": 0.24, "unstable": True, "ignite_from": 0.25})]),
     ("rey", rey, "yellow", [(EMITTER_D, 0)]),
+    # Phase 10.
+    ("ezra", ezra, "blue", [(EMITTER_D, 0)]),
 ]
 
 # Inventory icon size. The 3D hilts are slimmer than a sword sprite, so the one-handed hilts are
@@ -628,17 +663,29 @@ def main():
         write_json(os.path.join(MODELS, name + ".json"), hilt.model(display))
         cases.append({"when": "sabercraft:" + name, "model": held_model("sabercraft:item/hilt/" + name, color, blades)})
 
-    item = {
-        "model": {
-            "type": "minecraft:select",
-            "property": "minecraft:custom_model_data",
-            "index": 0,
-            "cases": cases,
+    standard = held_model("sabercraft:item/saber_hilt", "red", [(EMITTER_D, 0)])
+    for sword in SWORDS:
+        vanilla = {"type": "minecraft:model", "model": "minecraft:item/" + sword}
+        if sword == "netherite_sword":
             # No hilt chosen, or "sabercraft:standard": the flat hilt with the red blade of Phase 3.
-            "fallback": held_model("sabercraft:item/saber_hilt", "red", [(EMITTER_D, 0)]),
+            # Phase 10: "sabercraft:plain" is a netherite sword turned back into a plain one.
+            sword_cases = cases + [{"when": "sabercraft:plain", "model": vanilla}]
+            fallback = standard
+        else:
+            # Phase 10: the other swords are only sabers after /sabercraft convert, which always
+            # stores a hilt; without one they keep their vanilla look.
+            sword_cases = cases + [{"when": "sabercraft:standard", "model": standard}]
+            fallback = vanilla
+        item = {
+            "model": {
+                "type": "minecraft:select",
+                "property": "minecraft:custom_model_data",
+                "index": 0,
+                "cases": sword_cases,
+                "fallback": fallback,
+            }
         }
-    }
-    write_json(os.path.join(ITEMS, "netherite_sword.json"), item)
+        write_json(os.path.join(ITEMS, sword + ".json"), item)
 
 
 def write_json(path, data):

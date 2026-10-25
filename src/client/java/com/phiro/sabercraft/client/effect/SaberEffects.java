@@ -1,5 +1,7 @@
 package com.phiro.sabercraft.client.effect;
 
+import org.jspecify.annotations.Nullable;
+
 import net.minecraft.client.CameraType;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
@@ -114,17 +116,97 @@ public final class SaberEffects {
 		playAt(at, SaberSounds.HIT, 0.7F, attacker.getRandom());
 	}
 
-	/** The stance of {@code entity} blocked or parried a hit: sparks where the blades meet. */
-	public static void onBlock(LivingEntity entity, boolean parry) {
+	/**
+	 * Where the last block or parry met, and whether it was blade on blade. For the tests and for
+	 * debugging; {@code null} before the first one.
+	 */
+	public record Clash(Vec3 at, boolean blades) {
+	}
+
+	private static @Nullable Clash lastClash;
+
+	/**
+	 * The stance of {@code entity} blocked or parried a hit. Phase 10: the sparks fly where the
+	 * blades meet, between the blocker and the attacker, and the blade flashes up. When the
+	 * attacker struck with a lit saber too, it is a real clash: both blades flash and the sparks
+	 * come in both colors.
+	 *
+	 * @param attacker who struck, or {@code null} if unknown (a deflected projectile)
+	 */
+	public static void onBlock(LivingEntity entity, boolean parry, @Nullable Entity attacker) {
 		ClientLevel level = Minecraft.getInstance().level;
 
-		if (level == null || amount() == 0 || isOwnFirstPerson(entity)) {
+		if (level == null) {
 			return;
 		}
 
-		Vec3 forward = forward(entity);
-		Vec3 at = entity.position().add(forward.scale(0.7)).add(0.0, entity.getBbHeight() * 0.7, 0.0);
-		sparks(level, at, forward, style(entity.getMainHandItem()), (parry ? 14 : 7) * amount(), parry ? 0.6 : 0.4, true);
+		LivingEntity rival = attacker instanceof LivingEntity living && living != entity && hasLitSaber(living) ? living : null;
+		flash(entity);
+
+		if (rival != null) {
+			flash(rival);
+		}
+
+		Vec3 at = contactPoint(entity, attacker);
+		lastClash = new Clash(at, rival != null);
+
+		if (amount() == 0 || isOwnFirstPerson(entity) && rival == null) {
+			return;
+		}
+
+		Vec3 toward = attacker != null && attacker != entity ? flat(attacker.position().subtract(entity.position()), forward(entity)) : forward(entity);
+		// The sparks burst out sideways from the point where the blades cross.
+		Vec3 side = new Vec3(-toward.z, 0.0, toward.x);
+		int count = (parry ? 14 : 7) * amount();
+		sparks(level, at, side, style(entity.getMainHandItem()), count / 2, parry ? 0.6 : 0.4, true);
+		sparks(level, at, side.reverse(), rival != null ? style(rival.getMainHandItem()) : style(entity.getMainHandItem()), count / 2, parry ? 0.6 : 0.4, true);
+
+		if (rival != null) {
+			// Blade on blade: a short, hot burst straight up out of the cross.
+			sparks(level, at, new Vec3(0.0, 1.0, 0.0), style(rival.getMainHandItem()), 4 * amount(), 0.5, true);
+			smoke(level, at, amount());
+		}
+	}
+
+	/**
+	 * The point where a blocked blow meets the blade: half way between the blocker and the
+	 * attacker (at most an arm and a blade's length in front of the blocker), at the height where
+	 * the blows meet. Without an attacker, in front of the blocker at chest height.
+	 */
+	public static Vec3 contactPoint(LivingEntity blocker, @Nullable Entity attacker) {
+		Vec3 forward = forward(blocker);
+		double height = blocker.getBbHeight();
+
+		if (attacker == null || attacker == blocker) {
+			return blocker.position().add(forward.scale(0.7)).add(0.0, height * 0.7, 0.0);
+		}
+
+		Vec3 offset = attacker.position().subtract(blocker.position());
+		double distance = Math.sqrt(offset.x * offset.x + offset.z * offset.z);
+		Vec3 toward = flat(offset, forward);
+		double reach = Mth.clamp(distance * 0.5, 0.45, 0.9);
+		double meet = (blocker.getEyeY() + attacker.getEyeY()) * 0.5 - 0.45;
+		double y = Mth.clamp(meet, blocker.getY() + height * 0.35, blocker.getY() + height * 0.95);
+		return new Vec3(blocker.getX() + toward.x * reach, y, blocker.getZ() + toward.z * reach);
+	}
+
+	/** The last block or parry seen, see {@link Clash}. */
+	public static @Nullable Clash lastClash() {
+		return lastClash;
+	}
+
+	private static Vec3 flat(Vec3 offset, Vec3 fallback) {
+		Vec3 flat = new Vec3(offset.x, 0.0, offset.z);
+		return flat.lengthSqr() < 1.0E-4 ? fallback : flat.normalize();
+	}
+
+	/** The blade in the main hand flashes up for a moment. */
+	private static void flash(LivingEntity entity) {
+		SaberHandState state = SaberTracker.INSTANCE.state(entity, InteractionHand.MAIN_HAND);
+
+		if (state != null) {
+			state.clash();
+		}
 	}
 
 	/** A parried attacker staggers: little stars over its head for the moment it is off balance. */

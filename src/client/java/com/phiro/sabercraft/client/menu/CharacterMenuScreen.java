@@ -21,6 +21,7 @@ import net.minecraft.world.InteractionHand;
 import com.phiro.sabercraft.character.Outfit;
 import com.phiro.sabercraft.client.blade.BladeStyles;
 import com.phiro.sabercraft.client.character.CharacterConfig;
+import com.phiro.sabercraft.client.character.CustomProfiles;
 import com.phiro.sabercraft.client.character.OutfitClient;
 import com.phiro.sabercraft.client.saber.SaberHilts;
 import com.phiro.sabercraft.client.select.SaberSelection;
@@ -65,6 +66,7 @@ public class CharacterMenuScreen extends SaberMenuScreen {
 	protected void initPanel() {
 		this.choices.clear();
 		OutfitClient.reloadCharacterSkins();
+		CustomProfiles.reload();
 		int half = GRID_WIDTH / 2 - 1;
 		Button charactersTab = this.addRenderableWidget(Button.builder(Component.translatable("sabercraft.menu.character.characters"), b -> this.showList(true))
 				.bounds(this.left + 10, this.top + 20, half, 20)
@@ -87,6 +89,8 @@ public class CharacterMenuScreen extends SaberMenuScreen {
 
 		if (!showCharacters) {
 			this.addFileChoice(this.cardX(slot), this.cardY(slot));
+			slot++;
+			this.addProfileChoice(this.cardX(slot), this.cardY(slot));
 		}
 
 		int right = this.rightX();
@@ -166,6 +170,43 @@ public class CharacterMenuScreen extends SaberMenuScreen {
 		}
 	}
 
+	/**
+	 * Character profiles of your own (Phase 10, {@code config/sabercraft/profiles/*.json}): one
+	 * button that steps through them. Choosing one also brings its saber along, like a character.
+	 */
+	private void addProfileChoice(int x, int y) {
+		List<CustomProfiles.Profile> profiles = CustomProfiles.all();
+
+		if (profiles.isEmpty()) {
+			Button none = this.addRenderableWidget(Button.builder(Component.translatable("sabercraft.profile.none"), b -> {})
+					.bounds(x, y, CARD_WIDTH, CARD_HEIGHT)
+					.tooltip(Tooltip.create(Component.translatable("sabercraft.profile.description")))
+					.build());
+			none.active = false;
+			return;
+		}
+
+		String current = CharacterConfig.get().outfit;
+		CustomProfiles.Profile start = OutfitClient.profile(current).orElse(profiles.getFirst());
+		CycleButton<CustomProfiles.Profile> button = this.addRenderableWidget(
+				CycleButton.builder((CustomProfiles.Profile profile) -> Component.literal(profile.name()), start)
+						.withValues(profiles)
+						.withTooltip(v -> Tooltip.create(Component.translatable("sabercraft.profile.description")))
+						.displayOnlyValue()
+						.create(x, y, CARD_WIDTH, CARD_HEIGHT, Component.translatable("sabercraft.profile"), (b, profile) -> this.chooseProfile(profile)));
+		this.choices.add(new Choice(OutfitClient.PROFILE_PREFIX, button));
+	}
+
+	/** Chooses a profile of your own, for the button and for tests. */
+	public void chooseProfile(CustomProfiles.Profile profile) {
+		OutfitClient.choose(OutfitClient.PROFILE_PREFIX + profile.key());
+		this.status = Component.empty();
+
+		if (profile.saber() != null && this.minecraft.player != null && SaberSelection.saberHand(this.minecraft.player) != null) {
+			this.takeSaber();
+		}
+	}
+
 	private void addCard(@Nullable Outfit outfit, String value, Component name, Component description, int slot) {
 		Button button = this.addRenderableWidget(new Card(this.cardX(slot), this.cardY(slot), name, outfit, b -> {
 			OutfitClient.choose(value);
@@ -185,16 +226,22 @@ public class CharacterMenuScreen extends SaberMenuScreen {
 		return OutfitClient.builtIn(CharacterConfig.get().outfit);
 	}
 
+	/** The saber of the chosen character, outfit or profile of your own. */
+	private Optional<SaberVariant> chosenSaber() {
+		String current = CharacterConfig.get().outfit;
+		return this.chosen().map(Outfit::suggested).or(() -> OutfitClient.profile(current).map(CustomProfiles.Profile::saber));
+	}
+
 	private void takeSaber() {
-		Optional<Outfit> outfit = this.chosen();
+		Optional<SaberVariant> saber = this.chosenSaber();
 		InteractionHand hand = this.minecraft.player == null ? null : SaberSelection.saberHand(this.minecraft.player);
 
-		if (outfit.isEmpty() || hand == null) {
+		if (saber.isEmpty() || hand == null) {
 			this.status = Component.translatable("sabercraft.customize.no_saber");
 			return;
 		}
 
-		this.status = switch (SaberSelection.apply(this.minecraft, hand, outfit.get().suggested())) {
+		this.status = switch (SaberSelection.apply(this.minecraft, hand, saber.get())) {
 			case SENT, CREATIVE -> Component.translatable("sabercraft.menu.character.saber_taken");
 			case UNSUPPORTED -> Component.translatable("sabercraft.customize.unsupported");
 			case NO_SABER -> Component.translatable("sabercraft.customize.no_saber");
@@ -204,7 +251,7 @@ public class CharacterMenuScreen extends SaberMenuScreen {
 	@Override
 	public void tick() {
 		Optional<Outfit> outfit = this.chosen();
-		this.suggestButton.active = outfit.isPresent() && this.minecraft.player != null && SaberSelection.saberHand(this.minecraft.player) != null;
+		this.suggestButton.active = this.chosenSaber().isPresent() && this.minecraft.player != null && SaberSelection.saberHand(this.minecraft.player) != null;
 
 		if (this.sizeButton != null) {
 			this.sizeButton.visible = outfit.isPresent() && outfit.get().scale() != 1.0F;
@@ -216,7 +263,8 @@ public class CharacterMenuScreen extends SaberMenuScreen {
 		String current = CharacterConfig.get().outfit;
 
 		for (Choice choice : this.choices) {
-			boolean selected = choice.value().equals(OutfitClient.FILE_PREFIX) ? current.startsWith(OutfitClient.FILE_PREFIX) : choice.value().equals(current);
+			boolean selected = choice.value().equals(OutfitClient.FILE_PREFIX) || choice.value().equals(OutfitClient.PROFILE_PREFIX)
+					? current.startsWith(choice.value()) : choice.value().equals(current);
 
 			if (selected) {
 				AbstractWidget button = choice.button();
@@ -238,7 +286,9 @@ public class CharacterMenuScreen extends SaberMenuScreen {
 
 		// The profile of the chosen character or outfit.
 		Optional<Outfit> outfit = this.chosen();
+		Optional<CustomProfiles.Profile> profile = OutfitClient.profile(current);
 		Component name = outfit.<Component>map(o -> Component.translatable(o.translationKey()))
+				.or(() -> profile.map(p -> Component.literal(p.name())))
 				.orElse(current.startsWith(OutfitClient.FILE_PREFIX) ? Component.literal(current.substring(OutfitClient.FILE_PREFIX.length()))
 						: Component.translatable("sabercraft.outfit.none"));
 		graphics.centeredText(this.font, name, right + rightWidth / 2, previewBottom + 4, 0xFFFFFFFF);
@@ -267,6 +317,27 @@ public class CharacterMenuScreen extends SaberMenuScreen {
 			if (chosen.character() && OutfitClient.hasOwnSkin(chosen)) {
 				graphics.textWithWordWrap(this.font, Component.translatable("sabercraft.menu.character.own_skin", chosen.id().getPath() + ".png"),
 						this.left + 10, this.top + 189, this.rightX() - this.left - 16, 0xFF80D080);
+			}
+		} else if (profile.isPresent()) {
+			// A profile of your own (Phase 10): its side and saber, like a character.
+			CustomProfiles.Profile chosen = profile.get();
+
+			if (chosen.side() != Outfit.Side.NONE) {
+				graphics.text(this.font, Component.translatable(chosen.side().translationKey()), right, y, sideColor(chosen.side()));
+				y += 11;
+			}
+
+			if (chosen.saber() != null) {
+				SaberVariant saber = chosen.saber();
+				graphics.text(this.font, Component.translatable("sabercraft.menu.character.hilt", SaberHilts.get(saber.hilt()).displayName()), right, y, 0xFFB0B0B8);
+				y += 11;
+				graphics.fill(right, y + 1, right + 7, y + 8, 0xFF000000 | BladeStyles.get(saber.color()).glowColor());
+				graphics.text(this.font, Component.translatable("sabercraft.color." + saber.color().getPath()), right + 10, y, 0xFFB0B0B8);
+				y += 11;
+				graphics.text(this.font, Component.translatable("sabercraft.menu.character.style",
+						Component.translatable("sabercraft.style." + saber.style().getPath())), right, y, 0xFFB0B0B8);
+			} else {
+				graphics.textWithWordWrap(this.font, Component.translatable("sabercraft.profile.no_saber"), right, y, rightWidth, 0xFFB0B0B8);
 			}
 		} else {
 			graphics.textWithWordWrap(this.font, Component.translatable(current.startsWith(OutfitClient.FILE_PREFIX)

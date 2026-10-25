@@ -161,13 +161,40 @@ public final class SaberAbilities {
 				return;
 			}
 
-			float knockback = StyleTraits.of(SaberVariant.styleOf(player.getMainHandItem())).hitKnockback();
+			float knockback = StyleTraits.of(SaberVariant.styleOf(player.getMainHandItem())).hitKnockback()
+					+ HiltTraits.of(player.getMainHandItem()).knockback();
 
 			if (knockback > 0.0F) {
 				entity.knockback(knockback, player.getX() - entity.getX(), player.getZ() - entity.getZ(), source, 0.0F);
 				entity.hurtMarked = true;
 			}
 		});
+	}
+
+	/**
+	 * The attacker of a blocked hit for the event data, so clients can put the clash sparks where
+	 * the blades meet (Phase 10): its entity id plus one, 0 without an attacker.
+	 */
+	private static int attackerData(DamageSource source) {
+		Entity attacker = source.getDirectEntity();
+		return attacker != null ? attacker.getId() + 1 : 0;
+	}
+
+	/** Extra ticks of the parry window from the fighting style and the hilt of a saber. */
+	public static int parryBonus(ItemStack saber) {
+		return StyleTraits.of(SaberVariant.styleOf(saber)).parryBonus() + HiltTraits.of(saber).parryBonus();
+	}
+
+	/**
+	 * The damage of a melee hit with a saber, changed by its hilt (Phase 10). Called for every hit
+	 * on a living entity; anything but a player's melee hit with a saber is left as it is.
+	 */
+	public static float hiltDamage(DamageSource source, float damage) {
+		if (!source.is(DamageTypes.PLAYER_ATTACK) || !(source.getDirectEntity() instanceof ServerPlayer player)) {
+			return damage;
+		}
+
+		return damage * HiltTraits.of(player.getMainHandItem()).damage();
 	}
 
 	/** The stamina of a player, the maximum if they never used any. */
@@ -301,7 +328,8 @@ public final class SaberAbilities {
 				data = direction.ordinal();
 				state.maneuver = SaberManeuver.of(style, direction);
 				state.dashStart = now;
-				startCooldown(player, state, ability, now, Math.round(config.dashCooldown * StyleTraits.of(style).dodgeCooldown()));
+				startCooldown(player, state, ability, now,
+						Math.round(config.dashCooldown * StyleTraits.of(style).dodgeCooldown() * HiltTraits.of(player.getMainHandItem()).dodgeCooldown()));
 			}
 			case GRIP -> {
 				state.gripTarget = target;
@@ -591,8 +619,8 @@ public final class SaberAbilities {
 			return null;
 		}
 
-		StyleTraits traits = StyleTraits.of(SaberVariant.styleOf(player.getMainHandItem()));
-		boolean precise = guarding && state.parryWindow && now - state.guardStart <= config.guardParryTicks + traits.parryBonus() + 2
+		int parryBonus = parryBonus(player.getMainHandItem());
+		boolean precise = guarding && state.parryWindow && now - state.guardStart <= config.guardParryTicks + parryBonus + 2
 				|| swinging && player.swingTime <= 2;
 		float cost = precise ? config.parryCost : config.deflectCost;
 
@@ -737,8 +765,8 @@ public final class SaberAbilities {
 		AbilityConfig config = AbilityConfig.get();
 		long now = level.getGameTime();
 		StyleTraits traits = StyleTraits.of(SaberVariant.styleOf(player.getMainHandItem()));
-		boolean parry = state.guarding() && state.parryWindow && now - state.guardStart <= config.guardParryTicks + traits.parryBonus();
-		float share = traits.blockShare(config.guardBlockShare);
+		boolean parry = state.guarding() && state.parryWindow && now - state.guardStart <= config.guardParryTicks + parryBonus(player.getMainHandItem());
+		float share = traits.blockShare(config.guardBlockShare + HiltTraits.of(player.getMainHandItem()).blockBonus());
 
 		if (state.guarding()) {
 			// Every block costs stamina, a parry only a little. Without enough the stance breaks.
@@ -749,7 +777,7 @@ public final class SaberAbilities {
 				state.staminaUsedAt = now;
 				stopGuard(player, state, now, config.guardBreakCooldown);
 				player.addEffect(new MobEffectInstance(MobEffects.SLOWNESS, 30, 1, false, false, true));
-				broadcast(player, new AbilityEventPayload(player.getId(), SaberAbility.GUARD, AbilityEventPayload.Event.GUARD_BREAK));
+				broadcast(player, new AbilityEventPayload(player.getId(), SaberAbility.GUARD, AbilityEventPayload.Event.GUARD_BREAK, attackerData(source)));
 				sendStamina(player, state);
 				return 0.0F;
 			}
@@ -772,7 +800,7 @@ public final class SaberAbilities {
 		}
 
 		broadcast(player, new AbilityEventPayload(player.getId(), SaberAbility.GUARD,
-				parry ? AbilityEventPayload.Event.PARRY : AbilityEventPayload.Event.BLOCK));
+				parry ? AbilityEventPayload.Event.PARRY : AbilityEventPayload.Event.BLOCK, attackerData(source)));
 		return parry ? damage : damage * share;
 	}
 
@@ -928,7 +956,8 @@ public final class SaberAbilities {
 	}
 
 	/** Sends to the player and to everyone who can see them. */
-	private static void broadcast(ServerPlayer player, CustomPacketPayload payload) {
+	/** Sends a payload to the player and to everyone who sees them. */
+	public static void broadcast(ServerPlayer player, CustomPacketPayload payload) {
 		if (ServerPlayNetworking.canSend(player, payload.type())) {
 			ServerPlayNetworking.send(player, payload);
 		}

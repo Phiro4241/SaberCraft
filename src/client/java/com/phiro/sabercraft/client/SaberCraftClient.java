@@ -6,13 +6,10 @@ import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
-import net.fabricmc.fabric.api.client.rendering.v1.LivingEntityRenderLayerRegistrationCallback;
-import net.fabricmc.fabric.api.client.rendering.v1.ModelLayerRegistry;
 import net.fabricmc.fabric.api.resource.v1.ResourceLoader;
 
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.entity.player.AvatarRenderer;
 import net.minecraft.client.renderer.item.ItemModels;
 import net.minecraft.client.renderer.special.SpecialModelRenderers;
 import net.minecraft.network.chat.Component;
@@ -23,11 +20,12 @@ import com.phiro.sabercraft.SaberCraft;
 import com.phiro.sabercraft.client.ability.SaberAbilityClient;
 import com.phiro.sabercraft.client.blade.BladeStyleConfig;
 import com.phiro.sabercraft.client.blade.BladeStyles;
+import com.phiro.sabercraft.client.blaster.BlasterClient;
 import com.phiro.sabercraft.client.character.OutfitClient;
-import com.phiro.sabercraft.client.character.OutfitLayer;
 import com.phiro.sabercraft.client.combat.CombatConfig;
 import com.phiro.sabercraft.client.combat.CombatLibrary;
 import com.phiro.sabercraft.client.menu.SaberMenuScreen;
+import com.phiro.sabercraft.client.music.PlanetAmbience;
 import com.phiro.sabercraft.client.music.SaberMusic;
 import com.phiro.sabercraft.client.music.StarWarsMusic;
 import com.phiro.sabercraft.client.music.UserMusic;
@@ -84,16 +82,16 @@ public class SaberCraftClient implements ClientModInitializer {
 			UserMusic.scan();
 			StarWarsMusic.scan();
 		});
-		ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> SaberMusic.reset());
-		// Phase 7: outfits, drawn as a layer over the normal skin of every player model.
-		OutfitClient.init();
-		ModelLayerRegistry.registerModelLayer(OutfitLayer.WIDE, () -> OutfitLayer.createLayer(false));
-		ModelLayerRegistry.registerModelLayer(OutfitLayer.SLIM, () -> OutfitLayer.createLayer(true));
-		LivingEntityRenderLayerRegistrationCallback.EVENT.register((type, renderer, helper, context) -> {
-			if (renderer instanceof AvatarRenderer<?> avatar) {
-				helper.register(new OutfitLayer(avatar, context));
-			}
+		ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> {
+			SaberMusic.reset();
+			PlanetAmbience.reset();
 		});
+		// Phase 10: the sound of the chosen planet.
+		ClientTickEvents.END_CLIENT_TICK.register(PlanetAmbience::tick);
+		// Phase 7: outfits and characters; since Phase 10 they replace the skin itself.
+		OutfitClient.init();
+		// Phase 10: blasters.
+		BlasterClient.init();
 		ClientTickEvents.END_CLIENT_TICK.register(SaberCraftClient::handleKeys);
 
 		SaberCraft.LOGGER.info(

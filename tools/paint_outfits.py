@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """
 Paints the SaberCraft outfits (Phase 7): original robe and armor designs as 64x64 textures in the
-Minecraft skin layout. They are drawn as an extra layer over the player's own skin, so the face
-and anything the outfit leaves free stay the player's. No film costumes are copied: these are
-generic robes and armor in the mod's own colors. Run from the repository root:
+Minecraft skin layout. No film costumes are copied: these are generic robes and armor in the mod's
+own colors. Since Phase 10 every texture here is a complete skin that replaces the player's own
+(the skin layer fix): the outfits got faces of their own, and the base layer of every skin is
+fully opaque, like vanilla makes it for downloaded skins. Run from the repository root:
 
     python3 tools/paint_outfits.py
 
@@ -80,10 +81,43 @@ class Outfit:
         self.paint(parts, outer, fn, faces)
 
     def save(self, name):
+        self.opaque_base()
         os.makedirs(OUT, exist_ok=True)
         path = os.path.join(OUT, name + ".png")
         Image.fromarray(self.img.astype(np.uint8), "RGBA").save(path)
         print(path)
+
+
+    def opaque_base(self):
+        """The base layer of a skin has no holes: free pixels get the darkened mean of their face."""
+        for part in PARTS:
+            for face, (x0, y0, w, h) in self.faces(part, False).items():
+                area = self.img[y0:y0 + h, x0:x0 + w]
+                solid = area[..., 3] > 0
+                if solid.all():
+                    continue
+                mean = area[solid][:, :3].mean(axis=0) * 0.8 if solid.any() else np.array([40.0, 36.0, 34.0])
+                area[~solid] = list(mean) + [255]
+                area[..., 3] = 255
+
+
+def face(o, skin, hair, eye, extra=None, beard=None, back_hair=True):
+    """A plain face of the original outfits: hair on top, eyes, mouth, optional beard."""
+    pal = {"s": skin, "h": hair, "e": eye, "w": "#f0ece4", "m": shade(skin, 0.78)}
+    if beard:
+        pal["b"] = beard
+    pal.update(extra or {})
+    front = ["hhhhhhhh", "hhhhhhhh", "hsssssshh"[:8], "ssssssss", "swessews", "ssssssss", "sssmmsss", "ssssssss"]
+    if beard:
+        front[5], front[6], front[7] = "sbssssbs", "sbbmmbbs", "sbbbbbbs"
+    head_from(o, False, {
+        "_": pal,
+        "front": front,
+        "top": ["hhhhhhhh"] * 8, "bottom": ["ssssssss"] * 8,
+        "right": ["hhhhhhhh", "hhhhhhhh", "hhhhhhhs", "hhhhhhss", "hhhhssss", "hhhsssss", "hhssssss", "hhssssss"],
+        "left": ["hhhhhhhh", "hhhhhhhh", "shhhhhhh", "sshhhhhh", "sssshhhh", "ssssshhh", "sssssshh", "sssssshh"],
+        "back": ["hhhhhhhh"] * 8 if back_hair else ["hhhhhhhh"] * 3 + ["ssssssss"] * 5,
+    })
 
 
 def shade(color, factor):
@@ -110,6 +144,7 @@ def wanderer():
     # The robe's hem over the legs, open at the front.
     o.paint(LEGS, True, lambda f, x, y, w, h: None if f in ("top", "bottom", "front") or y > 6 else shade(robe, 0.9))
     # The hood lies down on the back of the neck.
+    face(o, "#d7a982", "#6b4a2c", "#4f6f8e", beard="#5e4026")
     o.paint("head", True, lambda f, x, y, w, h: shade(robe, 0.8) if (f == "back" and y >= 5) or (f in ("left", "right") and y >= 6 and x <= 2 if f == "right" else f == "left" and y >= 6 and x >= 5) else None)
     o.save("wanderer")
 
@@ -141,6 +176,9 @@ def shadow():
             return None
         return shade(robe, 1.1)
     o.paint("head", True, hood)
+    # A pale face deep in the hood, only the eyes catch light.
+    face(o, "#8c7a72", "#141114", "#c0a040")
+    o.paint("head", False, lambda f, x, y, w, h: shade((140, 122, 114), 0.55) if f == "front" and y < 3 else None)
     o.save("shadow")
 
 
@@ -173,6 +211,7 @@ def sentinel():
     # Greaves and knee guards.
     o.paint(LEGS, True, lambda f, x, y, w, h: None if f in ("top", "bottom") else (plate if 6 <= y <= 11 and f != "back" else edge if y == 5 and f == "front" else None))
     o.fill(LEGS, False, "#202622", rows=(10, 12))
+    face(o, "#c99a74", "#1e1a18", "#3d6a48")
     o.save("sentinel")
 
 
@@ -192,6 +231,7 @@ def scout():
     o.paint("head", True, lambda f, x, y, w, h: scarf if f != "top" and f != "bottom" and y == 7 else None)
     # Pouches on the belt line.
     o.paint(LEGS, True, lambda f, x, y, w, h: "#7c552c" if f in ("left", "right") and y in (0, 1, 2) and 1 <= x <= 2 else None)
+    face(o, "#e4b892", "#d2aa5a", "#5a7a3e")
     o.save("scout")
 
 
@@ -587,6 +627,48 @@ def rey():
     o.save("rey")
 
 
+def ezra():
+    """Ezra Bridger as in Star Wars Rebels, seasons 1 and 2: an orange jumpsuit with darker seams,
+    a light grey collar, a brown belt with pouches, the grey energy slingshot on the left forearm,
+    brown fingerless gloves and boots, dark blue hair over the ears and blue eyes. Own pixel art
+    after the look of the series."""
+    o = Outfit(177)
+    skin, hair, dhair, eye = "#c8946a", "#1e2a52", "#141c38", "#3a7ad8"
+    suit, seam, collar, belt, glove, boots, sling = "#d8782a", "#a85618", "#c8c4bc", "#5a3a22", "#6a4628", "#4a3020", "#6a6e76"
+    o.fill("body", False, suit)
+    o.fill(ARMS, False, suit)
+    o.fill(ARMS, False, glove, rows=(10, 12))
+    o.fill(LEGS, False, suit)
+    o.fill(LEGS, False, boots, rows=(8, 12))
+    # Seams down the front and along the sides, the collar and the belt with two pouches.
+    o.paint("body", False, lambda f, x, y, w, h: seam if f == "front" and x == 3 and 1 < y < 7 or f in ("left", "right") and x == 1 else None)
+    o.paint("body", False, lambda f, x, y, w, h: collar if y == 0 and f in ("front", "back") or f == "front" and y == 1 and x in (2, 5) else None)
+    o.paint("body", False, lambda f, x, y, w, h: (seam if f == "front" and x in (1, 6) else belt) if y in (8, 9) and f not in ("top", "bottom") else None)
+    o.paint(ARMS, False, lambda f, x, y, w, h: seam if y == 4 and f not in ("top", "bottom") else None)
+    o.paint(LEGS, False, lambda f, x, y, w, h: seam if f in ("left", "right") and x == 1 and y < 8 else None)
+    # The energy slingshot: a grey gauntlet on the left forearm, on the outer layer.
+    o.paint("left_arm", True, lambda f, x, y, w, h: (sling if (x + y) % 3 else shade(sling, 0.75)) if 6 <= y <= 9 and f not in ("top", "bottom") else None)
+    head_from(o, False, {
+        "_": {"s": skin, "h": hair, "d": dhair, "e": eye, "w": "#f2eee8", "m": "#a8644a", "b": "#8a6040"},
+        "front": ["hhhhhhhh", "hdhhhhdh", "hsssssh" + "h", "sbbssbbs", "swessews", "ssssssss", "sssmmsss", "ssssssss"],
+        "top": ["hhdhhdhh", "hhhhhhhh", "hdhhhhdh", "hhhhhhhh", "hhhdhhhh", "hhhhhhhh", "hdhhhdhh", "hhhhhhhh"],
+        "bottom": ["ssssssss"] * 8,
+        "right": ["hhhhhhhh", "hhhhhhhh", "hhhhhhhs", "hhhhhhss", "hhhhssss", "hhhsssss", "hhssssss", "hhssssss"],
+        "left": ["hhhhhhhh", "hhhhhhhh", "shhhhhhh", "sshhhhhh", "sssshhhh", "ssssshhh", "sssssshh", "sssssshh"],
+        "back": ["hhhhhhhh", "hhhdhhhh", "hhhhhhhh", "hdhhhhdh", "hhhhhhhh", "hhhhdhhh", "hhhhhhhh", "hhhhhhhh"],
+    })
+    # Spiky tufts on top and the hair reaching over the neck at the back.
+    head_from(o, True, {
+        "_": {"h": hair, "d": dhair},
+        "top": ["h.h..h.h", ".hdhhdh.", "hhhhhhhh", ".hhddhh.", "hhhhhhhh", ".h.hh.h.", "........", "........"],
+        "front": ["hh.hh.hh", "h......h", "........", "........", "........", "........", "........", "........"],
+        "back": ["hhhhhhhh", "hhdhhdhh", "hhhhhhhh", "hhhhhhhh", "hhhhhhhh", "hhhhhhhh", "hhhhhhhh", "h.hh.hh."],
+        "right": ["hhhhhhhh", "hhhhhhh.", "hhhhh...", "hhhh....", "hhh.....", "hh......", "h.......", "........"],
+        "left": ["hhhhhhhh", ".hhhhhhh", "...hhhhh", "....hhhh", ".....hhh", "......hh", ".......h", "........"],
+    })
+    o.save("ezra")
+
+
 if __name__ == "__main__":
     wanderer()
     shadow()
@@ -603,3 +685,4 @@ if __name__ == "__main__":
     ahsoka()
     kylo()
     rey()
+    ezra()

@@ -148,7 +148,7 @@ public class CharacterGameTest implements FabricClientGameTest {
 			check(context.computeOnClient(client -> client.gui.screen() instanceof SaberCustomizeScreen), "V with a sword opens the saber area");
 
 			// Phase 9: picking a new character in the menu gives the saber in hand its hilt, color and style.
-			for (Outfit character : new Outfit[] {Outfit.ANAKIN, Outfit.YODA, Outfit.DOOKU, Outfit.AHSOKA, Outfit.KYLO, Outfit.REY}) {
+			for (Outfit character : new Outfit[] {Outfit.ANAKIN, Outfit.YODA, Outfit.DOOKU, Outfit.AHSOKA, Outfit.KYLO, Outfit.REY, Outfit.EZRA}) {
 				context.runOnClient(client -> SaberMenuScreen.open(client, SaberMenuScreen.Tab.CHARACTER));
 				context.waitTicks(3);
 				context.clickScreenButton(character.translationKey());

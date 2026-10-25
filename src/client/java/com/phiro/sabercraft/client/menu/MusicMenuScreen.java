@@ -74,6 +74,11 @@ public class MusicMenuScreen extends SaberMenuScreen {
 			Util.getPlatform().openPath(UserMusic.folder());
 			return true;
 		});
+		// Phase 10: a short piece after a won fight and when you fall.
+		this.toggle(0, 3, "sabercraft.option.music_stingers", config.musicStingers, v -> {
+			config.musicStingers = v;
+			ImmersionConfig.save();
+		});
 	}
 
 	private void initStarWars(ImmersionConfig config) {
@@ -126,8 +131,8 @@ public class MusicMenuScreen extends SaberMenuScreen {
 				: Component.translatable("sabercraft.menu.music.now", Component.translatable("sabercraft.music.mood." + mood.folder()),
 						piece.getPath().startsWith("user_music/") ? Component.translatable("sabercraft.music.own")
 								: Component.translatable("sabercraft.music.piece." + piece.getPath().substring("music.".length())));
-		graphics.text(this.font, now, this.left + 10, this.row(3) + 6, 0xFFFFD060);
-		this.note(graphics, Component.translatable("sabercraft.menu.music.note"), 4);
+		graphics.text(this.font, now, this.left + 10, this.row(4) + 6, 0xFFFFD060);
+		this.note(graphics, Component.translatable("sabercraft.menu.music.note"), 5);
 	}
 
 	/**

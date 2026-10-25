@@ -326,7 +326,8 @@ public final class PlanetSkyPainter {
 	}
 
 	/**
-	 * The far landscape on the horizon: two rows, the far one paler in the haze. It reaches a few
+	 * The far landscape on the horizon: three rows since Phase 10 (two before), the further ones
+	 * paler in the haze. It reaches a few
 	 * degrees below the horizon, so no gap shows between it and the fog of the real terrain.
 	 */
 	private void horizon(int i, Vector3f dir, float elevation, float azimuth) {
@@ -344,7 +345,8 @@ public final class PlanetSkyPainter {
 		float[] haze = rgb(this.preset.haze());
 		float below = clamp((elevation + 6.0F) / 3.0F);
 
-		for (int layer = 0; layer <= 1; layer++) {
+		// Nearest row first: the first row that covers this point hides the ones behind it.
+		for (int layer = 0; layer <= 2; layer++) {
 			float h = profile(type, azimuth, layer);
 
 			if (elevation > h) {
@@ -353,7 +355,9 @@ public final class PlanetSkyPainter {
 
 			float depth = h - elevation;
 			float[] color = this.ground(type, azimuth, layer, depth, h);
-			float mist = layer == 1 ? 0.5F : 0.18F;
+			// Aerial perspective (Phase 10): the further a row, the more it melts into the haze, and
+			// the lower parts of a row lie deeper in the haze than its peaks.
+			float mist = (layer == 2 ? 0.72F : layer == 1 ? 0.5F : 0.18F) + (layer == 0 ? 0.0F : 0.12F * clamp(1.0F - (elevation + 1.0F) / Math.max(1.0F, h + 1.0F)));
 
 			if (this.night) {
 				float[] sky = rgb(this.preset.skyNight());
@@ -389,6 +393,18 @@ public final class PlanetSkyPainter {
 	/** Height in degrees of a row of the landscape at an angle around the horizon; row 1 is the far one. */
 	private static float profile(PlanetPreset.Horizon type, float azimuth, int layer) {
 		float degrees = (float) Math.toDegrees(azimuth) + 180.0F;
+
+		if (layer == 2) {
+			// Phase 10: a distant range behind everything, taller and smooth, deep in the haze.
+			return switch (type) {
+				case DUNES -> 2.2F + 3.6F * ring(azimuth, 1.8F, 61.0F, 4);
+				case FOREST -> 4.0F + 3.0F * ring(azimuth, 2.4F, 67.0F, 4);
+				case ICE -> 5.0F + 10.0F * ridge(azimuth, 2.2F, 53.0F);
+				case VOLCANOES -> 2.5F + 4.5F * ridge(azimuth, 2.6F, 59.0F);
+				case HILLS -> 3.0F + 5.0F * ring(azimuth, 1.6F, 73.0F, 4);
+				default -> 0.0F;
+			};
+		}
 
 		return switch (type) {
 			case DUNES -> layer == 0
@@ -437,6 +453,19 @@ public final class PlanetSkyPainter {
 
 	/** The color of the landscape at a point, by day. */
 	private float[] ground(PlanetPreset.Horizon type, float azimuth, int layer, float depth, float height) {
+		if (layer == 2) {
+			// The distant range: one soft color per planet, lighter towards the peaks.
+			float top = clamp(1.0F - depth / Math.max(1.0F, height));
+			return switch (type) {
+				case DUNES -> mixed(0xB08A70, 0xD8B898, top);
+				case FOREST -> mixed(0x4E6E66, 0x6E8E86, top);
+				case ICE -> mixed(0xA8B8D0, 0xF0F4FA, top);
+				case VOLCANOES -> mixed(0x2A120C, 0x4A2218, top);
+				case HILLS -> mixed(0x6A8AA0, 0x8EA8BC, top);
+				default -> rgb(0x808080);
+			};
+		}
+
 		return switch (type) {
 			case DUNES -> {
 				// The crests of the dunes catch the light, the hollows lie in shadow.

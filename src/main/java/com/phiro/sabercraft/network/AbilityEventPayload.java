@@ -17,7 +17,8 @@ import com.phiro.sabercraft.ability.SaberAbility;
  * @param ability  which ability
  * @param event    what happened, see {@link Event}
  * @param data     extra information: for the dodge the {@code DodgeDirection} ordinal, for the
- *                 grip and the pull the id of the target entity
+ *                 grip and the pull the id of the target entity; for a block, a parry and a
+ *                 broken stance the id of the attacker plus one, 0 if there is none (Phase 10)
  */
 public record AbilityEventPayload(int entityId, SaberAbility ability, Event event, int data) implements CustomPacketPayload {
 	public static final CustomPacketPayload.Type<AbilityEventPayload> TYPE = new CustomPacketPayload.Type<>(SaberCraft.id("ability_event"));
@@ -45,7 +46,9 @@ public record AbilityEventPayload(int entityId, SaberAbility ability, Event even
 		/** A parried attacker is thrown off balance. Sent with the attacker as the entity. */
 		UNBALANCED,
 		/** A projectile was sent back; data is 1 for a precise deflection along the look direction. */
-		DEFLECT;
+		DEFLECT,
+		/** The stun blaster in Ezra Bridger's hilt fired (Phase 10); the ability is not used. */
+		SHOT;
 
 		public static final StreamCodec<ByteBuf, Event> STREAM_CODEC = ByteBufCodecs.idMapper(i -> values()[i], Enum::ordinal);
 	}

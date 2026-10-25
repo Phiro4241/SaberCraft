@@ -44,6 +44,8 @@ public class CombatGalleryGameTest implements FabricClientGameTest {
 			{"sabercraft:reverse_shien", "sabercraft:tano", "sabercraft:white"},
 			{"sabercraft:unbridled", "sabercraft:crossguard", "sabercraft:red"},
 			{"sabercraft:shii_cho", "sabercraft:rey", "sabercraft:yellow"},
+			// Phase 10: Ezra Bridger.
+			{"sabercraft:improvised", "sabercraft:ezra", "sabercraft:blue"},
 	};
 
 	@Override

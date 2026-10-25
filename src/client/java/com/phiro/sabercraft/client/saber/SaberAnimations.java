@@ -29,6 +29,27 @@ public final class SaberAnimations {
 			new SaberAnimation(SaberCraft.id("heavy"), 6, 13, 9, Easing.OUT_CUBIC, Easing.LINEAR, 0.5F)
 	);
 
+	/**
+	 * Phase 10, for Kylo Ren's crossguard: the unstable blade stalls twice on its way out and flares
+	 * up hard, then crackles. It goes back in quickly, with a jolt at the start.
+	 */
+	public static final SaberAnimation UNSTABLE = register(
+			new SaberAnimation(SaberCraft.id("unstable"), 6, 16, 8, Easing.STUTTER, Easing.LINEAR, 0.8F)
+	);
+
+	/**
+	 * Phase 10, for the double-bladed hilt: one blade after the other (see the {@code ignite} window
+	 * of each blade in the item model), so the whole ignition takes a bit longer.
+	 */
+	public static final SaberAnimation DOUBLE = register(
+			new SaberAnimation(SaberCraft.id("double"), 6, 16, 10, Easing.LINEAR, Easing.LINEAR, 0.4F)
+	);
+
+	/** Phase 10, for the small, light hilts of Yoda and Ahsoka: a quick, snappy ignition. */
+	public static final SaberAnimation QUICK = register(
+			new SaberAnimation(SaberCraft.id("quick"), 5, 7, 5, Easing.OUT_CUBIC, Easing.LINEAR, 0.3F)
+	);
+
 	private SaberAnimations() {
 	}
 
