@@ -55,6 +55,8 @@ public final class SaberBladeSpecialRenderer implements SpecialModelRenderer<Bla
 	private final float lengthOverride;
 	private final Quaternionf direction;
 	private final boolean unstable;
+	private final float igniteFrom;
+	private final float igniteTo;
 
 	/**
 	 * @param defaultStyle   color for items without a stored color
@@ -62,9 +64,14 @@ public final class SaberBladeSpecialRenderer implements SpecialModelRenderer<Bla
 	 * @param lengthOverride blade length, or 0 to use the length of the style
 	 * @param angle          turn of the blade in the item plane in degrees, 0 = along the diagonal
 	 * @param unstable       whether the blade crackles like a cracked crystal (Phase 9, crossguard hilt)
+	 * @param igniteFrom     the part of the ignition at which this blade starts to come out (Phase 10)
+	 * @param igniteTo       the part of the ignition at which this blade is fully out
 	 */
-	public SaberBladeSpecialRenderer(Identifier defaultStyle, Vector3fc emitter, float lengthOverride, float angle, boolean unstable) {
+	public SaberBladeSpecialRenderer(Identifier defaultStyle, Vector3fc emitter, float lengthOverride, float angle, boolean unstable,
+			float igniteFrom, float igniteTo) {
 		this.unstable = unstable;
+		this.igniteFrom = igniteFrom;
+		this.igniteTo = Math.max(igniteFrom + 0.01F, igniteTo);
 		this.defaultStyle = defaultStyle;
 		this.emitter = emitter;
 		this.lengthOverride = lengthOverride;
@@ -82,18 +89,19 @@ public final class SaberBladeSpecialRenderer implements SpecialModelRenderer<Bla
 			int outlineColor
 	) {
 		BladeRenderState state = blade != null ? blade : BladeRenderState.FULL;
+		float extension = this.extension(state.extension());
 
-		if (!state.isVisible() || ShaderCompat.renderingShadowPass()) {
+		if (!state.isVisible() || extension <= 0.0F || ShaderCompat.renderingShadowPass()) {
 			// Fully retracted: only the hilt is drawn, by the hilt model. A glowing blade casts no
 			// shadow, so it is left out of the shadow map of shader packs.
 			return;
 		}
 
 		BladeStyle style = BladeStyles.get(state.style() != null ? state.style() : this.defaultStyle);
-		float length = this.fullLength(style) * state.extension();
+		float length = this.fullLength(style) * extension;
 		// The glow builds up over the first part of the blade's way out, so a tiny stub does not
 		// already have a full-size halo. During ignition it flares up briefly.
-		float build = Mth.clamp(state.extension() / 0.25F, 0.0F, 1.0F);
+		float build = Mth.clamp(extension / 0.25F, 0.0F, 1.0F);
 		// An attack makes the blade glow a little brighter, strongest at the strike.
 		float swing = state.swing() != null ? state.swing().strength() : 0.0F;
 		float intensity = (this.unstable ? unstableIntensity() : intensity(style)) * (0.55F + 0.45F * build) * (1.0F + state.flare() + 0.22F * swing);
@@ -133,6 +141,28 @@ public final class SaberBladeSpecialRenderer implements SpecialModelRenderer<Bla
 	@Override
 	public BladeRenderState extractArgument(ItemStack stack) {
 		return BladeRenderState.FULL.withStyle(BladeStyles.colorOf(stack));
+	}
+
+	/**
+	 * How far this blade is out, from how far the saber is out: a blade with an ignite window only
+	 * moves during its part of the ignition (Phase 10). An unstable blade sputters on its way, its
+	 * length jumping back and forth a little, until it holds.
+	 */
+	private float extension(float saber) {
+		float extension = windowed(saber, this.igniteFrom, this.igniteTo);
+
+		if (this.unstable && extension > 0.0F && extension < 1.0F) {
+			int step = (int) (Util.getMillis() / 50L) ^ System.identityHashCode(this);
+			float jolt = (step * 1103515245 + 12345 >>> 16 & 0xFF) / 255.0F;
+			extension *= 0.8F + 0.2F * jolt;
+		}
+
+		return extension;
+	}
+
+	/** How far a blade with the ignite window {@code from}..{@code to} is out when the saber is out by {@code saber}. */
+	public static float windowed(float saber, float from, float to) {
+		return from <= 0.0F && to >= 1.0F ? saber : Mth.clamp((saber - from) / Math.max(0.01F, to - from), 0.0F, 1.0F);
 	}
 
 	private float fullLength(BladeStyle style) {
@@ -195,16 +225,21 @@ public final class SaberBladeSpecialRenderer implements SpecialModelRenderer<Bla
 	 * Optional fields: {@code "emitter": [x, y, z]} for hilts of other shapes, {@code "length"} to
 	 * override the style's blade length and {@code "angle"} to turn the blade in the item plane,
 	 * for example 180 for the second blade of a double-bladed hilt. {@code "unstable": true} makes the
-	 * blade crackle (Phase 9).
+	 * blade crackle (Phase 9). {@code "ignite_from"} and {@code "ignite_to"} (0..1) give the part of
+	 * the ignition in which this blade comes out, so blades of one hilt can ignite one after the
+	 * other (Phase 10); retracting runs the other way round.
 	 */
-	public record Unbaked(Identifier style, Vector3fc emitter, Optional<Float> length, float angle, boolean unstable) implements SpecialModelRenderer.Unbaked<BladeRenderState> {
+	public record Unbaked(Identifier style, Vector3fc emitter, Optional<Float> length, float angle, boolean unstable, float igniteFrom, float igniteTo)
+			implements SpecialModelRenderer.Unbaked<BladeRenderState> {
 		public static final MapCodec<Unbaked> MAP_CODEC = RecordCodecBuilder.mapCodec(
 				instance -> instance.group(
 								Identifier.CODEC.optionalFieldOf("style", BladeStyles.RED.id()).forGetter(Unbaked::style),
 								ExtraCodecs.VECTOR3F.optionalFieldOf("emitter", DEFAULT_EMITTER).forGetter(Unbaked::emitter),
 								Codec.floatRange(0.1F, 4.0F).optionalFieldOf("length").forGetter(Unbaked::length),
 								Codec.floatRange(-360.0F, 360.0F).optionalFieldOf("angle", 0.0F).forGetter(Unbaked::angle),
-								Codec.BOOL.optionalFieldOf("unstable", false).forGetter(Unbaked::unstable)
+								Codec.BOOL.optionalFieldOf("unstable", false).forGetter(Unbaked::unstable),
+								Codec.floatRange(0.0F, 0.99F).optionalFieldOf("ignite_from", 0.0F).forGetter(Unbaked::igniteFrom),
+								Codec.floatRange(0.01F, 1.0F).optionalFieldOf("ignite_to", 1.0F).forGetter(Unbaked::igniteTo)
 						)
 						.apply(instance, Unbaked::new)
 		);
@@ -213,7 +248,7 @@ public final class SaberBladeSpecialRenderer implements SpecialModelRenderer<Bla
 		public SaberBladeSpecialRenderer bake(SpecialModelRenderer.BakingContext context) {
 			// Unknown styles are reported once here; at render time they fall back to red.
 			BladeStyles.get(this.style);
-			return new SaberBladeSpecialRenderer(this.style, this.emitter, this.length.orElse(0.0F), this.angle, this.unstable);
+			return new SaberBladeSpecialRenderer(this.style, this.emitter, this.length.orElse(0.0F), this.angle, this.unstable, this.igniteFrom, this.igniteTo);
 		}
 
 		@Override

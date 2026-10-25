@@ -31,13 +31,13 @@ public final class SaberHilts {
 	/** Black ribbed grip, silver rings and a clawed emitter, after Anakin Skywalker (Phase 9). */
 	public static final SaberHilt ANAKIN = register(new SaberHilt(SaberVariant.ANAKIN, SaberProfiles.DEFAULT, SaberVariant.BLUE, 1));
 	/** Short, stout hilt with a shorter blade, after Yoda (Phase 9). */
-	public static final SaberHilt YODA = register(new SaberHilt(SaberVariant.YODA, SaberProfiles.DEFAULT, SaberVariant.GREEN, 1));
+	public static final SaberHilt YODA = register(new SaberHilt(SaberVariant.YODA, SaberProfiles.QUICK, SaberVariant.GREEN, 1));
 	/** Curved fencing hilt, after Count Dooku (Phase 9). */
 	public static final SaberHilt DOOKU = register(new SaberHilt(SaberVariant.DOOKU, SaberProfiles.DEFAULT, SaberVariant.RED, 1));
 	/** Slim white hilt for the reverse grip, after Ahsoka Tano (Phase 9). */
-	public static final SaberHilt TANO = register(new SaberHilt(SaberVariant.TANO, SaberProfiles.DEFAULT, SaberVariant.WHITE, 1));
+	public static final SaberHilt TANO = register(new SaberHilt(SaberVariant.TANO, SaberProfiles.QUICK, SaberVariant.WHITE, 1));
 	/** Battered crossguard hilt with side blades and an unstable, crackling blade, after Kylo Ren (Phase 9). */
-	public static final SaberHilt CROSSGUARD = register(new SaberHilt(SaberVariant.CROSSGUARD, SaberProfiles.DARK, SaberVariant.RED, 1));
+	public static final SaberHilt CROSSGUARD = register(new SaberHilt(SaberVariant.CROSSGUARD, SaberProfiles.UNSTABLE, SaberVariant.RED, 1));
 	/** Bronze hilt made from a staff, after Rey (Phase 9). */
 	public static final SaberHilt REY = register(new SaberHilt(SaberVariant.REY, SaberProfiles.DEFAULT, SaberVariant.YELLOW, 1));
 	/** Ezra Bridger's hilt with the built-in stun blaster (Phase 10). */

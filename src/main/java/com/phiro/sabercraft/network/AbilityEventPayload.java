@@ -17,7 +17,8 @@ import com.phiro.sabercraft.ability.SaberAbility;
  * @param ability  which ability
  * @param event    what happened, see {@link Event}
  * @param data     extra information: for the dodge the {@code DodgeDirection} ordinal, for the
- *                 grip and the pull the id of the target entity
+ *                 grip and the pull the id of the target entity; for a block, a parry and a
+ *                 broken stance the id of the attacker plus one, 0 if there is none (Phase 10)
  */
 public record AbilityEventPayload(int entityId, SaberAbility ability, Event event, int data) implements CustomPacketPayload {
 	public static final CustomPacketPayload.Type<AbilityEventPayload> TYPE = new CustomPacketPayload.Type<>(SaberCraft.id("ability_event"));

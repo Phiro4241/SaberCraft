@@ -51,9 +51,16 @@ import com.phiro.sabercraft.network.OutfitSyncPayload;
  * <p>The film characters (Phase 8) can be given a skin file of your own as well:
  * {@code config/sabercraft/characters/<character>.png} (for example {@code vader.png}) replaces the
  * built-in look of that character on this computer, for you and for everyone else who plays it.
+ *
+ * <p>Phase 10: character profiles of your own ({@link CustomProfiles}) are chosen as
+ * {@code profile:<name>}. Their skin file stays on this computer like any file of your own; the
+ * server is told the {@code base} character of the profile, if it has one.
  */
 public final class OutfitClient {
 	public static final String FILE_PREFIX = "file:";
+	public static final String PROFILE_PREFIX = "profile:";
+	/** Loaded skin files of the profiles of your own, by profile; empty when there is none. */
+	private static final Map<String, Optional<Identifier>> PROFILE_SKINS = new HashMap<>();
 	private static final Identifier CUSTOM_TEXTURE = SaberCraft.id("outfit_custom");
 	private static final Map<UUID, Identifier> OTHERS = new HashMap<>();
 	/** Skin files of your own for the film characters, by character; empty when there is none. */
@@ -84,6 +91,7 @@ public final class OutfitClient {
 
 	public static void init() {
 		CharacterConfig.load();
+		CustomProfiles.reload();
 		ClientPlayNetworking.registerGlobalReceiver(OutfitSyncPayload.TYPE, (payload, context) -> {
 			if (payload.full()) {
 				OTHERS.clear();
@@ -132,6 +140,47 @@ public final class OutfitClient {
 		}
 
 		CHARACTER_SKINS.clear();
+
+		for (Optional<Identifier> texture : PROFILE_SKINS.values()) {
+			texture.ifPresent(id -> Minecraft.getInstance().getTextureManager().release(id));
+		}
+
+		PROFILE_SKINS.clear();
+	}
+
+	/** The profile of your own chosen with {@code choice}, if it is one and still there. */
+	public static Optional<CustomProfiles.Profile> profile(String choice) {
+		return choice.startsWith(PROFILE_PREFIX) ? CustomProfiles.byKey(choice.substring(PROFILE_PREFIX.length())) : Optional.empty();
+	}
+
+	/** The look of a profile of your own: its skin file, its base character, or null for the plain skin. */
+	public static @Nullable Look lookOf(CustomProfiles.Profile profile) {
+		float scale = CharacterConfig.get().characterSize ? profile.scale() : 1.0F;
+
+		if (profile.skin() != null) {
+			Identifier texture = PROFILE_SKINS.computeIfAbsent(profile.key(), key -> {
+				Identifier id = SaberCraft.id("profile_skin/" + key.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9_.-]", "_"));
+				DynamicTexture loaded = readSkin(profile.skin(), "SaberCraft profile " + key);
+
+				if (loaded == null) {
+					return Optional.empty();
+				}
+
+				Minecraft.getInstance().getTextureManager().register(id, loaded);
+				return Optional.of(id);
+			}).orElse(null);
+
+			if (texture != null) {
+				return new Look(texture, scale);
+			}
+		}
+
+		if (profile.base() != null) {
+			Look base = lookOf(profile.base());
+			return new Look(base.texture(), scale);
+		}
+
+		return null;
 	}
 
 	private static @Nullable Identifier characterSkin(Outfit character) {
@@ -189,7 +238,9 @@ public final class OutfitClient {
 	}
 
 	private static void sendChoice() {
-		Optional<Identifier> builtIn = builtIn(CharacterConfig.get().outfit).map(Outfit::id);
+		String choice = CharacterConfig.get().outfit;
+		// A profile of your own shows its base character to the others, if it has one.
+		Optional<Identifier> builtIn = builtIn(choice).or(() -> profile(choice).map(CustomProfiles.Profile::base)).map(Outfit::id);
 
 		if (Minecraft.getInstance().getConnection() != null && ClientPlayNetworking.canSend(ChooseOutfitPayload.TYPE)) {
 			// Files of your own stay on this computer: others then see your plain skin.
@@ -198,7 +249,7 @@ public final class OutfitClient {
 	}
 
 	public static Optional<Outfit> builtIn(String choice) {
-		Identifier id = choice.isEmpty() || choice.startsWith(FILE_PREFIX) ? null : Identifier.tryParse(choice);
+		Identifier id = choice.isEmpty() || choice.startsWith(FILE_PREFIX) || choice.startsWith(PROFILE_PREFIX) ? null : Identifier.tryParse(choice);
 		return id == null ? Optional.empty() : Outfit.byId(id);
 	}
 
@@ -212,6 +263,10 @@ public final class OutfitClient {
 			if (choice.startsWith(FILE_PREFIX)) {
 				Identifier texture = customTexture(choice.substring(FILE_PREFIX.length()));
 				return texture == null ? null : new Look(texture);
+			}
+
+			if (choice.startsWith(PROFILE_PREFIX)) {
+				return profile(choice).map(OutfitClient::lookOf).orElse(null);
 			}
 
 			return builtIn(choice).map(OutfitClient::lookOf).orElse(null);

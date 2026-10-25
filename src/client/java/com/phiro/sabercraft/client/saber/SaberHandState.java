@@ -17,6 +17,11 @@ import com.phiro.sabercraft.client.sound.SaberHumSoundInstance;
  * onto the other curve so the blade continues from exactly where it is.
  */
 public final class SaberHandState {
+	/** How long the blade flashes up after it struck another blade, in ticks (Phase 10). */
+	static final int CLASH_TICKS = 5;
+	/** Extra brightness right at the clash. */
+	private static final float CLASH_FLARE = 0.7F;
+
 	private final InteractionHand hand;
 	private SaberProfile profile;
 	private boolean active;
@@ -26,6 +31,7 @@ public final class SaberHandState {
 	private int igniteWait;
 	private @Nullable SaberHumSoundInstance hum;
 	private int humRetryCooldown;
+	private int clash;
 
 	SaberHandState(InteractionHand hand, SaberProfile profile) {
 		this.hand = hand;
@@ -52,6 +58,10 @@ public final class SaberHandState {
 		}
 
 		Transition transition = Transition.NONE;
+
+		if (this.clash > 0) {
+			this.clash--;
+		}
 
 		SaberAnimation animation = this.profile.animation();
 
@@ -121,18 +131,30 @@ public final class SaberHandState {
 		return this.visible(Mth.lerp(partialTick, this.previousProgress, this.progress));
 	}
 
-	/** Extra brightness during the ignition, fading out as the blade reaches full length. */
+	/**
+	 * Extra brightness during the ignition, fading out as the blade reaches full length, and for a
+	 * moment after the blade struck another one.
+	 */
 	public float flare(float partialTick) {
-		if (!this.active) {
-			return 0.0F;
-		}
-
-		if (this.igniteWait > 0) {
+		if (!this.active || this.igniteWait > 0) {
 			return 0.0F;
 		}
 
 		float linear = Mth.lerp(partialTick, this.previousProgress, this.progress);
-		return this.profile.animation().igniteFlare() * (1.0F - linear) * (1.0F - linear);
+		float clash = this.clash > 0 ? CLASH_FLARE * Math.max(0.0F, this.clash - partialTick) / CLASH_TICKS : 0.0F;
+		return this.profile.animation().igniteFlare() * (1.0F - linear) * (1.0F - linear) + clash;
+	}
+
+	/** The blade struck another blade or blocked a hit: it flashes up for a moment (Phase 10). */
+	public void clash() {
+		if (this.active) {
+			this.clash = CLASH_TICKS;
+		}
+	}
+
+	/** True while the blade still flashes from a clash. */
+	public boolean isClashing() {
+		return this.clash > 0;
 	}
 
 	/** True while any part of the blade is visible or the blade is on its way out. */

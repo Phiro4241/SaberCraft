@@ -16,8 +16,12 @@ public final class SaberProfiles {
 	public static final SaberProfile DEFAULT = new SaberProfile(SaberAnimations.DEFAULT, SaberSoundSet.DEFAULT);
 	/** The dark hilt: a slower, heavier ignition and a deeper, rougher hum. */
 	public static final SaberProfile DARK = new SaberProfile(SaberAnimations.HEAVY, SaberSoundSet.DARK);
-	/** The double-bladed hilt: default timing, a fuller hum because two blades are lit. */
-	public static final SaberProfile DOUBLE = new SaberProfile(SaberAnimations.DEFAULT, SaberSoundSet.DOUBLE);
+	/** The double-bladed hilt: one blade after the other, a fuller hum because two blades are lit. */
+	public static final SaberProfile DOUBLE = new SaberProfile(SaberAnimations.DOUBLE, SaberSoundSet.DOUBLE);
+	/** Phase 10, Kylo Ren's crossguard: a stuttering, flaring ignition and the deep, rough hum. */
+	public static final SaberProfile UNSTABLE = new SaberProfile(SaberAnimations.UNSTABLE, SaberSoundSet.DARK);
+	/** Phase 10, the small hilts of Yoda and Ahsoka: a quick ignition with the normal sound. */
+	public static final SaberProfile QUICK = new SaberProfile(SaberAnimations.QUICK, SaberSoundSet.DEFAULT);
 
 	private SaberProfiles() {
 	}

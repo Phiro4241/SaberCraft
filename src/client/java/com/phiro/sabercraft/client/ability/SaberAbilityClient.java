@@ -376,7 +376,7 @@ public final class SaberAbilityClient {
 			case DEFLECT -> {
 				boolean precise = payload.data() == 1;
 				play(entity, precise ? SaberSounds.PARRY : SaberSounds.CLASH, precise ? 0.9F : 0.75F, 1.15F);
-				SaberEffects.onBlock(entity, precise);
+				SaberEffects.onBlock(entity, precise, null);
 				CombatState combat = SaberTracker.INSTANCE.combat(entity);
 
 				if (combat != null && combat.isGuarding()) {
@@ -386,7 +386,7 @@ public final class SaberAbilityClient {
 			case BLOCK, PARRY -> {
 				boolean parry = payload.event() == AbilityEventPayload.Event.PARRY;
 				play(entity, parry ? SaberSounds.PARRY : SaberSounds.CLASH, parry ? 1.0F : 0.85F);
-				SaberEffects.onBlock(entity, parry);
+				SaberEffects.onBlock(entity, parry, attacker(entity, payload));
 				react(entity, style -> parry ? style.parry() : style.guardHit());
 			}
 			case GUARD_BREAK -> {
@@ -399,7 +399,7 @@ public final class SaberAbilityClient {
 				}
 
 				play(entity, SaberSounds.CLASH, 1.0F, 0.7F);
-				SaberEffects.onBlock(entity, false);
+				SaberEffects.onBlock(entity, false, attacker(entity, payload));
 				react(entity, CombatStyle::guardBreak);
 			}
 			case UNBALANCED -> SaberEffects.onUnbalanced(entity);
@@ -529,6 +529,11 @@ public final class SaberAbilityClient {
 				play(entity, SaberSounds.GUARD, 0.8F);
 			}
 		}
+	}
+
+	/** The attacker of a blocked hit, sent as its entity id plus one (Phase 10). */
+	private static @Nullable Entity attacker(Entity blocker, AbilityEventPayload payload) {
+		return payload.data() > 0 ? blocker.level().getEntity(payload.data() - 1) : null;
 	}
 
 	private static void play(Entity entity, SoundEvent sound, float volume) {

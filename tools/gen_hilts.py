@@ -590,7 +590,10 @@ HILTS = [
     ("guardian", guardian, "blue", [(EMITTER_D, 0)]),
     ("dark_lord", dark_lord, "red", [(EMITTER_D, 0)]),
     ("sentinel", sentinel, "green", [(EMITTER_D, 0)]),
-    ("double", double, "red", [(STAFF_CENTER + STAFF_HALF, 0), (STAFF_CENTER - STAFF_HALF, 180)]),
+    # Phase 10: the two blades ignite one after the other ("ignite_from"/"ignite_to" are the part
+    # of the ignition each blade takes); retracting runs the other way round.
+    ("double", double, "red", [(STAFF_CENTER + STAFF_HALF, 0, {"ignite_to": 0.6}),
+                              (STAFF_CENTER - STAFF_HALF, 180, {"ignite_from": 0.4})]),
     ("kenobi", kenobi, "blue", [(EMITTER_D, 0)]),
     ("skywalker", skywalker, "green", [(EMITTER_D, 0)]),
     # Phase 9. A blade entry may carry extra fields for the blade renderer: length, unstable,
@@ -600,8 +603,8 @@ HILTS = [
     ("dooku", dooku, "red", [(EMITTER_D, 0)]),
     ("tano", tano, "white", [(EMITTER_D, 0)]),
     ("crossguard", crossguard, "red", [(EMITTER_D, 0, {"unstable": True}),
-                                      (None, 90, {"emitter": side_emitter(1), "length": 0.24, "unstable": True}),
-                                      (None, -90, {"emitter": side_emitter(-1), "length": 0.24, "unstable": True})]),
+                                      (None, 90, {"emitter": side_emitter(1), "length": 0.24, "unstable": True, "ignite_from": 0.25}),
+                                      (None, -90, {"emitter": side_emitter(-1), "length": 0.24, "unstable": True, "ignite_from": 0.25})]),
     ("rey", rey, "yellow", [(EMITTER_D, 0)]),
     # Phase 10.
     ("ezra", ezra, "blue", [(EMITTER_D, 0)]),

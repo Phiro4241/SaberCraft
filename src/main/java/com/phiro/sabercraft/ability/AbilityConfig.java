@@ -171,6 +171,13 @@ public final class AbilityConfig {
 	@SerializedName("guard_break_cooldown")
 	public int guardBreakCooldown = 50;
 
+	/**
+	 * Phase 10: hilts change the fight a little (damage, guard, parry window, knockback, dodge
+	 * cooldown, see {@code HiltTraits}). false: every hilt plays like the standard one.
+	 */
+	@SerializedName("hilt_traits")
+	public boolean hiltTraits = true;
+
 	/** Hunger cost (exhaustion) per ability use, like sprinting or jumping. */
 	@SerializedName("exhaustion")
 	public float exhaustion = 1.0F;

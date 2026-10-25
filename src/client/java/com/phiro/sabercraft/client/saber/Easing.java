@@ -18,6 +18,16 @@ public interface Easing {
 	/** Slow start and stop. */
 	Easing IN_OUT_SINE = t -> 0.5F - 0.5F * Mth.cos(t * Mth.PI);
 
+	/**
+	 * Fast start with two short stalls on the way, like a blade that catches before it holds
+	 * (Phase 10, Kylo Ren's unstable saber). It never goes down, so it still inverts.
+	 */
+	Easing STUTTER = t -> {
+		// Two plateaus of the linear time, then the remaining time rescaled to 0..1.
+		float u = t < 0.2F ? t : t < 0.32F ? 0.2F : t < 0.55F ? t - 0.12F : t < 0.65F ? 0.43F : t - 0.22F;
+		return OUT_QUAD.apply(u / 0.78F);
+	};
+
 	float apply(float t);
 
 	/** Finds the progress for a given output by bisection. Precise enough for animation. */
