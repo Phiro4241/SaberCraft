@@ -18,7 +18,7 @@ public final class ImmersionConfig {
 	/** The space sky: stars, nebulae, galaxies, planets and moons instead of the plain night sky. */
 	@SerializedName("space_sky")
 	public boolean spaceSky = true;
-	/** Detail of the sky: 0 = low (256 px per side), 1 = medium (512), 2 = high (1024). */
+	/** Detail of the sky: 0 = low (256 px per side), 1 = medium (512), 2 = high (1024), 3 = ultra (1536, Phase 10). */
 	@SerializedName("space_sky_quality")
 	public int spaceSkyQuality = 1;
 	/** Also a space sky in the End, over the vanilla End sky. */
@@ -52,6 +52,15 @@ public final class ImmersionConfig {
 	 */
 	@SerializedName("planet_shader_tint")
 	public boolean planetShaderTint = true;
+	/**
+	 * The planet's own sun and moon (Phase 10): size and color, Tatooine's two suns in different
+	 * colors, Mustafar's dim red sun, Hoth's small cold one.
+	 */
+	@SerializedName("planet_celestials")
+	public boolean planetCelestials = true;
+	/** Seconds a newly chosen planet takes to fade in over the old sky (Phase 10). */
+	@SerializedName("planet_transition_seconds")
+	public float planetTransitionSeconds = 2.0F;
 
 	/** Background music of SaberCraft, instead of the vanilla music. */
 	@SerializedName("music")
@@ -113,10 +122,11 @@ public final class ImmersionConfig {
 	}
 
 	private void clamp() {
-		this.spaceSkyQuality = Mth.clamp(this.spaceSkyQuality, 0, 2);
+		this.spaceSkyQuality = Mth.clamp(this.spaceSkyQuality, 0, 3);
 		if (this.planet == null) {
 			this.planet = "";
 		}
+		this.planetTransitionSeconds = Mth.clamp(this.planetTransitionSeconds, 0.0F, 10.0F);
 		this.musicVolume = Mth.clamp(this.musicVolume, 0.0F, 1.0F);
 		this.musicCrossfadeSeconds = Mth.clamp(this.musicCrossfadeSeconds, 0.5F, 20.0F);
 		this.starWarsVolume = Mth.clamp(this.starWarsVolume, 0.0F, 1.0F);

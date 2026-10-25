@@ -1,10 +1,13 @@
 package com.phiro.sabercraft.mixin.client;
 
+import org.joml.Vector4f;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.ModifyArg;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
@@ -20,6 +23,7 @@ import net.minecraft.client.renderer.SkyRenderer;
 import net.minecraft.client.renderer.state.level.SkyRenderState;
 import net.minecraft.world.level.MoonPhase;
 
+import com.phiro.sabercraft.client.sky.PlanetCelestials;
 import com.phiro.sabercraft.client.sky.PlanetSky;
 import com.phiro.sabercraft.client.sky.SpaceSky;
 
@@ -31,7 +35,8 @@ import com.phiro.sabercraft.client.sky.SpaceSky;
  *
  * <p>Since Phase 8 it also turns the Overworld sky into the chosen Star Wars planet
  * ({@link PlanetSky}): the sky and sunset colors, the planet's layer before the sun and moon,
- * and a second sun. Without a planet chosen these hooks change nothing.
+ * and a second sun. Since Phase 10 the sun, the second sun and the moon take the planet's size and
+ * color ({@link PlanetCelestials}). Without a planet chosen these hooks change nothing.
  */
 @Mixin(SkyRenderer.class)
 public abstract class SkyRendererMixin {
@@ -71,8 +76,20 @@ public abstract class SkyRendererMixin {
 
 	@WrapOperation(method = "renderSunMoonAndStars", at = @At(value = "INVOKE",
 			target = "Lnet/minecraft/client/renderer/SkyRenderer;renderSun(FLcom/mojang/blaze3d/vertex/PoseStack;)V"))
-	private void sabercraft$secondSun(SkyRenderer self, float rainBrightness, PoseStack poseStack, Operation<Void> original) {
+	private void sabercraft$planetSuns(SkyRenderer self, float rainBrightness, PoseStack poseStack, Operation<Void> original) {
+		PlanetCelestials celestials = PlanetSky.celestials();
+
+		if (celestials == null) {
+			original.call(self, rainBrightness, poseStack);
+			return;
+		}
+
+		// Phase 10: the planet's own sun, in its size and color.
+		poseStack.pushPose();
+		poseStack.scale(celestials.sunSize(), 1.0F, celestials.sunSize());
+		sabercraft$tint(celestials.sunColor(), 1.0F);
 		original.call(self, rainBrightness, poseStack);
+		poseStack.popPose();
 		float offset = PlanetSky.secondSun();
 
 		if (offset != 0.0F) {
@@ -81,9 +98,52 @@ public abstract class SkyRendererMixin {
 			poseStack.pushPose();
 			poseStack.mulPose(Axis.ZP.rotationDegrees(offset));
 			poseStack.mulPose(Axis.XP.rotationDegrees(offset * 0.35F));
-			poseStack.scale(0.65F, 1.0F, 0.65F);
+			poseStack.scale(celestials.secondSunSize(), 1.0F, celestials.secondSunSize());
+			sabercraft$tint(celestials.secondSunColor(), 1.0F);
 			original.call(self, rainBrightness, poseStack);
 			poseStack.popPose();
 		}
+
+		sabercraft$tint(0xFFFFFF, 1.0F);
+	}
+
+	@WrapOperation(method = "renderSunMoonAndStars", at = @At(value = "INVOKE",
+			target = "Lnet/minecraft/client/renderer/SkyRenderer;renderMoon(Lnet/minecraft/world/level/MoonPhase;FLcom/mojang/blaze3d/vertex/PoseStack;)V"))
+	private void sabercraft$planetMoon(SkyRenderer self, MoonPhase phase, float rainBrightness, PoseStack poseStack, Operation<Void> original) {
+		PlanetCelestials celestials = PlanetSky.celestials();
+
+		if (celestials == null) {
+			original.call(self, phase, rainBrightness, poseStack);
+			return;
+		}
+
+		poseStack.pushPose();
+		poseStack.scale(celestials.moonSize(), 1.0F, celestials.moonSize());
+		sabercraft$tint(celestials.moonColor(), celestials.moonAlpha());
+		original.call(self, phase, rainBrightness, poseStack);
+		sabercraft$tint(0xFFFFFF, 1.0F);
+		poseStack.popPose();
+	}
+
+	/** Colors the sun or moon sprite that is drawn next with the tint set above. */
+	@ModifyArg(method = {"renderSun", "renderMoon"}, at = @At(value = "INVOKE",
+			target = "Lnet/minecraft/client/renderer/DynamicUniforms;writeTransform(Lorg/joml/Matrix4f;Lorg/joml/Vector4f;)Lcom/mojang/blaze3d/buffers/GpuBufferSlice;"),
+			index = 1)
+	private Vector4f sabercraft$tintCelestial(Vector4f color) {
+		return sabercraft$tinted ? color.mul(sabercraft$tint[0], sabercraft$tint[1], sabercraft$tint[2], sabercraft$tint[3]) : color;
+	}
+
+	@Unique
+	private static final float[] sabercraft$tint = {1.0F, 1.0F, 1.0F, 1.0F};
+	@Unique
+	private static boolean sabercraft$tinted;
+
+	@Unique
+	private static void sabercraft$tint(int rgb, float alpha) {
+		sabercraft$tint[0] = (rgb >> 16 & 255) / 255.0F;
+		sabercraft$tint[1] = (rgb >> 8 & 255) / 255.0F;
+		sabercraft$tint[2] = (rgb & 255) / 255.0F;
+		sabercraft$tint[3] = alpha;
+		sabercraft$tinted = rgb != 0xFFFFFF || alpha != 1.0F;
 	}
 }

@@ -44,7 +44,7 @@ public class GraphicsMenuScreen extends SaberMenuScreen {
 			CombatConfig.save();
 		});
 		ImmersionConfig immersion = ImmersionConfig.get();
-		this.cycle(1, 2, "sabercraft.option.space_sky_quality", List.of(0, 1, 2), immersion.spaceSkyQuality,
+		this.cycle(1, 2, "sabercraft.option.space_sky_quality", List.of(0, 1, 2, 3), immersion.spaceSkyQuality,
 				v -> Component.translatable("sabercraft.option.quality." + v), v -> {
 					immersion.spaceSkyQuality = v;
 					ImmersionConfig.save();

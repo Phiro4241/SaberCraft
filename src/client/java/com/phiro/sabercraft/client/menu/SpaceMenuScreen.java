@@ -30,7 +30,7 @@ public class SpaceMenuScreen extends SaberMenuScreen {
 			config.spaceSky = v;
 			ImmersionConfig.save();
 		});
-		this.cycle(1, 0, "sabercraft.option.space_sky_quality", List.of(0, 1, 2), config.spaceSkyQuality,
+		this.cycle(1, 0, "sabercraft.option.space_sky_quality", List.of(0, 1, 2, 3), config.spaceSkyQuality,
 				v -> Component.translatable("sabercraft.option.quality." + v), v -> {
 					config.spaceSkyQuality = v;
 					ImmersionConfig.save();
@@ -63,6 +63,15 @@ public class SpaceMenuScreen extends SaberMenuScreen {
 			config.planetShaderTint = v;
 			ImmersionConfig.save();
 		});
+		this.toggle(0, 4, "sabercraft.option.planet_celestials", config.planetCelestials, v -> {
+			config.planetCelestials = v;
+			ImmersionConfig.save();
+		});
+		this.slider(1, 4, "sabercraft.option.planet_transition", 0.0F, 10.0F, config.planetTransitionSeconds,
+				v -> String.format(java.util.Locale.ROOT, "%.1f s", v), v -> {
+					config.planetTransitionSeconds = v;
+					ImmersionConfig.save();
+				});
 		this.closeButton();
 	}
 
@@ -71,7 +80,7 @@ public class SpaceMenuScreen extends SaberMenuScreen {
 		String planet = ImmersionConfig.get().planet;
 		Component text = PlanetPreset.byId(planet).<Component>map(p -> Component.translatable("sabercraft.planet." + p.id() + ".description"))
 				.orElse(Component.translatable("sabercraft.planet.none.description"));
-		this.note(graphics, text, 4);
-		this.note(graphics, Component.translatable("sabercraft.menu.space.note"), 6);
+		this.note(graphics, text, 5);
+		this.note(graphics, Component.translatable("sabercraft.menu.space.note"), 7);
 	}
 }
