@@ -86,6 +86,19 @@ class Track:
         peak = np.max(np.abs(out))
         return out / peak * 0.89 if peak > 0 else out
 
+    def finish_once(self, reverb_seconds=2.5, wet=0.3, seed=1, tail=3.0):
+        """For pieces played once (Phase 10 victory and defeat): the reverb rings out at the end."""
+        dry = self.buf
+        wet_sig = reverb(dry, reverb_seconds, seed)
+        mix = dry * (1 - wet * 0.5) + wet_sig * wet
+        out = mix[:, :self.length + int(tail * RATE)].copy()
+        # A short fade at the very end, so the file never stops on a click.
+        fade = int(0.5 * RATE)
+        out[:, -fade:] *= np.linspace(1.0, 0.0, fade)
+        out -= out.mean(axis=1, keepdims=True)
+        peak = np.max(np.abs(out))
+        return out / peak * 0.89 if peak > 0 else out
+
 
 def reverb(signal, seconds, seed):
     """Convolution with a decaying, slightly darkening noise burst, different on each side."""
@@ -410,6 +423,53 @@ def event_rise():
     return tr.finish(3.5, 0.36, 16)
 
 
+def victory_fanfare():
+    """Phase 10, after a won fight: a short rising brass fanfare over a timpani roll, Bb major, 100 bpm."""
+    prog = ["Bb", "Eb", "F", "Bb"]
+    tr = Track(100, len(prog))
+    for b, name in enumerate(prog):
+        ch = chord(name, 3)
+        for k, note in enumerate(ch):
+            tr.add(tr.at(b), strings(hz(note + 12), tr.bar + 0.8, 90 * b + k, 1.1), -0.5 + 0.5 * k, 0.12)
+        tr.add(tr.at(b), strings(hz(ch[0] - 12), tr.bar + 0.8, 9000 + b, 0.6), 0.0, 0.18)
+    # Timpani roll into the first bar, then a hit on each bar.
+    for s in range(8):
+        tr.add(s * tr.beat * 0.25, drum(0.6, 58.3, 9100 + s, 0.2, 0.4, 6.0), 0.0, 0.05 + 0.03 * s)
+    for b in range(len(prog)):
+        tr.add(tr.at(b), drum(1.4, 58.3, 9200 + b, 0.3, 0.6, 3.0), 0.0, 0.32)
+    # The fanfare: up the triad and a held top note, then a cadence.
+    calls = [(0, 0, 70), (0, 0.5, 74), (0, 1, 77), (0, 2, 82),
+             (1, 0, 79), (1, 1, 77), (1, 2, 75), (1, 3, 79),
+             (2, 0, 77), (2, 1.5, 72), (2, 2, 77), (2, 3, 81),
+             (3, 0, 82)]
+    for bar, beat, note in calls:
+        length = tr.beat * (3.5 if bar == 3 else 0.9)
+        tr.add(tr.at(bar, beat), brass(hz(note), length, 9300 + 7 * bar + int(beat * 2), 1.2), 0.1, 0.17)
+        tr.add(tr.at(bar, beat), brass(hz(note - 12), length, 9400 + 7 * bar + int(beat * 2), 0.9), -0.2, 0.1)
+    tr.add(tr.at(3), choir(hz(chord("Bb", 4)[1]), tr.bar + 1.5, 9500), 0.0, 0.08)
+    return tr.finish_once(3.0, 0.34, 17, 3.5)
+
+
+def defeat_lament():
+    """Phase 10, when you fall: a slow, sinking line for low strings and a lone horn, D minor, 54 bpm."""
+    prog = ["Dm", "Bb", "Gm", "A5", "Dm"]
+    tr = Track(54, len(prog))
+    for b, name in enumerate(prog):
+        ch = chord(name, 3)
+        fade = 1.0 - 0.12 * b
+        for k, note in enumerate(ch):
+            tr.add(tr.at(b), pad(hz(note), tr.bar + 1.5, 95 * b + k), -0.6 + 0.6 * k, 0.12 * fade)
+        tr.add(tr.at(b), strings(hz(ch[0] - 12), tr.bar + 1.2, 9600 + b, 0.5), 0.0, 0.2 * fade)
+    # A falling horn line, one breath per bar.
+    line = [(0, 0, 69), (0, 2, 67), (1, 0, 65), (1, 2, 62), (2, 0, 67), (2, 2, 65), (3, 0, 64), (3, 2, 61), (4, 0, 62)]
+    for bar, beat, note in line:
+        length = tr.beat * (3.8 if bar == 4 else 1.9)
+        tr.add(tr.at(bar, beat), brass(hz(note - 12), length, 9700 + 4 * bar + int(beat), 0.55), 0.15, 0.16)
+    tr.add(tr.at(4), bell(hz(74), 4.0, 9800), -0.3, 0.05)
+    tr.add(tr.at(0), drum(2.5, 41.2, 9900, 0.2, 0.3, 1.5), 0.0, 0.25)
+    return tr.finish_once(4.5, 0.45, 18, 4.0)
+
+
 PIECES = {
     "exploration_horizon": exploration_horizon,
     "exploration_wander": exploration_wander,
@@ -417,6 +477,8 @@ PIECES = {
     "combat_duel": combat_duel,
     "combat_shadow": combat_shadow,
     "event_rise": event_rise,
+    "victory_fanfare": victory_fanfare,
+    "defeat_lament": defeat_lament,
 }
 
 

@@ -72,6 +72,15 @@ public class SpaceMenuScreen extends SaberMenuScreen {
 					config.planetTransitionSeconds = v;
 					ImmersionConfig.save();
 				});
+		// Phase 10: the sound of the planet.
+		this.toggle(0, 5, "sabercraft.option.planet_ambient", config.planetAmbient, v -> {
+			config.planetAmbient = v;
+			ImmersionConfig.save();
+		});
+		this.slider(1, 5, "sabercraft.option.planet_ambient_volume", 0.0F, 1.0F, config.planetAmbientVolume, SaberMenuScreen::percent, v -> {
+			config.planetAmbientVolume = v;
+			ImmersionConfig.save();
+		});
 		this.closeButton();
 	}
 
@@ -80,7 +89,7 @@ public class SpaceMenuScreen extends SaberMenuScreen {
 		String planet = ImmersionConfig.get().planet;
 		Component text = PlanetPreset.byId(planet).<Component>map(p -> Component.translatable("sabercraft.planet." + p.id() + ".description"))
 				.orElse(Component.translatable("sabercraft.planet.none.description"));
-		this.note(graphics, text, 5);
-		this.note(graphics, Component.translatable("sabercraft.menu.space.note"), 7);
+		this.note(graphics, text, 6);
+		// The general note on the space sky is the tooltip of its button (Phase 10: the rows are full).
 	}
 }

@@ -11,7 +11,7 @@ Needs numpy and ffmpeg with libvorbis. Writes mono 44.1 kHz Ogg Vorbis files int
 src/client/resources/assets/sabercraft/sounds/saber/ (default profile) and .../saber/dark/
 (the deeper, rougher profile of the dark hilt), and the combat sounds of Phase 6 into
 .../sounds/combat/. `--combat` writes only the combat sounds, `--blaster` only the blaster sounds of Phase 10
-(.../sounds/blaster/). Minecraft only attenuates mono
+(.../sounds/blaster/), `--ambient` only the planet ambiences of Phase 10 (.../sounds/ambient/). Minecraft only attenuates mono
 sounds by distance, so all files are mono.
 """
 import os
@@ -347,7 +347,129 @@ def blasters():
     write_ogg("overheat", blaster_overheat(rng), out)
 
 
+# Planet ambiences (Phase 10) ---------------------------------------------------------------------
+# Loops of AMBIENT_SECONDS. Every slow modulation runs a whole number of times per loop, and every
+# event (a gust, a bird, a crackle) that runs over the end wraps to the start, so they loop
+# without a seam.
+AMBIENT_SECONDS = 16.0
+
+
+def lfo(t, cycles, phase=0.0, depth=1.0):
+    """0..1 modulation that runs exactly `cycles` times per loop."""
+    return 1.0 - depth * 0.5 * (1.0 + np.cos(2 * np.pi * cycles * t / AMBIENT_SECONDS + phase))
+
+
+def place(loop, start, event):
+    """Adds an event at `start` (samples), wrapping what runs over the end to the start."""
+    n = len(loop)
+    idx = (np.arange(len(event)) + start) % n
+    np.add.at(loop, idx, event)
+
+
+def chirp(rng, f0, f1, seconds, level):
+    t = t_axis(seconds)
+    freq = f0 + (f1 - f0) * (t / seconds) ** 0.7
+    phase = 2 * np.pi * np.cumsum(freq) / RATE
+    envelope = np.sin(np.pi * t / seconds) ** 2
+    return np.sin(phase) * envelope * level
+
+
+def desert_wind(rng):
+    """Tatooine: a dry, hot wind over sand, with slow gusts and a faint hiss of blown sand."""
+    t = t_axis(AMBIENT_SECONDS)
+    wind = periodic_noise(AMBIENT_SECONDS, 120, 700, rng) * (0.35 + 0.65 * lfo(t, 2, 0.4)) * (0.7 + 0.3 * lfo(t, 5, 1.3))
+    sand = periodic_noise(AMBIENT_SECONDS, 2500, 7000, rng) * 0.12 * lfo(t, 2, 0.9) ** 2
+    return normalize(wind + sand, 0.5)
+
+
+def blizzard(rng):
+    """Hoth: a cold blizzard, a brighter roar and a howl that rises and falls."""
+    t = t_axis(AMBIENT_SECONDS)
+    roar = periodic_noise(AMBIENT_SECONDS, 300, 2600, rng) * (0.45 + 0.55 * lfo(t, 3, 0.2))
+    # The howl: a narrow band of noise whose loudness follows a slow wave.
+    howl = periodic_noise(AMBIENT_SECONDS, 620, 760, rng) * 0.9 * lfo(t, 2, 2.0) ** 2
+    howl += periodic_noise(AMBIENT_SECONDS, 930, 1010, rng) * 0.5 * lfo(t, 3, 0.7) ** 2
+    snow = periodic_noise(AMBIENT_SECONDS, 4000, 9000, rng) * 0.08
+    return normalize(roar + howl + snow, 0.5)
+
+
+def lava(rng):
+    """Mustafar: a deep rumble of lava, with bubbling and sharp crackles."""
+    t = t_axis(AMBIENT_SECONDS)
+    loop = periodic_noise(AMBIENT_SECONDS, 25, 140, rng) * (0.6 + 0.4 * lfo(t, 3, 0.5))
+    loop += periodic_noise(AMBIENT_SECONDS, 150, 400, rng) * 0.15
+    for _ in range(18):
+        # A bubble: a short, low, rising blip.
+        seconds = rng.uniform(0.08, 0.18)
+        place(loop, int(rng.uniform(0, AMBIENT_SECONDS) * RATE), chirp(rng, rng.uniform(90, 140), rng.uniform(200, 320), seconds, 0.5))
+    for _ in range(40):
+        # A crackle: a click of noise that dies away fast.
+        n = int(rng.uniform(0.01, 0.04) * RATE)
+        event = rng.standard_normal(n) * np.exp(-np.arange(n) / (n / 5)) * rng.uniform(0.1, 0.35)
+        place(loop, int(rng.uniform(0, AMBIENT_SECONDS) * RATE), event)
+    return normalize(loop, 0.5)
+
+
+def forest(rng):
+    """Endor: a soft wind in tall trees, insects and the calls of birds far away."""
+    t = t_axis(AMBIENT_SECONDS)
+    loop = periodic_noise(AMBIENT_SECONDS, 180, 1100, rng) * 0.35 * (0.5 + 0.5 * lfo(t, 2, 1.0))
+    loop += periodic_noise(AMBIENT_SECONDS, 4200, 5200, rng) * 0.05 * (0.6 + 0.4 * lfo(t, 16, 0.0))
+    for _ in range(7):
+        start = int(rng.uniform(0, AMBIENT_SECONDS) * RATE)
+        base = rng.uniform(1800, 3200)
+        for k in range(rng.integers(2, 5)):
+            call = chirp(rng, base * rng.uniform(1.0, 1.2), base * rng.uniform(0.7, 1.4), rng.uniform(0.07, 0.16), rng.uniform(0.12, 0.22))
+            place(loop, start + int(k * rng.uniform(0.12, 0.2) * RATE), call)
+    return normalize(loop, 0.45)
+
+
+def lake(rng):
+    """Naboo: a gentle breeze, water lapping at a shore and a few bright birds."""
+    t = t_axis(AMBIENT_SECONDS)
+    loop = periodic_noise(AMBIENT_SECONDS, 150, 900, rng) * 0.25 * (0.6 + 0.4 * lfo(t, 2, 2.2))
+    # Lapping water: low noise in soft waves, a little more than one every two seconds.
+    loop += periodic_noise(AMBIENT_SECONDS, 60, 500, rng) * 0.45 * lfo(t, 7, 0.0) ** 3
+    for _ in range(5):
+        start = int(rng.uniform(0, AMBIENT_SECONDS) * RATE)
+        notes = rng.choice([1568.0, 1760.0, 1976.0, 2349.0, 2637.0], size=3)
+        for k, f in enumerate(notes):
+            place(loop, start + int(k * 0.18 * RATE), chirp(rng, f, f * 1.04, 0.14, 0.13))
+    return normalize(loop, 0.45)
+
+
+def city(rng):
+    """Coruscant: the deep hum of a city without end and the whoosh of traffic passing far away."""
+    t = t_axis(AMBIENT_SECONDS)
+    # 60 Hz and its harmonics, all on the loop grid.
+    hum = sum(level * np.sin(2 * np.pi * f * t) for f, level in [(60.0, 0.3), (120.0, 0.16), (180.0, 0.06)])
+    loop = hum * (0.8 + 0.2 * lfo(t, 1, 0.0)) + periodic_noise(AMBIENT_SECONDS, 80, 500, rng) * 0.25
+    for _ in range(9):
+        seconds = rng.uniform(1.2, 2.6)
+        n = int(seconds * RATE)
+        swell = np.sin(np.pi * np.arange(n) / n) ** 2
+        whoosh = periodic_noise(seconds, rng.uniform(300, 600), rng.uniform(1500, 3000), rng) * swell * rng.uniform(0.15, 0.3)
+        place(loop, int(rng.uniform(0, AMBIENT_SECONDS) * RATE), whoosh)
+    return normalize(loop, 0.45)
+
+
+def ambient():
+    """The planet ambiences of Phase 10, with their own random stream."""
+    rng = np.random.default_rng(1010)
+    out = os.path.join(os.path.dirname(OUT), "ambient")
+    write_ogg("tatooine", desert_wind(rng), out)
+    write_ogg("hoth", blizzard(rng), out)
+    write_ogg("mustafar", lava(rng), out)
+    write_ogg("endor", forest(rng), out)
+    write_ogg("naboo", lake(rng), out)
+    write_ogg("coruscant", city(rng), out)
+
+
 def main():
+    if "--ambient" in sys.argv:
+        ambient()
+        return
+
     if "--blaster" in sys.argv:
         blasters()
         return

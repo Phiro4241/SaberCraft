@@ -51,6 +51,7 @@ import com.phiro.sabercraft.client.character.OutfitClient;
  *   <li>{@code dramatic}: dramatic encounters (a fight without a lit blade),</li>
  *   <li>{@code boss}: boss fights,</li>
  *   <li>{@code victory}: once after a fight is won (Phase 9),</li>
+ *   <li>{@code defeat}: once when you fall (Phase 10),</li>
  *   <li>{@code characters}: the theme of a film character when they appear, one file per
  *       character ({@code vader.ogg}, {@code obi_wan.ogg}, ...).</li>
  * </ul>
@@ -84,6 +85,7 @@ public final class StarWarsMusic {
 		DRAMATIC("dramatic", true, true),
 		BOSS("boss", true, true),
 		VICTORY("victory", false, false),
+		DEFEAT("defeat", false, false),
 		CHARACTER("characters", false, false);
 
 		private final String folder;
@@ -102,6 +104,11 @@ public final class StarWarsMusic {
 
 		public boolean combat() {
 			return this.combat;
+		}
+
+		/** Played once and then back to what is going on: a character theme, victory or defeat. */
+		boolean once() {
+			return this == CHARACTER || this == VICTORY || this == DEFEAT;
 		}
 	}
 
@@ -140,9 +147,11 @@ public final class StarWarsMusic {
 	private static @Nullable String pendingTheme;
 	private static @Nullable String playingTheme;
 	private static Source currentSource = Source.GENERAL;
-	private static boolean pendingVictory;
-	private static boolean playingVictory;
+	/** The victory piece (Phase 9) or the defeat piece (Phase 10) that is due or playing. */
+	private static @Nullable Situation pendingStinger;
+	private static @Nullable Situation playingStinger;
 	private static boolean wasFighting;
+	private static boolean wasAlive = true;
 	private static int candidateTicks;
 	private static int silence;
 	private static boolean active;
@@ -287,6 +296,7 @@ public final class StarWarsMusic {
 					  dramatic/     dramatic encounters: a fight without a lit blade
 					  boss/         boss fights (Ender Dragon, Wither, Warden, ...)
 					  victory/      played once after you win a fight
+					  defeat/       played once when you fall
 					  characters/   the theme of a character when they appear, named after the character:
 					                vader.ogg, obi_wan.ogg, maul.ogg, luke.ogg, anakin.ogg, yoda.ogg,
 					                dooku.ogg, ahsoka.ogg, kylo.ogg, rey.ogg, ezra.ogg (or a folder characters/vader/)
@@ -294,7 +304,7 @@ public final class StarWarsMusic {
 					Music for a planet or a character (optional):
 					  planets/hoth/              exploring and calm moments while the Hoth sky is chosen
 					  planets/hoth/duel/         duels on Hoth (any situation folder works: exploration, calm,
-					                             duel, dramatic, boss, victory)
+					                             duel, dramatic, boss, victory, defeat)
 					  characters/vader/duel/     duels while YOU play Vader (any situation folder works)
 					  Planets: tatooine, coruscant, endor, hoth, mustafar, naboo.
 					  Characters: vader, obi_wan, maul, luke, anakin, yoda, dooku, ahsoka, kylo, rey, ezra.
@@ -595,7 +605,7 @@ public final class StarWarsMusic {
 				candidateTicks = wanted == candidate ? candidateTicks + 1 : 0;
 				candidate = wanted;
 
-				if (situation == null || wanted == null || wanted.combat() || wanted == Situation.CHARACTER || wanted == Situation.VICTORY
+				if (situation == null || wanted == null || wanted.combat() || wanted.once()
 						|| candidateTicks >= MOOD_SETTLE) {
 					switchTo(wanted, crossfade);
 				}
@@ -606,10 +616,10 @@ public final class StarWarsMusic {
 			if (current != null && !current.isPlaying(client) && !current.fadingOut()) {
 				current = null;
 
-				if (situation == Situation.CHARACTER || situation == Situation.VICTORY) {
-					// The theme or the victory piece has been played; back to what is going on.
+				if (situation != null && situation.once()) {
+					// The theme, the victory or the defeat piece has been played; back to what is going on.
 					playingTheme = null;
-					playingVictory = false;
+					playingStinger = null;
 					situation = null;
 					silence = 20;
 				} else {
@@ -640,11 +650,15 @@ public final class StarWarsMusic {
 		ImmersionConfig config = ImmersionConfig.get();
 		Situation found;
 
-		if (SaberMusic.bossNow(client)) {
+		Situation stinger = playingStinger != null ? playingStinger : pendingStinger;
+
+		if (stinger == Situation.DEFEAT) {
+			found = Situation.DEFEAT;
+		} else if (SaberMusic.bossNow(client)) {
 			found = Situation.BOSS;
-		} else if (SaberMusic.fightNow(client)) {
+		} else if (SaberMusic.fightNow(client) && client.player.isAlive()) {
 			found = SaberMusic.saberLit(client.player) ? Situation.DUEL : Situation.DRAMATIC;
-		} else if (playingVictory || pendingVictory) {
+		} else if (stinger == Situation.VICTORY) {
 			found = Situation.VICTORY;
 		} else if (playingTheme != null || pendingTheme != null) {
 			found = Situation.CHARACTER;
@@ -654,8 +668,10 @@ public final class StarWarsMusic {
 			found = Situation.EXPLORATION;
 		}
 
-		if ((found.combat() || found == Situation.VICTORY) && !config.starWarsCombat
-				|| !found.combat() && found != Situation.CHARACTER && found != Situation.VICTORY && !config.starWarsExploration) {
+		boolean stingerFound = found == Situation.VICTORY || found == Situation.DEFEAT;
+
+		if ((found.combat() || stingerFound) && !config.starWarsCombat
+				|| !found.combat() && !found.once() && !config.starWarsExploration) {
 			return null;
 		}
 
@@ -695,16 +711,24 @@ public final class StarWarsMusic {
 		}
 	}
 
-	/** A fight that ends with you alive is a won fight: the victory piece plays, if there is one. */
+	/**
+	 * A fight that ends with you alive is a won fight: the victory piece plays, if there is one.
+	 * Phase 10: when you fall, the defeat piece plays, if there is one.
+	 */
 	private static void watchVictory(Minecraft client) {
 		boolean fighting = SaberMusic.bossNow(client) || SaberMusic.fightNow(client);
+		boolean alive = client.player != null && client.player.isAlive();
+		ImmersionConfig config = ImmersionConfig.get();
+		boolean allowed = config.starWarsCombat && config.musicStingers;
 
-		if (wasFighting && !fighting && client.player != null && client.player.isAlive() && ImmersionConfig.get().starWarsCombat
-				&& !resolve(Situation.VICTORY).tracks().isEmpty()) {
-			pendingVictory = true;
+		if (wasAlive && !alive && allowed && !resolve(Situation.DEFEAT).tracks().isEmpty()) {
+			pendingStinger = Situation.DEFEAT;
+		} else if (wasFighting && !fighting && alive && allowed && pendingStinger == null && !resolve(Situation.VICTORY).tracks().isEmpty()) {
+			pendingStinger = Situation.VICTORY;
 		}
 
-		wasFighting = fighting;
+		wasAlive = alive;
+		wasFighting = fighting && alive;
 	}
 
 	private static void queueTheme(Minecraft client, String character) {
@@ -730,8 +754,8 @@ public final class StarWarsMusic {
 			playingTheme = null;
 		}
 
-		if (situation == Situation.VICTORY && wanted != Situation.VICTORY) {
-			playingVictory = false;
+		if (playingStinger != null && wanted != playingStinger) {
+			playingStinger = null;
 		}
 
 		silence = 1;
@@ -750,9 +774,9 @@ public final class StarWarsMusic {
 			choices = character == null ? List.of() : theme(character);
 			source = character == null ? Source.GENERAL : new Source("theme", character);
 		} else {
-			if (wanted == Situation.VICTORY) {
-				pendingVictory = false;
-				playingVictory = true;
+			if (wanted == Situation.VICTORY || wanted == Situation.DEFEAT) {
+				pendingStinger = null;
+				playingStinger = wanted;
 			}
 
 			Choice choice = resolve(wanted);
@@ -761,9 +785,9 @@ public final class StarWarsMusic {
 		}
 
 		if (choices.isEmpty()) {
-			if (wanted == Situation.CHARACTER || wanted == Situation.VICTORY) {
+			if (wanted.once()) {
 				playingTheme = null;
-				playingVictory = false;
+				playingStinger = null;
 				situation = null;
 			}
 
@@ -830,9 +854,10 @@ public final class StarWarsMusic {
 		candidate = null;
 		pendingTheme = null;
 		playingTheme = null;
-		pendingVictory = false;
-		playingVictory = false;
+		pendingStinger = null;
+		playingStinger = null;
 		wasFighting = false;
+		wasAlive = true;
 		currentSource = Source.GENERAL;
 		active = false;
 		SEEN.clear();

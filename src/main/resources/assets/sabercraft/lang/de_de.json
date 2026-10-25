@@ -95,7 +95,7 @@
   "sabercraft.option.landing_animation": "Landeanimation",
   "sabercraft.option.landing_animation.description": "Abfedern nach höheren Sprüngen.",
   "sabercraft.option.space_sky": "Weltraum-Himmel",
-  "sabercraft.option.space_sky.description": "Der gemalte Sternenhimmel mit Planeten statt des normalen Nachthimmels.",
+  "sabercraft.option.space_sky.description": "Sterne, Nebel, Galaxien, Planeten und Monde statt des normalen Nachthimmels, in jeder Dimension anders. Nur in deinem Spiel; aus = normaler Minecraft-Himmel. Mit einem Iris-Shaderpack bleibt er aus, solange du es nicht erlaubst.",
   "sabercraft.option.space_sky_quality": "Himmelsqualität",
   "sabercraft.option.space_sky_quality.description": "Auflösung des Himmels: niedrig 256, mittel 512, hoch 1024, ultra 1536 Pixel pro Seite. Wird im Hintergrund gemalt. Ultra braucht mit Planet und Weltraumhimmel zusammen etwa 170 MB Grafikspeicher.",
   "sabercraft.option.shader_blade": "Klinge mit Shadern",

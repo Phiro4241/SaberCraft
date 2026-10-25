@@ -28,7 +28,12 @@ final class MusicPiece extends AbstractTickableSoundInstance {
 	private int age;
 
 	MusicPiece(Identifier id, boolean loop, float fadeInTicks) {
-		super(SoundEvent.createVariableRangeEvent(id), SoundSource.MUSIC, RandomSource.create());
+		this(id, loop, fadeInTicks, SoundSource.MUSIC);
+	}
+
+	/** A piece in another sound category: the planet sounds (Phase 10) play as ambience. */
+	MusicPiece(Identifier id, boolean loop, float fadeInTicks, SoundSource source) {
+		super(SoundEvent.createVariableRangeEvent(id), source, RandomSource.create());
 		this.looping = loop;
 		this.relative = true;
 		this.attenuation = SoundInstance.Attenuation.NONE;

@@ -95,7 +95,7 @@
   "sabercraft.option.landing_animation": "Landing animation",
   "sabercraft.option.landing_animation.description": "Cushioning after higher jumps.",
   "sabercraft.option.space_sky": "Space sky",
-  "sabercraft.option.space_sky.description": "The painted starry sky with planets instead of the normal night sky.",
+  "sabercraft.option.space_sky.description": "Stars, nebulae, galaxies, planets and moons instead of the plain night sky, different in every dimension. Only in your game; off = the normal Minecraft sky. With an Iris shader pack it stays off unless you allow it.",
   "sabercraft.option.space_sky_quality": "Sky quality",
   "sabercraft.option.space_sky_quality.description": "Resolution of the sky: low 256, medium 512, high 1024, ultra 1536 pixels per side. Painted in the background. Ultra needs about 170 MB of video memory with a planet and the space sky together.",
   "sabercraft.option.shader_blade": "Blade with shaders",

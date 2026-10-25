@@ -321,5 +321,69 @@
         "attenuation_distance": 20
       }
     ]
+  },
+  "music.victory_fanfare": {
+    "sounds": [
+      {
+        "name": "sabercraft:music/victory_fanfare",
+        "stream": true
+      }
+    ]
+  },
+  "music.defeat_lament": {
+    "sounds": [
+      {
+        "name": "sabercraft:music/defeat_lament",
+        "stream": true
+      }
+    ]
+  },
+  "ambient.tatooine": {
+    "sounds": [
+      {
+        "name": "sabercraft:ambient/tatooine",
+        "stream": true
+      }
+    ]
+  },
+  "ambient.hoth": {
+    "sounds": [
+      {
+        "name": "sabercraft:ambient/hoth",
+        "stream": true
+      }
+    ]
+  },
+  "ambient.mustafar": {
+    "sounds": [
+      {
+        "name": "sabercraft:ambient/mustafar",
+        "stream": true
+      }
+    ]
+  },
+  "ambient.endor": {
+    "sounds": [
+      {
+        "name": "sabercraft:ambient/endor",
+        "stream": true
+      }
+    ]
+  },
+  "ambient.naboo": {
+    "sounds": [
+      {
+        "name": "sabercraft:ambient/naboo",
+        "stream": true
+      }
+    ]
+  },
+  "ambient.coruscant": {
+    "sounds": [
+      {
+        "name": "sabercraft:ambient/coruscant",
+        "stream": true
+      }
+    ]
   }
 }
