@@ -115,6 +115,9 @@ public class AdvancementGameTest implements FabricClientGameTest {
 				return null;
 			});
 			check(has(server, self, SaberAdvancements.CHOSEN_ONE), "all seven abilities: The Chosen One");
+			// Lets the advancement chat message arrive before the world closes. On CI a message still
+			// on its way while the connection closed left the world closing forever.
+			context.waitTicks(20);
 		}
 	}
 
