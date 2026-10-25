@@ -8,6 +8,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.phiro.sabercraft.ability.SaberAbilities;
+import com.phiro.sabercraft.advancement.SaberAdvancements;
 import com.phiro.sabercraft.blaster.Blasters;
 import com.phiro.sabercraft.character.OutfitSync;
 import com.phiro.sabercraft.command.SaberCraftCommands;
@@ -37,6 +38,7 @@ public class SaberCraft implements ModInitializer {
 		Blasters.init();
 		SaberCraftCommands.init();
 		Duels.init();
+		SaberAdvancements.init();
 		LOGGER.info("SaberCraft initialized");
 	}
 

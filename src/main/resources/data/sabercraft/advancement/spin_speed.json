@@ -1,0 +1,28 @@
+{
+  "parent": "sabercraft:force_awakens",
+  "display": {
+    "icon": {
+      "id": "minecraft:breeze_rod"
+    },
+    "title": {
+      "translate": "advancements.sabercraft.spin_speed.title"
+    },
+    "description": {
+      "translate": "advancements.sabercraft.spin_speed.description"
+    },
+    "frame": "goal",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "two_hits": {
+      "trigger": "minecraft:impossible"
+    }
+  },
+  "requirements": [
+    [
+      "two_hits"
+    ]
+  ]
+}

@@ -1,0 +1,28 @@
+{
+  "display": {
+    "icon": {
+      "id": "minecraft:netherite_sword"
+    },
+    "title": {
+      "translate": "advancements.sabercraft.root.title"
+    },
+    "description": {
+      "translate": "advancements.sabercraft.root.description"
+    },
+    "frame": "task",
+    "show_toast": false,
+    "announce_to_chat": false,
+    "hidden": false,
+    "background": "sabercraft:gui/advancements/backgrounds/space"
+  },
+  "criteria": {
+    "joined": {
+      "trigger": "minecraft:impossible"
+    }
+  },
+  "requirements": [
+    [
+      "joined"
+    ]
+  ]
+}

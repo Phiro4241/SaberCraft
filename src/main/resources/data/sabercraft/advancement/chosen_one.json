@@ -1,0 +1,64 @@
+{
+  "parent": "sabercraft:force_awakens",
+  "display": {
+    "icon": {
+      "id": "minecraft:nether_star"
+    },
+    "title": {
+      "translate": "advancements.sabercraft.chosen_one.title"
+    },
+    "description": {
+      "translate": "advancements.sabercraft.chosen_one.description"
+    },
+    "frame": "challenge",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "guard": {
+      "trigger": "minecraft:impossible"
+    },
+    "spin": {
+      "trigger": "minecraft:impossible"
+    },
+    "push": {
+      "trigger": "minecraft:impossible"
+    },
+    "dash": {
+      "trigger": "minecraft:impossible"
+    },
+    "grip": {
+      "trigger": "minecraft:impossible"
+    },
+    "pull": {
+      "trigger": "minecraft:impossible"
+    },
+    "jump": {
+      "trigger": "minecraft:impossible"
+    }
+  },
+  "requirements": [
+    [
+      "guard"
+    ],
+    [
+      "spin"
+    ],
+    [
+      "push"
+    ],
+    [
+      "dash"
+    ],
+    [
+      "grip"
+    ],
+    [
+      "pull"
+    ],
+    [
+      "jump"
+    ]
+  ]
+}

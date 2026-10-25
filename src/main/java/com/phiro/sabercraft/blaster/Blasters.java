@@ -41,6 +41,7 @@ import com.phiro.sabercraft.SaberCraft;
 import com.phiro.sabercraft.ability.AbilityConfig;
 import com.phiro.sabercraft.ability.SaberAbilities;
 import com.phiro.sabercraft.ability.SaberAbility;
+import com.phiro.sabercraft.advancement.SaberAdvancements;
 import com.phiro.sabercraft.item.ItemConversion;
 import com.phiro.sabercraft.network.AbilityEventPayload;
 import com.phiro.sabercraft.network.BlasterHeatPayload;
@@ -213,6 +214,7 @@ public final class Blasters {
 		level.playSound(null, muzzle.x, muzzle.y, muzzle.z, sound("blaster." + type.id().getPath()), SoundSource.PLAYERS, 1.0F,
 				0.95F + level.getRandom().nextFloat() * 0.1F);
 		sync(player, heat);
+		SaberAdvancements.award(player, SaberAdvancements.FIRST_SHOT);
 		return Refusal.NONE;
 	}
 

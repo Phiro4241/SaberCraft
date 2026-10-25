@@ -1,5 +1,5 @@
 {
-  "modmenu.descriptionTranslation.sabercraft": "Turns Minecraft swords into cinematic lightsabers and bows into blasters.",
+  "modmenu.descriptionTranslation.sabercraft": "Star Wars for Minecraft: cinematic lightsabers, blasters that use arrows as ammunition, droid companions, a flyable X-Wing, characters, planets and achievements.",
   "subtitles.sabercraft.saber.ignite": "Saber ignites",
   "subtitles.sabercraft.saber.retract": "Saber retracts",
   "subtitles.sabercraft.saber.hum": "Saber hums",
@@ -405,5 +405,23 @@
   "sabercraft.blaster.no_ammo": "No arrows – a blaster needs one arrow per shot.",
   "sabercraft.hud.ammo": "Arrows: %s",
   "subtitles.sabercraft.blaster.empty": "Blaster clicks empty",
-  "subtitles.sabercraft.blaster.vent": "Blaster vents steam"
+  "subtitles.sabercraft.blaster.vent": "Blaster vents steam",
+  "advancements.sabercraft.root.title": "SaberCraft",
+  "advancements.sabercraft.root.description": "Your own galaxy awaits: sabers, blasters, droids and starships",
+  "advancements.sabercraft.force_awakens.title": "The Force Awakens",
+  "advancements.sabercraft.force_awakens.description": "Hold a lightsaber in your hand",
+  "advancements.sabercraft.first_shot.title": "The First Shot",
+  "advancements.sabercraft.first_shot.description": "Fire a blaster",
+  "advancements.sabercraft.sharpshooter.title": "Sharpshooter",
+  "advancements.sabercraft.sharpshooter.description": "Hit a target with a blaster bolt from at least 30 blocks away",
+  "advancements.sabercraft.duel_begins.title": "The Duel Begins",
+  "advancements.sabercraft.duel_begins.description": "Start a lightsaber duel with another player",
+  "advancements.sabercraft.dark_lord.title": "The Dark Lord",
+  "advancements.sabercraft.dark_lord.description": "Win a duel as a character of the dark side",
+  "advancements.sabercraft.chosen_one.title": "The Chosen One",
+  "advancements.sabercraft.chosen_one.description": "Use every saber ability: guard, spin, push, dodge, grip, pull and Force jump",
+  "advancements.sabercraft.spin_speed.title": "Rotational Speed",
+  "advancements.sabercraft.spin_speed.description": "Hit two enemies with a single spin attack",
+  "advancements.sabercraft.finisher.title": "A Worthy Ending",
+  "advancements.sabercraft.finisher.description": "Defeat an opponent with a lightsaber finishing blow"
 }

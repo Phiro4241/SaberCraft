@@ -1,5 +1,5 @@
 {
-  "modmenu.descriptionTranslation.sabercraft": "Verwandelt Minecraft-Schwerter in filmreife Lichtschwerter und Bögen in Blaster.",
+  "modmenu.descriptionTranslation.sabercraft": "Star Wars für Minecraft: filmreife Lichtschwerter, Blaster mit Pfeilen als Munition, Droiden-Begleiter, ein fliegbarer X-Wing, Charaktere, Planeten und Errungenschaften.",
   "subtitles.sabercraft.saber.ignite": "Energieschwert zündet",
   "subtitles.sabercraft.saber.retract": "Energieschwert fährt ein",
   "subtitles.sabercraft.saber.hum": "Energieschwert summt",
@@ -405,5 +405,23 @@
   "sabercraft.blaster.no_ammo": "Keine Pfeile – ein Blaster braucht einen Pfeil pro Schuss.",
   "sabercraft.hud.ammo": "Pfeile: %s",
   "subtitles.sabercraft.blaster.empty": "Blaster klickt leer",
-  "subtitles.sabercraft.blaster.vent": "Blaster lässt Dampf ab"
+  "subtitles.sabercraft.blaster.vent": "Blaster lässt Dampf ab",
+  "advancements.sabercraft.root.title": "SaberCraft",
+  "advancements.sabercraft.root.description": "Deine eigene Galaxis wartet: Lichtschwerter, Blaster, Droiden und Raumschiffe",
+  "advancements.sabercraft.force_awakens.title": "Die Macht erwacht",
+  "advancements.sabercraft.force_awakens.description": "Halte ein Lichtschwert in der Hand",
+  "advancements.sabercraft.first_shot.title": "Der erste Schuss",
+  "advancements.sabercraft.first_shot.description": "Feuere einen Blaster ab",
+  "advancements.sabercraft.sharpshooter.title": "Präzisionsschütze",
+  "advancements.sabercraft.sharpshooter.description": "Triff ein Ziel mit einem Blasterschuss aus mindestens 30 Blöcken Entfernung",
+  "advancements.sabercraft.duel_begins.title": "Das Duell beginnt",
+  "advancements.sabercraft.duel_begins.description": "Beginne ein Lichtschwert-Duell mit einem anderen Spieler",
+  "advancements.sabercraft.dark_lord.title": "Der dunkle Lord",
+  "advancements.sabercraft.dark_lord.description": "Gewinne ein Duell als Charakter der dunklen Seite",
+  "advancements.sabercraft.chosen_one.title": "Der Auserwählte",
+  "advancements.sabercraft.chosen_one.description": "Nutze jede Lichtschwert-Fähigkeit: Abwehr, Drehangriff, Stoß, Ausweichen, Würgegriff, Heranziehen und Machtsprung",
+  "advancements.sabercraft.spin_speed.title": "Rotationsgeschwindigkeit",
+  "advancements.sabercraft.spin_speed.description": "Triff zwei Gegner mit einem einzigen Drehangriff",
+  "advancements.sabercraft.finisher.title": "Ein würdiger Abschluss",
+  "advancements.sabercraft.finisher.description": "Besiege einen Gegner mit einem Lichtschwert-Finisher"
 }

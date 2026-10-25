@@ -9,6 +9,7 @@ import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.damagesource.DamageSource;
@@ -29,6 +30,7 @@ import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 
 import com.phiro.sabercraft.SaberCraft;
+import com.phiro.sabercraft.advancement.SaberAdvancements;
 
 /**
  * A blaster bolt, on the server. It flies straight (no gravity, no drag), hurts what it hits and
@@ -130,6 +132,10 @@ public class BlasterBolt extends ThrowableItemProjectile {
 		DamageSource source = new DamageSource(level.registryAccess().lookupOrThrow(Registries.DAMAGE_TYPE).getOrThrow(DAMAGE), this, owner);
 
 		if (target.hurtServer(level, source, this.damage) && target instanceof LivingEntity living) {
+			if (owner instanceof ServerPlayer shooter && shooter.distanceTo(living) >= SaberAdvancements.SHARPSHOOTER_DISTANCE) {
+				SaberAdvancements.award(shooter, SaberAdvancements.SHARPSHOOTER);
+			}
+
 			if (this.fire) {
 				living.igniteForSeconds(5.0F);
 			}

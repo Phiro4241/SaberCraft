@@ -1,0 +1,28 @@
+{
+  "parent": "sabercraft:force_awakens",
+  "display": {
+    "icon": {
+      "id": "minecraft:iron_sword"
+    },
+    "title": {
+      "translate": "advancements.sabercraft.duel_begins.title"
+    },
+    "description": {
+      "translate": "advancements.sabercraft.duel_begins.description"
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "duel": {
+      "trigger": "minecraft:impossible"
+    }
+  },
+  "requirements": [
+    [
+      "duel"
+    ]
+  ]
+}

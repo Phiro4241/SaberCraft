@@ -1,0 +1,35 @@
+{
+  "parent": "sabercraft:root",
+  "display": {
+    "icon": {
+      "id": "minecraft:bow",
+      "components": {
+        "minecraft:custom_model_data": {
+          "strings": [
+            "sabercraft:dl44"
+          ]
+        }
+      }
+    },
+    "title": {
+      "translate": "advancements.sabercraft.first_shot.title"
+    },
+    "description": {
+      "translate": "advancements.sabercraft.first_shot.description"
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "shot": {
+      "trigger": "minecraft:impossible"
+    }
+  },
+  "requirements": [
+    [
+      "shot"
+    ]
+  ]
+}
