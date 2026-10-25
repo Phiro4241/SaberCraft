@@ -3,12 +3,14 @@
 	"id": "sabercraft",
 	"version": "${version}",
 	"name": "SaberCraft",
-	"description": "Turns the netherite sword into a cinematic energy saber with ignition animations, glowing blades and original sound design.",
+	"description": "Star Wars for Minecraft: cinematic lightsabers with ignition, glow and sound, blasters that use arrows as ammunition, droid companions, a flyable X-Wing, characters, planets and achievements. All models, textures and sounds are original.",
 	"authors": [
 		"Phiro"
 	],
 	"contact": {
-		"sources": "https://github.com/Phiro4241/SaberCraft"
+		"homepage": "https://github.com/Phiro4241/SaberCraft",
+		"sources": "https://github.com/Phiro4241/SaberCraft",
+		"issues": "https://github.com/Phiro4241/SaberCraft/issues"
 	},
 	"license": "All-Rights-Reserved",
 	"icon": "assets/sabercraft/icon.png",

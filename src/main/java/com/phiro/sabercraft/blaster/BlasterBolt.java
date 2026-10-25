@@ -9,6 +9,7 @@ import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.damagesource.DamageSource;
@@ -18,6 +19,7 @@ import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.projectile.throwableitemprojectile.ThrowableItemProjectile;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -29,6 +31,8 @@ import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 
 import com.phiro.sabercraft.SaberCraft;
+import com.phiro.sabercraft.ability.AbilityConfig;
+import com.phiro.sabercraft.advancement.SaberAdvancements;
 
 /**
  * A blaster bolt, on the server. It flies straight (no gravity, no drag), hurts what it hits and
@@ -44,8 +48,6 @@ import com.phiro.sabercraft.SaberCraft;
 public class BlasterBolt extends ThrowableItemProjectile {
 	public static final String MARKER = SaberCraft.id("bolt").toString();
 	public static final ResourceKey<DamageType> DAMAGE = ResourceKey.create(Registries.DAMAGE_TYPE, SaberCraft.id("blaster"));
-	/** Bolts that hit nothing are gone after this many ticks. */
-	private static final int LIFETIME = 60;
 	private final BlasterType type;
 	private final float damage;
 	private final boolean fire;
@@ -91,7 +93,8 @@ public class BlasterBolt extends ThrowableItemProjectile {
 	public void tick() {
 		super.tick();
 
-		if (this.isAlive() && this.tickCount > LIFETIME) {
+		// Bolts that hit nothing fade at the end of their range (Phase 11: per type).
+		if (this.isAlive() && this.tickCount > this.type.lifetime()) {
 			this.discard();
 		}
 	}
@@ -121,6 +124,20 @@ public class BlasterBolt extends ThrowableItemProjectile {
 	}
 
 	@Override
+	protected boolean canHitEntity(Entity target) {
+		// Never the ship its shooter sits in (Phase 11).
+		// Starship lasers spare other players if the server says so.
+		Entity owner = this.getOwner();
+
+		if (this.type == BlasterType.XWING && target instanceof Player
+				&& !AbilityConfig.get().shipLasersHitPlayers) {
+			return false;
+		}
+
+		return (owner == null || owner.getVehicle() != target) && super.canHitEntity(target);
+	}
+
+	@Override
 	protected void onHitEntity(EntityHitResult hit) {
 		if (!(this.level() instanceof ServerLevel level)) {
 			return;
@@ -131,6 +148,10 @@ public class BlasterBolt extends ThrowableItemProjectile {
 		DamageSource source = new DamageSource(level.registryAccess().lookupOrThrow(Registries.DAMAGE_TYPE).getOrThrow(DAMAGE), this, owner);
 
 		if (target.hurtServer(level, source, this.damage) && target instanceof LivingEntity living) {
+			if (owner instanceof ServerPlayer shooter && shooter.distanceTo(living) >= SaberAdvancements.SHARPSHOOTER_DISTANCE) {
+				SaberAdvancements.award(shooter, SaberAdvancements.SHARPSHOOTER);
+			}
+
 			if (this.fire) {
 				living.igniteForSeconds(5.0F);
 			}

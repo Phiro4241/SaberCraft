@@ -49,6 +49,14 @@ public class CombatMenuScreen extends SaberMenuScreen {
 			config.landingAnimation = v;
 			CombatConfig.save();
 		});
+		this.toggle(0, 6, "sabercraft.option.hit_marks", config.hitMarks, v -> {
+			config.hitMarks = v;
+			CombatConfig.save();
+		});
+		this.toggle(1, 6, "sabercraft.option.finisher_effects", config.finisherEffects, v -> {
+			config.finisherEffects = v;
+			CombatConfig.save();
+		});
 		this.button(0, 7, Component.translatable("sabercraft.menu.combat.keys"), () -> {
 			this.minecraft.gui.setScreen(new KeyBindsScreen(this, this.minecraft.options));
 			return true;

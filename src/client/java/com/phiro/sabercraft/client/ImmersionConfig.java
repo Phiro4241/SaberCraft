@@ -112,6 +112,18 @@ public final class ImmersionConfig {
 	/** Star Wars mode: a character's theme when they appear (you or another player). */
 	@SerializedName("starwars_character_themes")
 	public boolean starWarsCharacterThemes = true;
+	/** Phase 11: switch to the third-person view behind the ship when climbing into a starship. */
+	@SerializedName("ship_third_person")
+	public boolean shipThirdPerson = true;
+	/** Phase 11: the flight display (speed, height, lasers) while flying a starship. */
+	@SerializedName("ship_hud")
+	public boolean shipHud = true;
+	/** Phase 11: drawing and holstering a blaster are animated and heard. */
+	@SerializedName("blaster_draw")
+	public boolean blasterDraw = true;
+	/** Phase 11: the menu fades a page in with a soft sweep when switching areas. */
+	@SerializedName("menu_transitions")
+	public boolean menuTransitions = true;
 
 	public static final String MODE_SABERCRAFT = "sabercraft";
 	public static final String MODE_STARWARS = "starwars";

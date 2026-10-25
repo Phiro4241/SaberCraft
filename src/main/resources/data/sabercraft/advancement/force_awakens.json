@@ -1,0 +1,28 @@
+{
+  "parent": "sabercraft:root",
+  "display": {
+    "icon": {
+      "id": "minecraft:netherite_sword"
+    },
+    "title": {
+      "translate": "advancements.sabercraft.force_awakens.title"
+    },
+    "description": {
+      "translate": "advancements.sabercraft.force_awakens.description"
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "saber": {
+      "trigger": "minecraft:impossible"
+    }
+  },
+  "requirements": [
+    [
+      "saber"
+    ]
+  ]
+}

@@ -11,7 +11,10 @@ Needs numpy and ffmpeg with libvorbis. Writes mono 44.1 kHz Ogg Vorbis files int
 src/client/resources/assets/sabercraft/sounds/saber/ (default profile) and .../saber/dark/
 (the deeper, rougher profile of the dark hilt), and the combat sounds of Phase 6 into
 .../sounds/combat/. `--combat` writes only the combat sounds, `--blaster` only the blaster sounds of Phase 10
-(.../sounds/blaster/), `--ambient` only the planet ambiences of Phase 10 (.../sounds/ambient/). Minecraft only attenuates mono
+(.../sounds/blaster/), `--ambient` only the planet ambiences of Phase 10 (.../sounds/ambient/),
+`--phase11-blaster` the new blaster sounds of Phase 11, `--droids` the droid voices of Phase 11
+(.../sounds/droid/: beeps, whistles, servos and wordless robot murmurs, no speech), `--atmosphere` the draw and holster sounds and the menu sweep of Phase 11 G, `--ships` the
+starship engine, laser cannon, crash and S-foil sounds of Phase 11 (.../sounds/ship/). Minecraft only attenuates mono
 sounds by distance, so all files are mono.
 """
 import os
@@ -347,6 +350,299 @@ def blasters():
     write_ogg("overheat", blaster_overheat(rng), out)
 
 
+def bowcaster_shot(rng, seconds=0.75):
+    """The bowcaster (Phase 11): a heavy twang of the bow arms, a deep thump and a short crack."""
+    t = t_axis(seconds)
+    k = np.log(70 / 900) / seconds
+    phase = 2 * np.pi * 900 * (np.exp(k * t) - 1) / k
+    twang = (np.sin(phase) + 0.5 * np.sin(1.5 * phase) + 0.3 * np.sin(2.7 * phase)) * np.exp(-t * 5)
+    thump = np.sin(2 * np.pi * 62 * t) * np.exp(-t * 14) * 1.1
+    crack = bandpass_noise(seconds, 1200, 7000, rng) * np.exp(-t * 60) * 0.8
+    return normalize(soft_clip(twang * (1 - np.exp(-t * 700)) + thump + crack, 1.8), 0.85)
+
+
+def dry_click(rng, seconds=0.18):
+    """No ammunition (Phase 11): a dry mechanical double click and a falling beep."""
+    t = t_axis(seconds)
+    out = np.zeros_like(t)
+    for start in (0.0, 0.05):
+        n = int(start * RATE)
+        tt = t[: len(t) - n]
+        out[n:] += bandpass_noise(seconds, 2500, 9000, rng)[: len(tt)] * np.exp(-tt * 400)
+    beep = np.sin(2 * np.pi * (1300 - 2500 * t) * t) * np.exp(-t * 18) * (t > 0.09) * 0.25
+    return normalize(out + beep, 0.5)
+
+
+def vent(rng, seconds=1.4):
+    """Cooling vents opening (Phase 11): a rising hiss with a few metallic ticks."""
+    t = t_axis(seconds)
+    hiss = bandpass_noise(seconds, 3000, 11000, rng) * np.minimum(1, t * 8) * np.exp(-t * 1.8)
+    ticks = np.zeros_like(t)
+    for start in rng.uniform(0.2, 1.1, 5):
+        n = int(start * RATE)
+        m = min(len(t) - n, int(0.02 * RATE))
+        ticks[n:n + m] += np.sin(2 * np.pi * 4200 * t[:m]) * np.exp(-t[:m] * 300) * 0.3
+    return normalize(hiss + ticks, 0.5)
+
+
+def menu_select(rng, seconds=0.35):
+    """Picking a blaster in the menu (Phase 11): a short power-up chirp."""
+    t = t_axis(seconds)
+    k = np.log(1800 / 400) / seconds
+    phase = 2 * np.pi * 400 * (np.exp(k * t) - 1) / k
+    tone = (np.sin(phase) + 0.3 * np.sin(2 * phase)) * np.exp(-t * 7) * (1 - np.exp(-t * 300))
+    return normalize(tone, 0.45)
+
+
+def phase11_blasters():
+    """The new blaster sounds of Phase 11, with their own random stream (Phase 10 sounds stay as they are)."""
+    rng = np.random.default_rng(1111)
+    out = os.path.join(os.path.dirname(OUT), "blaster")
+    write_ogg("dc15a", blaster_shot(rng, 0.5, 2900, 220, 0.5, 0.35, 0.45, 8), out)
+    write_ogg("se14c", blaster_shot(rng, 0.34, 3400, 420, 0.5, 0.15, 0.35, 13), out)
+    write_ogg("bowcaster", bowcaster_shot(rng), out)
+    write_ogg("empty", dry_click(rng), out)
+    write_ogg("vent", vent(rng), out)
+    write_ogg("select", menu_select(rng), out)
+
+
+def finisher(rng, seconds=1.6):
+    """The final blow (Phase 11): a deep, swelling hum, a bright energy crack and a long, ringing
+    decay with a soft rush of air, like the last strike of a duel in slow motion."""
+    t = t_axis(seconds)
+    swell = soft_clip(hum_tone(t, HUM_BASE * (0.8 + 0.2 * np.exp(-t / 0.4))) / 1.4, 3.0) * np.clip(t / 0.05, 0, 1) * np.exp(-t / 0.7)
+    crack = bandpass_noise(seconds, 600, 9000, rng) * np.exp(-t / 0.03)
+    boom = np.sin(2 * np.pi * 55 * t * (1 - 0.3 * t / seconds)) * np.exp(-t / 0.35)
+    ring = np.zeros_like(t)
+    for freq, level in ((880, 0.35), (1318, 0.25), (1760, 0.15)):
+        ring += level * np.sin(2 * np.pi * freq * t) * np.exp(-t / 0.5)
+    air = bandpass_noise(seconds, 200, 1500, rng) * np.sin(np.pi * np.clip(t / seconds, 0, 1)) ** 2
+    out = 0.6 * swell + 0.7 * crack + 0.8 * boom + 0.4 * ring + 0.25 * air
+    return normalize(out * np.clip((seconds - t) / 0.3, 0, 1), 0.6)
+
+
+def phase11_combat():
+    """The combat sounds of Phase 11, with their own random stream."""
+    rng = np.random.default_rng(1112)
+    write_ogg("finisher", finisher(rng))
+
+
+# Droid voices (Phase 11) --------------------------------------------------------------------------
+# Every droid "talks" in its own synthesized way: astromechs in quick sine beeps and whistles that
+# glide in pitch, BB-8 rounder and softer, Chopper in raspy grumbles, the mouse droid in squeaks,
+# the probe droid in radio static over a drone, and the humanoid droids (C-3PO, B1, K-2SO) in a
+# wordless, vowel-like murmur over a servo whirr. Nothing is sampled and nothing says words.
+DROID_OUT = os.path.join("src", "client", "resources", "assets", "sabercraft", "sounds", "droid")
+
+
+def glide_tone(f0, f1, seconds, shape="sine", vibrato=0.0, vib_rate=18.0, curve=1.0):
+    t = t_axis(seconds)
+    x = (t / max(seconds, 1e-6)) ** curve
+    freq = f0 + (f1 - f0) * x
+    freq = freq * (1.0 + vibrato * np.sin(2 * np.pi * vib_rate * t))
+    phase = 2 * np.pi * np.cumsum(freq) / RATE
+    if shape == "triangle":
+        tone = 2.0 / np.pi * np.arcsin(np.sin(phase))
+    elif shape == "square":
+        tone = np.tanh(4.0 * np.sin(phase))
+    else:
+        tone = np.sin(phase)
+    attack = np.clip(t / 0.006, 0, 1)
+    release = np.clip((seconds - t) / 0.012, 0, 1)
+    return tone * attack * release
+
+
+def sequence(parts, gap=0.02):
+    """Joins sounds with short pauses."""
+    out = []
+    pause = np.zeros(int(gap * RATE))
+    for part in parts:
+        out.append(part)
+        out.append(pause)
+    return np.concatenate(out)
+
+
+def astromech(rng, count, low, high, shape="sine", whistle=False, soft=1.0):
+    parts = []
+    for i in range(count):
+        seconds = rng.uniform(0.05, 0.13)
+        f0 = rng.uniform(low, high)
+        f1 = f0 * rng.choice([0.6, 0.8, 1.0, 1.25, 1.6])
+        parts.append(glide_tone(f0, f1, seconds, shape, vibrato=rng.choice([0.0, 0.0, 0.03]), vib_rate=rng.uniform(14, 30)) * rng.uniform(0.6, 1.0))
+    if whistle:
+        f0 = rng.uniform(low, high)
+        parts.append(glide_tone(f0, f0 * 1.9, 0.35, shape, vibrato=0.02, vib_rate=9, curve=2.0))
+    x = sequence(parts, gap=rng.uniform(0.01, 0.04))
+    if soft < 1.0:
+        # Rounder: a gentle low-pass by averaging.
+        k = int(8 / soft)
+        x = np.convolve(x, np.ones(k) / k, mode="same")
+    return x
+
+
+def grumble(rng, seconds, base):
+    t = t_axis(seconds)
+    pitch = base * (1.0 + 0.25 * np.sin(2 * np.pi * rng.uniform(2, 4) * t)) * (1.0 - 0.3 * t / seconds)
+    phase = 2 * np.pi * np.cumsum(pitch) / RATE
+    buzz = np.tanh(3.0 * np.sin(phase)) + 0.3 * np.sin(2 * phase)
+    rasp = bandpass_noise(seconds, 300, 2500, rng) * 0.35
+    env = np.clip(t / 0.02, 0, 1) * np.clip((seconds - t) / 0.06, 0, 1) * (0.6 + 0.4 * np.abs(np.sin(2 * np.pi * rng.uniform(5, 8) * t)))
+    return (buzz + rasp) * env
+
+
+def murmur(rng, syllables, base, spread, formants, rasp=0.0, servo=0.3):
+    """A wordless, vowel-like murmur: a buzz through two moving formants, syllable by syllable,
+    over a quiet servo whirr. Intonation, not words."""
+    parts = []
+    for i in range(syllables):
+        seconds = rng.uniform(0.09, 0.2)
+        t = t_axis(seconds)
+        f0 = base * rng.uniform(1.0 - spread, 1.0 + spread)
+        f1 = f0 * rng.uniform(0.85, 1.2)
+        freq = f0 + (f1 - f0) * t / seconds
+        phase = 2 * np.pi * np.cumsum(freq) / RATE
+        voice = np.zeros_like(t)
+        for h in range(1, 14):
+            hf = freq * h
+            weight = 0.0
+            for centre, width in formants[rng.integers(len(formants))]:
+                weight += np.exp(-((hf - centre) / width) ** 2)
+            voice += weight * np.sin(h * phase) / h ** 0.3
+        if rasp:
+            voice += rasp * bandpass_noise(seconds, 800, 4000, rng)
+        env = np.sin(np.pi * t / seconds) ** 0.6
+        parts.append(voice * env)
+    x = sequence(parts, gap=rng.uniform(0.02, 0.05))
+    t = t_axis(len(x) / RATE)
+    whirr = np.sin(2 * np.pi * (180 + 40 * np.sin(2 * np.pi * 3 * t)) * t) * servo * 0.2
+    return x + whirr
+
+
+VOWELS = [[(700, 160), (1200, 200)], [(400, 120), (2000, 260)], [(300, 100), (900, 180)], [(550, 140), (1700, 220)]]
+
+
+def servo_step(rng, seconds=0.16):
+    t = t_axis(seconds)
+    whine = np.sin(2 * np.pi * (520 + 300 * t / seconds) * t) * np.exp(-t / 0.06)
+    tick = bandpass_noise(seconds, 2000, 8000, rng) * np.exp(-t / 0.008)
+    return normalize(0.6 * whine + 0.5 * tick, 0.5)
+
+
+def static(rng, seconds):
+    t = t_axis(seconds)
+    noise = bandpass_noise(seconds, 400, 5000, rng)
+    gate = (np.sin(2 * np.pi * rng.uniform(9, 15) * t) > rng.uniform(-0.2, 0.4)).astype(float)
+    gate = np.convolve(gate, np.ones(200) / 200, mode="same")
+    tones = glide_tone(rng.uniform(900, 1400), rng.uniform(500, 900), seconds, "square") * 0.25
+    drone = np.sin(2 * np.pi * 70 * t) * 0.3 + np.sin(2 * np.pi * 140 * t) * 0.15
+    return noise * gate * 0.6 + tones * gate + drone * np.clip(t / 0.1, 0, 1) * np.clip((seconds - t) / 0.1, 0, 1)
+
+
+def zap(rng, seconds=0.5):
+    t = t_axis(seconds)
+    crackle = bandpass_noise(seconds, 1500, 12000, rng) * (rng.random(len(t)) > 0.7) * np.exp(-t / 0.2)
+    arc = np.sin(2 * np.pi * 60 * t) * np.sin(2 * np.pi * 3000 * t) * np.exp(-t / 0.15)
+    return crackle + 0.6 * arc
+
+
+def droid_voice(name, kind, rng):
+    if name == "r2d2":
+        if kind == "interact":
+            return astromech(rng, 7, 1200, 3200, whistle=True)
+        if kind == "ability":
+            return astromech(rng, 14, 1500, 3800)
+        return astromech(rng, rng.integers(3, 6), 1000, 3000, whistle=rng.random() < 0.4)
+    if name == "bb8":
+        if kind == "interact":
+            return astromech(rng, 6, 700, 2000, "triangle", whistle=True, soft=0.5)
+        if kind == "ability":
+            return astromech(rng, 10, 900, 2400, "triangle", soft=0.5)
+        return astromech(rng, rng.integers(2, 5), 600, 1800, "triangle", soft=0.5)
+    if name == "chopper":
+        if kind == "ability":
+            return np.concatenate([zap(rng), grumble(rng, 0.6, 140)])
+        return grumble(rng, rng.uniform(0.5, 0.9), rng.uniform(110, 170))
+    if name == "mouse":
+        n = 4 if kind == "ambient" else 7
+        return astromech(rng, n, 2500, 4500, "square")
+    if name == "probe":
+        return static(rng, 1.0 if kind == "ability" else rng.uniform(0.6, 0.9))
+    if name == "c3po":
+        return murmur(rng, 6 if kind != "ambient" else 4, 190, 0.18, VOWELS, servo=0.2)
+    if name == "b1":
+        return murmur(rng, 2 if kind != "ability" else 3, 150, 0.08, VOWELS[:2], rasp=0.25, servo=0.4)
+    if name == "k2so":
+        return murmur(rng, 3 if kind != "ambient" else 2, 105, 0.06, VOWELS[2:], servo=0.3)
+    raise ValueError(name)
+
+
+DROID_NAMES = ["r2d2", "c3po", "bb8", "chopper", "mouse", "probe", "b1", "k2so"]
+
+
+def droids():
+    """The droid voices of Phase 11, each droid with its own random stream."""
+    for index, name in enumerate(DROID_NAMES):
+        rng = np.random.default_rng(2400 + index)
+        for kind in ("ambient1", "ambient2", "interact", "ability"):
+            x = droid_voice(name, kind.rstrip("12"), rng)
+            peak = 0.45 if kind.startswith("ambient") else 0.6
+            write_ogg(f"{name}_{kind}", normalize(x, peak), DROID_OUT)
+    write_ogg("step", servo_step(np.random.default_rng(2499)), DROID_OUT)
+
+
+# Starships (Phase 11) ----------------------------------------------------------------------------
+SHIP_OUT = os.path.join(os.path.dirname(OUT), "ship")
+ENGINE_SECONDS = 2.0
+
+
+def ship_engine(rng):
+    """The X-Wing engines: a loop of a low roar, a rushing band of noise and a faint whine. Every
+    frequency is on the 1 / ENGINE_SECONDS grid, so it loops without a seam; the game raises its
+    pitch and volume with the speed."""
+    t = t_axis(ENGINE_SECONDS)
+    roar = periodic_noise(ENGINE_SECONDS, 40, 260, rng)
+    rush = periodic_noise(ENGINE_SECONDS, 600, 2600, rng) * 0.35
+    whine = (np.sin(2 * np.pi * 440 * t) + 0.5 * np.sin(2 * np.pi * 662 * t)) * 0.06
+    throb = 0.85 + 0.15 * np.sin(2 * np.pi * 6 * t)
+    return normalize(soft_clip((roar + rush) * throb + whine, 1.4), 0.5)
+
+
+def ship_laser(rng, seconds=0.5):
+    """A starship laser cannon: deeper and heavier than a hand blaster, with a booming body."""
+    shot = blaster_shot(rng, seconds, 1300, 70, 0.8, 1.1, 0.9, 7)
+    t = t_axis(seconds)
+    boom = np.sin(2 * np.pi * 55 * t) * np.exp(-t * 12)
+    return normalize(soft_clip(shot + boom * 0.7, 1.5), 0.85)
+
+
+def ship_crash(rng, seconds=1.1):
+    """Flying into something: a metallic bang, scraping and settling debris."""
+    t = t_axis(seconds)
+    bang = bandpass_noise(seconds, 80, 2400, rng) * np.exp(-t * 9)
+    clang = sum(np.sin(2 * np.pi * f * t) * np.exp(-t * d) for f, d in ((173, 6), (311, 8), (587, 11))) * 0.35
+    scrape = bandpass_noise(seconds, 1500, 6000, rng) * np.exp(-t * 4) * 0.25 * (t > 0.08)
+    return normalize(soft_clip(bang + clang + scrape, 2.0), 0.8)
+
+
+def ship_foils(rng, seconds=0.9):
+    """The S-foils opening or closing: servo whir with a clunk at the end."""
+    t = t_axis(seconds)
+    whir = np.sin(2 * np.pi * (180 + 160 * t) * t) * 0.4 + bandpass_noise(seconds, 300, 1800, rng) * 0.3
+    whir *= np.clip(t / 0.05, 0, 1) * np.clip((0.7 - t) / 0.1, 0, 1)
+    clunk = bandpass_noise(seconds, 60, 900, rng) * np.exp(-np.maximum(t - 0.7, 0) * 30) * (t > 0.7)
+    return normalize(whir + clunk, 0.55)
+
+
+def ships():
+    """The starship sounds of Phase 11, with their own random stream."""
+    rng = np.random.default_rng(1977_11)
+    write_ogg("xwing_engine", ship_engine(rng), SHIP_OUT)
+    write_ogg("xwing_laser1", ship_laser(rng), SHIP_OUT)
+    write_ogg("xwing_laser2", ship_laser(rng, 0.55), SHIP_OUT)
+    write_ogg("crash", ship_crash(rng), SHIP_OUT)
+    write_ogg("foils", ship_foils(rng), SHIP_OUT)
+
+
 # Planet ambiences (Phase 10) ---------------------------------------------------------------------
 # Loops of AMBIENT_SECONDS. Every slow modulation runs a whole number of times per loop, and every
 # event (a gust, a bird, a crackle) that runs over the end wraps to the start, so they loop
@@ -465,6 +761,48 @@ def ambient():
     write_ogg("coruscant", city(rng), out)
 
 
+# Atmosphere (Phase 11 G) -------------------------------------------------------------------------
+def blaster_draw(rng, seconds=0.42):
+    """Drawing a blaster: a short servo whir that rises, then the click of the grip locking in."""
+    t = t_axis(seconds)
+    whir = np.sin(2 * np.pi * (380 * t + 900 * t * t)) * np.minimum(1, t * 30) * np.exp(-t * 6) * (t < 0.3)
+    rustle = bandpass_noise(seconds, 800, 3500, rng) * np.exp(-t * 14) * 0.35
+    click = np.zeros_like(t)
+    n = int(0.28 * RATE)
+    tt = t[: len(t) - n]
+    click[n:] = bandpass_noise(seconds, 2500, 9000, rng)[: len(tt)] * np.exp(-tt * 350) + np.sin(2 * np.pi * 2100 * tt) * np.exp(-tt * 60) * 0.25
+    return normalize(0.45 * whir + rustle + click, 0.5)
+
+
+def blaster_holster(rng, seconds=0.4):
+    """Holstering: a release click, a falling whir and a soft leather thump."""
+    t = t_axis(seconds)
+    click = bandpass_noise(seconds, 2500, 9000, rng) * np.exp(-t * 380)
+    whir = np.sin(2 * np.pi * (900 * t - 700 * t * t)) * np.exp(-t * 9) * (t > 0.03) * 0.4
+    thump = np.zeros_like(t)
+    n = int(0.22 * RATE)
+    tt = t[: len(t) - n]
+    thump[n:] = (np.sin(2 * np.pi * 110 * tt) * 0.6 + bandpass_noise(seconds, 200, 1200, rng)[: len(tt)] * 0.5) * np.exp(-tt * 40)
+    return normalize(click + whir + thump, 0.5)
+
+
+def menu_sweep(rng, seconds=0.3):
+    """A page of the menu coming up: a soft, airy holo sweep, quiet enough for every tab switch."""
+    t = t_axis(seconds)
+    sweep = bandpass_noise(seconds, 1500, 6000, rng) * np.sin(np.pi * t / seconds) ** 2 * 0.5
+    tone = np.sin(2 * np.pi * (600 * t + 1500 * t * t)) * np.sin(np.pi * t / seconds) ** 3 * 0.25
+    return normalize(sweep + tone, 0.3)
+
+
+def atmosphere():
+    """The atmosphere sounds of Phase 11 G, with their own random stream."""
+    rng = np.random.default_rng(1138)
+    out = os.path.join(os.path.dirname(OUT), "blaster")
+    write_ogg("draw", blaster_draw(rng), out)
+    write_ogg("holster", blaster_holster(rng), out)
+    write_ogg("menu_sweep", menu_sweep(rng), os.path.join(os.path.dirname(OUT), "ui"))
+
+
 def main():
     if "--ambient" in sys.argv:
         ambient()
@@ -472,6 +810,26 @@ def main():
 
     if "--blaster" in sys.argv:
         blasters()
+        return
+
+    if "--phase11-blaster" in sys.argv:
+        phase11_blasters()
+        return
+
+    if "--droids" in sys.argv:
+        droids()
+        return
+
+    if "--atmosphere" in sys.argv:
+        atmosphere()
+        return
+
+    if "--ships" in sys.argv:
+        ships()
+        return
+
+    if "--phase11-combat" in sys.argv:
+        phase11_combat()
         return
 
     if "--combat" in sys.argv:

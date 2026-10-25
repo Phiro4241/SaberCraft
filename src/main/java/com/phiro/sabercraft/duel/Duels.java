@@ -34,6 +34,10 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.projectile.Projectile;
 
 import com.phiro.sabercraft.ability.AbilityConfig;
+import com.phiro.sabercraft.ability.SaberFinishers;
+import com.phiro.sabercraft.advancement.SaberAdvancements;
+import com.phiro.sabercraft.character.Outfit;
+import com.phiro.sabercraft.character.OutfitSync;
 
 /**
  * Lightsaber duels between two players (Phase 10), always by choice:
@@ -347,6 +351,13 @@ public final class Duels {
 		}
 
 		player.setHealth(player.getMaxHealth());
+		// A saber blow that ends the round is a finisher, like one that defeats.
+		ServerPlayer saber = SaberFinishers.saberAttacker(source);
+
+		if (saber != null) {
+			SaberFinishers.finalBlow(saber, player);
+		}
+
 		roundWon(server, duel, opponent);
 		return false;
 	}
@@ -400,6 +411,12 @@ public final class Duels {
 		}
 
 		if (duel.round == 1) {
+			for (ServerPlayer player : new ServerPlayer[] {first, second}) {
+				if (player != null) {
+					SaberAdvancements.award(player, SaberAdvancements.DUEL_BEGINS);
+				}
+			}
+
 			message(server, duel, Component.translatableWithFallback("sabercraft.duel.started",
 					"The duel begins: best of three. /sabercraft duel leave gives up."));
 		}
@@ -416,6 +433,11 @@ public final class Duels {
 			ServerPlayer winnerPlayer = player(server, winner);
 			Component name = winnerPlayer != null ? winnerPlayer.getDisplayName() : Component.literal("?");
 			message(server, duel, Component.translatableWithFallback("sabercraft.duel.won", "%s wins the duel!", name).withStyle(ChatFormatting.GOLD));
+
+			// Won as a character of the dark side: the Dark Lord.
+			if (winnerPlayer != null && end == End.WON && OutfitSync.outfitOf(winner).flatMap(Outfit::byId).map(Outfit::side).orElse(Outfit.Side.NONE) == Outfit.Side.DARK) {
+				SaberAdvancements.award(winnerPlayer, SaberAdvancements.DARK_LORD);
+			}
 
 			if (first != null && second != null) {
 				title(first, second, Component.translatableWithFallback("sabercraft.duel.winner", "%s wins", name).withStyle(ChatFormatting.GOLD),

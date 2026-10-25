@@ -31,6 +31,19 @@ public final class SaberNetworking {
 		PayloadTypeRegistry.serverboundPlay().register(ChooseOutfitPayload.TYPE, ChooseOutfitPayload.CODEC);
 		PayloadTypeRegistry.clientboundPlay().register(OutfitSyncPayload.TYPE, OutfitSyncPayload.CODEC);
 		PayloadTypeRegistry.clientboundPlay().register(BlasterHeatPayload.TYPE, BlasterHeatPayload.CODEC);
+		// Phase 11: the muzzle flash for everyone, and the blaster menu.
+		PayloadTypeRegistry.clientboundPlay().register(BlasterShotPayload.TYPE, BlasterShotPayload.CODEC);
+		PayloadTypeRegistry.clientboundPlay().register(SaberFinisherPayload.TYPE, SaberFinisherPayload.CODEC);
+		PayloadTypeRegistry.serverboundPlay().register(SelectBlasterPayload.TYPE, SelectBlasterPayload.CODEC);
+		PayloadTypeRegistry.clientboundPlay().register(BlasterSettingsPayload.TYPE, BlasterSettingsPayload.CODEC);
+		// Phase 11: the droids.
+		PayloadTypeRegistry.serverboundPlay().register(DroidCommandPayload.TYPE, DroidCommandPayload.CODEC);
+		PayloadTypeRegistry.clientboundPlay().register(DroidStatusPayload.TYPE, DroidStatusPayload.CODEC);
+		PayloadTypeRegistry.clientboundPlay().register(DroidEventPayload.TYPE, DroidEventPayload.CODEC);
+		PayloadTypeRegistry.serverboundPlay().register(ShipCommandPayload.TYPE, ShipCommandPayload.CODEC);
+		PayloadTypeRegistry.serverboundPlay().register(ShipFirePayload.TYPE, ShipFirePayload.CODEC);
+		PayloadTypeRegistry.clientboundPlay().register(ShipStatusPayload.TYPE, ShipStatusPayload.CODEC);
+		PayloadTypeRegistry.clientboundPlay().register(ShipShotPayload.TYPE, ShipShotPayload.CODEC);
 	}
 
 	/**

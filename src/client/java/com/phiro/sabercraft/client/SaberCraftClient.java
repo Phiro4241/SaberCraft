@@ -24,7 +24,11 @@ import com.phiro.sabercraft.client.blaster.BlasterClient;
 import com.phiro.sabercraft.client.character.OutfitClient;
 import com.phiro.sabercraft.client.combat.CombatConfig;
 import com.phiro.sabercraft.client.combat.CombatLibrary;
+import com.phiro.sabercraft.client.droid.DroidClient;
+import com.phiro.sabercraft.client.droid.DroidPreview;
+import com.phiro.sabercraft.client.menu.ModelPreview;
 import com.phiro.sabercraft.client.menu.SaberMenuScreen;
+import com.phiro.sabercraft.client.render.HitMarks;
 import com.phiro.sabercraft.client.music.PlanetAmbience;
 import com.phiro.sabercraft.client.music.SaberMusic;
 import com.phiro.sabercraft.client.music.StarWarsMusic;
@@ -38,6 +42,8 @@ import com.phiro.sabercraft.client.saber.SaberHilts;
 import com.phiro.sabercraft.client.saber.SaberTracker;
 import com.phiro.sabercraft.client.select.SaberCustomizeScreen;
 import com.phiro.sabercraft.client.select.SaberSelection;
+import com.phiro.sabercraft.client.ship.ShipClient;
+import com.phiro.sabercraft.client.ship.ShipPreview;
 import com.phiro.sabercraft.client.sky.PlanetSky;
 
 /**
@@ -92,6 +98,12 @@ public class SaberCraftClient implements ClientModInitializer {
 		OutfitClient.init();
 		// Phase 10: blasters.
 		BlasterClient.init();
+		ModelPreview.init();
+		DroidClient.init();
+		DroidPreview.init();
+		ShipClient.init();
+		ShipPreview.init();
+		HitMarks.init();
 		ClientTickEvents.END_CLIENT_TICK.register(SaberCraftClient::handleKeys);
 
 		SaberCraft.LOGGER.info(
@@ -108,8 +120,11 @@ public class SaberCraftClient implements ClientModInitializer {
 				continue;
 			}
 
-			// The SaberCraft menu: the saber area with a sword in hand, the character otherwise.
-			SaberMenuScreen.open(client, SaberMenuScreen.Tab.SABER);
+			// The SaberCraft menu: the saber area with a sword in hand, the blasters with a bow,
+			// the character otherwise.
+			boolean bow = client.player.getMainHandItem().is(net.minecraft.world.item.Items.BOW)
+					|| client.player.getOffhandItem().is(net.minecraft.world.item.Items.BOW);
+			SaberMenuScreen.open(client, bow ? SaberMenuScreen.Tab.BLASTER : SaberMenuScreen.Tab.SABER);
 		}
 	}
 }

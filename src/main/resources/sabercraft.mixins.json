@@ -4,7 +4,9 @@
   "compatibilityLevel": "JAVA_25",
   "mixins": [
     "LivingEntityMixin",
-    "ProjectileMixin"
+    "PigMixin",
+    "ProjectileMixin",
+    "ServerPlayerMixin"
   ],
   "injectors": {
     "defaultRequire": 1

@@ -53,6 +53,7 @@ import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
 import com.phiro.sabercraft.SaberCraft;
+import com.phiro.sabercraft.advancement.SaberAdvancements;
 import com.phiro.sabercraft.network.AbilityCooldownPayload;
 import com.phiro.sabercraft.network.AbilityEventPayload;
 import com.phiro.sabercraft.network.AbilitySettingsPayload;
@@ -300,6 +301,7 @@ public final class SaberAbilities {
 		}
 
 		spend(state, config, cost, now);
+		SaberAdvancements.abilityUsed(player, ability);
 
 		switch (ability) {
 			case GUARD -> {
@@ -688,7 +690,9 @@ public final class SaberAbilities {
 			// The whirl in front of the body hits a few times and turns projectiles away.
 			for (int hit : WHIRL_HITS) {
 				if (age == hit) {
-					hitArea(player, config.whirlRadius, FRONT_COS, config.whirlDamageShare, 3);
+					if (hitArea(player, config.whirlRadius, FRONT_COS, config.whirlDamageShare, 3) >= 2) {
+						SaberAdvancements.award(player, SaberAdvancements.SPIN_SPEED);
+					}
 				}
 			}
 
@@ -702,7 +706,9 @@ public final class SaberAbilities {
 			int strike = StyleTraits.of(SaberVariant.styleOf(player.getMainHandItem())).spinStrike();
 
 			if (age >= strike) {
-				hitArea(player, config.spinRadius, -1.0, config.spinDamageShare, 2);
+				if (hitArea(player, config.spinRadius, -1.0, config.spinDamageShare, 2) >= 2) {
+					SaberAdvancements.award(player, SaberAdvancements.SPIN_SPEED);
+				}
 				state.spinStart = -1;
 			}
 		}
@@ -810,13 +816,14 @@ public final class SaberAbilities {
 	 * @param minCos  only entities whose direction has at least this cosine to the look direction,
 	 *                -1 for all around
 	 * @param maxHits most entities hit at once
+	 * @return how many were hit
 	 */
-	private static void hitArea(ServerPlayer player, double radius, double minCos, float share, int maxHits) {
+	private static int hitArea(ServerPlayer player, double radius, double minCos, float share, int maxHits) {
 		ServerLevel level = player.level();
 		float damage = (float) player.getAttributeValue(Attributes.ATTACK_DAMAGE) * share;
 
 		if (damage <= 0.0F) {
-			return;
+			return 0;
 		}
 
 		List<LivingEntity> targets = new ArrayList<>(level.getEntitiesOfClass(LivingEntity.class, player.getBoundingBox().inflate(radius, 1.0, radius),
@@ -824,14 +831,18 @@ public final class SaberAbilities {
 						&& (minCos <= -1.0 || inFront(player, target.position(), minCos)) && player.hasLineOfSight(target)));
 		targets.sort((a, b) -> Double.compare(player.distanceToSqr(a), player.distanceToSqr(b)));
 		DamageSource source = level.damageSources().playerAttack(player);
+		int hits = 0;
 
 		for (int i = 0; i < Math.min(maxHits, targets.size()); i++) {
 			LivingEntity target = targets.get(i);
 
 			if (target.hurtServer(level, source, damage)) {
 				target.knockback(0.35, player.getX() - target.getX(), player.getZ() - target.getZ(), source, damage);
+				hits++;
 			}
 		}
+
+		return hits;
 	}
 
 	private static void push(ServerPlayer player, AbilityConfig config) {

@@ -8,11 +8,15 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.phiro.sabercraft.ability.SaberAbilities;
+import com.phiro.sabercraft.ability.SaberFinishers;
+import com.phiro.sabercraft.advancement.SaberAdvancements;
 import com.phiro.sabercraft.blaster.Blasters;
 import com.phiro.sabercraft.character.OutfitSync;
 import com.phiro.sabercraft.command.SaberCraftCommands;
+import com.phiro.sabercraft.droid.Droids;
 import com.phiro.sabercraft.duel.Duels;
 import com.phiro.sabercraft.network.SaberNetworking;
+import com.phiro.sabercraft.ship.Starships;
 
 /**
  * Common entrypoint for SaberCraft. Runs on both the dedicated server and the client.
@@ -33,10 +37,14 @@ public class SaberCraft implements ModInitializer {
 	public void onInitialize() {
 		SaberNetworking.init();
 		SaberAbilities.init();
+		SaberFinishers.init();
 		OutfitSync.init();
 		Blasters.init();
 		SaberCraftCommands.init();
 		Duels.init();
+		SaberAdvancements.init();
+		Droids.init();
+		Starships.init();
 		LOGGER.info("SaberCraft initialized");
 	}
 

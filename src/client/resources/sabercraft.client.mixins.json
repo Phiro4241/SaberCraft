@@ -15,6 +15,7 @@
     "ItemInHandRendererMixin",
     "LivingEntityRendererMixin",
     "LocalPlayerMixin",
+    "MinecraftMixin",
     "MusicManagerMixin",
     "SkyRendererMixin",
     "SoundBufferLibraryMixin"

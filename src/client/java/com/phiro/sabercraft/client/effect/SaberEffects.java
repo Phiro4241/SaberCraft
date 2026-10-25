@@ -31,6 +31,7 @@ import com.phiro.sabercraft.client.blade.BladeStyle;
 import com.phiro.sabercraft.client.blade.BladeStyles;
 import com.phiro.sabercraft.client.combat.CombatConfig;
 import com.phiro.sabercraft.client.combat.CombatMove;
+import com.phiro.sabercraft.client.render.HitMarks;
 import com.phiro.sabercraft.client.saber.SaberHandState;
 import com.phiro.sabercraft.client.saber.SaberHilts;
 import com.phiro.sabercraft.client.saber.SaberTracker;
@@ -114,6 +115,35 @@ public final class SaberEffects {
 		}
 
 		playAt(at, SaberSounds.HIT, 0.7F, attacker.getRandom());
+		// Phase 11: a glowing mark stays where the blade struck.
+		HitMarks.add(target, at, style, 0.11F);
+	}
+
+	/**
+	 * A finishing blow (Phase 11), sent once by the server: a big burst of sparks and a bright mark
+	 * where the blade struck, the shock ring and flash, and the finisher sound.
+	 */
+	public static void onFinisher(LivingEntity attacker, LivingEntity target) {
+		ClientLevel level = Minecraft.getInstance().level;
+
+		if (level == null) {
+			return;
+		}
+
+		BladeStyle style = style(attacker.getMainHandItem());
+		Vec3 toAttacker = attacker.position().subtract(target.position());
+		Vec3 flat = new Vec3(toAttacker.x, 0.0, toAttacker.z);
+		flat = flat.lengthSqr() < 1.0E-4 ? attacker.getLookAngle().reverse() : flat.normalize();
+		Vec3 at = target.position().add(flat.scale(target.getBbWidth() * 0.5)).add(0.0, target.getBbHeight() * 0.6, 0.0);
+
+		if (amount() > 0) {
+			// Upwards and around, not into the attacker's face.
+			sparks(level, at, new Vec3(0.0, 1.0, 0.0), style, 14 * amount(), 0.6, true);
+		}
+
+		HitMarks.add(target, at, style, 0.16F);
+		HitMarks.finisher(target, style);
+		playAt(at, SaberSounds.FINISHER, 1.0F, attacker.getRandom());
 	}
 
 	/**

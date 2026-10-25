@@ -1,0 +1,35 @@
+{
+  "parent": "sabercraft:first_shot",
+  "display": {
+    "icon": {
+      "id": "minecraft:bow",
+      "components": {
+        "minecraft:custom_model_data": {
+          "strings": [
+            "sabercraft:dc15a"
+          ]
+        }
+      }
+    },
+    "title": {
+      "translate": "advancements.sabercraft.sharpshooter.title"
+    },
+    "description": {
+      "translate": "advancements.sabercraft.sharpshooter.description"
+    },
+    "frame": "goal",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "hit": {
+      "trigger": "minecraft:impossible"
+    }
+  },
+  "requirements": [
+    [
+      "hit"
+    ]
+  ]
+}

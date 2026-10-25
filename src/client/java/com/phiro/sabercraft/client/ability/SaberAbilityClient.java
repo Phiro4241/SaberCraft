@@ -45,6 +45,7 @@ import com.phiro.sabercraft.client.sound.SaberSounds;
 import com.phiro.sabercraft.network.AbilityCooldownPayload;
 import com.phiro.sabercraft.network.AbilityEventPayload;
 import com.phiro.sabercraft.network.AbilitySettingsPayload;
+import com.phiro.sabercraft.network.SaberFinisherPayload;
 import com.phiro.sabercraft.network.StaminaPayload;
 import com.phiro.sabercraft.saber.SaberVariant;
 import com.phiro.sabercraft.network.UseAbilityPayload;
@@ -115,6 +116,12 @@ public final class SaberAbilityClient {
 		KeyMappingHelper.registerKeyMapping(JUMP_KEY);
 		ClientTickEvents.END_CLIENT_TICK.register(SaberAbilityClient::tick);
 		ClientPlayNetworking.registerGlobalReceiver(AbilityEventPayload.TYPE, (payload, context) -> onEvent(context.client(), payload));
+		ClientPlayNetworking.registerGlobalReceiver(SaberFinisherPayload.TYPE, (payload, context) -> {
+			if (context.client().level != null && context.client().level.getEntity(payload.attackerId()) instanceof LivingEntity attacker
+					&& context.client().level.getEntity(payload.targetId()) instanceof LivingEntity target) {
+				SaberEffects.onFinisher(attacker, target);
+			}
+		});
 		ClientPlayNetworking.registerGlobalReceiver(AbilityCooldownPayload.TYPE, (payload, context) ->
 				COOLDOWNS.put(payload.ability(), new Cooldown(payload.ticks(), Math.max(1, payload.total()))));
 		ClientPlayNetworking.registerGlobalReceiver(AbilitySettingsPayload.TYPE, (payload, context) -> {

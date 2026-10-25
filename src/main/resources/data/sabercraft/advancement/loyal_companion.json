@@ -1,0 +1,73 @@
+{
+  "parent": "sabercraft:droid_friend",
+  "display": {
+    "icon": {
+      "id": "minecraft:iron_nugget",
+      "components": {
+        "minecraft:item_model": "sabercraft:droid/bb8_icon"
+      }
+    },
+    "title": {
+      "translate": "advancements.sabercraft.loyal_companion.title"
+    },
+    "description": {
+      "translate": "advancements.sabercraft.loyal_companion.description"
+    },
+    "frame": "challenge",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "r2d2": {
+      "trigger": "minecraft:impossible"
+    },
+    "c3po": {
+      "trigger": "minecraft:impossible"
+    },
+    "bb8": {
+      "trigger": "minecraft:impossible"
+    },
+    "chopper": {
+      "trigger": "minecraft:impossible"
+    },
+    "mouse": {
+      "trigger": "minecraft:impossible"
+    },
+    "probe": {
+      "trigger": "minecraft:impossible"
+    },
+    "b1": {
+      "trigger": "minecraft:impossible"
+    },
+    "k2so": {
+      "trigger": "minecraft:impossible"
+    }
+  },
+  "requirements": [
+    [
+      "r2d2"
+    ],
+    [
+      "c3po"
+    ],
+    [
+      "bb8"
+    ],
+    [
+      "chopper"
+    ],
+    [
+      "mouse"
+    ],
+    [
+      "probe"
+    ],
+    [
+      "b1"
+    ],
+    [
+      "k2so"
+    ]
+  ]
+}

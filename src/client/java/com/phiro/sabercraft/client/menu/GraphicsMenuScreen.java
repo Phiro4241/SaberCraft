@@ -8,7 +8,7 @@ import net.minecraft.network.chat.Component;
 import com.phiro.sabercraft.client.ImmersionConfig;
 import com.phiro.sabercraft.client.combat.CombatConfig;
 
-/** Graphics and effects: light trails, sparks and particles, camera motion, sky detail. */
+/** Graphics and effects: light trails, sparks and particles, camera motion, sky detail, blaster and starship view. */
 public class GraphicsMenuScreen extends SaberMenuScreen {
 	public GraphicsMenuScreen() {
 		super(Component.translatable("sabercraft.menu.graphics.title"));
@@ -53,11 +53,28 @@ public class GraphicsMenuScreen extends SaberMenuScreen {
 			combat.shaderBlade = v;
 			CombatConfig.save();
 		});
+		// Phase 11: drawing blasters, menu transitions and the starship view.
+		this.toggle(1, 3, "sabercraft.option.blaster_draw", immersion.blasterDraw, v -> {
+			immersion.blasterDraw = v;
+			ImmersionConfig.save();
+		});
+		this.toggle(0, 4, "sabercraft.option.menu_transitions", immersion.menuTransitions, v -> {
+			immersion.menuTransitions = v;
+			ImmersionConfig.save();
+		});
+		this.toggle(1, 4, "sabercraft.option.ship_third_person", immersion.shipThirdPerson, v -> {
+			immersion.shipThirdPerson = v;
+			ImmersionConfig.save();
+		});
+		this.toggle(0, 5, "sabercraft.option.ship_hud", immersion.shipHud, v -> {
+			immersion.shipHud = v;
+			ImmersionConfig.save();
+		});
 		this.closeButton();
 	}
 
 	@Override
 	protected void extractPanel(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float a) {
-		this.note(graphics, Component.translatable("sabercraft.menu.graphics.note"), 4);
+		this.note(graphics, Component.translatable("sabercraft.menu.graphics.note"), 6);
 	}
 }

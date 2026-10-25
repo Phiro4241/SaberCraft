@@ -1,0 +1,28 @@
+{
+  "parent": "sabercraft:duel_begins",
+  "display": {
+    "icon": {
+      "id": "minecraft:blaze_powder"
+    },
+    "title": {
+      "translate": "advancements.sabercraft.finisher.title"
+    },
+    "description": {
+      "translate": "advancements.sabercraft.finisher.description"
+    },
+    "frame": "goal",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "finisher": {
+      "trigger": "minecraft:impossible"
+    }
+  },
+  "requirements": [
+    [
+      "finisher"
+    ]
+  ]
+}

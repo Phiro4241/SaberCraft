@@ -13,7 +13,8 @@ import com.phiro.sabercraft.client.combat.CombatConfig;
 
 /**
  * The heat of the blaster in hand: a thin bar under the crosshair, only while the blaster is warm.
- * It turns from yellow to red, and flashes with a note while the blaster is overheated.
+ * It turns from yellow to red, and flashes with a note while the blaster is overheated. Since Phase
+ * 11 the arrows left are shown next to the crosshair.
  */
 final class BlasterHud implements HudElement {
 	private static final int WIDTH = 40;
@@ -28,13 +29,22 @@ final class BlasterHud implements HudElement {
 		}
 
 		float heat = BlasterClient.heat();
+		int x = graphics.guiWidth() / 2 - WIDTH / 2;
+		int y = graphics.guiHeight() / 2 + 10;
+
+		// Phase 11: the arrows left, small under the crosshair, red when there are none.
+		boolean bowBlaster = BlasterType.of(client.player.getMainHandItem()) != null || BlasterType.of(client.player.getOffhandItem()) != null;
+
+		if (bowBlaster && BlasterClient.serverHasBlasters() && BlasterClient.needsAmmo(client.player)) {
+			int arrows = Blasters.countAmmo(client.player.getInventory());
+			Component ammo = Component.translatableWithFallback("sabercraft.hud.ammo", "Arrows: %s", arrows);
+			graphics.text(client.font, ammo, graphics.guiWidth() / 2 + 12, graphics.guiHeight() / 2 - 4, arrows > 0 ? 0xC0E0E0E8 : 0xFFFF5040);
+		}
 
 		if (heat <= 0.5F && !BlasterClient.overheated()) {
 			return;
 		}
 
-		int x = graphics.guiWidth() / 2 - WIDTH / 2;
-		int y = graphics.guiHeight() / 2 + 10;
 		float share = Math.clamp(heat / Blasters.MAX_HEAT, 0.0F, 1.0F);
 		boolean hot = BlasterClient.overheated();
 		boolean blink = hot && (System.currentTimeMillis() / 250L) % 2L == 0L;

@@ -49,7 +49,7 @@ import com.phiro.sabercraft.saber.SaberVariant;
  * turned into a plain one and back. Wrong items and unknown names are refused without a change.
  *
  * <p>Blasters: a bow with Power, Flame and a name becomes each blaster type in turn and fires at a
- * zombie through a real right-click: the bolt exists on the server, the client draws it as a
+ * zombie through a real right-click (with arrows, Phase 11): the bolt exists on the server, the client draws it as a
  * bolt, the zombie loses health, heat and durability rise, the fire rate holds. Then the blaster
  * overheats, refuses to fire and cools down; a plain bow still draws and shoots arrows; the
  * blaster turns back into exactly the bow from before. Last, the same on a real dedicated server.
@@ -223,9 +223,18 @@ public class ArsenalGameTest implements FabricClientGameTest {
 			player.getInventory().clearContent();
 			player.getInventory().setItem(0, bow.copy());
 			player.getInventory().setSelectedSlot(0);
+			// Phase 11: every shot takes an arrow.
+			player.getInventory().setItem(7, new ItemStack(Items.ARROW, 64));
+			player.getInventory().setItem(8, new ItemStack(Items.ARROW, 64));
 			return bow;
 		});
 		context.runOnClient(client -> client.player.getInventory().setSelectedSlot(0));
+		// A clear, flat range: the world is random, and a hill or a tree between the player and
+		// the target would stop the bolt.
+		int y = server.computeOnServer(s -> player(s, self).getBlockY());
+		server.runCommand("fill -3 " + y + " -18 3 " + (y + 4) + " 2 minecraft:air");
+		server.runCommand("fill -3 " + (y - 1) + " -18 3 " + (y - 1) + " 2 minecraft:stone");
+		server.runCommand("tp @a 0 " + y + " 0 180 0");
 		context.waitTicks(5);
 		command(context, "sabercraft blaster");
 		check(server.computeOnServer(s -> BlasterType.of(held(s, self))) == BlasterType.E11, "/sabercraft blaster makes an E-11");
@@ -235,7 +244,7 @@ public class ArsenalGameTest implements FabricClientGameTest {
 			command(context, "sabercraft blaster " + type.id().getPath());
 			check(server.computeOnServer(s -> BlasterType.of(held(s, self))) == type, "the blaster is now " + type.id().getPath());
 			server.runCommand("kill @e[type=!player]");
-			server.runCommand("summon minecraft:zombie 0 ~ -14 {NoAI:1b,PersistenceRequired:1b,Silent:1b,attributes:[{id:\"minecraft:max_health\",base:200}],Health:200f}");
+			server.runCommand("summon minecraft:zombie 0 " + y + " -14 {NoAI:1b,PersistenceRequired:1b,Silent:1b,attributes:[{id:\"minecraft:max_health\",base:200}],Health:200f}");
 			server.computeOnServer(s -> {
 				ServerPlayer player = player(s, self);
 				player.getCooldowns().removeCooldown(player.getCooldowns().getCooldownGroup(held(s, self)));
@@ -251,7 +260,9 @@ public class ArsenalGameTest implements FabricClientGameTest {
 			context.getInput().pressMouse(GLFW.GLFW_MOUSE_BUTTON_RIGHT);
 			context.waitTicks(1);
 			int bolts = server.computeOnServer(s -> s.overworld().getEntitiesOfClass(BlasterBolt.class, new AABB(-30, -64, -30, 30, 320, 30)).size());
-			check(bolts == type.bolts() || bolts > 0, type.id().getPath() + ": the right-click fired " + bolts + " bolt(s) on the server");
+			String flight = server.computeOnServer(s -> s.overworld().getEntitiesOfClass(BlasterBolt.class, new AABB(-30, -64, -30, 30, 320, 30)).stream()
+					.map(b -> b.position() + " v" + b.getDeltaMovement()).toList().toString());
+			check(bolts == type.bolts() || bolts > 0, type.id().getPath() + ": the right-click fired " + bolts + " bolt(s) on the server " + flight);
 			check(context.computeOnClient(client -> !client.player.isUsingItem()), type.id().getPath() + ": the bow is not drawn");
 			boolean seen = context.computeOnClient(client -> {
 				for (var entity : client.level.entitiesForRendering()) {
@@ -265,10 +276,18 @@ public class ArsenalGameTest implements FabricClientGameTest {
 			check(server.computeOnServer(s -> Blasters.heat(self)) > 0.0F, type.id().getPath() + ": the blaster got warmer");
 			context.takeScreenshot("arsenal_blaster_" + type.id().getPath() + "_shot");
 			check(context.computeOnClient(client -> BlasterClient.heat()) > 0.0F, type.id().getPath() + ": the client was told the heat");
-			context.waitTicks(15);
-			float healthAfter = server.computeOnServer(s -> zombie(s).getHealth());
 			float expected = type.damage() * 1.5F * Math.max(1, Math.min(1, type.bolts()));
-			check(healthBefore - healthAfter >= expected * 0.6F, type.id().getPath() + ": the zombie was hit (" + healthBefore + " -> " + healthAfter + ", Power 2 = x1.5)");
+			// The slowest bolts need a few ticks more on a slow machine.
+			for (int tick = 0; tick < 40 && healthBefore - server.computeOnServer(s -> zombie(s).getHealth()) < expected * 0.6F; tick++) {
+				context.waitTick();
+			}
+
+			float healthAfter = server.computeOnServer(s -> zombie(s).getHealth());
+			String where = server.computeOnServer(s -> "zombie at " + zombie(s).position() + " box " + zombie(s).getBoundingBox() + ", player at "
+					+ player(s, self).position() + " rot " + player(s, self).getYRot() + "/" + player(s, self).getXRot() + ", bolts "
+					+ s.overworld().getEntitiesOfClass(BlasterBolt.class, new AABB(-60, -64, -60, 60, 320, 60)).stream().map(b -> b.position() + " v" + b.getDeltaMovement()).toList());
+			check(healthBefore - healthAfter >= expected * 0.6F, type.id().getPath() + ": the zombie was hit (" + healthBefore + " -> " + healthAfter
+					+ ", Power 2 = x1.5; " + where + ")");
 			check(server.computeOnServer(s -> zombie(s).isOnFire()), type.id().getPath() + ": Flame sets the target on fire");
 			int damageAfter = server.computeOnServer(s -> held(s, self).getDamageValue());
 			check(damageAfter >= damageBefore, type.id().getPath() + ": durability used (" + damageBefore + " -> " + damageAfter + ", Unbreaking may skip)");
@@ -359,6 +378,7 @@ public class ArsenalGameTest implements FabricClientGameTest {
 				// The bow into the hand that is already selected (the slot change only reaches the
 				// server with the next action).
 				server.runCommand("item replace entity @a weapon.mainhand with minecraft:bow");
+				server.runCommand("item replace entity @a hotbar.8 with minecraft:arrow 16");
 				context.waitTicks(5);
 				command(context, "sabercraft blaster dl44");
 				context.waitTicks(5);
@@ -376,6 +396,8 @@ public class ArsenalGameTest implements FabricClientGameTest {
 				});
 				check(seen, "dedicated server: the bolt fired on the server reaches the client");
 				check(context.computeOnClient(client -> !client.player.isUsingItem()), "dedicated server: the bow is not drawn");
+				context.waitTicks(5);
+				check(context.computeOnClient(client -> client.player.getInventory().countItem(Items.ARROW)) == 15, "dedicated server: the shot took one arrow");
 				context.takeScreenshot("arsenal_dedicated_server_shot");
 			}
 		}

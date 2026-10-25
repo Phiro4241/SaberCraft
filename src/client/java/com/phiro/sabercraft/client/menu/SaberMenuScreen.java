@@ -13,10 +13,15 @@ import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.CycleButton;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.network.chat.Component;
+import net.minecraft.sounds.SoundEvent;
 import net.minecraft.util.Mth;
+import net.minecraft.util.Util;
 import net.minecraft.world.InteractionHand;
 
+import com.phiro.sabercraft.SaberCraft;
+import com.phiro.sabercraft.client.ImmersionConfig;
 import com.phiro.sabercraft.client.select.SaberCustomizeScreen;
 import com.phiro.sabercraft.client.select.SaberSelection;
 
@@ -36,15 +41,21 @@ public abstract class SaberMenuScreen extends Screen {
 
 	/** The areas of the menu. */
 	public enum Tab {
-		SABER, COMBAT, CHARACTER, SPACE, MUSIC, GRAPHICS;
+		SABER, BLASTER, DROIDS, SHIPS, COMBAT, CHARACTER, SPACE, MUSIC, GRAPHICS;
 
 		public Component label() {
 			return Component.translatable("sabercraft.menu.tab." + this.name().toLowerCase(java.util.Locale.ROOT));
 		}
 	}
 
+	/** How long a page takes to fade in, in milliseconds (Phase 11 G). */
+	private static final float TRANSITION_MILLIS = 220.0F;
+
 	protected int left;
 	protected int top;
+	/** When this page was opened; a resize builds it again but does not fade it in again. */
+	private final long opened = Util.getMillis();
+	private boolean swept;
 
 	protected SaberMenuScreen(Component title) {
 		super(title);
@@ -76,6 +87,20 @@ public abstract class SaberMenuScreen extends Screen {
 		}
 
 		this.initPanel();
+
+		if (!this.swept && ImmersionConfig.get().menuTransitions && this.minecraft != null) {
+			this.swept = true;
+			this.minecraft.getSoundManager().play(SimpleSoundInstance.forUI(SoundEvent.createVariableRangeEvent(SaberCraft.id("ui.menu_sweep")), 1.0F, 0.35F));
+		}
+	}
+
+	/** How far the page has faded in, 0 just opened, 1 done (always 1 with transitions off). */
+	public float transition() {
+		if (!ImmersionConfig.get().menuTransitions) {
+			return 1.0F;
+		}
+
+		return Mth.clamp((Util.getMillis() - this.opened) / TRANSITION_MILLIS, 0.0F, 1.0F);
 	}
 
 	/** Opens an area of the menu. */
@@ -93,6 +118,9 @@ public abstract class SaberMenuScreen extends Screen {
 
 		return switch (tab) {
 			case SABER -> new SaberCustomizeScreen(hand, client.player.getItemInHand(hand));
+			case BLASTER -> new BlasterMenuScreen();
+			case DROIDS -> new DroidMenuScreen();
+			case SHIPS -> new ShipMenuScreen();
 			case COMBAT -> new CombatMenuScreen();
 			case CHARACTER -> new CharacterMenuScreen();
 			case SPACE -> new SpaceMenuScreen();
@@ -112,6 +140,27 @@ public abstract class SaberMenuScreen extends Screen {
 		graphics.centeredText(this.font, this.title, this.left + PANEL_WIDTH / 2, this.top + 8, 0xFFFFFFFF);
 		super.extractRenderState(graphics, mouseX, mouseY, a);
 		this.extractPanel(graphics, mouseX, mouseY, a);
+		this.extractTransition(graphics);
+	}
+
+	/**
+	 * Phase 11 G: a new page comes up like a hologram, a scan line runs down the panel and the dark
+	 * cover over the page clears behind it. Only the panel; the tabs stay as they are.
+	 */
+	private void extractTransition(GuiGraphicsExtractor graphics) {
+		float done = this.transition();
+
+		if (done >= 1.0F) {
+			return;
+		}
+
+		float eased = done * done * (3.0F - 2.0F * done);
+		int line = this.top + Math.round(eased * PANEL_HEIGHT);
+		int fade = Math.round((1.0F - eased) * 0xE0);
+		graphics.fill(this.left, line, this.left + PANEL_WIDTH, this.top + PANEL_HEIGHT, fade << 24 | 0x101014);
+		int glow = Math.round((1.0F - done) * 0xC0);
+		graphics.fill(this.left, Math.max(this.top, line - 1), this.left + PANEL_WIDTH, Math.min(this.top + PANEL_HEIGHT, line + 1),
+				glow << 24 | 0x7FB2FF);
 	}
 
 	/** Draws over the widgets of the area. */

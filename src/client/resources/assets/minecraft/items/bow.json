@@ -1,84 +1,411 @@
 {
-  "model": {
-    "type": "minecraft:select",
-    "property": "minecraft:custom_model_data",
-    "index": 0,
-    "cases": [
+ "model": {
+  "type": "minecraft:select",
+  "property": "minecraft:custom_model_data",
+  "index": 0,
+  "cases": [
+   {
+    "when": "sabercraft:dl44",
+    "model": {
+     "type": "minecraft:select",
+     "property": "minecraft:display_context",
+     "cases": [
       {
-        "when": "sabercraft:e11",
-        "model": {
-          "type": "minecraft:model",
-          "model": "sabercraft:item/blaster/e11"
-        }
-      },
-      {
-        "when": "sabercraft:dl44",
-        "model": {
-          "type": "minecraft:model",
-          "model": "sabercraft:item/blaster/dl44"
-        }
-      },
-      {
-        "when": "sabercraft:a280",
-        "model": {
-          "type": "minecraft:model",
-          "model": "sabercraft:item/blaster/a280"
-        }
-      },
-      {
-        "when": "sabercraft:repeater",
-        "model": {
-          "type": "minecraft:model",
-          "model": "sabercraft:item/blaster/repeater"
-        }
-      },
-      {
-        "when": "sabercraft:rebel",
-        "model": {
-          "type": "minecraft:model",
-          "model": "sabercraft:item/blaster/rebel"
-        }
-      },
-      {
-        "when": "sabercraft:ezra",
-        "model": {
-          "type": "minecraft:model",
-          "model": "sabercraft:item/blaster/ezra"
-        }
+       "when": [
+        "gui",
+        "ground",
+        "fixed",
+        "on_shelf",
+        "head"
+       ],
+       "model": {
+        "type": "minecraft:model",
+        "model": "sabercraft:item/blaster/dl44"
+       }
       }
+     ],
+     "fallback": {
+      "type": "minecraft:composite",
+      "models": [
+       {
+        "type": "minecraft:model",
+        "model": "sabercraft:item/blaster/dl44"
+       },
+       {
+        "type": "sabercraft:blaster_flash",
+        "base": "sabercraft:item/blaster/dl44",
+        "color": "sabercraft:red",
+        "muzzle": [
+         0.5,
+         0.625,
+         -0.1125
+        ]
+       }
+      ]
+     }
+    }
+   },
+   {
+    "when": "sabercraft:e11",
+    "model": {
+     "type": "minecraft:select",
+     "property": "minecraft:display_context",
+     "cases": [
+      {
+       "when": [
+        "gui",
+        "ground",
+        "fixed",
+        "on_shelf",
+        "head"
+       ],
+       "model": {
+        "type": "minecraft:model",
+        "model": "sabercraft:item/blaster/e11"
+       }
+      }
+     ],
+     "fallback": {
+      "type": "minecraft:composite",
+      "models": [
+       {
+        "type": "minecraft:model",
+        "model": "sabercraft:item/blaster/e11"
+       },
+       {
+        "type": "sabercraft:blaster_flash",
+        "base": "sabercraft:item/blaster/e11",
+        "color": "sabercraft:red",
+        "muzzle": [
+         0.5,
+         0.625,
+         -0.3375
+        ]
+       }
+      ]
+     }
+    }
+   },
+   {
+    "when": "sabercraft:dc15a",
+    "model": {
+     "type": "minecraft:select",
+     "property": "minecraft:display_context",
+     "cases": [
+      {
+       "when": [
+        "gui",
+        "ground",
+        "fixed",
+        "on_shelf",
+        "head"
+       ],
+       "model": {
+        "type": "minecraft:model",
+        "model": "sabercraft:item/blaster/dc15a"
+       }
+      }
+     ],
+     "fallback": {
+      "type": "minecraft:composite",
+      "models": [
+       {
+        "type": "minecraft:model",
+        "model": "sabercraft:item/blaster/dc15a"
+       },
+       {
+        "type": "sabercraft:blaster_flash",
+        "base": "sabercraft:item/blaster/dc15a",
+        "color": "sabercraft:blue",
+        "muzzle": [
+         0.5,
+         0.625,
+         -0.7625
+        ]
+       }
+      ]
+     }
+    }
+   },
+   {
+    "when": "sabercraft:se14c",
+    "model": {
+     "type": "minecraft:select",
+     "property": "minecraft:display_context",
+     "cases": [
+      {
+       "when": [
+        "gui",
+        "ground",
+        "fixed",
+        "on_shelf",
+        "head"
+       ],
+       "model": {
+        "type": "minecraft:model",
+        "model": "sabercraft:item/blaster/se14c"
+       }
+      }
+     ],
+     "fallback": {
+      "type": "minecraft:composite",
+      "models": [
+       {
+        "type": "minecraft:model",
+        "model": "sabercraft:item/blaster/se14c"
+       },
+       {
+        "type": "sabercraft:blaster_flash",
+        "base": "sabercraft:item/blaster/se14c",
+        "color": "sabercraft:red",
+        "muzzle": [
+         0.5,
+         0.65,
+         -0.1344
+        ]
+       }
+      ]
+     }
+    }
+   },
+   {
+    "when": "sabercraft:bowcaster",
+    "model": {
+     "type": "minecraft:select",
+     "property": "minecraft:display_context",
+     "cases": [
+      {
+       "when": [
+        "gui",
+        "ground",
+        "fixed",
+        "on_shelf",
+        "head"
+       ],
+       "model": {
+        "type": "minecraft:model",
+        "model": "sabercraft:item/blaster/bowcaster"
+       }
+      }
+     ],
+     "fallback": {
+      "type": "minecraft:composite",
+      "models": [
+       {
+        "type": "minecraft:model",
+        "model": "sabercraft:item/blaster/bowcaster"
+       },
+       {
+        "type": "sabercraft:blaster_flash",
+        "base": "sabercraft:item/blaster/bowcaster",
+        "color": "sabercraft:green",
+        "muzzle": [
+         0.5,
+         0.625,
+         -0.5094
+        ]
+       }
+      ]
+     }
+    }
+   },
+   {
+    "when": "sabercraft:a280",
+    "model": {
+     "type": "minecraft:select",
+     "property": "minecraft:display_context",
+     "cases": [
+      {
+       "when": [
+        "gui",
+        "ground",
+        "fixed",
+        "on_shelf",
+        "head"
+       ],
+       "model": {
+        "type": "minecraft:model",
+        "model": "sabercraft:item/blaster/a280"
+       }
+      }
+     ],
+     "fallback": {
+      "type": "minecraft:composite",
+      "models": [
+       {
+        "type": "minecraft:model",
+        "model": "sabercraft:item/blaster/a280"
+       },
+       {
+        "type": "sabercraft:blaster_flash",
+        "base": "sabercraft:item/blaster/a280",
+        "color": "sabercraft:red",
+        "muzzle": [
+         0.5,
+         0.625,
+         -0.6969
+        ]
+       }
+      ]
+     }
+    }
+   },
+   {
+    "when": "sabercraft:repeater",
+    "model": {
+     "type": "minecraft:select",
+     "property": "minecraft:display_context",
+     "cases": [
+      {
+       "when": [
+        "gui",
+        "ground",
+        "fixed",
+        "on_shelf",
+        "head"
+       ],
+       "model": {
+        "type": "minecraft:model",
+        "model": "sabercraft:item/blaster/repeater"
+       }
+      }
+     ],
+     "fallback": {
+      "type": "minecraft:composite",
+      "models": [
+       {
+        "type": "minecraft:model",
+        "model": "sabercraft:item/blaster/repeater"
+       },
+       {
+        "type": "sabercraft:blaster_flash",
+        "base": "sabercraft:item/blaster/repeater",
+        "color": "sabercraft:red",
+        "muzzle": [
+         0.5,
+         0.625,
+         -0.6344
+        ]
+       }
+      ]
+     }
+    }
+   },
+   {
+    "when": "sabercraft:rebel",
+    "model": {
+     "type": "minecraft:select",
+     "property": "minecraft:display_context",
+     "cases": [
+      {
+       "when": [
+        "gui",
+        "ground",
+        "fixed",
+        "on_shelf",
+        "head"
+       ],
+       "model": {
+        "type": "minecraft:model",
+        "model": "sabercraft:item/blaster/rebel"
+       }
+      }
+     ],
+     "fallback": {
+      "type": "minecraft:composite",
+      "models": [
+       {
+        "type": "minecraft:model",
+        "model": "sabercraft:item/blaster/rebel"
+       },
+       {
+        "type": "sabercraft:blaster_flash",
+        "base": "sabercraft:item/blaster/rebel",
+        "color": "sabercraft:blue",
+        "muzzle": [
+         0.5,
+         0.625,
+         -0.1094
+        ]
+       }
+      ]
+     }
+    }
+   },
+   {
+    "when": "sabercraft:ezra",
+    "model": {
+     "type": "minecraft:select",
+     "property": "minecraft:display_context",
+     "cases": [
+      {
+       "when": [
+        "gui",
+        "ground",
+        "fixed",
+        "on_shelf",
+        "head"
+       ],
+       "model": {
+        "type": "minecraft:model",
+        "model": "sabercraft:item/blaster/ezra"
+       }
+      }
+     ],
+     "fallback": {
+      "type": "minecraft:composite",
+      "models": [
+       {
+        "type": "minecraft:model",
+        "model": "sabercraft:item/blaster/ezra"
+       },
+       {
+        "type": "sabercraft:blaster_flash",
+        "base": "sabercraft:item/blaster/ezra",
+        "color": "sabercraft:yellow",
+        "muzzle": [
+         0.5,
+         0.625,
+         -0.0969
+        ]
+       }
+      ]
+     }
+    }
+   }
+  ],
+  "fallback": {
+   "type": "minecraft:condition",
+   "property": "minecraft:using_item",
+   "on_false": {
+    "type": "minecraft:model",
+    "model": "minecraft:item/bow"
+   },
+   "on_true": {
+    "type": "minecraft:range_dispatch",
+    "property": "minecraft:use_duration",
+    "scale": 0.05,
+    "entries": [
+     {
+      "threshold": 0.65,
+      "model": {
+       "type": "minecraft:model",
+       "model": "minecraft:item/bow_pulling_1"
+      }
+     },
+     {
+      "threshold": 0.9,
+      "model": {
+       "type": "minecraft:model",
+       "model": "minecraft:item/bow_pulling_2"
+      }
+     }
     ],
     "fallback": {
-      "type": "minecraft:condition",
-      "property": "minecraft:using_item",
-      "on_false": {
-        "type": "minecraft:model",
-        "model": "minecraft:item/bow"
-      },
-      "on_true": {
-        "type": "minecraft:range_dispatch",
-        "property": "minecraft:use_duration",
-        "scale": 0.05,
-        "entries": [
-          {
-            "threshold": 0.65,
-            "model": {
-              "type": "minecraft:model",
-              "model": "minecraft:item/bow_pulling_1"
-            }
-          },
-          {
-            "threshold": 0.9,
-            "model": {
-              "type": "minecraft:model",
-              "model": "minecraft:item/bow_pulling_2"
-            }
-          }
-        ],
-        "fallback": {
-          "type": "minecraft:model",
-          "model": "minecraft:item/bow_pulling_0"
-        }
-      }
+     "type": "minecraft:model",
+     "model": "minecraft:item/bow_pulling_0"
     }
+   }
   }
+ }
 }

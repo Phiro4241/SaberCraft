@@ -1,0 +1,31 @@
+{
+  "parent": "sabercraft:root",
+  "display": {
+    "icon": {
+      "id": "minecraft:iron_nugget",
+      "components": {
+        "minecraft:item_model": "sabercraft:ship/xwing_icon"
+      }
+    },
+    "title": {
+      "translate": "advancements.sabercraft.first_flight.title"
+    },
+    "description": {
+      "translate": "advancements.sabercraft.first_flight.description"
+    },
+    "frame": "goal",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "flight": {
+      "trigger": "minecraft:impossible"
+    }
+  },
+  "requirements": [
+    [
+      "flight"
+    ]
+  ]
+}

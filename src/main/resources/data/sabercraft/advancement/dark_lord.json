@@ -1,0 +1,28 @@
+{
+  "parent": "sabercraft:duel_begins",
+  "display": {
+    "icon": {
+      "id": "minecraft:wither_skeleton_skull"
+    },
+    "title": {
+      "translate": "advancements.sabercraft.dark_lord.title"
+    },
+    "description": {
+      "translate": "advancements.sabercraft.dark_lord.description"
+    },
+    "frame": "challenge",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "won": {
+      "trigger": "minecraft:impossible"
+    }
+  },
+  "requirements": [
+    [
+      "won"
+    ]
+  ]
+}
