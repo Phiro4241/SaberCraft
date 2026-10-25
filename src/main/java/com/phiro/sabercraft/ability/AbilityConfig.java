@@ -195,6 +195,19 @@ public final class AbilityConfig {
 	 */
 	@SerializedName("commands_for_everyone")
 	public boolean commandsForEveryone = true;
+	/**
+	 * Phase 11: every blaster shot needs and uses one plain arrow from the inventory (the off hand
+	 * first, like a bow). Creative players need none. false: blasters fire without ammunition, as
+	 * in Phase 10.
+	 */
+	@SerializedName("blaster_ammo")
+	public boolean blasterAmmo = true;
+	/**
+	 * Phase 11: a blaster with Infinity needs one arrow but keeps it, like a bow with Infinity.
+	 * false: Infinity does nothing on blasters, every shot uses an arrow.
+	 */
+	@SerializedName("blaster_infinity")
+	public boolean blasterInfinity = true;
 	/** Phase 10: blasters fire. false: converted bows do nothing on right-click (and stay blasters). */
 	@SerializedName("blasters_enabled")
 	public boolean blastersEnabled = true;

@@ -87,7 +87,10 @@ public abstract class ItemInHandRendererMixin {
 		return SaberCombat.firstPerson(player, InteractionHand.MAIN_HAND, 1.0F) != null && SaberProfiles.isSaber(player.getMainHandItem()) ? 1.0F : scale;
 	}
 
-	/** Phase 10: a short kick back and up of the blaster after each shot. Balanced by the pop below. */
+	/**
+	 * Phase 10: a short kick back and up of the blaster after each shot; Phase 11: turned aside to
+	 * vent while overheated. Balanced by the pop below.
+	 */
 	@Inject(method = "submitArmWithItem", at = @At("HEAD"))
 	private void sabercraft$blasterRecoilPush(
 			AbstractClientPlayer player, float frameInterp, float xRot, InteractionHand hand, float attack, ItemStack itemStack,
@@ -95,9 +98,14 @@ public abstract class ItemInHandRendererMixin {
 	) {
 		if (BlasterType.of(itemStack) != null) {
 			float kick = BlasterClient.recoil(hand);
+			// Phase 11: while overheated the blaster is turned aside and down to vent.
+			float vent = BlasterClient.venting();
+			vent = vent * vent * (3.0F - 2.0F * vent);
+			boolean right = (hand == InteractionHand.MAIN_HAND) == (player.getMainArm() == HumanoidArm.RIGHT);
 			poseStack.pushPose();
-			poseStack.translate(0.0F, 0.02F * kick, 0.09F * kick);
-			poseStack.mulPose(com.mojang.math.Axis.XP.rotationDegrees(7.0F * kick));
+			poseStack.translate(0.0F, 0.02F * kick - 0.1F * vent, 0.09F * kick);
+			poseStack.mulPose(com.mojang.math.Axis.XP.rotationDegrees(7.0F * kick - 18.0F * vent));
+			poseStack.mulPose(com.mojang.math.Axis.ZP.rotationDegrees((right ? 32.0F : -32.0F) * vent));
 		}
 	}
 

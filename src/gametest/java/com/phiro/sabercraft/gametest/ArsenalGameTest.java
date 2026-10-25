@@ -49,7 +49,7 @@ import com.phiro.sabercraft.saber.SaberVariant;
  * turned into a plain one and back. Wrong items and unknown names are refused without a change.
  *
  * <p>Blasters: a bow with Power, Flame and a name becomes each blaster type in turn and fires at a
- * zombie through a real right-click: the bolt exists on the server, the client draws it as a
+ * zombie through a real right-click (with arrows, Phase 11): the bolt exists on the server, the client draws it as a
  * bolt, the zombie loses health, heat and durability rise, the fire rate holds. Then the blaster
  * overheats, refuses to fire and cools down; a plain bow still draws and shoots arrows; the
  * blaster turns back into exactly the bow from before. Last, the same on a real dedicated server.
@@ -223,6 +223,9 @@ public class ArsenalGameTest implements FabricClientGameTest {
 			player.getInventory().clearContent();
 			player.getInventory().setItem(0, bow.copy());
 			player.getInventory().setSelectedSlot(0);
+			// Phase 11: every shot takes an arrow.
+			player.getInventory().setItem(7, new ItemStack(Items.ARROW, 64));
+			player.getInventory().setItem(8, new ItemStack(Items.ARROW, 64));
 			return bow;
 		});
 		context.runOnClient(client -> client.player.getInventory().setSelectedSlot(0));
@@ -359,6 +362,7 @@ public class ArsenalGameTest implements FabricClientGameTest {
 				// The bow into the hand that is already selected (the slot change only reaches the
 				// server with the next action).
 				server.runCommand("item replace entity @a weapon.mainhand with minecraft:bow");
+				server.runCommand("item replace entity @a hotbar.8 with minecraft:arrow 16");
 				context.waitTicks(5);
 				command(context, "sabercraft blaster dl44");
 				context.waitTicks(5);
@@ -376,6 +380,8 @@ public class ArsenalGameTest implements FabricClientGameTest {
 				});
 				check(seen, "dedicated server: the bolt fired on the server reaches the client");
 				check(context.computeOnClient(client -> !client.player.isUsingItem()), "dedicated server: the bow is not drawn");
+				context.waitTicks(5);
+				check(context.computeOnClient(client -> client.player.getInventory().countItem(Items.ARROW)) == 15, "dedicated server: the shot took one arrow");
 				context.takeScreenshot("arsenal_dedicated_server_shot");
 			}
 		}

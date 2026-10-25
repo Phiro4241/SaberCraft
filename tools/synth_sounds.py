@@ -11,7 +11,8 @@ Needs numpy and ffmpeg with libvorbis. Writes mono 44.1 kHz Ogg Vorbis files int
 src/client/resources/assets/sabercraft/sounds/saber/ (default profile) and .../saber/dark/
 (the deeper, rougher profile of the dark hilt), and the combat sounds of Phase 6 into
 .../sounds/combat/. `--combat` writes only the combat sounds, `--blaster` only the blaster sounds of Phase 10
-(.../sounds/blaster/), `--ambient` only the planet ambiences of Phase 10 (.../sounds/ambient/). Minecraft only attenuates mono
+(.../sounds/blaster/), `--ambient` only the planet ambiences of Phase 10 (.../sounds/ambient/),
+`--phase11-blaster` the new blaster sounds of Phase 11. Minecraft only attenuates mono
 sounds by distance, so all files are mono.
 """
 import os
@@ -347,6 +348,62 @@ def blasters():
     write_ogg("overheat", blaster_overheat(rng), out)
 
 
+def bowcaster_shot(rng, seconds=0.75):
+    """The bowcaster (Phase 11): a heavy twang of the bow arms, a deep thump and a short crack."""
+    t = t_axis(seconds)
+    k = np.log(70 / 900) / seconds
+    phase = 2 * np.pi * 900 * (np.exp(k * t) - 1) / k
+    twang = (np.sin(phase) + 0.5 * np.sin(1.5 * phase) + 0.3 * np.sin(2.7 * phase)) * np.exp(-t * 5)
+    thump = np.sin(2 * np.pi * 62 * t) * np.exp(-t * 14) * 1.1
+    crack = bandpass_noise(seconds, 1200, 7000, rng) * np.exp(-t * 60) * 0.8
+    return normalize(soft_clip(twang * (1 - np.exp(-t * 700)) + thump + crack, 1.8), 0.85)
+
+
+def dry_click(rng, seconds=0.18):
+    """No ammunition (Phase 11): a dry mechanical double click and a falling beep."""
+    t = t_axis(seconds)
+    out = np.zeros_like(t)
+    for start in (0.0, 0.05):
+        n = int(start * RATE)
+        tt = t[: len(t) - n]
+        out[n:] += bandpass_noise(seconds, 2500, 9000, rng)[: len(tt)] * np.exp(-tt * 400)
+    beep = np.sin(2 * np.pi * (1300 - 2500 * t) * t) * np.exp(-t * 18) * (t > 0.09) * 0.25
+    return normalize(out + beep, 0.5)
+
+
+def vent(rng, seconds=1.4):
+    """Cooling vents opening (Phase 11): a rising hiss with a few metallic ticks."""
+    t = t_axis(seconds)
+    hiss = bandpass_noise(seconds, 3000, 11000, rng) * np.minimum(1, t * 8) * np.exp(-t * 1.8)
+    ticks = np.zeros_like(t)
+    for start in rng.uniform(0.2, 1.1, 5):
+        n = int(start * RATE)
+        m = min(len(t) - n, int(0.02 * RATE))
+        ticks[n:n + m] += np.sin(2 * np.pi * 4200 * t[:m]) * np.exp(-t[:m] * 300) * 0.3
+    return normalize(hiss + ticks, 0.5)
+
+
+def menu_select(rng, seconds=0.35):
+    """Picking a blaster in the menu (Phase 11): a short power-up chirp."""
+    t = t_axis(seconds)
+    k = np.log(1800 / 400) / seconds
+    phase = 2 * np.pi * 400 * (np.exp(k * t) - 1) / k
+    tone = (np.sin(phase) + 0.3 * np.sin(2 * phase)) * np.exp(-t * 7) * (1 - np.exp(-t * 300))
+    return normalize(tone, 0.45)
+
+
+def phase11_blasters():
+    """The new blaster sounds of Phase 11, with their own random stream (Phase 10 sounds stay as they are)."""
+    rng = np.random.default_rng(1111)
+    out = os.path.join(os.path.dirname(OUT), "blaster")
+    write_ogg("dc15a", blaster_shot(rng, 0.5, 2900, 220, 0.5, 0.35, 0.45, 8), out)
+    write_ogg("se14c", blaster_shot(rng, 0.34, 3400, 420, 0.5, 0.15, 0.35, 13), out)
+    write_ogg("bowcaster", bowcaster_shot(rng), out)
+    write_ogg("empty", dry_click(rng), out)
+    write_ogg("vent", vent(rng), out)
+    write_ogg("select", menu_select(rng), out)
+
+
 # Planet ambiences (Phase 10) ---------------------------------------------------------------------
 # Loops of AMBIENT_SECONDS. Every slow modulation runs a whole number of times per loop, and every
 # event (a gust, a bird, a crackle) that runs over the end wraps to the start, so they loop
@@ -472,6 +529,10 @@ def main():
 
     if "--blaster" in sys.argv:
         blasters()
+        return
+
+    if "--phase11-blaster" in sys.argv:
+        phase11_blasters()
         return
 
     if "--combat" in sys.argv:

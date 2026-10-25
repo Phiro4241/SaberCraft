@@ -31,6 +31,10 @@ public final class SaberNetworking {
 		PayloadTypeRegistry.serverboundPlay().register(ChooseOutfitPayload.TYPE, ChooseOutfitPayload.CODEC);
 		PayloadTypeRegistry.clientboundPlay().register(OutfitSyncPayload.TYPE, OutfitSyncPayload.CODEC);
 		PayloadTypeRegistry.clientboundPlay().register(BlasterHeatPayload.TYPE, BlasterHeatPayload.CODEC);
+		// Phase 11: the muzzle flash for everyone, and the blaster menu.
+		PayloadTypeRegistry.clientboundPlay().register(BlasterShotPayload.TYPE, BlasterShotPayload.CODEC);
+		PayloadTypeRegistry.serverboundPlay().register(SelectBlasterPayload.TYPE, SelectBlasterPayload.CODEC);
+		PayloadTypeRegistry.clientboundPlay().register(BlasterSettingsPayload.TYPE, BlasterSettingsPayload.CODEC);
 	}
 
 	/**

@@ -44,8 +44,6 @@ import com.phiro.sabercraft.SaberCraft;
 public class BlasterBolt extends ThrowableItemProjectile {
 	public static final String MARKER = SaberCraft.id("bolt").toString();
 	public static final ResourceKey<DamageType> DAMAGE = ResourceKey.create(Registries.DAMAGE_TYPE, SaberCraft.id("blaster"));
-	/** Bolts that hit nothing are gone after this many ticks. */
-	private static final int LIFETIME = 60;
 	private final BlasterType type;
 	private final float damage;
 	private final boolean fire;
@@ -91,7 +89,8 @@ public class BlasterBolt extends ThrowableItemProjectile {
 	public void tick() {
 		super.tick();
 
-		if (this.isAlive() && this.tickCount > LIFETIME) {
+		// Bolts that hit nothing fade at the end of their range (Phase 11: per type).
+		if (this.isAlive() && this.tickCount > this.type.lifetime()) {
 			this.discard();
 		}
 	}

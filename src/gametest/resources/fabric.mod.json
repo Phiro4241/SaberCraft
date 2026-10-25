@@ -26,7 +26,8 @@
 			"com.phiro.sabercraft.gametest.SaberTypesGameTest",
 			"com.phiro.sabercraft.gametest.SoundscapeGameTest",
 			"com.phiro.sabercraft.gametest.DuelGameTest",
-			"com.phiro.sabercraft.gametest.SettingsGameTest"
+			"com.phiro.sabercraft.gametest.SettingsGameTest",
+			"com.phiro.sabercraft.gametest.BlasterAmmoGameTest"
 		]
 	},
 	"depends": {

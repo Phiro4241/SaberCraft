@@ -385,5 +385,57 @@
         "stream": true
       }
     ]
+  },
+  "blaster.dc15a": {
+    "subtitle": "subtitles.sabercraft.blaster.shot",
+    "sounds": [
+      {
+        "name": "sabercraft:blaster/dc15a",
+        "attenuation_distance": 48
+      }
+    ]
+  },
+  "blaster.se14c": {
+    "subtitle": "subtitles.sabercraft.blaster.shot",
+    "sounds": [
+      {
+        "name": "sabercraft:blaster/se14c",
+        "attenuation_distance": 48
+      }
+    ]
+  },
+  "blaster.bowcaster": {
+    "subtitle": "subtitles.sabercraft.blaster.shot",
+    "sounds": [
+      {
+        "name": "sabercraft:blaster/bowcaster",
+        "attenuation_distance": 48
+      }
+    ]
+  },
+  "blaster.empty": {
+    "subtitle": "subtitles.sabercraft.blaster.empty",
+    "sounds": [
+      {
+        "name": "sabercraft:blaster/empty",
+        "attenuation_distance": 12
+      }
+    ]
+  },
+  "blaster.vent": {
+    "subtitle": "subtitles.sabercraft.blaster.vent",
+    "sounds": [
+      {
+        "name": "sabercraft:blaster/vent",
+        "attenuation_distance": 16
+      }
+    ]
+  },
+  "ui.blaster_select": {
+    "sounds": [
+      {
+        "name": "sabercraft:blaster/select"
+      }
+    ]
   }
 }
