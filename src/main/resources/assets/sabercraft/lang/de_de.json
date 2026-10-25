@@ -423,5 +423,10 @@
   "advancements.sabercraft.spin_speed.title": "Rotationsgeschwindigkeit",
   "advancements.sabercraft.spin_speed.description": "Triff zwei Gegner mit einem einzigen Drehangriff",
   "advancements.sabercraft.finisher.title": "Ein würdiger Abschluss",
-  "advancements.sabercraft.finisher.description": "Besiege einen Gegner mit einem Lichtschwert-Finisher"
+  "advancements.sabercraft.finisher.description": "Besiege einen Gegner mit einem Lichtschwert-Finisher",
+  "sabercraft.option.hit_marks": "Treffermarken",
+  "sabercraft.option.hit_marks.description": "Wo ein Lichtschwert traf, bleibt für ein paar Sekunden ein kleiner leuchtender Punkt in Klingenfarbe. Nur ein Leuchten: Es wird nichts geschnitten, der Skin bleibt unverändert.",
+  "sabercraft.option.finisher_effects": "Finisher-Effekte",
+  "sabercraft.option.finisher_effects.description": "Der Schlag, der einen Gegner besiegt, sendet einen Lichtring aus und lässt den Bildschirm kurz in Klingenfarbe aufleuchten.",
+  "subtitles.sabercraft.saber.finisher": "Lichtschwert-Finisher"
 }

@@ -34,6 +34,7 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.projectile.Projectile;
 
 import com.phiro.sabercraft.ability.AbilityConfig;
+import com.phiro.sabercraft.ability.SaberFinishers;
 import com.phiro.sabercraft.advancement.SaberAdvancements;
 import com.phiro.sabercraft.character.Outfit;
 import com.phiro.sabercraft.character.OutfitSync;
@@ -350,6 +351,13 @@ public final class Duels {
 		}
 
 		player.setHealth(player.getMaxHealth());
+		// A saber blow that ends the round is a finisher, like one that defeats.
+		ServerPlayer saber = SaberFinishers.saberAttacker(source);
+
+		if (saber != null) {
+			SaberFinishers.finalBlow(saber, player);
+		}
+
 		roundWon(server, duel, opponent);
 		return false;
 	}

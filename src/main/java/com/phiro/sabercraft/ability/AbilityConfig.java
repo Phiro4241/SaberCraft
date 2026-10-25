@@ -208,6 +208,21 @@ public final class AbilityConfig {
 	 */
 	@SerializedName("blaster_infinity")
 	public boolean blasterInfinity = true;
+	/**
+	 * Phase 11: the blow that defeats a target with a saber (or ends a duel round) is a finisher:
+	 * a flash and shock ring in the blade color and its own sound for everyone nearby.
+	 */
+	@SerializedName("finisher_effect")
+	public boolean finisherEffect = true;
+	/**
+	 * Phase 11: in single player a finisher slows the game down for a moment (half a second at
+	 * half speed). Never on a server with more than one player, and never while a /tick rate is set.
+	 */
+	@SerializedName("finisher_slow_motion")
+	public boolean finisherSlowMotion = true;
+	/** Phase 11: ticks before the same player can land the next finisher. */
+	@SerializedName("finisher_cooldown")
+	public int finisherCooldown = 40;
 	/** Phase 10: blasters fire. false: converted bows do nothing on right-click (and stay blasters). */
 	@SerializedName("blasters_enabled")
 	public boolean blastersEnabled = true;
@@ -223,6 +238,18 @@ public final class AbilityConfig {
 	/** Heat lost per tick while overheated; firing is blocked until it is down to 0. */
 	@SerializedName("blaster_vent_rate")
 	public float blasterVentRate = 1.5F;
+	/** Phase 11: players can call droid companions (menu or /sabercraft droid). */
+	@SerializedName("droids_enabled")
+	public boolean droidsEnabled = true;
+	/** How many droids one player can have out at the same time (each kind at most once). */
+	@SerializedName("droid_limit")
+	public int droidLimit = 4;
+	/** Multiplier for the cooldowns of the droid abilities. */
+	@SerializedName("droid_cooldown")
+	public float droidCooldown = 1.0F;
+	/** Whether the combat droids (Chopper, B1, K-2SO) may hurt or push other players. */
+	@SerializedName("droids_hit_players")
+	public boolean droidsHitPlayers = false;
 
 	public static AbilityConfig get() {
 		return current;
@@ -278,6 +305,8 @@ public final class AbilityConfig {
 		config.blasterDamage = Mth.clamp(config.blasterDamage, 0.0F, 10.0F);
 		config.blasterCoolRate = Mth.clamp(config.blasterCoolRate, 0.1F, 100.0F);
 		config.blasterVentRate = Mth.clamp(config.blasterVentRate, 0.1F, 100.0F);
+		config.droidLimit = Mth.clamp(config.droidLimit, 1, 8);
+		config.droidCooldown = Mth.clamp(config.droidCooldown, 0.1F, 10.0F);
 		current = config;
 	}
 }

@@ -423,5 +423,10 @@
   "advancements.sabercraft.spin_speed.title": "Rotational Speed",
   "advancements.sabercraft.spin_speed.description": "Hit two enemies with a single spin attack",
   "advancements.sabercraft.finisher.title": "A Worthy Ending",
-  "advancements.sabercraft.finisher.description": "Defeat an opponent with a lightsaber finishing blow"
+  "advancements.sabercraft.finisher.description": "Defeat an opponent with a lightsaber finishing blow",
+  "sabercraft.option.hit_marks": "Hit marks",
+  "sabercraft.option.hit_marks.description": "A small glowing spot in the blade color stays for a few seconds where a lightsaber struck. Only a glow: nothing is cut, the skin stays as it is.",
+  "sabercraft.option.finisher_effects": "Finisher effects",
+  "sabercraft.option.finisher_effects.description": "The blow that defeats an opponent sends out a ring of light and briefly flashes the screen in the blade color.",
+  "subtitles.sabercraft.saber.finisher": "Lightsaber finishing blow"
 }

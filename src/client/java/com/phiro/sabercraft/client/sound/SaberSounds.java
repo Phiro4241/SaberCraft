@@ -13,6 +13,8 @@ public final class SaberSounds {
 	public static final SoundEvent SPIN = event("saber.spin");
 	/** The blade cuts into a target: short sizzle. */
 	public static final SoundEvent HIT = event("saber.hit");
+	/** Phase 11: the finishing blow. */
+	public static final SoundEvent FINISHER = event("saber.finisher");
 	/** The blade strikes a wall or the floor: crackling sparks. */
 	public static final SoundEvent SCORCH = event("saber.scorch");
 	/** Raising the defensive stance. */

@@ -26,6 +26,7 @@ import com.phiro.sabercraft.client.combat.CombatConfig;
 import com.phiro.sabercraft.client.combat.CombatLibrary;
 import com.phiro.sabercraft.client.menu.ModelPreview;
 import com.phiro.sabercraft.client.menu.SaberMenuScreen;
+import com.phiro.sabercraft.client.render.HitMarks;
 import com.phiro.sabercraft.client.music.PlanetAmbience;
 import com.phiro.sabercraft.client.music.SaberMusic;
 import com.phiro.sabercraft.client.music.StarWarsMusic;
@@ -94,6 +95,7 @@ public class SaberCraftClient implements ClientModInitializer {
 		// Phase 10: blasters.
 		BlasterClient.init();
 		ModelPreview.init();
+		HitMarks.init();
 		ClientTickEvents.END_CLIENT_TICK.register(SaberCraftClient::handleKeys);
 
 		SaberCraft.LOGGER.info(

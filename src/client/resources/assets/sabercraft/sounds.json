@@ -437,5 +437,14 @@
         "name": "sabercraft:blaster/select"
       }
     ]
+  },
+  "saber.finisher": {
+    "subtitle": "subtitles.sabercraft.saber.finisher",
+    "sounds": [
+      {
+        "name": "sabercraft:saber/finisher",
+        "attenuation_distance": 32
+      }
+    ]
   }
 }

@@ -46,6 +46,12 @@ public final class CombatConfig {
 	 */
 	@SerializedName("shader_blade")
 	public boolean shaderBlade = true;
+	/** Phase 11: glowing marks in the blade color where a saber struck, for a few seconds. */
+	@SerializedName("hit_marks")
+	public boolean hitMarks = true;
+	/** Phase 11: the shock ring and screen flash of a finishing blow (the sound always plays). */
+	@SerializedName("finisher_effects")
+	public boolean finisherEffects = true;
 
 	public static CombatConfig get() {
 		return current;

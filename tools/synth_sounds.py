@@ -404,6 +404,27 @@ def phase11_blasters():
     write_ogg("select", menu_select(rng), out)
 
 
+def finisher(rng, seconds=1.6):
+    """The final blow (Phase 11): a deep, swelling hum, a bright energy crack and a long, ringing
+    decay with a soft rush of air, like the last strike of a duel in slow motion."""
+    t = t_axis(seconds)
+    swell = soft_clip(hum_tone(t, HUM_BASE * (0.8 + 0.2 * np.exp(-t / 0.4))) / 1.4, 3.0) * np.clip(t / 0.05, 0, 1) * np.exp(-t / 0.7)
+    crack = bandpass_noise(seconds, 600, 9000, rng) * np.exp(-t / 0.03)
+    boom = np.sin(2 * np.pi * 55 * t * (1 - 0.3 * t / seconds)) * np.exp(-t / 0.35)
+    ring = np.zeros_like(t)
+    for freq, level in ((880, 0.35), (1318, 0.25), (1760, 0.15)):
+        ring += level * np.sin(2 * np.pi * freq * t) * np.exp(-t / 0.5)
+    air = bandpass_noise(seconds, 200, 1500, rng) * np.sin(np.pi * np.clip(t / seconds, 0, 1)) ** 2
+    out = 0.6 * swell + 0.7 * crack + 0.8 * boom + 0.4 * ring + 0.25 * air
+    return normalize(out * np.clip((seconds - t) / 0.3, 0, 1), 0.6)
+
+
+def phase11_combat():
+    """The combat sounds of Phase 11, with their own random stream."""
+    rng = np.random.default_rng(1112)
+    write_ogg("finisher", finisher(rng))
+
+
 # Planet ambiences (Phase 10) ---------------------------------------------------------------------
 # Loops of AMBIENT_SECONDS. Every slow modulation runs a whole number of times per loop, and every
 # event (a gust, a bird, a crackle) that runs over the end wraps to the start, so they loop
@@ -533,6 +554,10 @@ def main():
 
     if "--phase11-blaster" in sys.argv:
         phase11_blasters()
+        return
+
+    if "--phase11-combat" in sys.argv:
+        phase11_combat()
         return
 
     if "--combat" in sys.argv:
