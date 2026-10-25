@@ -1,14 +1,42 @@
-# Automatically build the project and run any configured tests for every push
-# and submitted pull request. This can help catch issues that only occur on
-# certain platforms or Java versions, and provides a first line of defence
-# against bad commits.
+# Builds the mod and runs the client game tests. Written to stay inside the free GitHub Actions
+# quota of a private repository (2000 minutes and 0.5 GB artifact storage per month):
+# - A pull request runs everything once per push. Its branch push no longer starts a second,
+#   identical run, and a newer push cancels the older run of the same pull request.
+# - A push to main (usually the merge of a pull request that was just tested) only builds the JAR.
+#   The full test can be started by hand under Actions > build > Run workflow.
+# - Changes to Markdown files and docs/ alone start no run.
+# - Timeouts stop a hanging game test after 40 minutes instead of the default 6 hours.
+# - Screenshots and the audio recording are only kept when the test fails (or on a manual run),
+#   and every artifact expires after a few days instead of 90.
 
 name: build
-on: [pull_request, push]
+on:
+  pull_request:
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+  push:
+    branches: [main]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  # Only pull request runs are cancelled. Every commit on main keeps its build.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  # One job instead of two parallel ones: the game test compiles the same code anyway, and every
+  # job is billed separately and rounded up to whole minutes.
   build:
     runs-on: ubuntu-24.04
+    # A successful run takes about 30 minutes.
+    timeout-minutes: 55
+    env:
+      # Only a pull request or a manual run starts the Minecraft client.
+      CLIENT_TEST: ${{ github.event_name != 'push' }}
     steps:
       - name: checkout repository
         uses: actions/checkout@v6
@@ -19,6 +47,9 @@ jobs:
         with:
           java-version: '25'
           distribution: 'microsoft'
+          # Keeps the Gradle and Loom caches (dependencies, Minecraft jars) between runs. The cache
+          # does not count towards the artifact storage quota.
+          cache: 'gradle'
       - name: make gradle wrapper executable
         run: chmod +x ./gradlew
       - name: build
@@ -28,40 +59,36 @@ jobs:
         with:
           name: Artifacts
           path: build/libs/
+          retention-days: 7
 
-  # Starts a real Minecraft client in a virtual display, checks the blade renderer, the ignite and
-  # retract animation and the sounds, and takes screenshots of the saber in first and third person.
-  client-gametest:
-    runs-on: ubuntu-24.04
-    steps:
-      - name: checkout repository
-        uses: actions/checkout@v6
-      - name: setup jdk
-        uses: actions/setup-java@v5
-        with:
-          java-version: '25'
-          distribution: 'microsoft'
-      - name: make gradle wrapper executable
-        run: chmod +x ./gradlew
+      # Starts a real Minecraft client in a virtual display, checks the blade renderer, the ignite and
+      # retract animation and the sounds, and takes screenshots of the saber in first and third person.
       - name: install virtual display
+        if: env.CLIENT_TEST == 'true'
         run: sudo apt-get update && sudo apt-get install -y xvfb mesa-utils
       # The runner has no sound card. OpenAL writes the game audio into a wave file instead, so the
       # sound tests run against the real sound engine and the recording can be listened to.
       - name: route game audio into a file
+        if: env.CLIENT_TEST == 'true'
         run: |
           mkdir -p build/run/clientGameTest
           printf '[general]\ndrivers = wave\nchannels = mono\n[wave]\nfile = %s/build/run/clientGameTest/game-audio.wav\n' "$PWD" > ~/.alsoftrc
       - name: run client game test
+        if: env.CLIENT_TEST == 'true'
+        # A hanging test fails here, so the screenshots below still show how far it got.
+        timeout-minutes: 40
         run: xvfb-run -a -s "-screen 0 1280x720x24" ./gradlew runClientGameTest
       - name: upload screenshots
-        if: always()
+        if: env.CLIENT_TEST == 'true' && (failure() || github.event_name == 'workflow_dispatch')
         uses: actions/upload-artifact@v7
         with:
           name: Screenshots
           path: build/run/clientGameTest/screenshots/
+          retention-days: 3
       - name: upload audio recording
-        if: always()
+        if: env.CLIENT_TEST == 'true' && (failure() || github.event_name == 'workflow_dispatch')
         uses: actions/upload-artifact@v7
         with:
           name: Audio
           path: build/run/clientGameTest/game-audio.wav
+          retention-days: 3
