@@ -5,7 +5,8 @@
   "mixins": [
     "LivingEntityMixin",
     "PigMixin",
-    "ProjectileMixin"
+    "ProjectileMixin",
+    "ServerPlayerMixin"
   ],
   "injectors": {
     "defaultRequire": 1

@@ -13,7 +13,8 @@ src/client/resources/assets/sabercraft/sounds/saber/ (default profile) and .../s
 .../sounds/combat/. `--combat` writes only the combat sounds, `--blaster` only the blaster sounds of Phase 10
 (.../sounds/blaster/), `--ambient` only the planet ambiences of Phase 10 (.../sounds/ambient/),
 `--phase11-blaster` the new blaster sounds of Phase 11, `--droids` the droid voices of Phase 11
-(.../sounds/droid/: beeps, whistles, servos and wordless robot murmurs, no speech). Minecraft only attenuates mono
+(.../sounds/droid/: beeps, whistles, servos and wordless robot murmurs, no speech), `--atmosphere` the draw and holster sounds and the menu sweep of Phase 11 G, `--ships` the
+starship engine, laser cannon, crash and S-foil sounds of Phase 11 (.../sounds/ship/). Minecraft only attenuates mono
 sounds by distance, so all files are mono.
 """
 import os
@@ -589,6 +590,59 @@ def droids():
     write_ogg("step", servo_step(np.random.default_rng(2499)), DROID_OUT)
 
 
+# Starships (Phase 11) ----------------------------------------------------------------------------
+SHIP_OUT = os.path.join(os.path.dirname(OUT), "ship")
+ENGINE_SECONDS = 2.0
+
+
+def ship_engine(rng):
+    """The X-Wing engines: a loop of a low roar, a rushing band of noise and a faint whine. Every
+    frequency is on the 1 / ENGINE_SECONDS grid, so it loops without a seam; the game raises its
+    pitch and volume with the speed."""
+    t = t_axis(ENGINE_SECONDS)
+    roar = periodic_noise(ENGINE_SECONDS, 40, 260, rng)
+    rush = periodic_noise(ENGINE_SECONDS, 600, 2600, rng) * 0.35
+    whine = (np.sin(2 * np.pi * 440 * t) + 0.5 * np.sin(2 * np.pi * 662 * t)) * 0.06
+    throb = 0.85 + 0.15 * np.sin(2 * np.pi * 6 * t)
+    return normalize(soft_clip((roar + rush) * throb + whine, 1.4), 0.5)
+
+
+def ship_laser(rng, seconds=0.5):
+    """A starship laser cannon: deeper and heavier than a hand blaster, with a booming body."""
+    shot = blaster_shot(rng, seconds, 1300, 70, 0.8, 1.1, 0.9, 7)
+    t = t_axis(seconds)
+    boom = np.sin(2 * np.pi * 55 * t) * np.exp(-t * 12)
+    return normalize(soft_clip(shot + boom * 0.7, 1.5), 0.85)
+
+
+def ship_crash(rng, seconds=1.1):
+    """Flying into something: a metallic bang, scraping and settling debris."""
+    t = t_axis(seconds)
+    bang = bandpass_noise(seconds, 80, 2400, rng) * np.exp(-t * 9)
+    clang = sum(np.sin(2 * np.pi * f * t) * np.exp(-t * d) for f, d in ((173, 6), (311, 8), (587, 11))) * 0.35
+    scrape = bandpass_noise(seconds, 1500, 6000, rng) * np.exp(-t * 4) * 0.25 * (t > 0.08)
+    return normalize(soft_clip(bang + clang + scrape, 2.0), 0.8)
+
+
+def ship_foils(rng, seconds=0.9):
+    """The S-foils opening or closing: servo whir with a clunk at the end."""
+    t = t_axis(seconds)
+    whir = np.sin(2 * np.pi * (180 + 160 * t) * t) * 0.4 + bandpass_noise(seconds, 300, 1800, rng) * 0.3
+    whir *= np.clip(t / 0.05, 0, 1) * np.clip((0.7 - t) / 0.1, 0, 1)
+    clunk = bandpass_noise(seconds, 60, 900, rng) * np.exp(-np.maximum(t - 0.7, 0) * 30) * (t > 0.7)
+    return normalize(whir + clunk, 0.55)
+
+
+def ships():
+    """The starship sounds of Phase 11, with their own random stream."""
+    rng = np.random.default_rng(1977_11)
+    write_ogg("xwing_engine", ship_engine(rng), SHIP_OUT)
+    write_ogg("xwing_laser1", ship_laser(rng), SHIP_OUT)
+    write_ogg("xwing_laser2", ship_laser(rng, 0.55), SHIP_OUT)
+    write_ogg("crash", ship_crash(rng), SHIP_OUT)
+    write_ogg("foils", ship_foils(rng), SHIP_OUT)
+
+
 # Planet ambiences (Phase 10) ---------------------------------------------------------------------
 # Loops of AMBIENT_SECONDS. Every slow modulation runs a whole number of times per loop, and every
 # event (a gust, a bird, a crackle) that runs over the end wraps to the start, so they loop
@@ -707,6 +761,48 @@ def ambient():
     write_ogg("coruscant", city(rng), out)
 
 
+# Atmosphere (Phase 11 G) -------------------------------------------------------------------------
+def blaster_draw(rng, seconds=0.42):
+    """Drawing a blaster: a short servo whir that rises, then the click of the grip locking in."""
+    t = t_axis(seconds)
+    whir = np.sin(2 * np.pi * (380 * t + 900 * t * t)) * np.minimum(1, t * 30) * np.exp(-t * 6) * (t < 0.3)
+    rustle = bandpass_noise(seconds, 800, 3500, rng) * np.exp(-t * 14) * 0.35
+    click = np.zeros_like(t)
+    n = int(0.28 * RATE)
+    tt = t[: len(t) - n]
+    click[n:] = bandpass_noise(seconds, 2500, 9000, rng)[: len(tt)] * np.exp(-tt * 350) + np.sin(2 * np.pi * 2100 * tt) * np.exp(-tt * 60) * 0.25
+    return normalize(0.45 * whir + rustle + click, 0.5)
+
+
+def blaster_holster(rng, seconds=0.4):
+    """Holstering: a release click, a falling whir and a soft leather thump."""
+    t = t_axis(seconds)
+    click = bandpass_noise(seconds, 2500, 9000, rng) * np.exp(-t * 380)
+    whir = np.sin(2 * np.pi * (900 * t - 700 * t * t)) * np.exp(-t * 9) * (t > 0.03) * 0.4
+    thump = np.zeros_like(t)
+    n = int(0.22 * RATE)
+    tt = t[: len(t) - n]
+    thump[n:] = (np.sin(2 * np.pi * 110 * tt) * 0.6 + bandpass_noise(seconds, 200, 1200, rng)[: len(tt)] * 0.5) * np.exp(-tt * 40)
+    return normalize(click + whir + thump, 0.5)
+
+
+def menu_sweep(rng, seconds=0.3):
+    """A page of the menu coming up: a soft, airy holo sweep, quiet enough for every tab switch."""
+    t = t_axis(seconds)
+    sweep = bandpass_noise(seconds, 1500, 6000, rng) * np.sin(np.pi * t / seconds) ** 2 * 0.5
+    tone = np.sin(2 * np.pi * (600 * t + 1500 * t * t)) * np.sin(np.pi * t / seconds) ** 3 * 0.25
+    return normalize(sweep + tone, 0.3)
+
+
+def atmosphere():
+    """The atmosphere sounds of Phase 11 G, with their own random stream."""
+    rng = np.random.default_rng(1138)
+    out = os.path.join(os.path.dirname(OUT), "blaster")
+    write_ogg("draw", blaster_draw(rng), out)
+    write_ogg("holster", blaster_holster(rng), out)
+    write_ogg("menu_sweep", menu_sweep(rng), os.path.join(os.path.dirname(OUT), "ui"))
+
+
 def main():
     if "--ambient" in sys.argv:
         ambient()
@@ -722,6 +818,14 @@ def main():
 
     if "--droids" in sys.argv:
         droids()
+        return
+
+    if "--atmosphere" in sys.argv:
+        atmosphere()
+        return
+
+    if "--ships" in sys.argv:
+        ships()
         return
 
     if "--phase11-combat" in sys.argv:

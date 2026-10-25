@@ -19,6 +19,7 @@ import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.projectile.throwableitemprojectile.ThrowableItemProjectile;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -30,6 +31,7 @@ import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 
 import com.phiro.sabercraft.SaberCraft;
+import com.phiro.sabercraft.ability.AbilityConfig;
 import com.phiro.sabercraft.advancement.SaberAdvancements;
 
 /**
@@ -124,7 +126,14 @@ public class BlasterBolt extends ThrowableItemProjectile {
 	@Override
 	protected boolean canHitEntity(Entity target) {
 		// Never the ship its shooter sits in (Phase 11).
+		// Starship lasers spare other players if the server says so.
 		Entity owner = this.getOwner();
+
+		if (this.type == BlasterType.XWING && target instanceof Player
+				&& !AbilityConfig.get().shipLasersHitPlayers) {
+			return false;
+		}
+
 		return (owner == null || owner.getVehicle() != target) && super.canHitEntity(target);
 	}
 

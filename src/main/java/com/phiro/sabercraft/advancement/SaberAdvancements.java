@@ -37,6 +37,7 @@ public final class SaberAdvancements {
 	public static final String FINISHER = "finisher";
 	public static final String DROID_FRIEND = "droid_friend";
 	public static final String LOYAL_COMPANION = "loyal_companion";
+	public static final String FIRST_FLIGHT = "first_flight";
 
 	/** A blaster hit from at least this far counts as a precision shot, in blocks. */
 	public static final double SHARPSHOOTER_DISTANCE = 30.0;

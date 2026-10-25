@@ -703,5 +703,70 @@
       }
     ],
     "subtitle": "subtitles.sabercraft.droid.step"
+  },
+  "ship.xwing.engine": {
+    "sounds": [
+      {
+        "name": "sabercraft:ship/xwing_engine",
+        "attenuation_distance": 40
+      }
+    ],
+    "subtitle": "subtitles.sabercraft.ship.engine"
+  },
+  "ship.xwing.laser": {
+    "sounds": [
+      {
+        "name": "sabercraft:ship/xwing_laser1",
+        "attenuation_distance": 64
+      },
+      {
+        "name": "sabercraft:ship/xwing_laser2",
+        "attenuation_distance": 64
+      }
+    ],
+    "subtitle": "subtitles.sabercraft.ship.laser"
+  },
+  "ship.crash": {
+    "sounds": [
+      {
+        "name": "sabercraft:ship/crash",
+        "attenuation_distance": 32
+      }
+    ],
+    "subtitle": "subtitles.sabercraft.ship.crash"
+  },
+  "ship.foils": {
+    "sounds": [
+      {
+        "name": "sabercraft:ship/foils",
+        "attenuation_distance": 24
+      }
+    ],
+    "subtitle": "subtitles.sabercraft.ship.foils"
+  },
+  "blaster.draw": {
+    "subtitle": "subtitles.sabercraft.blaster.draw",
+    "sounds": [
+      {
+        "name": "sabercraft:blaster/draw",
+        "attenuation_distance": 10
+      }
+    ]
+  },
+  "blaster.holster": {
+    "subtitle": "subtitles.sabercraft.blaster.holster",
+    "sounds": [
+      {
+        "name": "sabercraft:blaster/holster",
+        "attenuation_distance": 10
+      }
+    ]
+  },
+  "ui.menu_sweep": {
+    "sounds": [
+      {
+        "name": "sabercraft:ui/menu_sweep"
+      }
+    ]
   }
 }

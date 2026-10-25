@@ -263,6 +263,12 @@ public class DroidEntity extends Pig {
 		return false;
 	}
 
+	/** Droids never go through portals on their own; their owner's tick brings them along. */
+	@Override
+	public boolean canUsePortal(boolean ignorePassenger) {
+		return false;
+	}
+
 	@Override
 	public boolean shouldBeSaved() {
 		return false;

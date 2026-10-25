@@ -40,6 +40,10 @@ public final class SaberNetworking {
 		PayloadTypeRegistry.serverboundPlay().register(DroidCommandPayload.TYPE, DroidCommandPayload.CODEC);
 		PayloadTypeRegistry.clientboundPlay().register(DroidStatusPayload.TYPE, DroidStatusPayload.CODEC);
 		PayloadTypeRegistry.clientboundPlay().register(DroidEventPayload.TYPE, DroidEventPayload.CODEC);
+		PayloadTypeRegistry.serverboundPlay().register(ShipCommandPayload.TYPE, ShipCommandPayload.CODEC);
+		PayloadTypeRegistry.serverboundPlay().register(ShipFirePayload.TYPE, ShipFirePayload.CODEC);
+		PayloadTypeRegistry.clientboundPlay().register(ShipStatusPayload.TYPE, ShipStatusPayload.CODEC);
+		PayloadTypeRegistry.clientboundPlay().register(ShipShotPayload.TYPE, ShipShotPayload.CODEC);
 	}
 
 	/**

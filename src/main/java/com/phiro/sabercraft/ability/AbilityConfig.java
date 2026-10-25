@@ -250,6 +250,18 @@ public final class AbilityConfig {
 	/** Whether the combat droids (Chopper, B1, K-2SO) may hurt or push other players. */
 	@SerializedName("droids_hit_players")
 	public boolean droidsHitPlayers = false;
+	/** Phase 11: players can call and fly the X-Wing (menu or /sabercraft ship). */
+	@SerializedName("ships_enabled")
+	public boolean shipsEnabled = true;
+	/** Multiplier for the top speed of the starships. */
+	@SerializedName("ship_speed")
+	public float shipSpeed = 1.0F;
+	/** Multiplier for the damage of the starship laser cannons. */
+	@SerializedName("ship_laser_damage")
+	public float shipLaserDamage = 1.0F;
+	/** Whether the starship laser cannons may hit other players. */
+	@SerializedName("ship_lasers_hit_players")
+	public boolean shipLasersHitPlayers = true;
 
 	public static AbilityConfig get() {
 		return current;
@@ -307,6 +319,8 @@ public final class AbilityConfig {
 		config.blasterVentRate = Mth.clamp(config.blasterVentRate, 0.1F, 100.0F);
 		config.droidLimit = Mth.clamp(config.droidLimit, 1, 8);
 		config.droidCooldown = Mth.clamp(config.droidCooldown, 0.1F, 10.0F);
+		config.shipSpeed = Mth.clamp(config.shipSpeed, 0.2F, 2.0F);
+		config.shipLaserDamage = Mth.clamp(config.shipLaserDamage, 0.0F, 10.0F);
 		current = config;
 	}
 }

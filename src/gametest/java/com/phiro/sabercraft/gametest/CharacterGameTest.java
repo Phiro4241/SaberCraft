@@ -177,6 +177,13 @@ public class CharacterGameTest implements FabricClientGameTest {
 			for (SaberMenuScreen.Tab tab : SaberMenuScreen.Tab.values()) {
 				context.runOnClient(client -> SaberMenuScreen.open(client, tab));
 				context.waitTicks(3);
+
+				// Phase 11: each page fades in; the picture shows it done.
+				for (int i = 0; i < 40 && context.computeOnClient(client -> ((SaberMenuScreen) client.gui.screen()).transition()) < 1.0F; i++) {
+					context.waitTick();
+				}
+
+				check(context.computeOnClient(client -> ((SaberMenuScreen) client.gui.screen()).transition()) >= 1.0F, "the " + tab + " page has faded in");
 				context.takeScreenshot("menu_" + tab.name().toLowerCase(java.util.Locale.ROOT));
 			}
 

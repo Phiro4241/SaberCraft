@@ -30,6 +30,8 @@ import com.phiro.sabercraft.droid.Droids;
 import com.phiro.sabercraft.duel.Duels;
 import com.phiro.sabercraft.item.ItemConversion;
 import com.phiro.sabercraft.saber.SaberVariant;
+import com.phiro.sabercraft.ship.ShipType;
+import com.phiro.sabercraft.ship.Starships;
 
 /**
  * The commands of Phase 10, all for the item in the player's main hand:
@@ -45,6 +47,7 @@ import com.phiro.sabercraft.saber.SaberVariant;
  * unless {@code duels_enabled} is off.</li>
  * <li>Phase 11: {@code /sabercraft droid <droid>} and {@code /sabercraft droid
  * recall|stay|ability|dismiss <droid>}: droid companions, as in the droid menu.</li>
+ * <li>Phase 11: {@code /sabercraft ship call|board|dismiss}: the X-Wing, as in the hangar.</li>
  * </ul>
  *
  * <p>The item stays the same stack (see {@link ItemConversion}). Whether every player may use the
@@ -56,6 +59,8 @@ public final class SaberCraftCommands {
 			SharedSuggestionProvider.suggest(paths(SaberVariant.COLORS), builder);
 	private static final SuggestionProvider<CommandSourceStack> HILTS = (context, builder) ->
 			SharedSuggestionProvider.suggest(paths(SaberVariant.HILTS), builder);
+	private static final SuggestionProvider<CommandSourceStack> SHIPS = (context, builder) ->
+			SharedSuggestionProvider.suggest(ShipType.ALL.stream().map(ShipType::id), builder);
 	private static final SuggestionProvider<CommandSourceStack> DROIDS = (context, builder) ->
 			SharedSuggestionProvider.suggest(java.util.Arrays.stream(DroidType.values()).map(DroidType::id), builder);
 	private static final SuggestionProvider<CommandSourceStack> BLASTERS = (context, builder) ->
@@ -96,7 +101,8 @@ public final class SaberCraftCommands {
 						.then(Commands.literal("leave").executes(SaberCraftCommands::leaveDuel))
 						.then(Commands.literal("ignore").executes(SaberCraftCommands::ignoreDuels))
 						.then(Commands.argument("player", EntityArgument.player()).executes(SaberCraftCommands::challenge)))
-				.then(droidCommands()));
+				.then(droidCommands())
+				.then(shipCommands()));
 	}
 
 	/**
@@ -126,6 +132,34 @@ public final class SaberCraftCommands {
 		}
 
 		Component message = Droids.command(player, action, id);
+		return message != null ? 1 : 0;
+	}
+
+	/**
+	 * {@code /sabercraft ship call|board|dismiss [ship]} do what the buttons of the hangar do; the
+	 * ship is the X-Wing when left out. The server checks them as it checks the hangar (see
+	 * {@link Starships}).
+	 */
+	private static com.mojang.brigadier.builder.LiteralArgumentBuilder<CommandSourceStack> shipCommands() {
+		var ship = Commands.literal("ship");
+
+		for (String action : List.of("call", "board", "dismiss")) {
+			ship.then(Commands.literal(action).executes(context -> ship(context, action, ShipType.XWING.id()))
+					.then(Commands.argument("ship", StringArgumentType.word()).suggests(SHIPS)
+							.executes(context -> ship(context, action, StringArgumentType.getString(context, "ship")))));
+		}
+
+		return ship;
+	}
+
+	private static int ship(CommandContext<CommandSourceStack> context, String action, String id) throws CommandSyntaxException {
+		ServerPlayer player = context.getSource().getPlayerOrException();
+
+		if (ShipType.byId(id).isEmpty()) {
+			return fail(context, "sabercraft.ship.unknown", "There is no starship called %s.", id);
+		}
+
+		Component message = Starships.command(player, action, id);
 		return message != null ? 1 : 0;
 	}
 

@@ -32,6 +32,7 @@ import net.minecraft.world.phys.Vec3;
 import com.phiro.sabercraft.SaberCraft;
 import com.phiro.sabercraft.blaster.BlasterType;
 import com.phiro.sabercraft.blaster.Blasters;
+import com.phiro.sabercraft.client.ImmersionConfig;
 import com.phiro.sabercraft.client.render.BlasterFlashItemModel;
 import com.phiro.sabercraft.network.BlasterHeatPayload;
 import com.phiro.sabercraft.network.BlasterSettingsPayload;
@@ -71,6 +72,18 @@ public final class BlasterClient {
 	private static final Map<Integer, Long> SHOTS = new HashMap<>();
 	/** The hand of a shot whose arm swing is still to come in this tick. */
 	private static @Nullable InteractionHand shotSwing;
+	/** How long drawing a blaster takes in first person, in milliseconds (Phase 11 G). */
+	private static final float DRAW_MILLIS = 400.0F;
+	/** The swing starts when vanilla's own item swap has lifted the blaster into view. */
+	private static final float DRAW_DELAY_MILLIS = 150.0F;
+	/** What was in each hand last tick (blaster type and hotbar slot), to notice drawing and holstering. */
+	private static final @Nullable BlasterType[] HELD = new BlasterType[2];
+	private static int heldSlot = -1;
+	private static @Nullable LocalPlayer heldBy;
+	private static final long[] DRAWN = {Long.MIN_VALUE / 2, Long.MIN_VALUE / 2};
+	private static int draws;
+	private static float drawHeld = -1.0F;
+	private static int holsters;
 
 	private BlasterClient() {
 	}
@@ -97,6 +110,7 @@ public final class BlasterClient {
 			ammoRule = true;
 			infinityRule = true;
 			SHOTS.clear();
+			heldBy = null;
 		});
 		UseItemCallback.EVENT.register((player, level, hand) -> {
 			ItemStack stack = player.getItemInHand(hand);
@@ -128,8 +142,83 @@ public final class BlasterClient {
 		ClientTickEvents.END_CLIENT_TICK.register(client -> {
 			shotSwing = null;
 			vent(client);
+			drawAndHolster(client);
 		});
 		HudElementRegistry.addLast(SaberCraft.id("blaster_heat"), new BlasterHud());
+	}
+
+	/**
+	 * Phase 11 G: taking a blaster into a hand draws it (a short swing up into aim and the click of
+	 * the grip), putting it away or switching to something else holsters it with its own sound. The
+	 * first tick in a world only remembers what is held, so joining makes no sound.
+	 */
+	private static void drawAndHolster(Minecraft client) {
+		LocalPlayer player = client.player;
+
+		if (player == null) {
+			heldBy = null;
+			return;
+		}
+
+		boolean first = heldBy != player;
+		heldBy = player;
+		int slot = player.getInventory().getSelectedSlot();
+
+		for (InteractionHand hand : InteractionHand.values()) {
+			int index = hand.ordinal();
+			BlasterType now = BlasterType.of(player.getItemInHand(hand));
+			BlasterType before = HELD[index];
+			boolean swapped = hand == InteractionHand.MAIN_HAND && slot != heldSlot && now != null && before != null;
+			HELD[index] = now;
+
+			// Whatever was being drawn in this hand is gone with it.
+			if (now != before || swapped) {
+				DRAWN[index] = Long.MIN_VALUE / 2;
+			}
+
+			if (first || !ImmersionConfig.get().blasterDraw || now == before && !swapped) {
+				continue;
+			}
+
+			if (now != null) {
+				draws++;
+				DRAWN[index] = Util.getMillis();
+				player.playSound(SoundEvent.createVariableRangeEvent(SaberCraft.id("blaster.draw")), 0.6F, 0.95F + player.getRandom().nextFloat() * 0.1F);
+			} else {
+				holsters++;
+				player.playSound(SoundEvent.createVariableRangeEvent(SaberCraft.id("blaster.holster")), 0.55F, 0.95F + player.getRandom().nextFloat() * 0.1F);
+			}
+		}
+
+		heldSlot = slot;
+	}
+
+	/** Only for tests: holds the draw at one point for a picture, or lets it run again (-1). */
+	public static void holdDrawForTests(float draw) {
+		drawHeld = draw;
+	}
+
+	/** Only for tests: how often a blaster was drawn and holstered. */
+	public static int draws() {
+		return draws;
+	}
+
+	public static int holsters() {
+		return holsters;
+	}
+
+	/** How far drawing the blaster in this hand still has to go, 1 just taken up, 0 in aim. */
+	public static float drawing(InteractionHand hand) {
+		if (!ImmersionConfig.get().blasterDraw) {
+			return 0.0F;
+		}
+
+		if (drawHeld >= 0.0F) {
+			return drawHeld;
+		}
+
+		float age = (Util.getMillis() - DRAWN[hand.ordinal()] - DRAW_DELAY_MILLIS) / DRAW_MILLIS;
+		return age >= 1.0F || age < -DRAW_DELAY_MILLIS / DRAW_MILLIS ? 0.0F : Math.min(1.0F, 1.0F - age);
 	}
 
 	private static void onShot(Minecraft client, BlasterShotPayload payload) {

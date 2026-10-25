@@ -42,6 +42,8 @@ import com.phiro.sabercraft.client.saber.SaberHilts;
 import com.phiro.sabercraft.client.saber.SaberTracker;
 import com.phiro.sabercraft.client.select.SaberCustomizeScreen;
 import com.phiro.sabercraft.client.select.SaberSelection;
+import com.phiro.sabercraft.client.ship.ShipClient;
+import com.phiro.sabercraft.client.ship.ShipPreview;
 import com.phiro.sabercraft.client.sky.PlanetSky;
 
 /**
@@ -99,6 +101,8 @@ public class SaberCraftClient implements ClientModInitializer {
 		ModelPreview.init();
 		DroidClient.init();
 		DroidPreview.init();
+		ShipClient.init();
+		ShipPreview.init();
 		HitMarks.init();
 		ClientTickEvents.END_CLIENT_TICK.register(SaberCraftClient::handleKeys);
 

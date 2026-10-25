@@ -39,6 +39,8 @@ ADVANCEMENTS = {
     "finisher": ("duel_begins", {"id": "minecraft:blaze_powder"}, "goal", ["finisher"], False),
     "droid_friend": ("root", droid("r2d2"), "task", ["droid"], False),
     "loyal_companion": ("droid_friend", droid("bb8"), "challenge", DROIDS, False),
+    "first_flight": ("root", {"id": "minecraft:iron_nugget", "components": {"minecraft:item_model": "sabercraft:ship/xwing_icon"}},
+                     "goal", ["flight"], False),
 }
 
 

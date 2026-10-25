@@ -30,7 +30,9 @@
 			"com.phiro.sabercraft.gametest.BlasterAmmoGameTest",
 			"com.phiro.sabercraft.gametest.AdvancementGameTest",
 			"com.phiro.sabercraft.gametest.SaberHitGameTest",
-      "com.phiro.sabercraft.gametest.DroidGameTest"
+			"com.phiro.sabercraft.gametest.DroidGameTest",
+			"com.phiro.sabercraft.gametest.ShipGameTest",
+			"com.phiro.sabercraft.gametest.AtmosphereGameTest"
 		]
 	},
 	"depends": {

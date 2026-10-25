@@ -22,8 +22,9 @@ import net.minecraft.world.phys.Vec3;
  */
 public record ShipType(String id, boolean available, float width, float height, double maxSpeed, double accel, float turn, int interval,
 		List<Vec3> cannons) {
+	/** The X-Wing; its cannons are at the wing tips with the S-foils open (13 degrees). */
 	public static final ShipType XWING = new ShipType("xwing", true, 3.0F, 1.6F, 1.8, 0.035, 3.5F, 4, List.of(
-			new Vec3(2.7, 1.25, 1.75), new Vec3(-2.7, 1.0, 1.75), new Vec3(-2.7, 1.25, 1.75), new Vec3(2.7, 1.0, 1.75)));
+			new Vec3(2.6, 1.85, 1.75), new Vec3(-2.6, 0.4, 1.75), new Vec3(-2.6, 1.85, 1.75), new Vec3(2.6, 0.4, 1.75)));
 	public static final ShipType TIE_FIGHTER = planned("tie_fighter");
 	public static final ShipType TIE_INTERCEPTOR = planned("tie_interceptor");
 	public static final ShipType FALCON = planned("falcon");

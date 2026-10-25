@@ -16,6 +16,7 @@ import com.phiro.sabercraft.command.SaberCraftCommands;
 import com.phiro.sabercraft.droid.Droids;
 import com.phiro.sabercraft.duel.Duels;
 import com.phiro.sabercraft.network.SaberNetworking;
+import com.phiro.sabercraft.ship.Starships;
 
 /**
  * Common entrypoint for SaberCraft. Runs on both the dedicated server and the client.
@@ -43,6 +44,7 @@ public class SaberCraft implements ModInitializer {
 		Duels.init();
 		SaberAdvancements.init();
 		Droids.init();
+		Starships.init();
 		LOGGER.info("SaberCraft initialized");
 	}
 
