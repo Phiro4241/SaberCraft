@@ -24,7 +24,8 @@
 			"com.phiro.sabercraft.gametest.ArsenalGameTest",
 			"com.phiro.sabercraft.gametest.EzraGameTest",
 			"com.phiro.sabercraft.gametest.SaberTypesGameTest",
-			"com.phiro.sabercraft.gametest.SoundscapeGameTest"
+			"com.phiro.sabercraft.gametest.SoundscapeGameTest",
+			"com.phiro.sabercraft.gametest.DuelGameTest"
 		]
 	},
 	"depends": {

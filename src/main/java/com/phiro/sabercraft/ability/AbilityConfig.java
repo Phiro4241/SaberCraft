@@ -178,6 +178,13 @@ public final class AbilityConfig {
 	@SerializedName("hilt_traits")
 	public boolean hiltTraits = true;
 
+	/**
+	 * Phase 10: lightsaber duels with {@code /sabercraft duel <player>}, only between two players
+	 * who both agreed (see {@code Duels}). false: no new challenges, and running duels end.
+	 */
+	@SerializedName("duels_enabled")
+	public boolean duelsEnabled = true;
+
 	/** Hunger cost (exhaustion) per ability use, like sprinting or jumping. */
 	@SerializedName("exhaustion")
 	public float exhaustion = 1.0F;

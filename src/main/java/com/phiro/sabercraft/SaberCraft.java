@@ -11,6 +11,7 @@ import com.phiro.sabercraft.ability.SaberAbilities;
 import com.phiro.sabercraft.blaster.Blasters;
 import com.phiro.sabercraft.character.OutfitSync;
 import com.phiro.sabercraft.command.SaberCraftCommands;
+import com.phiro.sabercraft.duel.Duels;
 import com.phiro.sabercraft.network.SaberNetworking;
 
 /**
@@ -35,6 +36,7 @@ public class SaberCraft implements ModInitializer {
 		OutfitSync.init();
 		Blasters.init();
 		SaberCraftCommands.init();
+		Duels.init();
 		LOGGER.info("SaberCraft initialized");
 	}
 

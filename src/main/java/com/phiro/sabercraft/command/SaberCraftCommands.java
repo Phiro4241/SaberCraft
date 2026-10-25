@@ -1,6 +1,7 @@
 package com.phiro.sabercraft.command;
 
 import java.util.List;
+import java.util.UUID;
 import java.util.function.Predicate;
 
 import com.mojang.brigadier.CommandDispatcher;
@@ -14,6 +15,7 @@ import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.SharedSuggestionProvider;
+import net.minecraft.commands.arguments.EntityArgument;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
@@ -23,6 +25,7 @@ import net.minecraft.world.item.ItemStack;
 import com.phiro.sabercraft.SaberCraft;
 import com.phiro.sabercraft.ability.AbilityConfig;
 import com.phiro.sabercraft.blaster.BlasterType;
+import com.phiro.sabercraft.duel.Duels;
 import com.phiro.sabercraft.item.ItemConversion;
 import com.phiro.sabercraft.saber.SaberVariant;
 
@@ -35,6 +38,9 @@ import com.phiro.sabercraft.saber.SaberVariant;
  * <li>{@code /sabercraft revert}: a saber becomes the plain sword again, a blaster the plain bow.</li>
  * <li>{@code /sabercraft blaster [type]}: a bow becomes a blaster (E-11 unless a type is given);
  * on a blaster the command changes the type. {@code /sabercraft blaster revert} turns it back.</li>
+ * <li>{@code /sabercraft duel <player>}, {@code accept}, {@code decline}, {@code leave} and
+ * {@code ignore}: lightsaber duels, only by choice (see {@link Duels}). Every player may use them,
+ * unless {@code duels_enabled} is off.</li>
  * </ul>
  *
  * <p>The item stays the same stack (see {@link ItemConversion}). Whether every player may use the
@@ -73,7 +79,56 @@ public final class SaberCraftCommands {
 						.executes(context -> blaster(context, null))
 						.then(Commands.literal("revert").executes(SaberCraftCommands::revert))
 						.then(Commands.argument("type", StringArgumentType.word()).suggests(BLASTERS)
-								.executes(context -> blaster(context, StringArgumentType.getString(context, "type"))))));
+								.executes(context -> blaster(context, StringArgumentType.getString(context, "type")))))
+				.then(Commands.literal("duel")
+						.then(Commands.literal("accept")
+								.executes(context -> answer(context, null, true))
+								.then(Commands.argument("from", EntityArgument.player()).executes(context -> answer(context, EntityArgument.getPlayer(context, "from"), true))))
+						.then(Commands.literal("decline")
+								.executes(context -> answer(context, null, false))
+								.then(Commands.argument("from", EntityArgument.player()).executes(context -> answer(context, EntityArgument.getPlayer(context, "from"), false))))
+						.then(Commands.literal("leave").executes(SaberCraftCommands::leaveDuel))
+						.then(Commands.literal("ignore").executes(SaberCraftCommands::ignoreDuels))
+						.then(Commands.argument("player", EntityArgument.player()).executes(SaberCraftCommands::challenge))));
+	}
+
+	private static int challenge(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
+		ServerPlayer player = context.getSource().getPlayerOrException();
+		ServerPlayer target = EntityArgument.getPlayer(context, "player");
+
+		return switch (Duels.challenge(player, target)) {
+			case SENT -> ok(context, "sabercraft.duel.sent", "Challenge sent to %s. They have a minute to accept.", target.getDisplayName());
+			case DISABLED -> fail(context, "sabercraft.duel.disabled", "Duels are switched off on this server.");
+			case SELF -> fail(context, "sabercraft.duel.self", "You cannot duel yourself.");
+			case IGNORING -> fail(context, "sabercraft.duel.ignoring", "%s does not take challenges.", target.getDisplayName());
+			case BUSY -> fail(context, "sabercraft.duel.busy", "You are already in a duel.");
+			case TARGET_BUSY -> fail(context, "sabercraft.duel.target_busy", "%s is already in a duel.", target.getDisplayName());
+			case ALREADY_SENT -> fail(context, "sabercraft.duel.already_sent", "You already challenged %s.", target.getDisplayName());
+		};
+	}
+
+	private static int answer(CommandContext<CommandSourceStack> context, ServerPlayer from, boolean accept) throws CommandSyntaxException {
+		ServerPlayer player = context.getSource().getPlayerOrException();
+		UUID id = from == null ? null : from.getUUID();
+
+		if (accept) {
+			return Duels.accept(context.getSource().getServer(), player, id) ? 1
+					: fail(context, "sabercraft.duel.no_challenge", "There is no open challenge for you.");
+		}
+
+		return Duels.decline(context.getSource().getServer(), player, id) ? ok(context, "sabercraft.duel.you_declined", "Challenge declined.")
+				: fail(context, "sabercraft.duel.no_challenge", "There is no open challenge for you.");
+	}
+
+	private static int leaveDuel(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
+		return Duels.leave(context.getSource().getServer(), context.getSource().getPlayerOrException()) ? 1
+				: fail(context, "sabercraft.duel.not_in_duel", "You are not in a duel.");
+	}
+
+	private static int ignoreDuels(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
+		return Duels.toggleIgnore(context.getSource().getPlayerOrException())
+				? ok(context, "sabercraft.duel.ignore_on", "You no longer get challenges. The same command turns them on again.")
+				: ok(context, "sabercraft.duel.ignore_off", "You get challenges again.");
 	}
 
 	private static int convert(CommandContext<CommandSourceStack> context, String color, String hilt) throws CommandSyntaxException {
