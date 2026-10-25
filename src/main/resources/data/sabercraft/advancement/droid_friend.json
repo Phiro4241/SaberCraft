@@ -1,0 +1,31 @@
+{
+  "parent": "sabercraft:root",
+  "display": {
+    "icon": {
+      "id": "minecraft:iron_nugget",
+      "components": {
+        "minecraft:item_model": "sabercraft:droid/r2d2_icon"
+      }
+    },
+    "title": {
+      "translate": "advancements.sabercraft.droid_friend.title"
+    },
+    "description": {
+      "translate": "advancements.sabercraft.droid_friend.description"
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "droid": {
+      "trigger": "minecraft:impossible"
+    }
+  },
+  "requirements": [
+    [
+      "droid"
+    ]
+  ]
+}

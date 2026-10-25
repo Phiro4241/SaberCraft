@@ -446,5 +446,262 @@
         "attenuation_distance": 32
       }
     ]
+  },
+  "droid.r2d2.ambient": {
+    "sounds": [
+      {
+        "name": "sabercraft:droid/r2d2_ambient1",
+        "attenuation_distance": 12
+      },
+      {
+        "name": "sabercraft:droid/r2d2_ambient2",
+        "attenuation_distance": 12
+      }
+    ],
+    "subtitle": "subtitles.sabercraft.droid.r2d2"
+  },
+  "droid.r2d2.interact": {
+    "sounds": [
+      {
+        "name": "sabercraft:droid/r2d2_interact",
+        "attenuation_distance": 16
+      }
+    ],
+    "subtitle": "subtitles.sabercraft.droid.r2d2"
+  },
+  "droid.r2d2.ability": {
+    "sounds": [
+      {
+        "name": "sabercraft:droid/r2d2_ability",
+        "attenuation_distance": 20
+      }
+    ],
+    "subtitle": "subtitles.sabercraft.droid.r2d2.ability"
+  },
+  "droid.c3po.ambient": {
+    "sounds": [
+      {
+        "name": "sabercraft:droid/c3po_ambient1",
+        "attenuation_distance": 12
+      },
+      {
+        "name": "sabercraft:droid/c3po_ambient2",
+        "attenuation_distance": 12
+      }
+    ],
+    "subtitle": "subtitles.sabercraft.droid.c3po"
+  },
+  "droid.c3po.interact": {
+    "sounds": [
+      {
+        "name": "sabercraft:droid/c3po_interact",
+        "attenuation_distance": 16
+      }
+    ],
+    "subtitle": "subtitles.sabercraft.droid.c3po"
+  },
+  "droid.c3po.ability": {
+    "sounds": [
+      {
+        "name": "sabercraft:droid/c3po_ability",
+        "attenuation_distance": 20
+      }
+    ],
+    "subtitle": "subtitles.sabercraft.droid.c3po.ability"
+  },
+  "droid.bb8.ambient": {
+    "sounds": [
+      {
+        "name": "sabercraft:droid/bb8_ambient1",
+        "attenuation_distance": 12
+      },
+      {
+        "name": "sabercraft:droid/bb8_ambient2",
+        "attenuation_distance": 12
+      }
+    ],
+    "subtitle": "subtitles.sabercraft.droid.bb8"
+  },
+  "droid.bb8.interact": {
+    "sounds": [
+      {
+        "name": "sabercraft:droid/bb8_interact",
+        "attenuation_distance": 16
+      }
+    ],
+    "subtitle": "subtitles.sabercraft.droid.bb8"
+  },
+  "droid.bb8.ability": {
+    "sounds": [
+      {
+        "name": "sabercraft:droid/bb8_ability",
+        "attenuation_distance": 20
+      }
+    ],
+    "subtitle": "subtitles.sabercraft.droid.bb8.ability"
+  },
+  "droid.chopper.ambient": {
+    "sounds": [
+      {
+        "name": "sabercraft:droid/chopper_ambient1",
+        "attenuation_distance": 12
+      },
+      {
+        "name": "sabercraft:droid/chopper_ambient2",
+        "attenuation_distance": 12
+      }
+    ],
+    "subtitle": "subtitles.sabercraft.droid.chopper"
+  },
+  "droid.chopper.interact": {
+    "sounds": [
+      {
+        "name": "sabercraft:droid/chopper_interact",
+        "attenuation_distance": 16
+      }
+    ],
+    "subtitle": "subtitles.sabercraft.droid.chopper"
+  },
+  "droid.chopper.ability": {
+    "sounds": [
+      {
+        "name": "sabercraft:droid/chopper_ability",
+        "attenuation_distance": 20
+      }
+    ],
+    "subtitle": "subtitles.sabercraft.droid.chopper.ability"
+  },
+  "droid.mouse.ambient": {
+    "sounds": [
+      {
+        "name": "sabercraft:droid/mouse_ambient1",
+        "attenuation_distance": 12
+      },
+      {
+        "name": "sabercraft:droid/mouse_ambient2",
+        "attenuation_distance": 12
+      }
+    ],
+    "subtitle": "subtitles.sabercraft.droid.mouse"
+  },
+  "droid.mouse.interact": {
+    "sounds": [
+      {
+        "name": "sabercraft:droid/mouse_interact",
+        "attenuation_distance": 16
+      }
+    ],
+    "subtitle": "subtitles.sabercraft.droid.mouse"
+  },
+  "droid.mouse.ability": {
+    "sounds": [
+      {
+        "name": "sabercraft:droid/mouse_ability",
+        "attenuation_distance": 20
+      }
+    ],
+    "subtitle": "subtitles.sabercraft.droid.mouse.ability"
+  },
+  "droid.probe.ambient": {
+    "sounds": [
+      {
+        "name": "sabercraft:droid/probe_ambient1",
+        "attenuation_distance": 12
+      },
+      {
+        "name": "sabercraft:droid/probe_ambient2",
+        "attenuation_distance": 12
+      }
+    ],
+    "subtitle": "subtitles.sabercraft.droid.probe"
+  },
+  "droid.probe.interact": {
+    "sounds": [
+      {
+        "name": "sabercraft:droid/probe_interact",
+        "attenuation_distance": 16
+      }
+    ],
+    "subtitle": "subtitles.sabercraft.droid.probe"
+  },
+  "droid.probe.ability": {
+    "sounds": [
+      {
+        "name": "sabercraft:droid/probe_ability",
+        "attenuation_distance": 20
+      }
+    ],
+    "subtitle": "subtitles.sabercraft.droid.probe.ability"
+  },
+  "droid.b1.ambient": {
+    "sounds": [
+      {
+        "name": "sabercraft:droid/b1_ambient1",
+        "attenuation_distance": 12
+      },
+      {
+        "name": "sabercraft:droid/b1_ambient2",
+        "attenuation_distance": 12
+      }
+    ],
+    "subtitle": "subtitles.sabercraft.droid.b1"
+  },
+  "droid.b1.interact": {
+    "sounds": [
+      {
+        "name": "sabercraft:droid/b1_interact",
+        "attenuation_distance": 16
+      }
+    ],
+    "subtitle": "subtitles.sabercraft.droid.b1"
+  },
+  "droid.b1.ability": {
+    "sounds": [
+      {
+        "name": "sabercraft:droid/b1_ability",
+        "attenuation_distance": 20
+      }
+    ],
+    "subtitle": "subtitles.sabercraft.droid.b1.ability"
+  },
+  "droid.k2so.ambient": {
+    "sounds": [
+      {
+        "name": "sabercraft:droid/k2so_ambient1",
+        "attenuation_distance": 12
+      },
+      {
+        "name": "sabercraft:droid/k2so_ambient2",
+        "attenuation_distance": 12
+      }
+    ],
+    "subtitle": "subtitles.sabercraft.droid.k2so"
+  },
+  "droid.k2so.interact": {
+    "sounds": [
+      {
+        "name": "sabercraft:droid/k2so_interact",
+        "attenuation_distance": 16
+      }
+    ],
+    "subtitle": "subtitles.sabercraft.droid.k2so"
+  },
+  "droid.k2so.ability": {
+    "sounds": [
+      {
+        "name": "sabercraft:droid/k2so_ability",
+        "attenuation_distance": 20
+      }
+    ],
+    "subtitle": "subtitles.sabercraft.droid.k2so.ability"
+  },
+  "droid.step": {
+    "sounds": [
+      {
+        "name": "sabercraft:droid/step",
+        "attenuation_distance": 8
+      }
+    ],
+    "subtitle": "subtitles.sabercraft.droid.step"
   }
 }

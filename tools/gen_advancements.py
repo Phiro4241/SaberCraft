@@ -19,6 +19,12 @@ def blaster(kind):
     return {"id": "minecraft:bow", "components": {"minecraft:custom_model_data": {"strings": ["sabercraft:" + kind]}}}
 
 
+def droid(kind):
+    return {"id": "minecraft:iron_nugget", "components": {"minecraft:item_model": f"sabercraft:droid/{kind}_icon"}}
+
+
+DROIDS = ["r2d2", "c3po", "bb8", "chopper", "mouse", "probe", "b1", "k2so"]
+
 # name: (parent, icon, frame, criteria, hidden)
 ADVANCEMENTS = {
     "root": (None, SABER, "task", ["joined"], False),
@@ -31,6 +37,8 @@ ADVANCEMENTS = {
                    ["guard", "spin", "push", "dash", "grip", "pull", "jump"], False),
     "spin_speed": ("force_awakens", {"id": "minecraft:breeze_rod"}, "goal", ["two_hits"], False),
     "finisher": ("duel_begins", {"id": "minecraft:blaze_powder"}, "goal", ["finisher"], False),
+    "droid_friend": ("root", droid("r2d2"), "task", ["droid"], False),
+    "loyal_companion": ("droid_friend", droid("bb8"), "challenge", DROIDS, False),
 }
 
 

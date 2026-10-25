@@ -12,7 +12,8 @@ src/client/resources/assets/sabercraft/sounds/saber/ (default profile) and .../s
 (the deeper, rougher profile of the dark hilt), and the combat sounds of Phase 6 into
 .../sounds/combat/. `--combat` writes only the combat sounds, `--blaster` only the blaster sounds of Phase 10
 (.../sounds/blaster/), `--ambient` only the planet ambiences of Phase 10 (.../sounds/ambient/),
-`--phase11-blaster` the new blaster sounds of Phase 11. Minecraft only attenuates mono
+`--phase11-blaster` the new blaster sounds of Phase 11, `--droids` the droid voices of Phase 11
+(.../sounds/droid/: beeps, whistles, servos and wordless robot murmurs, no speech). Minecraft only attenuates mono
 sounds by distance, so all files are mono.
 """
 import os
@@ -425,6 +426,169 @@ def phase11_combat():
     write_ogg("finisher", finisher(rng))
 
 
+# Droid voices (Phase 11) --------------------------------------------------------------------------
+# Every droid "talks" in its own synthesized way: astromechs in quick sine beeps and whistles that
+# glide in pitch, BB-8 rounder and softer, Chopper in raspy grumbles, the mouse droid in squeaks,
+# the probe droid in radio static over a drone, and the humanoid droids (C-3PO, B1, K-2SO) in a
+# wordless, vowel-like murmur over a servo whirr. Nothing is sampled and nothing says words.
+DROID_OUT = os.path.join("src", "client", "resources", "assets", "sabercraft", "sounds", "droid")
+
+
+def glide_tone(f0, f1, seconds, shape="sine", vibrato=0.0, vib_rate=18.0, curve=1.0):
+    t = t_axis(seconds)
+    x = (t / max(seconds, 1e-6)) ** curve
+    freq = f0 + (f1 - f0) * x
+    freq = freq * (1.0 + vibrato * np.sin(2 * np.pi * vib_rate * t))
+    phase = 2 * np.pi * np.cumsum(freq) / RATE
+    if shape == "triangle":
+        tone = 2.0 / np.pi * np.arcsin(np.sin(phase))
+    elif shape == "square":
+        tone = np.tanh(4.0 * np.sin(phase))
+    else:
+        tone = np.sin(phase)
+    attack = np.clip(t / 0.006, 0, 1)
+    release = np.clip((seconds - t) / 0.012, 0, 1)
+    return tone * attack * release
+
+
+def sequence(parts, gap=0.02):
+    """Joins sounds with short pauses."""
+    out = []
+    pause = np.zeros(int(gap * RATE))
+    for part in parts:
+        out.append(part)
+        out.append(pause)
+    return np.concatenate(out)
+
+
+def astromech(rng, count, low, high, shape="sine", whistle=False, soft=1.0):
+    parts = []
+    for i in range(count):
+        seconds = rng.uniform(0.05, 0.13)
+        f0 = rng.uniform(low, high)
+        f1 = f0 * rng.choice([0.6, 0.8, 1.0, 1.25, 1.6])
+        parts.append(glide_tone(f0, f1, seconds, shape, vibrato=rng.choice([0.0, 0.0, 0.03]), vib_rate=rng.uniform(14, 30)) * rng.uniform(0.6, 1.0))
+    if whistle:
+        f0 = rng.uniform(low, high)
+        parts.append(glide_tone(f0, f0 * 1.9, 0.35, shape, vibrato=0.02, vib_rate=9, curve=2.0))
+    x = sequence(parts, gap=rng.uniform(0.01, 0.04))
+    if soft < 1.0:
+        # Rounder: a gentle low-pass by averaging.
+        k = int(8 / soft)
+        x = np.convolve(x, np.ones(k) / k, mode="same")
+    return x
+
+
+def grumble(rng, seconds, base):
+    t = t_axis(seconds)
+    pitch = base * (1.0 + 0.25 * np.sin(2 * np.pi * rng.uniform(2, 4) * t)) * (1.0 - 0.3 * t / seconds)
+    phase = 2 * np.pi * np.cumsum(pitch) / RATE
+    buzz = np.tanh(3.0 * np.sin(phase)) + 0.3 * np.sin(2 * phase)
+    rasp = bandpass_noise(seconds, 300, 2500, rng) * 0.35
+    env = np.clip(t / 0.02, 0, 1) * np.clip((seconds - t) / 0.06, 0, 1) * (0.6 + 0.4 * np.abs(np.sin(2 * np.pi * rng.uniform(5, 8) * t)))
+    return (buzz + rasp) * env
+
+
+def murmur(rng, syllables, base, spread, formants, rasp=0.0, servo=0.3):
+    """A wordless, vowel-like murmur: a buzz through two moving formants, syllable by syllable,
+    over a quiet servo whirr. Intonation, not words."""
+    parts = []
+    for i in range(syllables):
+        seconds = rng.uniform(0.09, 0.2)
+        t = t_axis(seconds)
+        f0 = base * rng.uniform(1.0 - spread, 1.0 + spread)
+        f1 = f0 * rng.uniform(0.85, 1.2)
+        freq = f0 + (f1 - f0) * t / seconds
+        phase = 2 * np.pi * np.cumsum(freq) / RATE
+        voice = np.zeros_like(t)
+        for h in range(1, 14):
+            hf = freq * h
+            weight = 0.0
+            for centre, width in formants[rng.integers(len(formants))]:
+                weight += np.exp(-((hf - centre) / width) ** 2)
+            voice += weight * np.sin(h * phase) / h ** 0.3
+        if rasp:
+            voice += rasp * bandpass_noise(seconds, 800, 4000, rng)
+        env = np.sin(np.pi * t / seconds) ** 0.6
+        parts.append(voice * env)
+    x = sequence(parts, gap=rng.uniform(0.02, 0.05))
+    t = t_axis(len(x) / RATE)
+    whirr = np.sin(2 * np.pi * (180 + 40 * np.sin(2 * np.pi * 3 * t)) * t) * servo * 0.2
+    return x + whirr
+
+
+VOWELS = [[(700, 160), (1200, 200)], [(400, 120), (2000, 260)], [(300, 100), (900, 180)], [(550, 140), (1700, 220)]]
+
+
+def servo_step(rng, seconds=0.16):
+    t = t_axis(seconds)
+    whine = np.sin(2 * np.pi * (520 + 300 * t / seconds) * t) * np.exp(-t / 0.06)
+    tick = bandpass_noise(seconds, 2000, 8000, rng) * np.exp(-t / 0.008)
+    return normalize(0.6 * whine + 0.5 * tick, 0.5)
+
+
+def static(rng, seconds):
+    t = t_axis(seconds)
+    noise = bandpass_noise(seconds, 400, 5000, rng)
+    gate = (np.sin(2 * np.pi * rng.uniform(9, 15) * t) > rng.uniform(-0.2, 0.4)).astype(float)
+    gate = np.convolve(gate, np.ones(200) / 200, mode="same")
+    tones = glide_tone(rng.uniform(900, 1400), rng.uniform(500, 900), seconds, "square") * 0.25
+    drone = np.sin(2 * np.pi * 70 * t) * 0.3 + np.sin(2 * np.pi * 140 * t) * 0.15
+    return noise * gate * 0.6 + tones * gate + drone * np.clip(t / 0.1, 0, 1) * np.clip((seconds - t) / 0.1, 0, 1)
+
+
+def zap(rng, seconds=0.5):
+    t = t_axis(seconds)
+    crackle = bandpass_noise(seconds, 1500, 12000, rng) * (rng.random(len(t)) > 0.7) * np.exp(-t / 0.2)
+    arc = np.sin(2 * np.pi * 60 * t) * np.sin(2 * np.pi * 3000 * t) * np.exp(-t / 0.15)
+    return crackle + 0.6 * arc
+
+
+def droid_voice(name, kind, rng):
+    if name == "r2d2":
+        if kind == "interact":
+            return astromech(rng, 7, 1200, 3200, whistle=True)
+        if kind == "ability":
+            return astromech(rng, 14, 1500, 3800)
+        return astromech(rng, rng.integers(3, 6), 1000, 3000, whistle=rng.random() < 0.4)
+    if name == "bb8":
+        if kind == "interact":
+            return astromech(rng, 6, 700, 2000, "triangle", whistle=True, soft=0.5)
+        if kind == "ability":
+            return astromech(rng, 10, 900, 2400, "triangle", soft=0.5)
+        return astromech(rng, rng.integers(2, 5), 600, 1800, "triangle", soft=0.5)
+    if name == "chopper":
+        if kind == "ability":
+            return np.concatenate([zap(rng), grumble(rng, 0.6, 140)])
+        return grumble(rng, rng.uniform(0.5, 0.9), rng.uniform(110, 170))
+    if name == "mouse":
+        n = 4 if kind == "ambient" else 7
+        return astromech(rng, n, 2500, 4500, "square")
+    if name == "probe":
+        return static(rng, 1.0 if kind == "ability" else rng.uniform(0.6, 0.9))
+    if name == "c3po":
+        return murmur(rng, 6 if kind != "ambient" else 4, 190, 0.18, VOWELS, servo=0.2)
+    if name == "b1":
+        return murmur(rng, 2 if kind != "ability" else 3, 150, 0.08, VOWELS[:2], rasp=0.25, servo=0.4)
+    if name == "k2so":
+        return murmur(rng, 3 if kind != "ambient" else 2, 105, 0.06, VOWELS[2:], servo=0.3)
+    raise ValueError(name)
+
+
+DROID_NAMES = ["r2d2", "c3po", "bb8", "chopper", "mouse", "probe", "b1", "k2so"]
+
+
+def droids():
+    """The droid voices of Phase 11, each droid with its own random stream."""
+    for index, name in enumerate(DROID_NAMES):
+        rng = np.random.default_rng(2400 + index)
+        for kind in ("ambient1", "ambient2", "interact", "ability"):
+            x = droid_voice(name, kind.rstrip("12"), rng)
+            peak = 0.45 if kind.startswith("ambient") else 0.6
+            write_ogg(f"{name}_{kind}", normalize(x, peak), DROID_OUT)
+    write_ogg("step", servo_step(np.random.default_rng(2499)), DROID_OUT)
+
+
 # Planet ambiences (Phase 10) ---------------------------------------------------------------------
 # Loops of AMBIENT_SECONDS. Every slow modulation runs a whole number of times per loop, and every
 # event (a gust, a bird, a crackle) that runs over the end wraps to the start, so they loop
@@ -554,6 +718,10 @@ def main():
 
     if "--phase11-blaster" in sys.argv:
         phase11_blasters()
+        return
+
+    if "--droids" in sys.argv:
+        droids()
         return
 
     if "--phase11-combat" in sys.argv:

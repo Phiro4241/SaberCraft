@@ -24,6 +24,8 @@ import com.phiro.sabercraft.client.blaster.BlasterClient;
 import com.phiro.sabercraft.client.character.OutfitClient;
 import com.phiro.sabercraft.client.combat.CombatConfig;
 import com.phiro.sabercraft.client.combat.CombatLibrary;
+import com.phiro.sabercraft.client.droid.DroidClient;
+import com.phiro.sabercraft.client.droid.DroidPreview;
 import com.phiro.sabercraft.client.menu.ModelPreview;
 import com.phiro.sabercraft.client.menu.SaberMenuScreen;
 import com.phiro.sabercraft.client.render.HitMarks;
@@ -95,6 +97,8 @@ public class SaberCraftClient implements ClientModInitializer {
 		// Phase 10: blasters.
 		BlasterClient.init();
 		ModelPreview.init();
+		DroidClient.init();
+		DroidPreview.init();
 		HitMarks.init();
 		ClientTickEvents.END_CLIENT_TICK.register(SaberCraftClient::handleKeys);
 

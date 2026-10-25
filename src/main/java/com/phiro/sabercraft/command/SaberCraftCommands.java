@@ -25,6 +25,8 @@ import net.minecraft.world.item.ItemStack;
 import com.phiro.sabercraft.SaberCraft;
 import com.phiro.sabercraft.ability.AbilityConfig;
 import com.phiro.sabercraft.blaster.BlasterType;
+import com.phiro.sabercraft.droid.DroidType;
+import com.phiro.sabercraft.droid.Droids;
 import com.phiro.sabercraft.duel.Duels;
 import com.phiro.sabercraft.item.ItemConversion;
 import com.phiro.sabercraft.saber.SaberVariant;
@@ -41,6 +43,8 @@ import com.phiro.sabercraft.saber.SaberVariant;
  * <li>{@code /sabercraft duel <player>}, {@code accept}, {@code decline}, {@code leave} and
  * {@code ignore}: lightsaber duels, only by choice (see {@link Duels}). Every player may use them,
  * unless {@code duels_enabled} is off.</li>
+ * <li>Phase 11: {@code /sabercraft droid <droid>} and {@code /sabercraft droid
+ * recall|stay|ability|dismiss <droid>}: droid companions, as in the droid menu.</li>
  * </ul>
  *
  * <p>The item stays the same stack (see {@link ItemConversion}). Whether every player may use the
@@ -52,6 +56,8 @@ public final class SaberCraftCommands {
 			SharedSuggestionProvider.suggest(paths(SaberVariant.COLORS), builder);
 	private static final SuggestionProvider<CommandSourceStack> HILTS = (context, builder) ->
 			SharedSuggestionProvider.suggest(paths(SaberVariant.HILTS), builder);
+	private static final SuggestionProvider<CommandSourceStack> DROIDS = (context, builder) ->
+			SharedSuggestionProvider.suggest(java.util.Arrays.stream(DroidType.values()).map(DroidType::id), builder);
 	private static final SuggestionProvider<CommandSourceStack> BLASTERS = (context, builder) ->
 			SharedSuggestionProvider.suggest(BlasterType.ALL.stream().map(type -> type.id().getPath()), builder);
 
@@ -89,7 +95,38 @@ public final class SaberCraftCommands {
 								.then(Commands.argument("from", EntityArgument.player()).executes(context -> answer(context, EntityArgument.getPlayer(context, "from"), false))))
 						.then(Commands.literal("leave").executes(SaberCraftCommands::leaveDuel))
 						.then(Commands.literal("ignore").executes(SaberCraftCommands::ignoreDuels))
-						.then(Commands.argument("player", EntityArgument.player()).executes(SaberCraftCommands::challenge))));
+						.then(Commands.argument("player", EntityArgument.player()).executes(SaberCraftCommands::challenge)))
+				.then(droidCommands()));
+	}
+
+	/**
+	 * {@code /sabercraft droid <droid>} calls a droid (or calls it back), {@code /sabercraft droid
+	 * recall|stay|ability|dismiss <droid>} do what the buttons of the droid menu do. Every player
+	 * may use them; the server checks them as it checks the menu (see {@link Droids}).
+	 */
+	private static com.mojang.brigadier.builder.LiteralArgumentBuilder<CommandSourceStack> droidCommands() {
+		var droid = Commands.literal("droid")
+				.then(Commands.argument("droid", StringArgumentType.word()).suggests(DROIDS)
+						.executes(context -> droid(context, "spawn")));
+
+		for (String action : List.of("recall", "stay", "ability", "dismiss")) {
+			droid.then(Commands.literal(action).then(Commands.argument("droid", StringArgumentType.word()).suggests(DROIDS)
+					.executes(context -> droid(context, action))));
+		}
+
+		return droid;
+	}
+
+	private static int droid(CommandContext<CommandSourceStack> context, String action) throws CommandSyntaxException {
+		ServerPlayer player = context.getSource().getPlayerOrException();
+		String id = StringArgumentType.getString(context, "droid");
+
+		if (DroidType.byId(id).isEmpty()) {
+			return fail(context, "sabercraft.droid.unknown", "There is no droid called %s.", id);
+		}
+
+		Component message = Droids.command(player, action, id);
+		return message != null ? 1 : 0;
 	}
 
 	private static int challenge(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {

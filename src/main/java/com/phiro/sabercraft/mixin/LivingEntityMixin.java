@@ -4,11 +4,16 @@ import com.llamalad7.mixinextras.injector.ModifyReturnValue;
 
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.ModifyVariable;
 
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.animal.pig.Pig;
+import net.minecraft.world.item.ItemStack;
 
 import com.phiro.sabercraft.ability.SaberAbilities;
 
@@ -19,6 +24,8 @@ import com.phiro.sabercraft.ability.SaberAbilities;
  *
  * <p>Phase 10: the hilt of a saber changes the damage of its melee hits a little, see
  * {@code HiltTraits}.
+ *
+ * <p>Phase 11: droids are pigs with a marked head item; when it arrives they take their size.
  */
 @Mixin(LivingEntity.class)
 abstract class LivingEntityMixin {
@@ -31,5 +38,13 @@ abstract class LivingEntityMixin {
 	@ModifyVariable(method = "hurtServer", at = @At("HEAD"), argsOnly = true)
 	private float sabercraft$hiltDamage(float damage, ServerLevel level, DamageSource source) {
 		return SaberAbilities.hiltDamage(source, damage);
+	}
+
+	/** Phase 11: a pig that became a droid (its head item arrived) takes the droid's size. */
+	@Inject(method = "setItemSlot", at = @At("TAIL"))
+	private void sabercraft$droidResize(EquipmentSlot slot, ItemStack stack, CallbackInfo info) {
+		if (slot == EquipmentSlot.HEAD && (Object) this instanceof Pig pig) {
+			pig.refreshDimensions();
+		}
 	}
 }

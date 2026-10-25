@@ -36,7 +36,7 @@ public abstract class SaberMenuScreen extends Screen {
 
 	/** The areas of the menu. */
 	public enum Tab {
-		SABER, BLASTER, COMBAT, CHARACTER, SPACE, MUSIC, GRAPHICS;
+		SABER, BLASTER, DROIDS, COMBAT, CHARACTER, SPACE, MUSIC, GRAPHICS;
 
 		public Component label() {
 			return Component.translatable("sabercraft.menu.tab." + this.name().toLowerCase(java.util.Locale.ROOT));
@@ -94,6 +94,7 @@ public abstract class SaberMenuScreen extends Screen {
 		return switch (tab) {
 			case SABER -> new SaberCustomizeScreen(hand, client.player.getItemInHand(hand));
 			case BLASTER -> new BlasterMenuScreen();
+			case DROIDS -> new DroidMenuScreen();
 			case COMBAT -> new CombatMenuScreen();
 			case CHARACTER -> new CharacterMenuScreen();
 			case SPACE -> new SpaceMenuScreen();

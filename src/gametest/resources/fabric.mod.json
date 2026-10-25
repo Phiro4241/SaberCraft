@@ -29,7 +29,8 @@
 			"com.phiro.sabercraft.gametest.SettingsGameTest",
 			"com.phiro.sabercraft.gametest.BlasterAmmoGameTest",
 			"com.phiro.sabercraft.gametest.AdvancementGameTest",
-			"com.phiro.sabercraft.gametest.SaberHitGameTest"
+			"com.phiro.sabercraft.gametest.SaberHitGameTest",
+      "com.phiro.sabercraft.gametest.DroidGameTest"
 		]
 	},
 	"depends": {

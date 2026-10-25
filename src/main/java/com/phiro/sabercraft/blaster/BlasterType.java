@@ -73,10 +73,15 @@ public record BlasterType(Identifier id, float damage, float speed, int interval
 	public static final BlasterType EZRA = new BlasterType(SaberCraft.id("ezra"), 2.5F, 3.0F, 6, 7.0F, 0.6F, 1, YELLOW, 1.1F, 40, false, false, 32.0F, 0.0F);
 
 	/** All types, in menu and command order. */
+	/**
+	 * The laser cannons of the X-Wing (Phase 11): fast, long bolts. Not a blaster to hold, so not
+	 * in {@link #ALL}; only {@link #byId} knows it, so bolts in flight are drawn right.
+	 */
+	public static final BlasterType XWING = new BlasterType(SaberCraft.id("xwing"), 8.0F, 6.0F, 5, 0.0F, 0.15F, 1, RED, 4.5F, 0, false, true, 128.0F, 0.4F);
 	public static final List<BlasterType> ALL = List.of(DL44, E11, DC15A, SE14C, BOWCASTER, A280, REPEATER, REBEL, EZRA);
 
 	public static Optional<BlasterType> byId(@Nullable Identifier id) {
-		return ALL.stream().filter(type -> type.id().equals(id)).findFirst();
+		return XWING.id().equals(id) ? Optional.of(XWING) : ALL.stream().filter(type -> type.id().equals(id)).findFirst();
 	}
 
 	/** The blaster type of a stack, or null if it is not a converted bow. */

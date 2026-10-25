@@ -36,6 +36,10 @@ public final class SaberNetworking {
 		PayloadTypeRegistry.clientboundPlay().register(SaberFinisherPayload.TYPE, SaberFinisherPayload.CODEC);
 		PayloadTypeRegistry.serverboundPlay().register(SelectBlasterPayload.TYPE, SelectBlasterPayload.CODEC);
 		PayloadTypeRegistry.clientboundPlay().register(BlasterSettingsPayload.TYPE, BlasterSettingsPayload.CODEC);
+		// Phase 11: the droids.
+		PayloadTypeRegistry.serverboundPlay().register(DroidCommandPayload.TYPE, DroidCommandPayload.CODEC);
+		PayloadTypeRegistry.clientboundPlay().register(DroidStatusPayload.TYPE, DroidStatusPayload.CODEC);
+		PayloadTypeRegistry.clientboundPlay().register(DroidEventPayload.TYPE, DroidEventPayload.CODEC);
 	}
 
 	/**

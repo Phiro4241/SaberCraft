@@ -122,6 +122,13 @@ public class BlasterBolt extends ThrowableItemProjectile {
 	}
 
 	@Override
+	protected boolean canHitEntity(Entity target) {
+		// Never the ship its shooter sits in (Phase 11).
+		Entity owner = this.getOwner();
+		return (owner == null || owner.getVehicle() != target) && super.canHitEntity(target);
+	}
+
+	@Override
 	protected void onHitEntity(EntityHitResult hit) {
 		if (!(this.level() instanceof ServerLevel level)) {
 			return;
