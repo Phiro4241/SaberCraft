@@ -24,13 +24,16 @@ bin/
 .classpath
 .project
 
-# macos
+# macos and windows
 
 *.DS_Store
+Thumbs.db
 
-# fabric
+# fabric and minecraft
 
 run/
+logs/
+crash-reports/
 
 # java
 
@@ -42,3 +45,9 @@ replay_*.log
 # python
 
 __pycache__/
+
+# local secrets and environment files
+
+.env
+.env.*
+*.local

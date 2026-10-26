@@ -1,0 +1,88 @@
+name: Bug report
+description: Something in SaberCraft does not work as expected
+title: "[Bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting! Please check the [open issues](https://github.com/Phiro4241/SaberCraft/issues) first.
+        **Security problems** do not belong here, see [SECURITY.md](https://github.com/Phiro4241/SaberCraft/blob/main/SECURITY.md).
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What did you see, and what did you expect instead?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Take a netherite sword into the main hand
+        2. Press V and choose ...
+        3. ...
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Lightsaber look, ignition or sound
+        - Combat, abilities or Force powers
+        - Characters, outfits or profiles
+        - Blasters or ammunition
+        - Droids
+        - Starships (X-Wing)
+        - Sky, planets or music
+        - Duels or advancements
+        - Menu, keys or settings
+        - Crash or performance
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: sabercraft
+    attributes:
+      label: SaberCraft version or commit
+      placeholder: "0.1.0 / commit d8adf45"
+    validations:
+      required: true
+  - type: input
+    id: minecraft
+    attributes:
+      label: Minecraft, Fabric Loader and Fabric API versions
+      placeholder: "Minecraft 26.2, Fabric Loader 0.19.5, Fabric API 0.161.0+26.2"
+    validations:
+      required: true
+  - type: dropdown
+    id: where
+    attributes:
+      label: Where does it happen?
+      multiple: true
+      options:
+        - Single player
+        - LAN world
+        - Server with SaberCraft
+        - Server without SaberCraft
+    validations:
+      required: true
+  - type: textarea
+    id: mods
+    attributes:
+      label: Other mods and shader packs
+      description: List other mods, especially Iris, Sodium and the shader pack with its version.
+      placeholder: "Iris 1.11.4, Sodium 0.9.2, BSL v10.1.8"
+  - type: textarea
+    id: logs
+    attributes:
+      label: Log or crash report
+      description: Attach `logs/latest.log` or the file from `crash-reports/`, or paste the relevant part. Please remove anything private first.
+      render: text
+  - type: textarea
+    id: media
+    attributes:
+      label: Screenshots or video
+      description: Drag images or a short video here.
