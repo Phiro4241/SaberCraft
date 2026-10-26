@@ -62,4 +62,6 @@ Alle Tasten lassen sich unter Optionen → Steuerung → Tastenbelegung → Sabe
 
 ## Lizenz
 
-SaberCraft hat derzeit **keine Open-Source-Lizenz** (`fabric.mod.json`: *All Rights Reserved*). Der Quellcode ist zum Lesen und Selberbauen sichtbar; weitere Rechte, etwa zum Weiterverbreiten, sind damit nicht eingeräumt.
+Quellcode und eigene Assets von SaberCraft (die per Skript erzeugten Modelle, Texturen, Klänge, Musik, Icon und Banner) stehen unter der [MIT-Lizenz](LICENSE), © 2026 Phiro4241. `fabric.mod.json` gibt dasselbe an (`"license": "MIT"`).
+
+Die MIT-Lizenz vergibt nur Rechte, die der Autor selbst hat. Sie gewährt **keine Rechte an Star Wars**: Namen wie Star Wars, Darth Vader, R2-D2, X-Wing oder DL-44 und die an Filmfiguren angelehnten Charakter-Looks bleiben Marken und Rechte von Lucasfilm bzw. Disney. Wer SaberCraft weiterverwendet, vor allem öffentlich oder kommerziell, muss diese Rechte selbst beachten. Minecraft und die Mojang-Texturen auf Screenshots sind ebenfalls nicht erfasst.

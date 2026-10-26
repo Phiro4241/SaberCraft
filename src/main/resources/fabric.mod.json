@@ -12,7 +12,7 @@
 		"sources": "https://github.com/Phiro4241/SaberCraft",
 		"issues": "https://github.com/Phiro4241/SaberCraft/issues"
 	},
-	"license": "All-Rights-Reserved",
+	"license": "MIT",
 	"icon": "assets/sabercraft/icon.png",
 	"environment": "*",
 	"entrypoints": {

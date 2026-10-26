@@ -3,7 +3,7 @@
 Thanks for your interest in SaberCraft! Bug reports, ideas and pull requests are all welcome. This page explains how to get set up and what a good contribution looks like.
 
 > [!IMPORTANT]
-> SaberCraft has **no open-source license yet** (`fabric.mod.json` says *All Rights Reserved*, see the [README](README.md#legal)). Please **open an issue before you start on a larger change**, so we can agree on it and on how it will be included.
+> SaberCraft is licensed under the [MIT License](LICENSE). By submitting a pull request you agree that your contribution is released under the same license. The license does not cover Star Wars names, characters or designs (see the [README](README.md#legal)), so only contribute work you made yourself. For a larger change, please **open an issue first** so we can agree on it.
 
 ## Reporting bugs
 
