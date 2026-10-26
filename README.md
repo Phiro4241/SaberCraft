@@ -280,7 +280,7 @@ SaberCraft is at version **0.1.0** and under active development (development not
 
 - **Shader packs:** with Complementary Reimagined the planet sky stays pale (the pack overrides custom sky colors); with BSL, raise `SKYBOX_OPACITY` and turn off `SKY_DESATURATION` for better planet skies. Other packs and Iris versions are untested. Blasters, droids, the X-Wing and character skins have not been checked with an active shader pack.
 - **Starships:** only the X-Wing exists. Ships have no armor and cannot be destroyed.
-- **Blasters:** in 0.1.0 a blaster bolt can fly through a target without hitting it (in a local test about one in three bowcaster shots); a fix is ready for the next version. A converted bow keeps the name "Bow" in the hotbar.
+- **Blasters:** a converted bow keeps the name "Bow" in the hotbar.
 - **Duels:** no arena border, spectator view or ranking yet.
 - **Not tested:** multiplayer with several real players (droids and ships of two players, ship lasers against another player), a vanilla client joining a SaberCraft server (built for it, never tried), real graphics cards, screen sizes other than 1280×720, other Minecraft versions than 26.2.
 - Hilt traits are deliberately small and not balanced with real players; `hilt_traits: false` turns them off.
