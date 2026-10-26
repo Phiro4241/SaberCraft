@@ -31,7 +31,7 @@ Die ausführliche Dokumentation ist auf Englisch: **[README.md](README.md)**. Hi
 
 ## Installation
 
-Es gibt noch kein veröffentlichtes Release. Die JAR baust du selbst mit `./gradlew build` (JDK 25), sie liegt dann unter `build/libs/sabercraft-<version>.jar`.
+Die JAR `sabercraft-0.1.0.jar` gibt es unter **[Releases](https://github.com/Phiro4241/SaberCraft/releases/latest)**. Version 0.1.0 ist eine Vorabversion: Blaster, Droiden und der X-Wing sind experimentell. Selbst bauen geht mit `./gradlew build` (JDK 25), die JAR liegt dann unter `build/libs/sabercraft-<version>.jar`.
 
 1. Fabric Loader **0.19.5 oder neuer** für Minecraft **26.2** mit dem [Fabric Installer](https://fabricmc.net/use/installer/) installieren.
 2. [Fabric API](https://modrinth.com/mod/fabric-api) **0.161.0+26.2** und die SaberCraft-JAR in den Ordner `.minecraft/mods/` legen.
