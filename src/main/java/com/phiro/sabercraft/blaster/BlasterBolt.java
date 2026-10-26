@@ -2,6 +2,8 @@ package com.phiro.sabercraft.blaster;
 
 import java.util.List;
 
+import org.jspecify.annotations.Nullable;
+
 import net.minecraft.core.Holder;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.particles.DustParticleOptions;
@@ -20,6 +22,7 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.entity.projectile.ProjectileUtil;
 import net.minecraft.world.entity.projectile.throwableitemprojectile.ThrowableItemProjectile;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -91,12 +94,43 @@ public class BlasterBolt extends ThrowableItemProjectile {
 
 	@Override
 	public void tick() {
+		// Vanilla tests each step as a line against the targets' boxes, grown by a margin that gets
+		// larger every tick while the projectile is young. A step that ends just in front of a
+		// target can therefore start the next step already inside the grown box, and a line that
+		// starts inside a box never hits it: the bolt flew straight through. Fast bolts ran into
+		// this often (one bowcaster shot in three in the arsenal test), so such a start is a hit.
+		EntityHitResult inside = this.startInsideTarget();
+
+		if (inside != null) {
+			this.hitTargetOrDeflectSelf(inside);
+
+			if (!this.isAlive()) {
+				return;
+			}
+		}
+
 		super.tick();
 
 		// Bolts that hit nothing fade at the end of their range (Phase 11: per type).
 		if (this.isAlive() && this.tickCount > this.type.lifetime()) {
 			this.discard();
 		}
+	}
+
+	/** A target whose hit box, grown by the same margin vanilla uses this tick, already holds the bolt. */
+	private @Nullable EntityHitResult startInsideTarget() {
+		Vec3 at = this.position();
+		float margin = ProjectileUtil.computeMargin(this);
+		Entity owner = this.getOwner();
+
+		for (Entity target : this.level().getEntities(this, this.getBoundingBox().inflate(1.0), this::canHitEntity)) {
+			// Never the shooter: right after a saber sent the bolt back it still sits inside them.
+			if (target != owner && target.getBoundingBox().inflate(margin).contains(at)) {
+				return new EntityHitResult(target, at);
+			}
+		}
+
+		return null;
 	}
 
 	@Override
