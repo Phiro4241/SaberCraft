@@ -138,7 +138,7 @@ More images live in [`docs/images/`](docs/images/) and [`docs/media/`](docs/medi
 
 ## Installation
 
-There is **no published release yet**. Until there is one, build the JAR yourself (see [Building from source](#building-from-source)).
+Download `sabercraft-0.1.0.jar` from the **[latest release](https://github.com/Phiro4241/SaberCraft/releases/latest)** (or build it yourself, see [Building from source](#building-from-source)). Version 0.1.0 is a **pre-release**: blasters, droids and the X-Wing are experimental, see [known limitations](#project-status-and-known-limitations).
 
 ### Requirements
 

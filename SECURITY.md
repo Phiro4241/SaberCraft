@@ -2,12 +2,12 @@
 
 ## Supported versions
 
-SaberCraft has no published release yet. Security fixes go into the `main` branch.
+Security fixes go into the `main` branch and the next release.
 
 | Version | Supported |
 | --- | --- |
-| `main` (0.1.0, Minecraft 26.2) | ✅ |
-| older builds | ❌ |
+| `main` and 0.1.0 (Minecraft 26.2) | ✅ |
+| older test builds | ❌ |
 
 ## What counts as a security issue
 
