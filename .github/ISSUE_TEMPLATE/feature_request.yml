@@ -1,0 +1,53 @@
+name: Feature request
+description: Suggest an idea or improvement for SaberCraft
+title: "[Idea] "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the idea! Planned work is listed in the README under "Planned, not built".
+        Please describe references from the films in words. Do not attach film audio, music or artwork.
+  - type: textarea
+    id: idea
+    attributes:
+      label: What would you like?
+      description: Describe what you want to do or see in game.
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why?
+      description: What problem does it solve, or what moment should it make better?
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Lightsabers
+        - Combat or Force powers
+        - Characters or outfits
+        - Blasters
+        - Droids
+        - Starships or vehicles
+        - Sky, planets or music
+        - Duels or advancements
+        - Menu, keys or settings
+        - Documentation
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives or examples
+      description: Other ways to solve it, or sketches and mockups you made yourself.
+  - type: checkboxes
+    id: help
+    attributes:
+      label: Contribution
+      options:
+        - label: I would like to help build this (please read CONTRIBUTING.md first)
