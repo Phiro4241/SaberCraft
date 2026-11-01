@@ -666,16 +666,12 @@ def main():
     standard = held_model("sabercraft:item/saber_hilt", "red", [(EMITTER_D, 0)])
     for sword in SWORDS:
         vanilla = {"type": "minecraft:model", "model": "minecraft:item/" + sword}
-        if sword == "netherite_sword":
-            # No hilt chosen, or "sabercraft:standard": the flat hilt with the red blade of Phase 3.
-            # Phase 10: "sabercraft:plain" is a netherite sword turned back into a plain one.
-            sword_cases = cases + [{"when": "sabercraft:plain", "model": vanilla}]
-            fallback = standard
-        else:
-            # Phase 10: the other swords are only sabers after /sabercraft convert, which always
-            # stores a hilt; without one they keep their vanilla look.
-            sword_cases = cases + [{"when": "sabercraft:standard", "model": standard}]
-            fallback = vanilla
+        # Phase 12: a sword is only a saber when it was chosen, which always stores a hilt
+        # ("sabercraft:standard" for the flat hilt with the red blade of Phase 3). Without one,
+        # and with "sabercraft:plain" (turned back), every sword keeps its vanilla look; before
+        # Phase 12 a netherite sword without a hilt was a saber.
+        sword_cases = cases + [{"when": "sabercraft:standard", "model": standard}]
+        fallback = vanilla
         item = {
             "model": {
                 "type": "minecraft:select",

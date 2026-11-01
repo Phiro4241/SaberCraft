@@ -116,8 +116,13 @@ public class SaberCustomizeScreen extends SaberMenuScreen {
 
 		this.updateStyleButtons();
 
-		// Apply and cancel at the bottom of the color column.
+		// Apply and cancel at the bottom of the color column; above them (Phase 12) the way back to
+		// a normal sword.
 		int columnWidth = 2 * COLOR_BUTTON_WIDTH + 4;
+		this.addRenderableWidget(Button.builder(Component.translatable("sabercraft.customize.revert"), b -> this.revert())
+				.bounds(colorLeft, this.top + PANEL_HEIGHT - 73, columnWidth, 20)
+				.tooltip(Tooltip.create(Component.translatable("sabercraft.customize.revert.description")))
+				.build());
 		this.addRenderableWidget(Button.builder(Component.translatable("sabercraft.customize.apply"), b -> this.apply())
 				.bounds(colorLeft, this.top + PANEL_HEIGHT - 50, columnWidth, 20)
 				.build());
@@ -164,6 +169,17 @@ public class SaberCustomizeScreen extends SaberMenuScreen {
 			case SENT, CREATIVE -> this.onClose();
 			case UNSUPPORTED -> this.status = Component.translatable("sabercraft.customize.unsupported");
 			case NO_SABER -> this.status = Component.translatable("sabercraft.customize.no_saber");
+		}
+	}
+
+	/** Phase 12: the saber becomes the plain sword it was. */
+	private void revert() {
+		if (this.minecraft == null) {
+			return;
+		}
+
+		if (SaberSelection.convert(this.minecraft, this.hand, false) == SaberSelection.Result.UNSUPPORTED) {
+			this.status = Component.translatable("sabercraft.customize.unsupported");
 		}
 	}
 

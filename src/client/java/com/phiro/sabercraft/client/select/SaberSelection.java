@@ -10,6 +10,8 @@ import net.minecraft.world.InteractionHand;
 import net.minecraft.world.inventory.InventoryMenu;
 import net.minecraft.world.item.ItemStack;
 
+import com.phiro.sabercraft.item.ItemConversion;
+import com.phiro.sabercraft.network.ConvertSaberPayload;
 import com.phiro.sabercraft.network.SelectSaberVariantPayload;
 import com.phiro.sabercraft.saber.SaberVariant;
 
@@ -56,6 +58,58 @@ public final class SaberSelection {
 		}
 
 		return null;
+	}
+
+	/**
+	 * Phase 12: the hand that holds a sword that could be chosen as a saber (a plain sword of
+	 * {@link SaberVariant#SWORDS}), main hand first, or {@code null}.
+	 */
+	public static @Nullable InteractionHand plainSwordHand(LocalPlayer player) {
+		for (InteractionHand hand : InteractionHand.values()) {
+			ItemStack stack = player.getItemInHand(hand);
+
+			if (SaberVariant.isSword(stack) && !SaberVariant.canHold(stack)) {
+				return hand;
+			}
+		}
+
+		return null;
+	}
+
+	/**
+	 * Phase 12: chooses the sword in that hand as a saber ({@code toSaber}), or turns a saber back
+	 * into a plain sword. On a server with SaberCraft the server checks and does it (as
+	 * {@code /sabercraft convert} and {@code revert}); otherwise only in creative mode, through the
+	 * creative inventory like {@link #applyCreative}.
+	 */
+	public static Result convert(Minecraft client, InteractionHand hand, boolean toSaber) {
+		LocalPlayer player = client.player;
+
+		if (player == null || !SaberVariant.isSword(player.getItemInHand(hand)) || SaberVariant.canHold(player.getItemInHand(hand)) == toSaber) {
+			return Result.NO_SABER;
+		}
+
+		if (ClientPlayNetworking.canSend(ConvertSaberPayload.TYPE)) {
+			ClientPlayNetworking.send(new ConvertSaberPayload(hand, toSaber));
+			return Result.SENT;
+		}
+
+		if (player.hasInfiniteMaterials() && client.gameMode != null) {
+			ItemStack changed = player.getItemInHand(hand).copy();
+
+			if (toSaber) {
+				ItemConversion.toSaber(changed, null, null);
+			} else {
+				ItemConversion.fromSaber(changed);
+			}
+
+			player.setItemInHand(hand, changed);
+			int slot = hand == InteractionHand.MAIN_HAND ? HOTBAR_START + player.getInventory().getSelectedSlot() : InventoryMenu.SHIELD_SLOT;
+			client.gameMode.handleCreativeModeItemAdd(changed, slot);
+			return Result.CREATIVE;
+		}
+
+		return Result.UNSUPPORTED;
 	}
 
 	/** True if the variant of a held saber can be changed right now. */

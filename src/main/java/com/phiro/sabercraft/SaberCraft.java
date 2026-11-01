@@ -16,6 +16,7 @@ import com.phiro.sabercraft.command.SaberCraftCommands;
 import com.phiro.sabercraft.droid.Droids;
 import com.phiro.sabercraft.duel.Duels;
 import com.phiro.sabercraft.network.SaberNetworking;
+import com.phiro.sabercraft.saber.SaberSwords;
 import com.phiro.sabercraft.ship.Starships;
 
 /**
@@ -45,6 +46,7 @@ public class SaberCraft implements ModInitializer {
 		SaberAdvancements.init();
 		Droids.init();
 		Starships.init();
+		SaberSwords.init();
 		LOGGER.info("SaberCraft initialized");
 	}
 

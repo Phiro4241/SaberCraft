@@ -27,7 +27,8 @@ import com.phiro.sabercraft.client.select.SaberSelection;
 
 /**
  * The SaberCraft menu (key V): one panel with a column of areas on the left. Saber (hilt, blade
- * color, fighting style; needs a netherite sword in the hand), combat (abilities, keys, combat
+ * color, fighting style; needs a saber in the hand, or since Phase 12 a plain sword that can be
+ * chosen as a saber, see {@link SaberConvertScreen}), combat (abilities, keys, combat
  * animations), character (outfits), space (the sky), music, and graphics and effects. Every
  * change is saved right away; the saber is changed with "Apply" as before.
  */
@@ -41,7 +42,7 @@ public abstract class SaberMenuScreen extends Screen {
 
 	/** The areas of the menu. */
 	public enum Tab {
-		SABER, BLASTER, DROIDS, SHIPS, COMBAT, CHARACTER, SPACE, MUSIC, GRAPHICS;
+		SABER, BLASTER, DROIDS, SHIPS, COMBAT, CHARACTER, SPACE, MUSIC, SOUND, GRAPHICS;
 
 		public Component label() {
 			return Component.translatable("sabercraft.menu.tab." + this.name().toLowerCase(java.util.Locale.ROOT));
@@ -76,9 +77,10 @@ public abstract class SaberMenuScreen extends Screen {
 
 		for (Tab tab : Tab.values()) {
 			Button button = Button.builder(tab.label(), b -> open(this.minecraft, tab)).bounds(tabsLeft, y, TAB_WIDTH, 20).build();
-			button.active = tab != this.tab() && (tab != Tab.SABER || saberHand(this.minecraft) != null);
+			boolean sword = saberHand(this.minecraft) != null || plainSwordHand(this.minecraft) != null;
+			button.active = tab != this.tab() && (tab != Tab.SABER || sword) && !(tab == Tab.SABER && this instanceof SaberConvertScreen);
 
-			if (tab == Tab.SABER && saberHand(this.minecraft) == null) {
+			if (tab == Tab.SABER && !sword) {
 				button.setTooltip(Tooltip.create(Component.translatable("sabercraft.customize.no_saber")));
 			}
 
@@ -112,7 +114,14 @@ public abstract class SaberMenuScreen extends Screen {
 	public static Screen create(Minecraft client, Tab tab) {
 		InteractionHand hand = saberHand(client);
 
+		// Phase 12: a plain sword in the hand can be chosen as a saber first.
 		if (tab == Tab.SABER && hand == null) {
+			InteractionHand sword = plainSwordHand(client);
+
+			if (sword != null) {
+				return new SaberConvertScreen(sword);
+			}
+
 			tab = Tab.CHARACTER;
 		}
 
@@ -125,12 +134,17 @@ public abstract class SaberMenuScreen extends Screen {
 			case CHARACTER -> new CharacterMenuScreen();
 			case SPACE -> new SpaceMenuScreen();
 			case MUSIC -> new MusicMenuScreen();
+			case SOUND -> new SoundMenuScreen();
 			case GRAPHICS -> new GraphicsMenuScreen();
 		};
 	}
 
 	private static InteractionHand saberHand(Minecraft client) {
 		return client == null || client.player == null ? null : SaberSelection.saberHand(client.player);
+	}
+
+	private static InteractionHand plainSwordHand(Minecraft client) {
+		return client == null || client.player == null ? null : SaberSelection.plainSwordHand(client.player);
 	}
 
 	@Override
