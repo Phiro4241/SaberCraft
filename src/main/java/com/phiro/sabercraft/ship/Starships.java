@@ -37,7 +37,8 @@ import com.phiro.sabercraft.network.ShipShotPayload;
 import com.phiro.sabercraft.network.ShipStatusPayload;
 
 /**
- * The starships of all players, on the server (Phase 11).
+ * The starships of all players, on the server (Phase 11; since Phase 12 the X-Wing, the TIE
+ * Fighter and the TIE Interceptor).
  *
  * <p>Each player has at most one ship out. Like the droids (see
  * {@link com.phiro.sabercraft.droid.Droids}), the ship entity is never saved with the world; where
@@ -93,6 +94,8 @@ public final class Starships {
 
 	private static final Map<UUID, ShipEntity> LIVE = new HashMap<>();
 	private static final Map<UUID, Long> LAST_COMMAND = new HashMap<>();
+	/** Phase 12: when a player whose ship was destroyed can call one again (game time). */
+	private static final Map<UUID, Long> GROUNDED_UNTIL = new HashMap<>();
 
 	private Starships() {
 	}
@@ -134,6 +137,7 @@ public final class Starships {
 			LIVE.values().forEach(ShipEntity::discard);
 			LIVE.clear();
 			LAST_COMMAND.clear();
+			GROUNDED_UNTIL.clear();
 		});
 	}
 
@@ -266,6 +270,36 @@ public final class Starships {
 	}
 
 	/**
+	 * Phase 12: the ship was shot down. Its owner loses it (as after /kill) and can call a new one
+	 * after {@code ship_respawn_seconds}.
+	 */
+	static void destroyed(ShipEntity ship) {
+		if (!isCurrent(ship) || ship.level().getServer() == null) {
+			return;
+		}
+
+		GROUNDED_UNTIL.put(ship.owner(), ship.level().getGameTime() + AbilityConfig.get().shipRespawnSeconds * 20L);
+		ServerPlayer owner = ship.level().getServer().getPlayerList().getPlayer(ship.owner());
+
+		if (owner != null) {
+			owner.sendOverlayMessage(Component.translatableWithFallback("sabercraft.ship.destroyed", "%s was destroyed. A new one is ready in %s seconds.",
+					Component.translatableWithFallback(ship.ship().translationKey(), ship.ship().displayName()), AbilityConfig.get().shipRespawnSeconds));
+		}
+	}
+
+	/** Phase 12: seconds until the player can call a ship again after one was destroyed, 0 if they can now. */
+	public static int groundedSeconds(ServerPlayer player) {
+		Long until = GROUNDED_UNTIL.get(player.getUUID());
+		long now = player.level().getGameTime();
+
+		if (until == null || now >= until || until - now > AbilityConfig.get().shipRespawnSeconds * 20L + 20L) {
+			return 0;
+		}
+
+		return (int) ((until - now + 19L) / 20L);
+	}
+
+	/**
 	 * A command from the hangar or {@code /sabercraft ship}. Returns the message for the player, or
 	 * {@code null} if the command was ignored (too fast, unknown).
 	 */
@@ -295,7 +329,7 @@ public final class Starships {
 	}
 
 	private static @Nullable Component run(ServerPlayer player, String action, ShipType type) {
-		Component name = Component.translatableWithFallback(type.translationKey(), "X-Wing");
+		Component name = Component.translatableWithFallback(type.translationKey(), type.displayName());
 
 		if (!AbilityConfig.get().shipsEnabled && !action.equals("dismiss")) {
 			return Component.translatableWithFallback("sabercraft.ship.disabled", "Starships are turned off on this server.");
@@ -303,6 +337,13 @@ public final class Starships {
 
 		if (!type.available()) {
 			return Component.translatableWithFallback("sabercraft.ship.planned", "%s is still being built. It comes in a later version.", name);
+		}
+
+		int grounded = action.equals("dismiss") || ship(player) != null ? 0 : groundedSeconds(player);
+
+		if (grounded > 0) {
+			return Component.translatableWithFallback("sabercraft.ship.grounded", "Your last ship was destroyed. A new one is ready in %s seconds.",
+					grounded);
 		}
 
 		switch (action) {
@@ -416,7 +457,7 @@ public final class Starships {
 
 	/** The owner climbs into their ship. Called from a right-click on the ship and the hangar. */
 	static Component board(ServerPlayer player, ShipEntity ship) {
-		Component name = Component.translatableWithFallback(ship.ship().translationKey(), "X-Wing");
+		Component name = Component.translatableWithFallback(ship.ship().translationKey(), ship.ship().displayName());
 
 		if (!ship.owner().equals(player.getUUID())) {
 			ServerPlayer owner = player.level().getServer().getPlayerList().getPlayer(ship.owner());
@@ -496,5 +537,6 @@ public final class Starships {
 	/** Only for tests: forgets the command rate limit. */
 	public static void resetCooldowns() {
 		LAST_COMMAND.clear();
+		GROUNDED_UNTIL.clear();
 	}
 }

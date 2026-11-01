@@ -451,11 +451,15 @@
     "sounds": [
       {
         "name": "sabercraft:droid/r2d2_ambient1",
-        "attenuation_distance": 12
+        "attenuation_distance": 10
       },
       {
         "name": "sabercraft:droid/r2d2_ambient2",
-        "attenuation_distance": 12
+        "attenuation_distance": 10
+      },
+      {
+        "name": "sabercraft:droid/r2d2_ambient3",
+        "attenuation_distance": 10
       }
     ],
     "subtitle": "subtitles.sabercraft.droid.r2d2"
@@ -482,11 +486,15 @@
     "sounds": [
       {
         "name": "sabercraft:droid/c3po_ambient1",
-        "attenuation_distance": 12
+        "attenuation_distance": 10
       },
       {
         "name": "sabercraft:droid/c3po_ambient2",
-        "attenuation_distance": 12
+        "attenuation_distance": 10
+      },
+      {
+        "name": "sabercraft:droid/c3po_ambient3",
+        "attenuation_distance": 10
       }
     ],
     "subtitle": "subtitles.sabercraft.droid.c3po"
@@ -513,11 +521,15 @@
     "sounds": [
       {
         "name": "sabercraft:droid/bb8_ambient1",
-        "attenuation_distance": 12
+        "attenuation_distance": 10
       },
       {
         "name": "sabercraft:droid/bb8_ambient2",
-        "attenuation_distance": 12
+        "attenuation_distance": 10
+      },
+      {
+        "name": "sabercraft:droid/bb8_ambient3",
+        "attenuation_distance": 10
       }
     ],
     "subtitle": "subtitles.sabercraft.droid.bb8"
@@ -544,11 +556,15 @@
     "sounds": [
       {
         "name": "sabercraft:droid/chopper_ambient1",
-        "attenuation_distance": 12
+        "attenuation_distance": 10
       },
       {
         "name": "sabercraft:droid/chopper_ambient2",
-        "attenuation_distance": 12
+        "attenuation_distance": 10
+      },
+      {
+        "name": "sabercraft:droid/chopper_ambient3",
+        "attenuation_distance": 10
       }
     ],
     "subtitle": "subtitles.sabercraft.droid.chopper"
@@ -575,11 +591,15 @@
     "sounds": [
       {
         "name": "sabercraft:droid/mouse_ambient1",
-        "attenuation_distance": 12
+        "attenuation_distance": 10
       },
       {
         "name": "sabercraft:droid/mouse_ambient2",
-        "attenuation_distance": 12
+        "attenuation_distance": 10
+      },
+      {
+        "name": "sabercraft:droid/mouse_ambient3",
+        "attenuation_distance": 10
       }
     ],
     "subtitle": "subtitles.sabercraft.droid.mouse"
@@ -606,11 +626,15 @@
     "sounds": [
       {
         "name": "sabercraft:droid/probe_ambient1",
-        "attenuation_distance": 12
+        "attenuation_distance": 10
       },
       {
         "name": "sabercraft:droid/probe_ambient2",
-        "attenuation_distance": 12
+        "attenuation_distance": 10
+      },
+      {
+        "name": "sabercraft:droid/probe_ambient3",
+        "attenuation_distance": 10
       }
     ],
     "subtitle": "subtitles.sabercraft.droid.probe"
@@ -637,11 +661,15 @@
     "sounds": [
       {
         "name": "sabercraft:droid/b1_ambient1",
-        "attenuation_distance": 12
+        "attenuation_distance": 10
       },
       {
         "name": "sabercraft:droid/b1_ambient2",
-        "attenuation_distance": 12
+        "attenuation_distance": 10
+      },
+      {
+        "name": "sabercraft:droid/b1_ambient3",
+        "attenuation_distance": 10
       }
     ],
     "subtitle": "subtitles.sabercraft.droid.b1"
@@ -668,11 +696,15 @@
     "sounds": [
       {
         "name": "sabercraft:droid/k2so_ambient1",
-        "attenuation_distance": 12
+        "attenuation_distance": 10
       },
       {
         "name": "sabercraft:droid/k2so_ambient2",
-        "attenuation_distance": 12
+        "attenuation_distance": 10
+      },
+      {
+        "name": "sabercraft:droid/k2so_ambient3",
+        "attenuation_distance": 10
       }
     ],
     "subtitle": "subtitles.sabercraft.droid.k2so"
@@ -768,5 +800,71 @@
         "name": "sabercraft:ui/menu_sweep"
       }
     ]
+  },
+  "ship.tie_fighter.engine": {
+    "sounds": [
+      {
+        "name": "sabercraft:ship/tie_fighter_engine",
+        "attenuation_distance": 40
+      }
+    ],
+    "subtitle": "subtitles.sabercraft.ship.tie_engine"
+  },
+  "ship.tie_interceptor.engine": {
+    "sounds": [
+      {
+        "name": "sabercraft:ship/tie_interceptor_engine",
+        "attenuation_distance": 40
+      }
+    ],
+    "subtitle": "subtitles.sabercraft.ship.tie_engine"
+  },
+  "ship.tie_fighter.laser": {
+    "sounds": [
+      {
+        "name": "sabercraft:ship/tie_laser1",
+        "attenuation_distance": 64
+      },
+      {
+        "name": "sabercraft:ship/tie_laser2",
+        "attenuation_distance": 64
+      }
+    ],
+    "subtitle": "subtitles.sabercraft.ship.laser"
+  },
+  "ship.tie_interceptor.laser": {
+    "sounds": [
+      {
+        "name": "sabercraft:ship/interceptor_laser1",
+        "attenuation_distance": 64
+      },
+      {
+        "name": "sabercraft:ship/interceptor_laser2",
+        "attenuation_distance": 64
+      }
+    ],
+    "subtitle": "subtitles.sabercraft.ship.laser"
+  },
+  "ship.hit": {
+    "sounds": [
+      {
+        "name": "sabercraft:ship/hit1",
+        "attenuation_distance": 32
+      },
+      {
+        "name": "sabercraft:ship/hit2",
+        "attenuation_distance": 32
+      }
+    ],
+    "subtitle": "subtitles.sabercraft.ship.hit"
+  },
+  "ship.explode": {
+    "sounds": [
+      {
+        "name": "sabercraft:ship/explode",
+        "attenuation_distance": 96
+      }
+    ],
+    "subtitle": "subtitles.sabercraft.ship.explode"
   }
 }

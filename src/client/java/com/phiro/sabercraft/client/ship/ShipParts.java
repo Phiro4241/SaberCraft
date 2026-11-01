@@ -23,6 +23,12 @@ public final class ShipParts {
 				new Part("wing_ul", "sabercraft:ship/xwing_wing_ul", 0.0000F, 1.1250F, 0.0000F),
 				new Part("wing_lr", "sabercraft:ship/xwing_wing_lr", 0.0000F, 1.1250F, 0.0000F),
 				new Part("wing_ll", "sabercraft:ship/xwing_wing_ll", 0.0000F, 1.1250F, 0.0000F)
+			),
+			"tie_fighter", List.of(
+				new Part("body", "sabercraft:ship/tie_fighter_body", 0.0000F, 1.3750F, 0.0000F)
+			),
+			"tie_interceptor", List.of(
+				new Part("body", "sabercraft:ship/tie_interceptor_body", 0.0000F, 1.3750F, 0.0000F)
 			)
 	);
 

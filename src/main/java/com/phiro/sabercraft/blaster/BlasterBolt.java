@@ -163,7 +163,7 @@ public class BlasterBolt extends ThrowableItemProjectile {
 		// Starship lasers spare other players if the server says so.
 		Entity owner = this.getOwner();
 
-		if (this.type == BlasterType.XWING && target instanceof Player
+		if (this.type.isShipLaser() && target instanceof Player
 				&& !AbilityConfig.get().shipLasersHitPlayers) {
 			return false;
 		}

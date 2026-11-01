@@ -155,7 +155,7 @@ public final class ShipClient {
 			visual.foils += Mth.clamp(target - visual.foils, -0.06F, 0.06F);
 			visual.speed = (float) ship.position().subtract(ship.xo, ship.yo, ship.zo).length();
 
-			if ((visual.foilsO < 0.5F) != (visual.foils < 0.5F)) {
+			if ((visual.foilsO < 0.5F) != (visual.foils < 0.5F) && ShipMarker.of(ship) != null && ShipMarker.of(ship).foils()) {
 				level.playLocalSound(ship.getX(), ship.getY(), ship.getZ(), ShipEngineSound.event("ship.foils"), SoundSource.NEUTRAL,
 						0.7F, 1.0F, false);
 			}
@@ -245,10 +245,11 @@ public final class ShipClient {
 			lastShotMillis = Util.getMillis();
 		}
 
-		// The muzzle flash: a burst of red light and sparks at the cannon tip.
+		// The muzzle flash: a burst of light in the bolt's color (red X-Wing, green TIE) and sparks.
 		Vec3 muzzle = cannon(ship, type, payload.cannon(), 1.0F);
-		level.addParticle(new DustParticleOptions(0xFF3020, 2.5F), muzzle.x, muzzle.y, muzzle.z, 0.0, 0.0, 0.0);
-		level.addParticle(new DustParticleOptions(0xFFB0A0, 1.2F), muzzle.x, muzzle.y, muzzle.z, 0.0, 0.0, 0.0);
+		boolean green = type.laser().equals("tie");
+		level.addParticle(new DustParticleOptions(green ? 0x30FF50 : 0xFF3020, 2.5F), muzzle.x, muzzle.y, muzzle.z, 0.0, 0.0, 0.0);
+		level.addParticle(new DustParticleOptions(green ? 0xB0FFC0 : 0xFFB0A0, 1.2F), muzzle.x, muzzle.y, muzzle.z, 0.0, 0.0, 0.0);
 
 		for (int i = 0; i < 4; i++) {
 			level.addParticle(ParticleTypes.ELECTRIC_SPARK, muzzle.x, muzzle.y, muzzle.z, (level.getRandom().nextFloat() - 0.5) * 0.3,
