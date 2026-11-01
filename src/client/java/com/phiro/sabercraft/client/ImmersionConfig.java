@@ -125,6 +125,35 @@ public final class ImmersionConfig {
 	@SerializedName("menu_transitions")
 	public boolean menuTransitions = true;
 
+	/**
+	 * Phase 12: volume of all lightsaber sounds (ignition, hum, swings, clashes, Force powers),
+	 * 0..1, on top of Minecraft's sliders. 0 silences them.
+	 */
+	@SerializedName("saber_volume")
+	public float saberVolume = 1.0F;
+	/**
+	 * Phase 12: the steady hum of a lit blade, 0..1, on top of {@code saber_volume}. Quieter than
+	 * before by default, so a held saber does not drone in the foreground.
+	 */
+	@SerializedName("saber_hum_volume")
+	public float saberHumVolume = 0.6F;
+	/** Phase 12: the hum of a blade held still for a few seconds sinks to half its volume. */
+	@SerializedName("saber_hum_idle_quiet")
+	public boolean saberHumIdleQuiet = true;
+	/** Phase 12: volume of the droids' voices, steps and abilities, 0..1. */
+	@SerializedName("droid_volume")
+	public float droidVolume = 0.8F;
+	/** Phase 12: the droids' idle chatter (beeps without a reason). false: they only sound when they do something. */
+	@SerializedName("droid_chatter")
+	public boolean droidChatter = true;
+	/** Phase 12: volume of the starships (engines, lasers, crashes), 0..1. */
+	@SerializedName("ship_volume")
+	public float shipVolume = 1.0F;
+
+	/** Phase 12: the hint under the crosshair while looking at one of your droids (name, ability, keys). */
+	@SerializedName("droid_target_hud")
+	public boolean droidTargetHud = true;
+
 	public static final String MODE_SABERCRAFT = "sabercraft";
 	public static final String MODE_STARWARS = "starwars";
 
@@ -158,6 +187,10 @@ public final class ImmersionConfig {
 		this.planetAmbientVolume = Mth.clamp(this.planetAmbientVolume, 0.0F, 1.0F);
 		this.musicCrossfadeSeconds = Mth.clamp(this.musicCrossfadeSeconds, 0.5F, 20.0F);
 		this.starWarsVolume = Mth.clamp(this.starWarsVolume, 0.0F, 1.0F);
+		this.saberVolume = Mth.clamp(this.saberVolume, 0.0F, 1.0F);
+		this.saberHumVolume = Mth.clamp(this.saberHumVolume, 0.0F, 1.0F);
+		this.droidVolume = Mth.clamp(this.droidVolume, 0.0F, 1.0F);
+		this.shipVolume = Mth.clamp(this.shipVolume, 0.0F, 1.0F);
 		if (!MODE_STARWARS.equals(this.musicMode)) {
 			this.musicMode = MODE_SABERCRAFT;
 		}

@@ -6,6 +6,7 @@ import net.minecraft.util.Mth;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.LivingEntity;
 
+import com.phiro.sabercraft.client.ImmersionConfig;
 import com.phiro.sabercraft.client.saber.SaberHandState;
 
 /**
@@ -19,11 +20,16 @@ import com.phiro.sabercraft.client.saber.SaberHandState;
 public class SaberHumSoundInstance extends AbstractTickableSoundInstance {
 	/** Ticks over which a new hum fades in, so it never starts with a click. */
 	private static final int FADE_IN_TICKS = 6;
+	/** Phase 12: ticks of holding still before the hum gets quieter, and how quiet it gets. */
+	static final int IDLE_TICKS = 80;
+	static final float IDLE_LEVEL = 0.5F;
 
 	private final LivingEntity entity;
 	private final SaberHandState state;
 	private final float baseVolume;
 	private int age;
+	private int stillTicks;
+	private float idle = 1.0F;
 	private boolean released;
 
 	public SaberHumSoundInstance(LivingEntity entity, SaberHandState state, SaberSoundSet sounds) {
@@ -54,7 +60,11 @@ public class SaberHumSoundInstance extends AbstractTickableSoundInstance {
 		float blade = this.state.extension(1.0F);
 		float shape = blade * blade * (3.0F - 2.0F * blade);
 		float motion = this.state.motion();
-		this.volume = this.baseVolume * fadeIn * shape * (1.0F + 0.45F * motion);
+		// Phase 12: a blade held still for a while hums more softly; any movement brings it back.
+		this.stillTicks = motion > 0.05F ? 0 : this.stillTicks + 1;
+		float idleTarget = ImmersionConfig.get().saberHumIdleQuiet && this.stillTicks > IDLE_TICKS ? IDLE_LEVEL : 1.0F;
+		this.idle += (idleTarget - this.idle) * (idleTarget < this.idle ? 0.03F : 0.3F);
+		this.volume = this.baseVolume * fadeIn * shape * this.idle * (1.0F + 0.45F * motion);
 		this.pitch = 1.0F + 0.07F * motion + 0.04F * (blade - 1.0F);
 	}
 
@@ -67,6 +77,11 @@ public class SaberHumSoundInstance extends AbstractTickableSoundInstance {
 		this.x = this.entity.getX();
 		this.y = this.entity.getEyeY() - 0.4;
 		this.z = this.entity.getZ();
+	}
+
+	/** Only for tests: how much the idle quieting has lowered the hum, 1 = not at all. */
+	public float idleFactor() {
+		return this.idle;
 	}
 
 	@Override
