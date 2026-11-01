@@ -17,12 +17,12 @@ Die ausführliche Dokumentation ist auf Englisch: **[README.md](README.md)**. Hi
 
 | Bereich | Stand | Inhalt |
 | --- | --- | --- |
-| Lichtschwerter | ✅ fertig | Zünden und Einfahren, Summen, 14 Griffe, 6 Farben, Griffe mit eigenen Eigenschaften, `/sabercraft convert` für jedes Schwert |
+| Lichtschwerter | ✅ fertig | Zünden und Einfahren, Summen, 14 Griffe, 6 Farben, Griffe mit eigenen Eigenschaften; nur ausgewählte Schwerter werden Lichtschwerter (Knopf im Menü oder `/sabercraft convert`), alle anderen bleiben normale Schwerter |
 | Kampf | ✅ fertig | 15 Kampfstile, Abwehr, Parade, Konter, Ausweichen, Drehangriff, Machtstoß, -griff, -zug, -sprung, Lichtspuren, Clash, Finisher |
 | Charaktere | ✅ fertig | 11 Film-Charaktere, 5 Outfits, eigene Profile |
 | Blaster | 🧪 experimentell | 9 Blaster, Pfeile als Munition, Überhitzung |
-| Droiden | 🧪 experimentell | 8 Droiden-Begleiter mit Fähigkeiten |
-| Raumschiffe | 🧪 experimentell | fliegbarer X-Wing; TIE Fighter, TIE Interceptor, Falcon und Sternzerstörer sind nur geplant |
+| Droiden | 🧪 experimentell | 8 Droiden-Begleiter mit Fähigkeiten; Droiden anschauen und **N** (Fähigkeit) oder **U** (warten/folgen) drücken |
+| Raumschiffe | 🧪 experimentell | fliegbarer X-Wing, TIE Fighter und TIE Interceptor mit Hülle, Treffern und Explosion; Falcon und Sternzerstörer sind nur geplant |
 | Himmel und Planeten | ✅ fertig | Weltraumhimmel, 6 Planeten (nur Himmel und Klang, nie das Gelände) |
 | Musik | ✅ fertig | eigene SaberCraft-Musik, Star-Wars-Modus nur mit deinen eigenen Dateien |
 | Duelle und Erfolge | ✅ fertig | freiwillige Duelle (Best of three), 11 Erfolge |
@@ -35,7 +35,7 @@ Die JAR `sabercraft-0.1.0.jar` gibt es unter **[Releases](https://github.com/Phi
 
 1. Fabric Loader **0.19.5 oder neuer** für Minecraft **26.2** mit dem [Fabric Installer](https://fabricmc.net/use/installer/) installieren.
 2. [Fabric API](https://modrinth.com/mod/fabric-api) **0.161.0+26.2** und die SaberCraft-JAR in den Ordner `.minecraft/mods/` legen.
-3. Minecraft mit dem Fabric-Profil starten, ein Netherite-Schwert in die Hand nehmen und **V** für das Menü drücken.
+3. Minecraft mit dem Fabric-Profil starten, ein Schwert in die Hand nehmen, **V** drücken und **Zum Lichtschwert machen** anklicken.
 
 ## Steuerung
 
@@ -49,6 +49,8 @@ Die JAR `sabercraft-0.1.0.jar` gibt es unter **[Releases](https://github.com/Phi
 | **H** (halten) | Machtgriff |
 | **J** | Machtzug |
 | **K** | Machtsprung |
+| **N** | Fähigkeit des Droiden, den du anschaust (nur eigene, bis 12 Blöcke) |
+| **U** | Angeschauter Droide wartet hier oder folgt wieder |
 
 Alle Tasten lassen sich unter Optionen → Steuerung → Tastenbelegung → SaberCraft ändern. Doppelt belegte Tasten zeigt Minecraft dort rot an.
 
