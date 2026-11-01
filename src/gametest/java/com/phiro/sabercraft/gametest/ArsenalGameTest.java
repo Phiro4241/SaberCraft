@@ -45,8 +45,7 @@ import com.phiro.sabercraft.saber.SaberVariant;
  * <p>Swords: each of the seven swords gets enchantments, a name, damage and model data of a "data
  * pack", is converted, checked (saber on server and client, all data kept, nothing duplicated),
  * recolored, and turned back; afterwards it must be exactly the item from before, component for
- * component. The netherite sword stays a saber without conversion (Phases 1 to 9) and can be
- * turned into a plain one and back. Wrong items and unknown names are refused without a change.
+ * component. Since Phase 12 the netherite sword is no saber either until it is chosen. Wrong items and unknown names are refused without a change.
  *
  * <p>Blasters: a bow with Power, Flame and a name becomes each blaster type in turn and fires at a
  * zombie through a real right-click (with arrows, Phase 11): the bolt exists on the server, the client draws it as a
@@ -106,19 +105,13 @@ public class ArsenalGameTest implements FabricClientGameTest {
 			context.runOnClient(client -> client.player.getInventory().setSelectedSlot(0));
 			context.waitTicks(5);
 
-			boolean netherite = sword == Items.NETHERITE_SWORD;
-			check(server.computeOnServer(s -> SaberVariant.canHold(held(s, self))) == netherite,
-					name + ": " + (netherite ? "a netherite sword is a saber without conversion" : "a plain sword is no saber"));
+			// Phase 12: every sword, netherite too, stays a plain sword until it is chosen.
+			check(!server.computeOnServer(s -> SaberVariant.canHold(held(s, self))), name + ": a plain sword is no saber");
+			context.waitTicks(5);
+			check(context.computeOnClient(client -> !SaberProfiles.isSaber(client.player.getMainHandItem())), name + ": the client sees a plain sword");
 
 			command(context, "sabercraft convert");
 			ItemStack saber = server.computeOnServer(s -> held(s, self).copy());
-
-			if (netherite) {
-				check(saber.get(DataComponents.CUSTOM_MODEL_DATA).equals(original.get(DataComponents.CUSTOM_MODEL_DATA)),
-						name + ": convert without a color leaves a netherite saber as it is");
-				command(context, "sabercraft convert red standard");
-				saber = server.computeOnServer(s -> held(s, self).copy());
-			}
 
 			check(SaberVariant.canHold(saber), name + ": is a saber after /sabercraft convert");
 			check(saber.getItem() == sword, name + ": still the same item (material)");
@@ -128,7 +121,7 @@ public class ArsenalGameTest implements FabricClientGameTest {
 			check(saber.get(DataComponents.CUSTOM_MODEL_DATA).floats().equals(List.of(0.5F)), name + ": other model data kept");
 			check(server.computeOnServer(s -> count(player(s, self), sword)) == 1, name + ": exactly one sword, nothing duplicated or lost");
 			Item finalSword = sword;
-			check(!netherite ? SaberVariant.hiltOf(saber).equals(SaberVariant.hiltForMaterial(new ItemStack(finalSword))) : true,
+			check(SaberVariant.hiltOf(saber).equals(SaberVariant.hiltForMaterial(new ItemStack(finalSword))),
 					name + ": a hilt that fits the material (" + SaberVariant.hiltOf(saber) + ")");
 			context.waitTicks(10);
 			check(context.computeOnClient(client -> SaberProfiles.isSaber(client.player.getMainHandItem())), name + ": the client sees a saber");
@@ -144,19 +137,8 @@ public class ArsenalGameTest implements FabricClientGameTest {
 			command(context, "sabercraft revert");
 			ItemStack back = server.computeOnServer(s -> held(s, self).copy());
 
-			if (netherite) {
-				check(!SaberVariant.canHold(back), name + ": a netherite saber can become a plain sword");
-				check(back.getEnchantments().equals(original.getEnchantments()) && back.getDamageValue() == 7, name + ": plain again with all data");
-				check(back.get(DataComponents.CUSTOM_MODEL_DATA).floats().equals(List.of(0.5F)), name + ": other model data kept on the plain sword");
-				context.waitTicks(5);
-				check(context.computeOnClient(client -> !SaberProfiles.isSaber(client.player.getMainHandItem())), name + ": the client sees a plain sword");
-				context.takeScreenshot("arsenal_plain_netherite");
-				command(context, "sabercraft convert");
-				check(server.computeOnServer(s -> SaberVariant.canHold(held(s, self))), name + ": and back into a saber");
-			} else {
-				check(ItemStack.matches(back, original), name + ": after /sabercraft revert exactly the item from before (" + back.getComponentsPatch() + ")");
-				check(!SaberVariant.canHold(back), name + ": no saber any more");
-			}
+			check(ItemStack.matches(back, original), name + ": after /sabercraft revert exactly the item from before (" + back.getComponentsPatch() + ")");
+			check(!SaberVariant.canHold(back), name + ": no saber any more");
 
 			check(server.computeOnServer(s -> count(player(s, self), sword)) == 1, name + ": still exactly one sword");
 		}

@@ -64,9 +64,9 @@ public class SaberAnimationGameTest implements FabricClientGameTest {
 			server.runCommand("gamerule spawn_mobs false");
 			server.runCommand("gamerule keep_inventory true");
 			server.runCommand("time set day");
-			server.runCommand("item replace entity @a hotbar.0 with minecraft:netherite_sword");
+			server.runCommand("item replace entity @a hotbar.0 with minecraft:netherite_sword[minecraft:custom_model_data={strings:[\"sabercraft:standard\",\"sabercraft:red\"]}]");
 			server.runCommand("item replace entity @a hotbar.1 with minecraft:apple");
-			server.runCommand("item replace entity @a hotbar.2 with minecraft:netherite_sword");
+			server.runCommand("item replace entity @a hotbar.2 with minecraft:netherite_sword[minecraft:custom_model_data={strings:[\"sabercraft:standard\",\"sabercraft:red\"]}]");
 			context.getInput().lookAt(20.0F, 10.0F);
 
 			this.igniteAndRetract(context);
@@ -215,7 +215,7 @@ public class SaberAnimationGameTest implements FabricClientGameTest {
 	}
 
 	private void otherEntities(ClientGameTestContext context, TestServerContext server) {
-		server.runCommand("summon minecraft:zombie ~2 ~ ~2 {NoAI:1b,PersistenceRequired:1b,equipment:{mainhand:{id:\"minecraft:netherite_sword\",count:1}}}");
+		server.runCommand("summon minecraft:zombie ~2 ~ ~2 {NoAI:1b,PersistenceRequired:1b,equipment:{mainhand:{id:\"minecraft:netherite_sword\",count:1,components:{\"minecraft:custom_model_data\":{strings:[\"sabercraft:standard\",\"sabercraft:red\"]}}}}}");
 		context.waitTicks(5);
 		float zombie = zombieExtension(context);
 		check(context, zombie == 1.0F, "a zombie that comes into view already has its blade out: " + zombie);
@@ -227,7 +227,7 @@ public class SaberAnimationGameTest implements FabricClientGameTest {
 		context.waitTicks(RETRACT_TICKS + 2);
 		check(context, zombieExtension(context) == 0.0F, "zombie blade gone");
 
-		server.runCommand("item replace entity @e[type=minecraft:zombie] weapon.mainhand with minecraft:netherite_sword");
+		server.runCommand("item replace entity @e[type=minecraft:zombie] weapon.mainhand with minecraft:netherite_sword[minecraft:custom_model_data={strings:[\"sabercraft:standard\",\"sabercraft:red\"]}]");
 		context.waitTicks(IGNITE_DELAY + 1);
 		float igniting = zombieExtension(context);
 		check(context, igniting > 0.0F && igniting < 1.0F, "zombie blade ignites when it gets a sword: " + igniting);
@@ -240,7 +240,7 @@ public class SaberAnimationGameTest implements FabricClientGameTest {
 			try (var connection = server.connect()) {
 				connection.waitForChunksDownload();
 				context.waitTicks(40);
-				server.runCommand("item replace entity @a hotbar.0 with minecraft:netherite_sword");
+				server.runCommand("item replace entity @a hotbar.0 with minecraft:netherite_sword[minecraft:custom_model_data={strings:[\"sabercraft:standard\",\"sabercraft:red\"]}]");
 				server.runCommand("item replace entity @a hotbar.1 with minecraft:apple");
 				select(context, 1);
 				context.waitTicks(5);

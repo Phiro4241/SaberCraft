@@ -77,9 +77,9 @@ public class SaberVariantGameTest implements FabricClientGameTest {
 			server.runCommand("gamerule spawn_mobs false");
 			server.runCommand("gamerule send_command_feedback false");
 			server.runCommand("time set day");
-			server.runCommand("item replace entity @a hotbar.0 with minecraft:netherite_sword");
+			server.runCommand("item replace entity @a hotbar.0 with minecraft:netherite_sword[minecraft:custom_model_data={strings:[\"sabercraft:standard\",\"sabercraft:red\"]}]");
 			server.runCommand("item replace entity @a hotbar.1 with minecraft:apple");
-			server.runCommand("item replace entity @a hotbar.2 with minecraft:netherite_sword");
+			server.runCommand("item replace entity @a hotbar.2 with minecraft:netherite_sword[minecraft:custom_model_data={strings:[\"sabercraft:standard\",\"sabercraft:red\"]}]");
 			select(context, 0);
 			context.getInput().lookAt(20.0F, 10.0F);
 			context.waitTicks(SETTLE);
@@ -162,7 +162,8 @@ public class SaberVariantGameTest implements FabricClientGameTest {
 
 	private void profiles(ClientGameTestContext context) {
 		context.runOnClient(client -> {
-			check(SaberProfiles.of(new ItemStack(Items.NETHERITE_SWORD)) == SaberProfiles.DEFAULT, "plain sword keeps the Phase 4 profile");
+			check(SaberProfiles.of(new ItemStack(Items.NETHERITE_SWORD)) == null, "Phase 12: a plain netherite sword is no saber and has no profile");
+			check(SaberProfiles.of(saber(SaberVariant.STANDARD, SaberVariant.RED)) == SaberProfiles.DEFAULT, "the standard saber keeps the Phase 4 profile");
 			check(SaberProfiles.of(saber(SaberVariant.GUARDIAN, SaberVariant.BLUE)) == SaberProfiles.DEFAULT, "guardian uses the default profile");
 			check(SaberProfiles.of(saber(SaberVariant.DARK_LORD, SaberVariant.RED)) == SaberProfiles.DARK, "dark hilt has its own profile");
 			check(SaberProfiles.of(saber(SaberVariant.DOUBLE, SaberVariant.RED)) == SaberProfiles.DOUBLE, "double hilt has its own profile");
@@ -374,8 +375,8 @@ public class SaberVariantGameTest implements FabricClientGameTest {
 			try (var connection = server.connect()) {
 				connection.waitForChunksDownload();
 				context.waitTicks(40);
-				server.runCommand("item replace entity @a hotbar.0 with minecraft:netherite_sword");
-				server.runCommand("item replace entity @a hotbar.2 with minecraft:netherite_sword");
+				server.runCommand("item replace entity @a hotbar.0 with minecraft:netherite_sword[minecraft:custom_model_data={strings:[\"sabercraft:standard\",\"sabercraft:red\"]}]");
+				server.runCommand("item replace entity @a hotbar.2 with minecraft:netherite_sword[minecraft:custom_model_data={strings:[\"sabercraft:standard\",\"sabercraft:red\"]}]");
 				select(context, 0);
 				context.waitTicks(5);
 				check(context.computeOnClient(client -> ClientPlayNetworking.canSend(SelectSaberVariantPayload.TYPE)),

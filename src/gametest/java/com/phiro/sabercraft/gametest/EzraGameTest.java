@@ -60,7 +60,7 @@ public class EzraGameTest implements FabricClientGameTest {
 			server.runCommand("tp @a 0 ~ 0 180 0");
 			server.runCommand("kill @e[type=!player]");
 			server.runCommand("clear @a");
-			server.runCommand("item replace entity @a weapon.mainhand with minecraft:netherite_sword");
+			server.runCommand("item replace entity @a weapon.mainhand with minecraft:netherite_sword[minecraft:custom_model_data={strings:[\"sabercraft:standard\",\"sabercraft:red\"]}]");
 			context.waitTicks(20);
 			UUID self = context.computeOnClient(client -> client.player.getUUID());
 

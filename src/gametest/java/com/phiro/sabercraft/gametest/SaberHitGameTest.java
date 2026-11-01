@@ -54,7 +54,7 @@ public class SaberHitGameTest implements FabricClientGameTest {
 			server.runCommand("gamemode survival @a");
 			server.runCommand("tp @a 0 ~ 0 180 0");
 			server.runCommand("kill @e[type=!player]");
-			server.runCommand("item replace entity @a weapon.mainhand with minecraft:netherite_sword");
+			server.runCommand("item replace entity @a weapon.mainhand with minecraft:netherite_sword[minecraft:custom_model_data={strings:[\"sabercraft:standard\",\"sabercraft:red\"]}]");
 			context.waitTicks(40);
 			UUID self = context.computeOnClient(client -> client.player.getUUID());
 			check(context.computeOnClient(client -> {
@@ -145,7 +145,7 @@ public class SaberHitGameTest implements FabricClientGameTest {
 		hit(context);
 		check(server.computeOnServer(s -> zombies(s).isEmpty()), "the plain sword killed the zombie");
 		check(server.computeOnServer(s -> SaberFinishers.count()) == before, "a plain sword never makes a finisher");
-		server.runCommand("item replace entity @a weapon.mainhand with minecraft:netherite_sword");
+		server.runCommand("item replace entity @a weapon.mainhand with minecraft:netherite_sword[minecraft:custom_model_data={strings:[\"sabercraft:standard\",\"sabercraft:red\"]}]");
 		context.waitTicks(30);
 	}
 
@@ -157,7 +157,7 @@ public class SaberHitGameTest implements FabricClientGameTest {
 				server.runCommand("gamerule spawn_mobs false");
 				server.runCommand("gamemode survival @a");
 				server.runCommand("kill @e[type=!player]");
-				server.runCommand("item replace entity @a weapon.mainhand with minecraft:netherite_sword");
+				server.runCommand("item replace entity @a weapon.mainhand with minecraft:netherite_sword[minecraft:custom_model_data={strings:[\"sabercraft:standard\",\"sabercraft:red\"]}]");
 				context.waitTicks(40);
 				var pos = context.computeOnClient(client -> client.player.position());
 				server.runCommand("summon minecraft:husk " + pos.x + " " + pos.y + " " + (pos.z - 2.0)

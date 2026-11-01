@@ -74,7 +74,7 @@ public class AdvancementGameTest implements FabricClientGameTest {
 			check(!has(server, self, SaberAdvancements.FORCE_AWAKENS), "no other advancement yet");
 
 			// A lightsaber in hand.
-			server.runCommand("item replace entity @a weapon.mainhand with minecraft:netherite_sword");
+			server.runCommand("item replace entity @a weapon.mainhand with minecraft:netherite_sword[minecraft:custom_model_data={strings:[\"sabercraft:standard\",\"sabercraft:red\"]}]");
 			context.waitTicks(25);
 			check(has(server, self, SaberAdvancements.FORCE_AWAKENS), "a lightsaber in hand: The Force Awakens");
 
@@ -173,7 +173,7 @@ public class AdvancementGameTest implements FabricClientGameTest {
 	}
 
 	private static void spin(ClientGameTestContext context, TestServerContext server, UUID self) {
-		server.runCommand("item replace entity @a weapon.mainhand with minecraft:netherite_sword");
+		server.runCommand("item replace entity @a weapon.mainhand with minecraft:netherite_sword[minecraft:custom_model_data={strings:[\"sabercraft:standard\",\"sabercraft:red\"]}]");
 		server.runCommand("summon minecraft:zombie 1.5 ~ 0 {NoAI:1b,PersistenceRequired:1b,Silent:1b}");
 		server.runCommand("summon minecraft:zombie -1.5 ~ 0 {NoAI:1b,PersistenceRequired:1b,Silent:1b}");
 		context.waitTicks(30);

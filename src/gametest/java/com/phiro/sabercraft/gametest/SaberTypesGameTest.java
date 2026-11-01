@@ -279,7 +279,7 @@ public class SaberTypesGameTest implements FabricClientGameTest {
 		check(context.computeOnClient(client -> CustomProfiles.byKey("knight").orElseThrow().side() == Outfit.Side.GREY), "the side is read");
 
 		context.runOnClient(client -> client.player.getInventory().setSelectedSlot(0));
-		server.runCommand("item replace entity @a hotbar.0 with minecraft:netherite_sword");
+		server.runCommand("item replace entity @a hotbar.0 with minecraft:netherite_sword[minecraft:custom_model_data={strings:[\"sabercraft:standard\",\"sabercraft:red\"]}]");
 		context.waitTicks(10);
 		context.runOnClient(client -> SaberMenuScreen.open(client, SaberMenuScreen.Tab.CHARACTER));
 		context.waitTicks(3);
