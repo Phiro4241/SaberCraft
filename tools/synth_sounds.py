@@ -14,7 +14,8 @@ src/client/resources/assets/sabercraft/sounds/saber/ (default profile) and .../s
 (.../sounds/blaster/), `--ambient` only the planet ambiences of Phase 10 (.../sounds/ambient/),
 `--phase11-blaster` the new blaster sounds of Phase 11, `--droids` the droid voices of Phase 11
 (.../sounds/droid/: beeps, whistles, servos and wordless robot murmurs, no speech), `--atmosphere` the draw and holster sounds and the menu sweep of Phase 11 G, `--ships` the
-starship engine, laser cannon, crash and S-foil sounds of Phase 11 (.../sounds/ship/). Minecraft only attenuates mono
+starship engine, laser cannon, crash and S-foil sounds of Phase 11 (.../sounds/ship/), `--imperial-ships` the TIE
+Fighter and TIE Interceptor engines and cannons, hull hits and the explosion of Phase 12. Minecraft only attenuates mono
 sounds by distance, so all files are mono.
 """
 import os
@@ -545,49 +546,100 @@ def zap(rng, seconds=0.5):
     return crackle + 0.6 * arc
 
 
+def lowpass(x, cutoff):
+    """A gentle one-pole low-pass (6 dB per octave): takes the edge off bright beeps."""
+    a = np.exp(-2 * np.pi * cutoff / RATE)
+    y = np.empty_like(x)
+    acc = 0.0
+    for i, v in enumerate(x):
+        acc = (1 - a) * v + a * acc
+        y[i] = acc
+    return y
+
+
+def soft_beeps(rng, count, low, high, whistle=False, shape="sine", cutoff=2600.0):
+    """Phase 12: the softer astromech voice. Fewer, lower and rounder beeps than in Phase 11: a
+    sine with a little warmth (second harmonic), slow attack and release so nothing clicks or
+    pierces, short pauses that feel like phrasing, and a low-pass on top."""
+    parts = []
+    for i in range(count):
+        seconds = rng.uniform(0.07, 0.16)
+        f0 = rng.uniform(low, high)
+        f1 = f0 * rng.choice([0.75, 0.9, 1.0, 1.12, 1.3])
+        t = t_axis(seconds)
+        freq = f0 + (f1 - f0) * (t / seconds) ** 1.5
+        phase = 2 * np.pi * np.cumsum(freq) / RATE
+        tone = np.sin(phase) + 0.18 * np.sin(2 * phase) if shape == "sine" else 2.0 / np.pi * np.arcsin(np.sin(phase))
+        env = np.clip(t / 0.018, 0, 1) * np.clip((seconds - t) / 0.045, 0, 1)
+        parts.append(tone * env * rng.uniform(0.55, 0.9))
+    if whistle:
+        seconds = 0.32
+        t = t_axis(seconds)
+        f0 = rng.uniform(low, high) * 0.9
+        freq = f0 * (1.0 + 0.45 * (t / seconds) ** 2)
+        phase = 2 * np.pi * np.cumsum(freq) / RATE
+        env = np.clip(t / 0.04, 0, 1) * np.clip((seconds - t) / 0.08, 0, 1)
+        parts.append(np.sin(phase) * env * 0.7)
+    x = sequence(parts, gap=rng.uniform(0.04, 0.08))
+    return lowpass(x, cutoff)
+
+
 def droid_voice(name, kind, rng):
+    """Phase 12: calmer voices. The idle chatter (ambient) is short and quiet, a reaction
+    (interact) a little longer, the ability the clearest, so every action is still heard."""
     if name == "r2d2":
         if kind == "interact":
-            return astromech(rng, 7, 1200, 3200, whistle=True)
+            return soft_beeps(rng, 4, 700, 1700, whistle=True)
         if kind == "ability":
-            return astromech(rng, 14, 1500, 3800)
-        return astromech(rng, rng.integers(3, 6), 1000, 3000, whistle=rng.random() < 0.4)
+            return soft_beeps(rng, 7, 800, 2000)
+        return soft_beeps(rng, rng.integers(2, 4), 650, 1500, whistle=rng.random() < 0.3)
     if name == "bb8":
         if kind == "interact":
-            return astromech(rng, 6, 700, 2000, "triangle", whistle=True, soft=0.5)
+            return soft_beeps(rng, 4, 500, 1300, whistle=True, cutoff=1800)
         if kind == "ability":
-            return astromech(rng, 10, 900, 2400, "triangle", soft=0.5)
-        return astromech(rng, rng.integers(2, 5), 600, 1800, "triangle", soft=0.5)
+            return soft_beeps(rng, 6, 600, 1500, cutoff=1800)
+        return soft_beeps(rng, rng.integers(2, 4), 450, 1200, cutoff=1800)
     if name == "chopper":
         if kind == "ability":
-            return np.concatenate([zap(rng), grumble(rng, 0.6, 140)])
-        return grumble(rng, rng.uniform(0.5, 0.9), rng.uniform(110, 170))
+            return lowpass(np.concatenate([zap(rng) * 0.7, grumble(rng, 0.5, 130)]), 3000)
+        return lowpass(grumble(rng, rng.uniform(0.35, 0.6), rng.uniform(100, 150)), 2200)
     if name == "mouse":
-        n = 4 if kind == "ambient" else 7
-        return astromech(rng, n, 2500, 4500, "square")
+        n = 2 if kind == "ambient" else 4
+        return soft_beeps(rng, n, 1000, 1900, shape="triangle", cutoff=2200)
     if name == "probe":
-        return static(rng, 1.0 if kind == "ability" else rng.uniform(0.6, 0.9))
+        return lowpass(static(rng, 0.8 if kind == "ability" else rng.uniform(0.45, 0.7)), 2400)
     if name == "c3po":
-        return murmur(rng, 6 if kind != "ambient" else 4, 190, 0.18, VOWELS, servo=0.2)
+        return lowpass(murmur(rng, 5 if kind != "ambient" else 3, 190, 0.18, VOWELS, servo=0.15), 3500)
     if name == "b1":
-        return murmur(rng, 2 if kind != "ability" else 3, 150, 0.08, VOWELS[:2], rasp=0.25, servo=0.4)
+        return lowpass(murmur(rng, 2 if kind != "ability" else 3, 150, 0.08, VOWELS[:2], rasp=0.15, servo=0.3), 3000)
     if name == "k2so":
-        return murmur(rng, 3 if kind != "ambient" else 2, 105, 0.06, VOWELS[2:], servo=0.3)
+        return lowpass(murmur(rng, 3 if kind != "ambient" else 2, 105, 0.06, VOWELS[2:], servo=0.25), 3000)
     raise ValueError(name)
 
 
+def soft_servo_step(rng, seconds=0.12):
+    """Phase 12: a soft, low servo tick for each step instead of the bright whine of Phase 11."""
+    t = t_axis(seconds)
+    whine = np.sin(2 * np.pi * (300 + 120 * t / seconds) * t) * np.exp(-t / 0.045)
+    tick = bandpass_noise(seconds, 600, 2500, rng) * np.exp(-t / 0.006)
+    return normalize(lowpass(0.7 * whine + 0.3 * tick, 2000), 0.35)
+
+
 DROID_NAMES = ["r2d2", "c3po", "bb8", "chopper", "mouse", "probe", "b1", "k2so"]
+# Peak level of each kind: idle chatter quiet, reactions a little louder, abilities clearest.
+DROID_PEAKS = {"ambient": 0.3, "interact": 0.4, "ability": 0.5}
 
 
 def droids():
-    """The droid voices of Phase 11, each droid with its own random stream."""
+    """The droid voices (Phase 11, calmer since Phase 12), each droid with its own random stream.
+    Three idle variants, so the rare chatter does not repeat."""
     for index, name in enumerate(DROID_NAMES):
         rng = np.random.default_rng(2400 + index)
-        for kind in ("ambient1", "ambient2", "interact", "ability"):
-            x = droid_voice(name, kind.rstrip("12"), rng)
-            peak = 0.45 if kind.startswith("ambient") else 0.6
-            write_ogg(f"{name}_{kind}", normalize(x, peak), DROID_OUT)
-    write_ogg("step", servo_step(np.random.default_rng(2499)), DROID_OUT)
+        for kind in ("ambient1", "ambient2", "ambient3", "interact", "ability"):
+            base = kind.rstrip("123")
+            x = droid_voice(name, base, rng)
+            write_ogg(f"{name}_{kind}", normalize(x, DROID_PEAKS[base]), DROID_OUT)
+    write_ogg("step", soft_servo_step(np.random.default_rng(2499)), DROID_OUT)
 
 
 # Starships (Phase 11) ----------------------------------------------------------------------------
@@ -633,6 +685,55 @@ def ship_foils(rng, seconds=0.9):
     return normalize(whir + clunk, 0.55)
 
 
+def tie_howl(rng, base, formants, noise_level, brightness):
+    """Phase 12: the howl of a TIE's twin ion engines, built from scratch: a buzzing tone whose
+    harmonics are shaped by vowel-like resonances (the "scream"), a slow wobble of its pitch, and a
+    rushing band of noise beating against it. Everything runs whole times per ENGINE_SECONDS, so
+    the loop has no seam; the game raises pitch and volume with the speed."""
+    t = t_axis(ENGINE_SECONDS)
+    # base * ENGINE_SECONDS is whole, the wobble (2 Hz) is on the loop grid: the phase closes.
+    freq = base * (1.0 + 0.035 * np.sin(2 * np.pi * 2.0 * t))
+    phase = 2 * np.pi * np.cumsum(freq) / RATE
+    tone = np.zeros_like(t)
+    for h in range(1, 30):
+        f = base * h
+        weight = sum(level * np.exp(-((f - centre) / width) ** 2) for centre, width, level in formants)
+        tone += (weight + 0.04 / h) * np.sin(h * phase)
+    rush = periodic_noise(ENGINE_SECONDS, 500, 1000 + 2500 * brightness, rng) * noise_level
+    beat = 0.8 + 0.2 * np.sin(2 * np.pi * 24.0 * t)
+    roar = periodic_noise(ENGINE_SECONDS, 50, 220, rng) * 0.35
+    return normalize(soft_clip(tone * beat + rush + roar, 1.6), 0.5)
+
+
+def tie_laser(rng, seconds, start):
+    """Phase 12: a TIE cannon, brighter and snappier than the X-Wing's, with a short hard crack."""
+    shot = blaster_shot(rng, seconds, start, 140, 0.6, 0.6, 1.0, 9)
+    t = t_axis(seconds)
+    zap = np.sin(2 * np.pi * 2400 * t * (1.0 - 0.6 * t / seconds)) * np.exp(-t * 40) * 0.25
+    return normalize(soft_clip(shot + zap, 1.5), 0.8)
+
+
+def ship_hit(rng, seconds=0.45):
+    """Phase 12: a ship takes a hit: a metal clang over crackling sparks."""
+    t = t_axis(seconds)
+    clang = sum(np.sin(2 * np.pi * f * t) * np.exp(-t * d) for f, d in ((240, 14), (415, 18), (733, 24))) * 0.5
+    sparks = bandpass_noise(seconds, 2500, 9000, rng) * (rng.random(len(t)) > 0.6) * np.exp(-t * 16) * 0.6
+    thud = bandpass_noise(seconds, 60, 400, rng) * np.exp(-t * 30)
+    return normalize(soft_clip(clang + sparks + thud, 1.8), 0.7)
+
+
+def ship_explode(rng, seconds=2.4):
+    """Phase 12: a ship is destroyed: a deep blast, a rolling rumble and falling debris."""
+    t = t_axis(seconds)
+    blast = bandpass_noise(seconds, 30, 1800, rng) * np.exp(-t * 5)
+    rumble = bandpass_noise(seconds, 25, 160, rng) * np.exp(-t * 1.6) * 0.8
+    crackle = bandpass_noise(seconds, 1500, 7000, rng) * (rng.random(len(t)) > 0.85) * np.exp(-t * 2.5) * 0.4
+    debris = sum(np.sin(2 * np.pi * f * t) * np.exp(-np.maximum(t - d, 0) * 20) * (t > d)
+                 for f, d in ((520, 0.6), (690, 0.9), (410, 1.3), (880, 1.6))) * 0.12
+    attack = np.clip(t / 0.004, 0, 1)
+    return normalize(soft_clip((blast + rumble + crackle + debris) * attack, 2.2), 0.9)
+
+
 def ships():
     """The starship sounds of Phase 11, with their own random stream."""
     rng = np.random.default_rng(1977_11)
@@ -641,6 +742,20 @@ def ships():
     write_ogg("xwing_laser2", ship_laser(rng, 0.55), SHIP_OUT)
     write_ogg("crash", ship_crash(rng), SHIP_OUT)
     write_ogg("foils", ship_foils(rng), SHIP_OUT)
+
+
+def imperial_ships():
+    """Phase 12: the TIE Fighter and TIE Interceptor, hits and the explosion, own random stream."""
+    rng = np.random.default_rng(1977_12)
+    write_ogg("tie_fighter_engine", tie_howl(rng, 152.0, [(820, 260, 1.0), (1250, 300, 0.7), (2600, 500, 0.25)], 0.45, 0.6), SHIP_OUT)
+    write_ogg("tie_interceptor_engine", tie_howl(rng, 176.0, [(950, 280, 1.0), (1500, 320, 0.8), (3000, 600, 0.35)], 0.55, 0.9), SHIP_OUT)
+    write_ogg("tie_laser1", tie_laser(rng, 0.4, 1700), SHIP_OUT)
+    write_ogg("tie_laser2", tie_laser(rng, 0.42, 1850), SHIP_OUT)
+    write_ogg("interceptor_laser1", tie_laser(rng, 0.32, 2100), SHIP_OUT)
+    write_ogg("interceptor_laser2", tie_laser(rng, 0.34, 2250), SHIP_OUT)
+    write_ogg("hit1", ship_hit(rng), SHIP_OUT)
+    write_ogg("hit2", ship_hit(rng, 0.5), SHIP_OUT)
+    write_ogg("explode", ship_explode(rng), SHIP_OUT)
 
 
 # Planet ambiences (Phase 10) ---------------------------------------------------------------------
@@ -826,6 +941,10 @@ def main():
 
     if "--ships" in sys.argv:
         ships()
+        return
+
+    if "--imperial-ships" in sys.argv:
+        imperial_ships()
         return
 
     if "--phase11-combat" in sys.argv:

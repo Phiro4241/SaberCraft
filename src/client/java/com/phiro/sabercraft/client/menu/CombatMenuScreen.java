@@ -10,6 +10,7 @@ import net.minecraft.network.chat.Component;
 import com.phiro.sabercraft.client.SaberCraftClient;
 import com.phiro.sabercraft.client.ability.SaberAbilityClient;
 import com.phiro.sabercraft.client.combat.CombatConfig;
+import com.phiro.sabercraft.client.droid.DroidControl;
 
 /**
  * Combat, powers and keys: the keys of all moves and powers at a glance (changed in the vanilla
@@ -19,7 +20,7 @@ import com.phiro.sabercraft.client.combat.CombatConfig;
 public class CombatMenuScreen extends SaberMenuScreen {
 	private static final List<KeyMapping> KEYS = List.of(SaberAbilityClient.GUARD_KEY, SaberAbilityClient.SPIN_KEY, SaberAbilityClient.DASH_KEY,
 			SaberAbilityClient.PUSH_KEY, SaberAbilityClient.GRIP_KEY, SaberAbilityClient.PULL_KEY, SaberAbilityClient.JUMP_KEY,
-			SaberCraftClient.CUSTOMIZE_KEY);
+			SaberCraftClient.CUSTOMIZE_KEY, DroidControl.ABILITY_KEY, DroidControl.ORDER_KEY);
 
 	public CombatMenuScreen() {
 		super(Component.translatable("sabercraft.menu.combat.title"));
@@ -79,6 +80,6 @@ public class CombatMenuScreen extends SaberMenuScreen {
 			graphics.text(this.font, bound, x + COLUMN_WIDTH - this.font.width(bound) - 4, y, 0xFFFFD060);
 		}
 
-		this.note(graphics, Component.translatable("sabercraft.menu.combat.note"), 2);
+		this.note(graphics, Component.translatable("sabercraft.menu.combat.note"), 3);
 	}
 }

@@ -70,6 +70,11 @@ public class GraphicsMenuScreen extends SaberMenuScreen {
 			immersion.shipHud = v;
 			ImmersionConfig.save();
 		});
+		// Phase 12: the hint while looking at a droid.
+		this.toggle(1, 5, "sabercraft.option.droid_target_hud", immersion.droidTargetHud, v -> {
+			immersion.droidTargetHud = v;
+			ImmersionConfig.save();
+		});
 		this.closeButton();
 	}
 
