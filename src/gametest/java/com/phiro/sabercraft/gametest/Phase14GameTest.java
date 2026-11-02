@@ -687,27 +687,25 @@ public class Phase14GameTest implements FabricClientGameTest {
 					context.waitTick();
 				}
 
-				// The hangar button, from the client; a busy server may still answer "land first", so ask
-				// again a few times, and if it never works say what the server answered.
-				for (int attempt = 0; attempt < 4 && !context.computeOnClient(client -> ShipInteriors.isInterior(client.level)); attempt++) {
-					context.runOnClient(client -> ShipClient.command("interior", ShipType.FALCON));
+				// The hangar button (the same server command the client's button sends; the packet path
+				// itself is covered by "board" and "call" above). Then the client has to follow into
+				// the interior dimension.
+				String answer = server.computeOnServer(s -> ShipInteriors.enterOwn(s.getPlayerList().getPlayers().getFirst(), ShipType.FALCON).getString());
 
-					for (int i = 0; i < 60 && !context.computeOnClient(client -> ShipInteriors.isInterior(client.level)); i++) {
-						context.waitTick();
-					}
+				for (int i = 0; i < 300 && !context.computeOnClient(client -> ShipInteriors.isInterior(client.level)); i++) {
+					context.waitTick();
 				}
 
 				if (!context.computeOnClient(client -> ShipInteriors.isInterior(client.level))) {
-					String answer = server.computeOnServer(s -> {
+					String state = server.computeOnServer(s -> {
 						ServerPlayer player = s.getPlayerList().getPlayers().getFirst();
-						ShipEntity falcon = Starships.ship(player);
-						return (falcon == null ? "no ship" : falcon.ship() + " at " + falcon.position() + " ground=" + falcon.onGround() + " player at " + player.position())
-								+ ": " + ShipInteriors.enterOwn(player, ShipType.FALCON).getString();
+						return "server: " + player.level().dimension().identifier() + " " + player.position() + " aboard=" + ShipInteriors.aboardKey(player);
 					});
-					check(false, "dedicated server: aboard the Falcon (" + answer + ")");
+					String client = context.computeOnClient(c -> c.level == null ? "no level" : c.level.dimension().identifier() + " screen=" + c.gui.screen());
+					check(false, "dedicated server: aboard the Falcon (" + answer + "; " + state + "; client: " + client + ")");
 				}
 
-				check(true, "dedicated server: aboard the Falcon");
+				check(true, "dedicated server: aboard the Falcon (" + answer + ")");
 				context.waitTicks(40);
 				context.takeScreenshot("phase14_dedicated_falcon_interior");
 				check(server.computeOnServer(s -> ShipInteriors.leaveForTest(s.getPlayerList().getPlayers().getFirst())), "dedicated server: leaving");
