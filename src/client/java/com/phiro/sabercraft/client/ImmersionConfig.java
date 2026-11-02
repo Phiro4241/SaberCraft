@@ -118,6 +118,18 @@ public final class ImmersionConfig {
 	/** Phase 11: the flight display (speed, height, lasers) while flying a starship. */
 	@SerializedName("ship_hud")
 	public boolean shipHud = true;
+	/**
+	 * Phase 13: players sitting in a starship are not drawn (the own player and others), so no
+	 * oversized figure sticks out of the cockpit. Only the drawing changes.
+	 */
+	@SerializedName("ship_hide_pilot")
+	public boolean shipHidePilot = true;
+	/**
+	 * Phase 13: players with a SaberCraft character or outfit are drawn without their armor, so the
+	 * character stays recognizable. The armor still protects as always; only its look is hidden.
+	 */
+	@SerializedName("character_hide_armor")
+	public boolean characterHideArmor = true;
 	/** Phase 11: drawing and holstering a blaster are animated and heard. */
 	@SerializedName("blaster_draw")
 	public boolean blasterDraw = true;

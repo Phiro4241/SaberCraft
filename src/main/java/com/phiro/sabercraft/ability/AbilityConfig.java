@@ -1,7 +1,9 @@
 package com.phiro.sabercraft.ability;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 import com.google.gson.annotations.SerializedName;
 
@@ -11,6 +13,7 @@ import net.minecraft.world.item.ItemStack;
 
 import com.phiro.sabercraft.config.JsonConfig;
 import com.phiro.sabercraft.saber.SaberVariant;
+import com.phiro.sabercraft.ship.ShipType;
 
 /**
  * Server settings of the saber abilities, in {@code config/sabercraft/abilities.json}. Read when
@@ -289,6 +292,28 @@ public final class AbilityConfig {
 	/** Phase 12: seconds after a destroyed ship before its owner can call a new one. */
 	@SerializedName("ship_respawn_seconds")
 	public int shipRespawnSeconds = 60;
+	/**
+	 * Phase 13: hard landings and crashes cost hull, as a multiplier (1 = normal, 0 = never). A
+	 * gentle landing never does, and the pilot never takes fall damage from the ship.
+	 */
+	@SerializedName("ship_crash_damage")
+	public float shipCrashDamage = 1.0F;
+	/**
+	 * Phase 13: ships have flight energy. When it runs out the engines cut out: a small ship glides
+	 * down gently, the Star Destroyer holds still, until enough is charged again on the ground.
+	 * false: fly without limit, as before Phase 13.
+	 */
+	@SerializedName("ship_energy")
+	public boolean shipEnergy = true;
+	/** Phase 13: seconds each ship can fly at full throttle on full energy (hovering lasts twice as long). */
+	@SerializedName("ship_flight_seconds")
+	public Map<String, Integer> shipFlightSeconds = defaults(ShipType.Handling::energy);
+	/** Phase 13: seconds each ship needs to charge from empty to full, landed or parked. */
+	@SerializedName("ship_recharge_seconds")
+	public Map<String, Integer> shipRechargeSeconds = defaults(ShipType.Handling::recharge);
+	/** Phase 13: after running empty, the share of energy needed before the engines start again, 0..1. */
+	@SerializedName("ship_restart_share")
+	public float shipRestartShare = 0.25F;
 
 	/**
 	 * Phase 12: which swords may be chosen as lightsabers (menu button, {@code /sabercraft convert}).
@@ -305,9 +330,39 @@ public final class AbilityConfig {
 	@SerializedName("netherite_swords_are_sabers")
 	public boolean netheriteSwordsAreSabers = false;
 
+	private static Map<String, Integer> defaults(java.util.function.ToIntFunction<ShipType.Handling> value) {
+		Map<String, Integer> map = new LinkedHashMap<>();
+		ShipType.ALL.forEach(type -> map.put(type.id(), value.applyAsInt(type.handling())));
+		return map;
+	}
+
+	/** Phase 13: ticks a ship can fly at full throttle on full energy. */
+	public int flightTicks(ShipType type) {
+		return Mth.clamp(this.shipFlightSeconds.getOrDefault(type.id(), type.handling().energy()), 10, 36000) * 20;
+	}
+
+	/** Phase 13: ticks a ship needs to charge from empty to full. */
+	public int rechargeTicks(ShipType type) {
+		return Mth.clamp(this.shipRechargeSeconds.getOrDefault(type.id(), type.handling().recharge()), 1, 36000) * 20;
+	}
+
 	/** Phase 12: whether this sword may become a saber on this server. */
 	public boolean allowsSaber(ItemStack stack) {
 		return SaberVariant.isSword(stack) && this.saberSwords.contains(BuiltInRegistries.ITEM.getKey(stack.getItem()).toString());
+	}
+
+	private static Map<String, Integer> merged(Map<String, Integer> read, java.util.function.ToIntFunction<ShipType.Handling> value) {
+		Map<String, Integer> map = defaults(value);
+
+		if (read != null) {
+			read.forEach((id, seconds) -> {
+				if (id != null && seconds != null) {
+					map.put(id, seconds);
+				}
+			});
+		}
+
+		return map;
 	}
 
 	public static AbilityConfig get() {
@@ -370,6 +425,11 @@ public final class AbilityConfig {
 		config.shipSpeed = Mth.clamp(config.shipSpeed, 0.2F, 2.0F);
 		config.shipLaserDamage = Mth.clamp(config.shipLaserDamage, 0.0F, 10.0F);
 		config.shipRespawnSeconds = Mth.clamp(config.shipRespawnSeconds, 0, 3600);
+		config.shipCrashDamage = Mth.clamp(config.shipCrashDamage, 0.0F, 10.0F);
+		config.shipRestartShare = Mth.clamp(config.shipRestartShare, 0.0F, 1.0F);
+		// Ships missing in the file (a newer version added them) get their built-in values.
+		config.shipFlightSeconds = merged(config.shipFlightSeconds, ShipType.Handling::energy);
+		config.shipRechargeSeconds = merged(config.shipRechargeSeconds, ShipType.Handling::recharge);
 		if (config.saberSwords == null) {
 			config.saberSwords = new ArrayList<>(DEFAULT_SABER_SWORDS);
 		}

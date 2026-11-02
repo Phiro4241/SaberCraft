@@ -61,11 +61,22 @@ public final class ShipModels {
 	}
 
 	/**
-	 * Draws a ship standing at the origin, its nose to -z, in blocks.
+	 * How the moving parts of a ship stand (Phase 13).
 	 *
-	 * @param foils how far the S-foils are open, 0 closed to 1 open
+	 * @param foils how far the X-Wing's S-foils are open, 0 closed to 1 open
+	 * @param dish  the Falcon's radar dish, degrees around its post
+	 * @param legs  the Falcon's landing legs, 0 drawn in to 1 out
 	 */
-	public static void submit(PoseStack poseStack, SubmitNodeCollector collector, ShipType ship, float foils, List<ItemStackRenderState> states,
+	public record Pose(float foils, float dish, float legs) {
+		public static final Pose LANDED = new Pose(0.0F, 30.0F, 1.0F);
+		public static final Pose FLYING = new Pose(1.0F, 30.0F, 0.0F);
+	}
+
+	/** How far the Falcon's legs draw up into the hull, blocks. */
+	private static final float LEG_TRAVEL = 0.9F;
+
+	/** Draws a ship standing at the origin, its nose to -z, in blocks. */
+	public static void submit(PoseStack poseStack, SubmitNodeCollector collector, ShipType ship, Pose pose, List<ItemStackRenderState> states,
 			int light, int outline) {
 		List<ShipParts.Part> parts = parts(ship);
 
@@ -73,18 +84,20 @@ public final class ShipModels {
 			ShipParts.Part part = parts.get(i);
 			poseStack.pushPose();
 			poseStack.translate(part.x(), part.y(), part.z());
-			float angle = foils * FOIL_ANGLE;
+			float angle = pose.foils() * FOIL_ANGLE;
 
 			// Upper right and lower left turn one way, the others the other way: an X.
 			switch (part.name()) {
 				case "wing_ur", "wing_ll" -> poseStack.mulPose(Axis.ZP.rotationDegrees(angle));
 				case "wing_ul", "wing_lr" -> poseStack.mulPose(Axis.ZP.rotationDegrees(-angle));
+				case "dish" -> poseStack.mulPose(Axis.YP.rotationDegrees(pose.dish()));
+				case "legs" -> poseStack.translate(0.0F, (1.0F - pose.legs()) * LEG_TRAVEL, 0.0F);
 				default -> {
 				}
 			}
 
 			// The item model is drawn around its middle, which is the part's pivot.
-			poseStack.scale(ShipParts.SCALE, ShipParts.SCALE, ShipParts.SCALE);
+			poseStack.scale(part.scale(), part.scale(), part.scale());
 			states.get(i).submit(poseStack, collector, light, OverlayTexture.NO_OVERLAY, outline);
 			poseStack.popPose();
 		}

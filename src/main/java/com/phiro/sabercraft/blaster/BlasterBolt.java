@@ -51,6 +51,8 @@ import com.phiro.sabercraft.advancement.SaberAdvancements;
 public class BlasterBolt extends ThrowableItemProjectile {
 	public static final String MARKER = SaberCraft.id("bolt").toString();
 	public static final ResourceKey<DamageType> DAMAGE = ResourceKey.create(Registries.DAMAGE_TYPE, SaberCraft.id("blaster"));
+	private static int blasts;
+
 	private final BlasterType type;
 	private final float damage;
 	private final boolean fire;
@@ -144,15 +146,29 @@ public class BlasterBolt extends ThrowableItemProjectile {
 		if (this.level() instanceof ServerLevel level) {
 			Vec3 at = hit.getLocation();
 			int rgb = Blasters.boltRgb(this.type);
-			level.sendParticles(new DustParticleOptions(rgb, 1.2F), at.x, at.y, at.z, 8, 0.08, 0.08, 0.08, 0.02);
-			level.sendParticles(ParticleTypes.ELECTRIC_SPARK, at.x, at.y, at.z, 6, 0.05, 0.05, 0.05, 0.25);
+			boolean ship = this.type.isShipLaser();
+			boolean heavy = this.type == BlasterType.TURBOLASER;
+			level.sendParticles(new DustParticleOptions(rgb, heavy ? 2.4F : 1.2F), at.x, at.y, at.z, heavy ? 14 : 8, 0.08, 0.08, 0.08, 0.02);
+			level.sendParticles(ParticleTypes.ELECTRIC_SPARK, at.x, at.y, at.z, heavy ? 12 : 6, 0.05, 0.05, 0.05, 0.25);
 
 			if (hit.getType() == HitResult.Type.BLOCK) {
-				level.sendParticles(ParticleTypes.SMOKE, at.x, at.y, at.z, 3, 0.04, 0.04, 0.04, 0.01);
+				level.sendParticles(ParticleTypes.SMOKE, at.x, at.y, at.z, ship ? 6 : 3, 0.06, 0.06, 0.06, 0.01);
+
+				// Phase 13: a ship bolt leaves a short scorch: a puff of hot smoke and a few embers.
+				if (ship) {
+					level.sendParticles(ParticleTypes.LARGE_SMOKE, at.x, at.y, at.z, heavy ? 4 : 1, 0.1, 0.1, 0.1, 0.01);
+					level.sendParticles(ParticleTypes.SMALL_FLAME, at.x, at.y, at.z, heavy ? 6 : 2, 0.08, 0.08, 0.08, 0.02);
+				}
 			}
 
-			level.playSound(null, at.x, at.y, at.z, Holder.direct(SoundEvent.createVariableRangeEvent(SaberCraft.id("blaster.impact"))),
-					SoundSource.PLAYERS, 0.7F, 0.9F + this.random.nextFloat() * 0.2F);
+			// Phase 13: ship bolts have their own, heavier impact, and no two impact sounds pile up
+			// on one spot (a salvo, a held trigger): the first one is heard, the rest only seen.
+			if (ImpactSounds.allow(level, at)) {
+				String sound = !ship ? "blaster.impact" : heavy ? "ship.laser_impact_heavy" : "ship.laser_impact";
+				level.playSound(null, at.x, at.y, at.z, Holder.direct(SoundEvent.createVariableRangeEvent(SaberCraft.id(sound))),
+						SoundSource.PLAYERS, ship ? 0.8F : 0.7F, 0.9F + this.random.nextFloat() * 0.2F);
+			}
+
 			this.discard();
 		}
 	}
@@ -182,6 +198,22 @@ public class BlasterBolt extends ThrowableItemProjectile {
 		DamageSource source = new DamageSource(level.registryAccess().lookupOrThrow(Registries.DAMAGE_TYPE).getOrThrow(DAMAGE), this, owner);
 
 		if (target.hurtServer(level, source, this.damage) && target instanceof LivingEntity living) {
+			// Phase 13: a ship bolt that destroys its target makes a small blast (no block damage);
+			// only that hit, never every shot, and not twice on one spot at once.
+			if (this.type.isShipLaser() && !living.isAlive()) {
+				Vec3 at = living.position().add(0.0, living.getBbHeight() * 0.5, 0.0);
+				level.sendParticles(ParticleTypes.EXPLOSION, at.x, at.y, at.z, 1, 0.0, 0.0, 0.0, 0.0);
+				level.sendParticles(ParticleTypes.LARGE_SMOKE, at.x, at.y, at.z, 6, 0.3, 0.3, 0.3, 0.02);
+				level.sendParticles(ParticleTypes.FLAME, at.x, at.y, at.z, 4, 0.2, 0.2, 0.2, 0.03);
+
+				if (ImpactSounds.allow(level, at.add(0.0, 1000.0, 0.0), 10, 6.0)) {
+					level.playSound(null, at.x, at.y, at.z, Holder.direct(SoundEvent.createVariableRangeEvent(SaberCraft.id("ship.small_blast"))),
+							SoundSource.PLAYERS, 0.9F, 0.9F + this.random.nextFloat() * 0.2F);
+				}
+
+				blasts++;
+			}
+
 			if (owner instanceof ServerPlayer shooter && shooter.distanceTo(living) >= SaberAdvancements.SHARPSHOOTER_DISTANCE) {
 				SaberAdvancements.award(shooter, SaberAdvancements.SHARPSHOOTER);
 			}
@@ -203,5 +235,10 @@ public class BlasterBolt extends ThrowableItemProjectile {
 
 	public BlasterType type() {
 		return this.type;
+	}
+
+	/** Only for tests: how many small blasts ship bolts made (Phase 13). */
+	public static int blasts() {
+		return blasts;
 	}
 }
