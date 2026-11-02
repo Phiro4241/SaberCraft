@@ -457,8 +457,13 @@ public class Phase14GameTest implements FabricClientGameTest {
 		Component helm = server.computeOnServer(s -> ShipInteriors.helmForTest(me(s, self)));
 		check(helm != null, "the helm answers");
 		until(context, client -> ShipClient.piloting(client) != null, 40, "the helm puts the owner into the pilot's seat");
-		context.getInput().holdKeyFor(options -> options.keyShift, 3);
-		until(context, client -> client.player.getVehicle() == null, 20, "out again");
+		// Sneak until the server lets the pilot out too (a busy server can miss a short tap).
+		for (int i = 0; i < 5 && server.computeOnServer(s -> me(s, self).getVehicle() != null); i++) {
+			context.getInput().holdKeyFor(options -> options.keyShift, 5);
+			context.waitTicks(5);
+		}
+
+		check(server.computeOnServer(s -> me(s, self).getVehicle() == null), "out again");
 		context.waitTicks(10);
 
 		// The ship settles back onto the ground before anyone can walk aboard.

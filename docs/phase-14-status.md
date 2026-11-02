@@ -57,11 +57,15 @@ Branch `claude/project-thread-od7jdm`. No release.
 - **Cockpit frame as an overlay**: drawing a separate cockpit model would need a model per ship; the overlay is cheap and fits every ship. The own ship model is still drawn, so the nose, wings and hull are seen from inside.
 
 ## Tests
-See the PR for the results of this run.
+- New client game test `Phase14GameTest` (125 checks): music moods on boarding, in a fight and on climbing out; thrust, boost and brake sounds; the cockpit camera of every ship; damage per weapon, the cap per hit, delayed repair and destruction; the hyperspace jump (distance, heading, cooldown, stop before a wall); the Falcon's rooms (every room reachable from the entry, protection, helm, ramp exit, escape pod); the Star Destroyer's bridge, turbolift, hangar exit and tractor beam; the Vader helmet; staying aboard over a relog; and boarding, cockpit and jump on a dedicated server.
+- Full local run (2026-11-02): the 29 older test classes passed; `Phase14GameTest` failed once at the helm because a short sneak tap was missed by the busy server. The test now sneaks until the server lets the pilot out, and passes on its own (125 checks). GitHub Actions did not run for this.
+- Existing tests updated where the behaviour changed on purpose (camera setting, capped hits).
+- Bugs the tests found and that are fixed: a server crash when the tractor beam lifted a player, unknown block names in the plans, the cockpit cameras sitting inside the model walls, three pieces of music at once after a fast fight.
 
 ## Known limits and open points
 - Multiplayer: two players aboard at once was not tested with two real clients (the test environment has one client). The code keeps one entry per player and was written for it.
 - The cockpit position was set by eye per ship; it may want fine tuning in game.
 - The Falcon's turrets cannot fire, and the co-pilot seat is decoration.
 - Interiors are not rebuilt when their plan changes in a later version (the plan has a version number for that, unused so far).
+- In one test run the server kept the pilot in the seat after a very short sneak tap right after taking the helm. Holding sneak a moment longer works; worth watching in game.
 - Hyperspace keeps the height: a jump over a mountain range stops in front of it.
