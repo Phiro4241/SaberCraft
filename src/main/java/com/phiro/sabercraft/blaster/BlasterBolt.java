@@ -111,12 +111,57 @@ public class BlasterBolt extends ThrowableItemProjectile {
 			}
 		}
 
+		// Phase 14: big ships are much larger than their collision box; their hull is checked too.
+		EntityHitResult hull = this.level().isClientSide() ? null : this.hullHit();
+
+		if (hull != null) {
+			this.hitTargetOrDeflectSelf(hull);
+
+			if (!this.isAlive()) {
+				return;
+			}
+		}
+
 		super.tick();
 
 		// Bolts that hit nothing fade at the end of their range (Phase 11: per type).
 		if (this.isAlive() && this.tickCount > this.type.lifetime()) {
 			this.discard();
 		}
+	}
+
+	/**
+	 * Phase 14: a starship whose hull (its {@code ShipFeatures} boxes, as big as the drawn model)
+	 * this step of the bolt crosses before any block, or {@code null}. Never the ship of the shooter.
+	 */
+	private @Nullable EntityHitResult hullHit() {
+		Vec3 from = this.position();
+		Vec3 to = from.add(this.getDeltaMovement());
+		Entity owner = this.getOwner();
+		EntityHitResult best = null;
+		double bestShare = 2.0;
+
+		for (com.phiro.sabercraft.ship.ShipEntity ship : this.level().getEntitiesOfClass(com.phiro.sabercraft.ship.ShipEntity.class,
+				this.getBoundingBox().expandTowards(this.getDeltaMovement()).inflate(48.0), Entity::isAlive)) {
+			if (owner != null && (ship.hasPassenger(owner) || ship.owner().equals(owner.getUUID())) || !this.canHitEntity(ship)) {
+				continue;
+			}
+
+			double share = com.phiro.sabercraft.ship.ShipFeatures.of(ship.ship()).clip(ship.position(), ship.getYRot(), from, to);
+
+			if (share >= 0.0 && share <= 1.0 && share < bestShare) {
+				Vec3 at = from.add(to.subtract(from).scale(share));
+				HitResult block = this.level().clip(new net.minecraft.world.level.ClipContext(from, at, net.minecraft.world.level.ClipContext.Block.COLLIDER,
+						net.minecraft.world.level.ClipContext.Fluid.NONE, this));
+
+				if (block.getType() == HitResult.Type.MISS) {
+					bestShare = share;
+					best = new EntityHitResult(ship, at);
+				}
+			}
+		}
+
+		return best;
 	}
 
 	/** A target whose hit box, grown by the same margin vanilla uses this tick, already holds the bolt. */

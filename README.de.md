@@ -51,6 +51,8 @@ Die JAR `sabercraft-0.1.0.jar` gibt es unter **[Releases](https://github.com/Phi
 | **K** | Machtsprung |
 | **N** | Fähigkeit des Droiden, den du anschaust (nur eigene, bis 12 Blöcke) |
 | **U** | Angeschauter Droide wartet hier oder folgt wieder |
+| **X** | Hyperraumsprung des Schiffs, das du fliegst (Phase 14) |
+| Schleichen + Rechtsklick auf den gelandeten Falcon | An Bord gehen (Phase 14); im Hangar geht es auch mit **An Bord gehen** |
 
 Alle Tasten lassen sich unter Optionen → Steuerung → Tastenbelegung → SaberCraft ändern. Doppelt belegte Tasten zeigt Minecraft dort rot an.
 

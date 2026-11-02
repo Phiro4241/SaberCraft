@@ -412,11 +412,27 @@ public class Phase12GameTest implements FabricClientGameTest {
 		context.waitTicks(10);
 		context.takeScreenshot("phase12_ship_hit");
 
+		// Phase 14: no single hit destroys a ship; a huge one takes at most a quarter of the hull, a few more finish it.
+		float before = server.computeOnServer(s -> ship(s).getHealth());
 		server.computeOnServer(s -> {
 			ShipEntity ship = ship(s);
 			ship.hurtServer(s.overworld(), s.overworld().damageSources().explosion(null, null), 500.0F);
 			return null;
 		});
+		float after = server.computeOnServer(s -> ship(s).getHealth());
+		check(after > 0.0F && before - after <= ShipType.TIE_FIGHTER.hull() * 0.25F + 0.01F,
+				"a huge hit takes at most a quarter of the hull (" + before + " -> " + after + ")");
+
+		for (int i = 0; i < 6 && server.computeOnServer(s -> Starships.liveCount()) > 0; i++) {
+			server.computeOnServer(s -> {
+				ShipEntity ship = ship(s);
+				ship.invulnerableTime = 0;
+				ship.hurtServer(s.overworld(), s.overworld().damageSources().explosion(null, null), 500.0F);
+				return null;
+			});
+			context.waitTick();
+		}
+
 		context.waitTicks(5);
 		check(ShipEntity.explosions() == explosions + 1, "a destroyed ship explodes");
 		check(context.computeOnClient(client -> ShipClient.piloting(client) == null), "the pilot is thrown out");

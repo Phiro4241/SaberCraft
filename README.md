@@ -196,6 +196,8 @@ All keys are in **Options → Controls → Key Binds → SaberCraft** and can be
 | **K** | Force jump |
 | **N** | Ability of the droid you look at (only your own droids, up to 12 blocks) |
 | **U** | The droid you look at waits here or follows again |
+| **X** | Hyperspace jump of the ship you fly (Phase 14) |
+| Sneak + right-click a landed Falcon | Walk aboard (Phase 14); the hangar button **Walk aboard** works too |
 | Right mouse button (blaster) | Fire; costs one arrow |
 
 **Starships** (fixed keys, they reuse your movement keys):

@@ -42,6 +42,8 @@ public class ShipMenuScreen extends SaberMenuScreen {
 	private @Nullable Button call;
 	private @Nullable Button fly;
 	private @Nullable Button dismiss;
+	/** Phase 14: walk aboard (ships with an interior). */
+	private @Nullable Button aboard;
 	private float yaw = 210.0F;
 	private float pitch = 18.0F;
 	private long lastFrame = Util.getMillis();
@@ -77,6 +79,8 @@ public class ShipMenuScreen extends SaberMenuScreen {
 				.bounds(x + BUTTON_WIDTH + 1, buttons, BUTTON_WIDTH, 20).build());
 		this.dismiss = this.addRenderableWidget(Button.builder(Component.translatable("sabercraft.ship.menu.dismiss"), b -> this.send("dismiss"))
 				.bounds(x + 2 * (BUTTON_WIDTH + 1), buttons, BUTTON_WIDTH, 20).build());
+		this.aboard = this.addRenderableWidget(Button.builder(Component.translatable("sabercraft.ship.menu.aboard"), b -> this.send("interior"))
+				.bounds(this.left + 10, this.top + PANEL_HEIGHT - 24, CARD_WIDTH, 20).build());
 		this.updateButtons();
 	}
 
@@ -89,8 +93,8 @@ public class ShipMenuScreen extends SaberMenuScreen {
 	private void send(String action) {
 		ShipClient.command(action, this.chosen);
 
-		// Climbing in from the menu: straight to the cockpit.
-		if (action.equals("board")) {
+		// Climbing in from the menu: straight to the cockpit (or aboard).
+		if (action.equals("board") || action.equals("interior")) {
 			this.onClose();
 		}
 	}
@@ -112,6 +116,13 @@ public class ShipMenuScreen extends SaberMenuScreen {
 
 		if (this.dismiss != null) {
 			this.dismiss.active = ShipClient.serverSupports() && out;
+		}
+
+		if (this.aboard != null) {
+			boolean interior = com.phiro.sabercraft.ship.ShipFeatures.of(this.chosen).interior() != null;
+			this.aboard.visible = interior;
+			this.aboard.active = usable && out;
+			this.aboard.setTooltip(Tooltip.create(Component.translatable("sabercraft.ship.menu.aboard.tooltip")));
 		}
 	}
 

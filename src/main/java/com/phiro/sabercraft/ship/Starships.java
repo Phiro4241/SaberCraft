@@ -19,6 +19,7 @@ import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
@@ -73,7 +74,7 @@ public final class Starships {
 	 * @param dimension the level it is in
 	 * @param piloted   whether its owner sat in it (when they logged out)
 	 */
-	public record Parked(String ship, String dimension, double x, double y, double z, float yaw, boolean piloted) {
+	public record Parked(String ship, String dimension, double x, double y, double z, float yaw, boolean piloted, float hull) {
 		public static final Codec<Parked> CODEC = RecordCodecBuilder.create(instance -> instance.group(
 				Codec.STRING.fieldOf("ship").forGetter(Parked::ship),
 				Codec.STRING.fieldOf("dimension").forGetter(Parked::dimension),
@@ -81,7 +82,9 @@ public final class Starships {
 				Codec.DOUBLE.fieldOf("y").forGetter(Parked::y),
 				Codec.DOUBLE.fieldOf("z").forGetter(Parked::z),
 				Codec.FLOAT.fieldOf("yaw").forGetter(Parked::yaw),
-				Codec.BOOL.optionalFieldOf("piloted", false).forGetter(Parked::piloted)
+				Codec.BOOL.optionalFieldOf("piloted", false).forGetter(Parked::piloted),
+				// Phase 14: the hull when it was parked (-1: full, as before Phase 14).
+				Codec.FLOAT.optionalFieldOf("hull", -1.0F).forGetter(Parked::hull)
 		).apply(instance, Parked::new));
 
 		Vec3 position() {
@@ -103,8 +106,14 @@ public final class Starships {
 	 */
 	private static final Map<UUID, StoredEnergy> ENERGY = new HashMap<>();
 
-	private record StoredEnergy(String ship, float energy, boolean depleted, long time) {
+	private record StoredEnergy(String ship, float energy, boolean depleted, long time, float hull, int sinceDamage) {
 	}
+
+	/** Phase 14: a secondary blast of a destroyed ship, due at a game time. */
+	private record Blast(ServerLevel level, Vec3 at, long time, float size) {
+	}
+
+	private static final java.util.List<Blast> BLASTS = new java.util.ArrayList<>();
 
 	private Starships() {
 	}
@@ -116,6 +125,8 @@ public final class Starships {
 			if (server.getTickCount() % 10 == 0) {
 				tick(server);
 			}
+
+			blasts();
 		});
 		ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> {
 			rejoin(handler.getPlayer());
@@ -148,6 +159,8 @@ public final class Starships {
 			LAST_COMMAND.clear();
 			GROUNDED_UNTIL.clear();
 			ENERGY.clear();
+			BLASTS.clear();
+			Hyperspace.reset();
 		});
 	}
 
@@ -196,8 +209,11 @@ public final class Starships {
 
 			if (ship != null) {
 				boolean flying = ship.pilot() == player;
+				// Phase 14: the owner walking around inside it keeps it where it is (while its chunk is loaded).
+				boolean aboard = com.phiro.sabercraft.interior.ShipInteriors.isAboard(player, ship.ship());
 
-				if (!flying && (ship.level() != player.level() || ship.distanceToSqr(player) > (double) DESPAWN_DISTANCE * DESPAWN_DISTANCE)) {
+				if (!flying && !aboard
+						&& (ship.level() != player.level() || ship.distanceToSqr(player) > (double) DESPAWN_DISTANCE * DESPAWN_DISTANCE)) {
 					// Far away: it stays parked where it is and disappears until the owner is back.
 					park(player, ship);
 					ship.ejectPassengers();
@@ -206,6 +222,7 @@ public final class Starships {
 					sendStatus(player);
 				} else {
 					park(player, ship);
+					com.phiro.sabercraft.interior.ShipInteriors.remember(player.getUUID(), ship);
 				}
 			} else if (player.isAlive() && !player.isSpectator()
 					&& parked.dimension().equals(dimension(player.level()))
@@ -222,10 +239,12 @@ public final class Starships {
 	private static void park(ServerPlayer player, ShipEntity ship) {
 		Parked old = parked(player);
 		boolean piloted = ship.pilot() == player;
-		Parked now = new Parked(ship.ship().id(), dimension((ServerLevel) ship.level()), ship.getX(), ship.getY(), ship.getZ(), ship.getYRot(), piloted);
+		float hull = ship.getHealth() >= ship.getMaxHealth() ? -1.0F : ship.getHealth();
+		Parked now = new Parked(ship.ship().id(), dimension((ServerLevel) ship.level()), ship.getX(), ship.getY(), ship.getZ(), ship.getYRot(), piloted,
+				hull);
 
 		if (old == null || old.piloted() != piloted || !old.dimension().equals(now.dimension()) || old.position().distanceToSqr(now.position()) > 0.25
-				|| Math.abs(Mth.wrapDegrees(old.yaw() - now.yaw())) > 5.0F) {
+				|| Math.abs(Mth.wrapDegrees(old.yaw() - now.yaw())) > 5.0F || Math.abs(old.hull() - now.hull()) >= 0.5F) {
 			player.setAttached(PARKED, now);
 		}
 	}
@@ -235,6 +254,7 @@ public final class Starships {
 		ServerLevel level = player.level();
 		ShipEntity ship = new ShipEntity(level, type, player);
 		restoreEnergy(player.getUUID(), ship, level.getGameTime());
+		restoreHull(player, ship, level.getGameTime());
 		ship.snapTo(pos.x, pos.y, pos.z, yaw, 0.0F);
 		ship.setYHeadRot(yaw);
 		ship.setYBodyRot(yaw);
@@ -248,10 +268,78 @@ public final class Starships {
 		return ship;
 	}
 
-	/** Phase 13: remembers the energy of a ship, every tick it is in the world. */
+	/** Phase 13: remembers the energy of a ship, every tick it is in the world. Phase 14: and its hull. */
 	static void storeEnergy(ShipEntity ship) {
 		if (isCurrent(ship)) {
-			ENERGY.put(ship.owner(), new StoredEnergy(ship.ship().id(), ship.energy(), ship.depleted(), ship.level().getGameTime()));
+			ENERGY.put(ship.owner(), new StoredEnergy(ship.ship().id(), ship.energy(), ship.depleted(), ship.level().getGameTime(), ship.getHealth(),
+					ship.sinceDamage()));
+		}
+	}
+
+	/**
+	 * Phase 14: a ship coming back into the world keeps the damage it had: from the last time it
+	 * was in the world while the server runs, else from where it was parked (saved with its owner).
+	 * While parked it mends as if it stood on the ground, after the same wait.
+	 */
+	private static void restoreHull(ServerPlayer owner, ShipEntity ship, long now) {
+		StoredEnergy stored = ENERGY.get(owner.getUUID());
+		float hull;
+		long since;
+
+		if (stored != null && stored.ship().equals(ship.ship().id()) && stored.hull() > 0.0F) {
+			hull = stored.hull();
+			since = stored.sinceDamage() + Math.max(0L, now - stored.time());
+		} else {
+			Parked parked = parked(owner);
+
+			if (parked == null || !parked.ship().equals(ship.ship().id()) || parked.hull() <= 0.0F) {
+				return;
+			}
+
+			hull = parked.hull();
+			// Unknown how long it stood: as if the wait had just passed.
+			since = AbilityConfig.get().shipRepairDelaySeconds * 20L;
+		}
+
+		AbilityConfig config = AbilityConfig.get();
+		long delay = config.shipRepairDelaySeconds * 20L;
+		long mending = Math.max(0L, since - delay);
+		hull += ship.getMaxHealth() * config.shipRepairPerMinute / 1200.0F * mending;
+		ship.restoreHull(hull, (int) Math.min(Integer.MAX_VALUE / 2, since));
+	}
+
+	/**
+	 * Phase 14: the secondary blasts of a destroyed ship: two to four smaller explosions around
+	 * where it was, over the next second (bigger ships more), without block damage or harm.
+	 */
+	static void wreckage(ServerLevel level, ShipType type, Vec3 centre, double radius) {
+		int count = type.capital() ? 4 : type == ShipType.FALCON ? 3 : 2;
+		long now = level.getGameTime();
+
+		for (int i = 0; i < count; i++) {
+			double angle = level.getRandom().nextDouble() * Math.PI * 2.0;
+			double away = radius * (0.3 + 0.4 * level.getRandom().nextDouble());
+			Vec3 at = centre.add(Math.cos(angle) * away, (level.getRandom().nextDouble() - 0.3) * radius * 0.3, Math.sin(angle) * away);
+			BLASTS.add(new Blast(level, at, now + 6L + i * (type.capital() ? 8L : 5L), type.capital() ? 1.5F : 1.0F));
+		}
+	}
+
+	private static void blasts() {
+		for (java.util.Iterator<Blast> it = BLASTS.iterator(); it.hasNext();) {
+			Blast blast = it.next();
+
+			if (blast.level().getGameTime() < blast.time()) {
+				continue;
+			}
+
+			it.remove();
+			ServerLevel level = blast.level();
+			Vec3 at = blast.at();
+			level.sendParticles(ParticleTypes.EXPLOSION, at.x, at.y, at.z, blast.size() > 1.0F ? 3 : 1, 0.6, 0.4, 0.6, 0.0);
+			level.sendParticles(ParticleTypes.LARGE_SMOKE, at.x, at.y, at.z, 12, 0.6, 0.4, 0.6, 0.03);
+			level.sendParticles(ParticleTypes.FLAME, at.x, at.y, at.z, 10, 0.4, 0.3, 0.4, 0.06);
+			level.playSound(null, at.x, at.y, at.z, ShipEntity.sound("ship.small_blast"), SoundSource.NEUTRAL, 1.2F * blast.size(),
+					0.8F + level.getRandom().nextFloat() * 0.3F);
 		}
 	}
 
@@ -294,6 +382,8 @@ public final class Starships {
 		}
 
 		LIVE.remove(ship.owner());
+		// Phase 14: a new ship starts with a whole hull.
+		ENERGY.remove(ship.owner());
 		ServerPlayer owner = ship.level().getServer().getPlayerList().getPlayer(ship.owner());
 
 		if (owner != null) {
@@ -312,6 +402,9 @@ public final class Starships {
 		}
 
 		GROUNDED_UNTIL.put(ship.owner(), ship.level().getGameTime() + AbilityConfig.get().shipRespawnSeconds * 20L);
+		// Phase 14: whoever is aboard gets out in an escape pod, next to the wreck.
+		com.phiro.sabercraft.interior.ShipInteriors.shipLost(ship.level().getServer(), ship.owner(), ship.ship(), (ServerLevel) ship.level(),
+				ship.position());
 		ServerPlayer owner = ship.level().getServer().getPlayerList().getPlayer(ship.owner());
 
 		if (owner != null) {
@@ -380,6 +473,12 @@ public final class Starships {
 		}
 
 		switch (action) {
+			case "hyperspace" -> {
+				return Hyperspace.request(player);
+			}
+			case "interior" -> {
+				return com.phiro.sabercraft.interior.ShipInteriors.enterOwn(player, type);
+			}
 			case "call" -> {
 				return call(player, type, name);
 			}
@@ -503,6 +602,11 @@ public final class Starships {
 		}
 
 		return null;
+	}
+
+	/** Phase 14: the owner pulled the helm lever in the interior (and was just put next to the ship). */
+	public static Component takeHelm(ServerPlayer player, ShipEntity ship) {
+		return board(player, ship);
 	}
 
 	/** The owner climbs into their ship. Called from a right-click on the ship and the hangar. */

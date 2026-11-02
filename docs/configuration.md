@@ -100,14 +100,25 @@ Decided by the server (in single player by the integrated server). Players conne
 | `saber_swords` | all seven vanilla swords | Phase 12: which kinds of sword may be chosen as a lightsaber (menu button or `/sabercraft convert`), as item ids such as `"minecraft:iron_sword"`. Only chosen swords are lightsabers; every other sword stays a normal Minecraft sword without blade, glow or saber animations. Sabers chosen before stay sabers even if their kind is removed later. |
 | `netherite_swords_are_sabers` | `false` | Phase 12: the old rule (up to Phase 11) that every netherite sword is a red lightsaber. `true`: a netherite sword held by a player becomes a saber by itself (it is marked on the server, so it also works for clients); one turned back with "Normal sword" or `/sabercraft revert` stays plain. |
 | `droid_chatter_seconds` | `45` | Phase 12: about how many seconds lie between two idle beeps of one droid. Droids chatter only near their owner, and never right after another droid of the same owner spoke (at least 15 s in between). `0`: no idle chatter at all. |
-| `ship_damage` | `true` | Phase 12: starships take damage from other players, mobs, bolts and explosions (never from their own pilot). They mend slowly after 10 s without a hit and explode at 0 hull. `false`: ships cannot be damaged. |
+| `ship_damage` | `true` | Phase 12: starships take damage from other players, mobs, bolts and explosions (never from their own pilot). Since Phase 14 they mend only after `ship_repair_delay_seconds` and slowly, and explode at 0 hull. `false`: ships cannot be damaged. |
 | `ship_respawn_seconds` | `60` | Phase 12: after a ship was destroyed, its owner waits this many seconds before calling a new one. |
 | `ship_crash_damage` | `1.0` | Phase 13: multiplier for the hull damage of hard landings and crashes, 0..10. `0`: impacts never cost hull. Gentle landings are always free, and the pilot never takes fall damage from a ship. |
 | `ship_energy` | `true` | Phase 13: ships have flight energy. When it runs out the engines cut out: a fighter glides down slowly and safely, the Star Destroyer holds still. `false`: unlimited flight as before. |
 | `ship_flight_seconds` | `xwing 300`, `tie_fighter 180`, `tie_interceptor 150`, `falcon 480`, `star_destroyer 900` | Phase 13: seconds of flight at full throttle on full energy, per ship (10..36000). Hovering or flying slowly uses half as much. |
 | `ship_recharge_seconds` | `xwing 45`, `tie_fighter 30`, `tie_interceptor 30`, `falcon 60`, `star_destroyer 120` | Phase 13: seconds from empty to full while landed, parked or unpiloted (the Star Destroyer also while it stands still). |
 | `ship_restart_share` | `0.25` | Phase 13: after running empty, the share of energy needed before the engines start again, 0..1. |
-| `config_version` | `13` | Phase 13: the version of the file, used to move changed defaults over once. Do not edit. |
+| `ship_repair_delay_seconds` | `45` | Phase 14: seconds without any damage (hits and hard landings) before the hull starts to mend, 0..3600. |
+| `ship_repair_per_minute` | `0.1` | Phase 14: share of the full hull mended per minute after the delay, 0..1. `0`: no mending at all. |
+| `ship_repair_in_flight` | `false` | Phase 14: whether the hull also mends in flight. `false`: only landed, parked, unpiloted (or a Star Destroyer standing still). |
+| `ship_weapon_damage` | `saber 1`, `blaster 1`, `ship_laser 1`, `explosion 1`, `other 0.5` | Phase 14: multiplier of each kind of weapon against ship hulls (0..10). On top, each ship is tougher against hand weapons (Falcon 60 %, Star Destroyer 15 %) and heavy weapons (Falcon 85 %, Star Destroyer 50 %). |
+| `ship_max_hit_share` | `0.25` | Phase 14: no single hit takes more than this share of the full hull, so nothing is destroyed in one hit, 0.05..1. Hard crashes are not capped. |
+| `hyperspace_enabled` | `true` | Phase 14: the hyperspace jump (key X while flying). |
+| `hyperspace_distance` | `160` | Phase 14: how far a jump goes at most, blocks (32..1024); TIEs jump 85 %, the Star Destroyer 60 %. The jump stops short of anything in the way and never leaves loaded chunks or the world border. |
+| `hyperspace_cooldown_seconds` | `60` | Phase 14: seconds between two jumps of one player, 0..3600. |
+| `hyperspace_energy_share` | `0.2` | Phase 14: share of a full energy charge one jump costs (only with `ship_energy`), 0..1. |
+| `ship_interiors` | `true` | Phase 14: the Millennium Falcon and the Star Destroyer can be walked through (dimension `sabercraft:ship_interiors`). |
+| `ship_interior_guests` | `true` | Phase 14: other players may come aboard too. `false`: only the owner. The helm only ever answers the owner. |
+| `config_version` | `14` | The version of the file, used to move changed defaults over once. Do not edit. |
 
 ### `droid_balance`
 
@@ -180,7 +191,12 @@ Before Phase 13 the cooldowns were shorter (B1 5 s, Chopper 15 s, BB-8 20 s, pro
 | `starwars_combat` | `true` | Star Wars mode: music in fights, duels and boss fights. |
 | `starwars_exploration` | `true` | Star Wars mode: music while exploring and in calm moments. |
 | `starwars_character_themes` | `true` | Star Wars mode: a character's theme when they appear (you or another player). |
-| `ship_third_person` | `true` | Switch to the third-person view behind the ship when climbing into a starship. |
+| `ship_third_person` | `true` | Phase 11 setting, kept for old files: only decides `ship_camera` when that is missing (`false` becomes `keep`). |
+| `ship_camera` | `cockpit` | Phase 14: the view when climbing into a starship: `cockpit` (first person from the pilot's seat), `chase` (behind the ship) or `keep` (no change). F5 still switches; climbing out restores the view from before. Menu: **Graphics**. |
+| `ship_cockpit_frame` | `true` | Phase 14: the cockpit frame (struts, window edges, consoles) around the cockpit view. |
+| `ship_cockpit_roll` | `true` | Phase 14: the cockpit view leans with the ship in turns. |
+| `ship_interior_ambient` | `true` | Phase 14: the quiet hum inside ship interiors. |
+| `music_flight` | `true` | Phase 14: flight music while flying a starship, and a faster piece in space battles. In the Star Wars mode it plays your files in `flight/` and `space_battle/`. Menu: **Music**. |
 | `ship_hud` | `true` | The flight display (speed, height, lasers, hull and, since Phase 13, flight energy with the time left) while flying a starship. |
 | `blaster_draw` | `true` | Drawing and holstering a blaster are animated and heard. |
 | `menu_transitions` | `true` | The menu fades a page in with a soft sweep when switching areas. |

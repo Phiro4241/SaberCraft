@@ -47,6 +47,8 @@ public final class ShipClient {
 
 	private static final Map<Integer, Visual> VISUALS = new HashMap<>();
 	private static final Map<Integer, ShipEngineSound> ENGINES = new HashMap<>();
+	/** Phase 14: the thrust layer of each ship's engine. */
+	private static final Map<Integer, ShipEngineSound> THRUSTERS = new HashMap<>();
 	private static @Nullable ShipStatusPayload status;
 	private static long lastTriggerTick = -1L;
 	private static long lastShotMillis;
@@ -56,6 +58,10 @@ public final class ShipClient {
 	/** Phase 13: the energy of the ship the local player flies, as the server last told it. */
 	private static @Nullable ShipEnergyPayload energy;
 	private static int flybys;
+	/** Phase 14: when the ship the local player flies was last hit (millis). */
+	private static long lastHurtMillis;
+	private static int boosts;
+	private static int brakes;
 
 	private ShipClient() {
 	}
@@ -80,6 +86,10 @@ public final class ShipClient {
 		/** Phase 13: distance to the camera last tick, and ticks until the next fly-by sound. */
 		double cameraDistance = -1.0;
 		int flybyCooldown;
+		/** Phase 14: ticks of strong speeding up or braking in a row, and ticks until the next such sound. */
+		int pushTicks;
+		int brakeTicks;
+		int pushCooldown;
 
 		public float roll(float partialTicks) {
 			return Mth.lerp(partialTicks, this.rollO, this.roll);
@@ -124,10 +134,16 @@ public final class ShipClient {
 			VISUALS.clear();
 			ENGINES.values().forEach(ShipEngineSound::finish);
 			ENGINES.clear();
+			THRUSTERS.values().forEach(ShipEngineSound::finish);
+			THRUSTERS.clear();
 			wasPiloting = false;
 			cameraBefore = null;
 		});
 		HudElementRegistry.addLast(SaberCraft.id("ship_hud"), new ShipHud());
+		// Phase 14: the frame of the cockpit, under the flight display.
+		HudElementRegistry.addFirst(SaberCraft.id("cockpit_frame"), new CockpitView.Frame());
+		HyperspaceClient.init();
+		InteriorAmbience.init();
 	}
 
 	/** The look of a ship, created the first time it is drawn. */
@@ -174,6 +190,12 @@ public final class ShipClient {
 					engine.finish();
 				}
 
+				ShipEngineSound thruster = THRUSTERS.remove(entry.getKey());
+
+				if (thruster != null) {
+					thruster.finish();
+				}
+
 				continue;
 			}
 
@@ -205,10 +227,29 @@ public final class ShipClient {
 
 			ShipEngineSound engine = ENGINES.get(entry.getKey());
 
-			if ((engine == null || engine.isStopped()) && ship.position().distanceTo(client.gameRenderer.mainCamera().position()) < 64.0 + type.handling().modelRadius()) {
+			boolean near = ship.position().distanceTo(client.gameRenderer.mainCamera().position()) < 64.0 + type.handling().modelRadius();
+
+			if ((engine == null || engine.isStopped()) && near) {
 				engine = new ShipEngineSound(ship, ShipMarker.of(ship));
 				ENGINES.put(entry.getKey(), engine);
 				client.getSoundManager().play(engine);
+			}
+
+			// Phase 14: the thrust layer and the short sounds of speeding up and braking hard.
+			ShipEngineSound thruster = THRUSTERS.get(entry.getKey());
+
+			if ((thruster == null || thruster.isStopped()) && near) {
+				thruster = new ShipEngineSound(ship, type, true);
+				THRUSTERS.put(entry.getKey(), thruster);
+				client.getSoundManager().play(thruster);
+			}
+
+			if (near) {
+				pushes(level, ship, type, visual);
+			}
+
+			if (client.player != null && client.player.getVehicle() == ship && ship instanceof LivingEntity living && living.hurtTime > 0) {
+				lastHurtMillis = Util.getMillis();
 			}
 		}
 
@@ -230,13 +271,48 @@ public final class ShipClient {
 		}
 	}
 
-	/** Climbing in puts the camera behind the ship; climbing out puts it back. */
+	/**
+	 * Phase 14: a ship that speeds up hard from a slow start gives a short boost, one that brakes
+	 * hard from speed a short braking sound; each at most every three seconds, so it never chatters.
+	 */
+	private static void pushes(ClientLevel level, Entity ship, ShipType type, Visual visual) {
+		if (visual.pushCooldown > 0) {
+			visual.pushCooldown--;
+		}
+
+		double accel = type.accel() > 0.0 ? visual.accel() / type.accel() : 0.0;
+		visual.pushTicks = accel > 0.6 ? visual.pushTicks + 1 : 0;
+		visual.brakeTicks = accel < -1.2 ? visual.brakeTicks + 1 : 0;
+		String family = com.phiro.sabercraft.ship.ShipFeatures.of(type).sound();
+
+		if (visual.pushCooldown > 0) {
+			return;
+		}
+
+		if (visual.pushTicks == 4 && visual.speed < type.maxSpeed() * 0.6) {
+			visual.pushCooldown = 60;
+			boosts++;
+			level.playLocalSound(ship.getX(), ship.getY(), ship.getZ(), ShipEngineSound.event("ship." + family + ".boost"), SoundSource.NEUTRAL,
+					type.capital() ? 0.9F : 0.5F, 0.95F + level.getRandom().nextFloat() * 0.1F, false);
+		} else if (visual.brakeTicks == 4 && visual.speed > type.maxSpeed() * 0.3) {
+			visual.pushCooldown = 60;
+			brakes++;
+			level.playLocalSound(ship.getX(), ship.getY(), ship.getZ(), ShipEngineSound.event("ship." + family + ".brake"), SoundSource.NEUTRAL,
+					type.capital() ? 0.8F : 0.45F, 0.95F + level.getRandom().nextFloat() * 0.1F, false);
+		}
+	}
+
+	/**
+	 * Climbing in sets the view the player chose (Phase 14: the cockpit, first person; or behind the
+	 * ship); climbing out puts back the view from before. The view keys work as usual meanwhile.
+	 */
 	private static void camera(Minecraft client) {
 		boolean flying = piloting(client) != null;
+		String mode = ImmersionConfig.get().shipCamera;
 
-		if (flying && !wasPiloting && ImmersionConfig.get().shipThirdPerson) {
+		if (flying && !wasPiloting && !ImmersionConfig.CAMERA_KEEP.equals(mode)) {
 			cameraBefore = client.options.getCameraType();
-			client.options.setCameraType(CameraType.THIRD_PERSON_BACK);
+			client.options.setCameraType(ImmersionConfig.CAMERA_CHASE.equals(mode) ? CameraType.THIRD_PERSON_BACK : CameraType.FIRST_PERSON);
 		} else if (!flying && wasPiloting && cameraBefore != null) {
 			client.options.setCameraType(cameraBefore);
 			cameraBefore = null;
@@ -297,6 +373,43 @@ public final class ShipClient {
 	public static @Nullable ShipEnergyPayload energy(Entity ship) {
 		ShipEnergyPayload known = energy;
 		return known != null && known.entityId() == ship.getId() ? known : null;
+	}
+
+	/** Phase 14: a fight in the air: the own lasers fired in the last 12 s or the own ship hit in the last 15 s. */
+	public static boolean spaceBattle(Minecraft client) {
+		return piloting(client) != null && (sinceShot() < 12_000L || Util.getMillis() - lastHurtMillis < 15_000L);
+	}
+
+	/** Phase 14: the local player flies an Imperial ship (TIE, Star Destroyer): the darker flight music. */
+	public static boolean imperialFlight(Minecraft client) {
+		ShipType type = ShipMarker.of(piloting(client));
+		return type != null && (type.id().startsWith("tie") || type.capital());
+	}
+
+	/** Only for tests: how many boost and brake sounds played. */
+	public static int boosts() {
+		return boosts;
+	}
+
+	public static int brakes() {
+		return brakes;
+	}
+
+	/** Only for tests: the volume of a ship's thrust layer now, or -1 if it plays none. */
+	public static float thrustVolume(Entity ship) {
+		ShipEngineSound thruster = THRUSTERS.get(ship.getId());
+		return thruster != null && !thruster.isStopped() ? thruster.currentVolume() : -1.0F;
+	}
+
+	/** Only for tests: as if the own ship had just been hit or fired. */
+	public static void markSpaceBattleForTest() {
+		lastHurtMillis = Util.getMillis();
+	}
+
+	/** Only for tests: ends the space battle at once. */
+	public static void endSpaceBattleForTest() {
+		lastHurtMillis = 0L;
+		lastShotMillis = 0L;
 	}
 
 	/** Only for tests: how many fly-by sounds played. */
@@ -388,7 +501,7 @@ public final class ShipClient {
 	}
 
 	/** Milliseconds since the local pilot's lasers last fired. */
-	static long sinceShot() {
+	public static long sinceShot() {
 		return Util.getMillis() - lastShotMillis;
 	}
 
