@@ -28,8 +28,7 @@ import com.phiro.sabercraft.SaberCraft;
  * ({@code assets/minecraft/items/netherite_sword.json}) picks the hilt from it, and the blade
  * renderer picks the color.
  *
- * <p>A sword without the component looks like before Phase 5: the standard hilt with a red blade.
- * Since Phase 6 {@code strings[2]} holds the fighting style. Swords without one fight in the
+ * <p>Since Phase 12 a sword without the component is a normal sword (see {@link #canHold}). Since Phase 6 {@code strings[2]} holds the fighting style. Swords without one fight in the
  * usual style of their hilt, see {@link #defaultStyle}.
  *
  * <p>Since Phase 10 every vanilla sword from wood to netherite can be a saber ({@link #SWORDS},
@@ -186,29 +185,32 @@ public record SaberVariant(Identifier hilt, Identifier color, Identifier style) 
 	}
 
 	/**
-	 * Marks a netherite sword that was turned back into a plain sword (Phase 10). Every other
-	 * netherite sword is a saber, as in Phases 1 to 9.
+	 * Marks a sword that was explicitly turned back into a plain sword (Phase 10). Such a sword is
+	 * never a saber, not even with {@code netherite_swords_are_sabers} on.
 	 */
 	public static final Identifier PLAIN = SaberCraft.id("plain");
 	/**
-	 * The swords that can become a saber (Phase 10), from wood to netherite. The netherite sword is
-	 * a saber from the start, the others after {@code /sabercraft convert}.
+	 * The swords that can become a saber (Phase 10), from wood to netherite. Since Phase 12 none of
+	 * them is a saber on its own: a sword is a saber only after it was chosen (menu, command, or the
+	 * server option {@code netherite_swords_are_sabers}), see {@link #canHold}.
 	 */
 	public static final List<Item> SWORDS = List.of(Items.WOODEN_SWORD, Items.STONE_SWORD, Items.COPPER_SWORD, Items.IRON_SWORD,
 			Items.GOLDEN_SWORD, Items.DIAMOND_SWORD, Items.NETHERITE_SWORD);
 
 	/**
-	 * Items that are a saber: a netherite sword (unless turned back into a plain one), or any other
-	 * sword of {@link #SWORDS} that was converted and so carries a known hilt. The material stays
-	 * the sword's own: a wooden saber hits like a wooden sword.
+	 * Items that are a saber: a sword of {@link #SWORDS} that was chosen as a saber and so carries
+	 * a known hilt in its model data. Every other sword, a plain netherite sword included, looks and
+	 * fights like a normal Minecraft sword (Phase 12; before, every netherite sword was a saber).
+	 * The material stays the sword's own: a wooden saber hits like a wooden sword.
 	 */
 	public static boolean canHold(ItemStack stack) {
-		if (stack.is(Items.NETHERITE_SWORD)) {
-			return !PLAIN.equals(hiltOf(stack));
-		}
-
 		Identifier hilt = isSword(stack) ? hiltOf(stack) : null;
 		return hilt != null && HILTS.contains(hilt);
+	}
+
+	/** True for a sword that was never chosen as a saber nor turned back: no SaberCraft model data at all. */
+	public static boolean isUnmarked(ItemStack stack) {
+		return isSword(stack) && hiltOf(stack) == null;
 	}
 
 	/** True for the swords that can be converted into a saber. */

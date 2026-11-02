@@ -14,6 +14,7 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.item.component.CustomData;
 import net.minecraft.world.item.component.CustomModelData;
 
+import com.phiro.sabercraft.ability.AbilityConfig;
 import com.phiro.sabercraft.blaster.BlasterType;
 import com.phiro.sabercraft.saber.SaberVariant;
 
@@ -48,7 +49,9 @@ public final class ItemConversion {
 		/** It is not converted, so there is nothing to turn back. */
 		NOT_CONVERTED,
 		/** An unknown hilt, color or blaster type was asked for. */
-		UNKNOWN_VARIANT
+		UNKNOWN_VARIANT,
+		/** Phase 12: this kind of sword may not become a saber on this server ({@code saber_swords}). */
+		NOT_ALLOWED
 	}
 
 	private ItemConversion() {
@@ -56,7 +59,8 @@ public final class ItemConversion {
 
 	/**
 	 * Makes a saber of the sword: hilt and color as given, or (null) a hilt that fits the material
-	 * and a blue blade (red for netherite, as before). An existing saber gets the new hilt or color.
+	 * and a blue blade (red for netherite, as before). Only swords the server allows
+	 * ({@code saber_swords}) can become sabers. An existing saber gets the new hilt or color.
 	 */
 	public static Result toSaber(ItemStack stack, Identifier color, Identifier hilt) {
 		if (!SaberVariant.isSword(stack)) {
@@ -67,6 +71,10 @@ public final class ItemConversion {
 
 		if (saber && color == null && hilt == null) {
 			return Result.ALREADY;
+		}
+
+		if (!saber && !AbilityConfig.get().allowsSaber(stack)) {
+			return Result.NOT_ALLOWED;
 		}
 
 		Identifier newHilt = hilt != null ? hilt : saber && SaberVariant.hiltOf(stack) != null ? SaberVariant.hiltOf(stack) : SaberVariant.hiltForMaterial(stack);
@@ -99,8 +107,10 @@ public final class ItemConversion {
 
 		restore(stack);
 
-		// A netherite sword is a saber unless it says otherwise.
-		if (SaberVariant.canHold(stack)) {
+		// Phase 12: with netherite_swords_are_sabers on, a netherite sword turned back says so, or
+		// the server would make it a saber again; and a sword that still carries a hilt from before
+		// Phase 10 loses it.
+		if (SaberVariant.canHold(stack) || stack.is(Items.NETHERITE_SWORD) && AbilityConfig.get().netheriteSwordsAreSabers) {
 			CustomModelData old = stack.getOrDefault(DataComponents.CUSTOM_MODEL_DATA, CustomModelData.EMPTY);
 			List<String> strings = new ArrayList<>(old.strings());
 

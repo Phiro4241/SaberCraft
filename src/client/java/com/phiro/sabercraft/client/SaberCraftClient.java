@@ -25,6 +25,7 @@ import com.phiro.sabercraft.client.character.OutfitClient;
 import com.phiro.sabercraft.client.combat.CombatConfig;
 import com.phiro.sabercraft.client.combat.CombatLibrary;
 import com.phiro.sabercraft.client.droid.DroidClient;
+import com.phiro.sabercraft.client.droid.DroidControl;
 import com.phiro.sabercraft.client.droid.DroidPreview;
 import com.phiro.sabercraft.client.menu.ModelPreview;
 import com.phiro.sabercraft.client.menu.SaberMenuScreen;
@@ -100,6 +101,8 @@ public class SaberCraftClient implements ClientModInitializer {
 		BlasterClient.init();
 		ModelPreview.init();
 		DroidClient.init();
+		// Phase 12: droids commanded by looking at them and pressing a key.
+		DroidControl.init();
 		DroidPreview.init();
 		ShipClient.init();
 		ShipPreview.init();

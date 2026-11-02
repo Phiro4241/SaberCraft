@@ -78,10 +78,28 @@ public record BlasterType(Identifier id, float damage, float speed, int interval
 	 * in {@link #ALL}; only {@link #byId} knows it, so bolts in flight are drawn right.
 	 */
 	public static final BlasterType XWING = new BlasterType(SaberCraft.id("xwing"), 8.0F, 6.0F, 5, 0.0F, 0.15F, 1, RED, 4.5F, 0, false, true, 128.0F, 0.4F);
+	/**
+	 * Phase 12: the green laser cannons of the TIE Fighter and the TIE Interceptor: a little weaker
+	 * per bolt than the X-Wing's, as they fire in pairs or faster. Not in {@link #ALL} either.
+	 */
+	public static final BlasterType TIE = new BlasterType(SaberCraft.id("tie"), 6.0F, 6.2F, 5, 0.0F, 0.2F, 1, GREEN, 3.6F, 0, false, true, 112.0F, 0.3F);
+	/** The bolts of starship cannons, which only ships fire. */
+	public static final List<BlasterType> SHIP_LASERS = List.of(XWING, TIE);
+
+	/** Phase 12: whether this is the bolt of a starship cannon. */
+	public boolean isShipLaser() {
+		return SHIP_LASERS.contains(this);
+	}
 	public static final List<BlasterType> ALL = List.of(DL44, E11, DC15A, SE14C, BOWCASTER, A280, REPEATER, REBEL, EZRA);
 
 	public static Optional<BlasterType> byId(@Nullable Identifier id) {
-		return XWING.id().equals(id) ? Optional.of(XWING) : ALL.stream().filter(type -> type.id().equals(id)).findFirst();
+		for (BlasterType laser : SHIP_LASERS) {
+			if (laser.id().equals(id)) {
+				return Optional.of(laser);
+			}
+		}
+
+		return ALL.stream().filter(type -> type.id().equals(id)).findFirst();
 	}
 
 	/** The blaster type of a stack, or null if it is not a converted bow. */

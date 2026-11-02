@@ -221,6 +221,7 @@ public final class SaberCraftCommands {
 			case CHANGED -> ok(context, "sabercraft.command.changed", "The lightsaber got a new hilt or color.");
 			case ALREADY -> fail(context, "sabercraft.command.already_saber", "This already is a lightsaber. Give a color (and hilt) to change it, or use /sabercraft revert.");
 			case WRONG_ITEM -> fail(context, "sabercraft.command.not_a_sword", "Hold a sword in your main hand: wooden, stone, copper, iron, golden, diamond or netherite.");
+			case NOT_ALLOWED -> fail(context, "sabercraft.saber.convert.not_allowed", "This kind of sword cannot become a lightsaber on this server.");
 			default -> fail(context, "sabercraft.command.not_possible", "That does not work with this item.");
 		};
 	}

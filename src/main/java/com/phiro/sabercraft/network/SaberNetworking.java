@@ -44,6 +44,9 @@ public final class SaberNetworking {
 		PayloadTypeRegistry.serverboundPlay().register(ShipFirePayload.TYPE, ShipFirePayload.CODEC);
 		PayloadTypeRegistry.clientboundPlay().register(ShipStatusPayload.TYPE, ShipStatusPayload.CODEC);
 		PayloadTypeRegistry.clientboundPlay().register(ShipShotPayload.TYPE, ShipShotPayload.CODEC);
+		// Phase 12: choosing sabers in the menu, and droid commands for the droid looked at.
+		PayloadTypeRegistry.serverboundPlay().register(ConvertSaberPayload.TYPE, ConvertSaberPayload.CODEC);
+		PayloadTypeRegistry.serverboundPlay().register(DroidTargetPayload.TYPE, DroidTargetPayload.CODEC);
 	}
 
 	/**

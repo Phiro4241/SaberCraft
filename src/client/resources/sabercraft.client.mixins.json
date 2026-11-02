@@ -18,7 +18,8 @@
     "MinecraftMixin",
     "MusicManagerMixin",
     "SkyRendererMixin",
-    "SoundBufferLibraryMixin"
+    "SoundBufferLibraryMixin",
+    "SoundEngineMixin"
   ],
   "injectors": {
     "defaultRequire": 1

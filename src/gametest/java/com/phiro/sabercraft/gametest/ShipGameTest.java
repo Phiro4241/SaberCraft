@@ -92,15 +92,15 @@ public class ShipGameTest implements FabricClientGameTest {
 		dedicatedServer(context);
 	}
 
-	/** The hangar lists the ships; only the X-Wing can be called. */
+	/** The hangar lists the ships; the planned ones (Falcon, Star Destroyer) cannot be called. */
 	private static void hangar(ClientGameTestContext context, TestServerContext server, UUID self) {
 		context.waitFor(client -> ShipClient.status() != null, 40);
 		context.runOnClient(client -> SaberMenuScreen.open(client, SaberMenuScreen.Tab.SHIPS));
 		context.waitTicks(5);
-		context.clickScreenButton(ShipType.TIE_FIGHTER.translationKey());
+		context.clickScreenButton(ShipType.FALCON.translationKey());
 		context.waitTicks(3);
 		check(!context.computeOnClient(client -> ((ShipMenuScreen) client.gui.screen()).callActive()), "a planned ship cannot be called");
-		check(server.computeOnServer(s -> Starships.command(me(s, self), "call", "tie_fighter")) != null && Starships.liveCount() == 0,
+		check(server.computeOnServer(s -> Starships.command(me(s, self), "call", "falcon")) != null && Starships.liveCount() == 0,
 				"the server refuses a planned ship too");
 		server.runOnServer(s -> Starships.resetCooldowns());
 		context.clickScreenButton(ShipType.XWING.translationKey());

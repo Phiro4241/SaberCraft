@@ -12,7 +12,7 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.phys.AABB;
 
 /**
- * Starts a test world, hands the player a netherite sword and checks that the blade renderer is
+ * Starts a test world, hands the player a netherite sword chosen as a lightsaber and checks that the blade renderer is
  * active. Then it takes screenshots of the blade in first person and both third person views, by
  * day and by night. The screenshots land in {@code build/run/clientGameTest/screenshots}.
  */
@@ -28,8 +28,8 @@ public class BladeScreenshotGameTest implements FabricClientGameTest {
 
 			singleplayer.getServer().runCommand("gamerule advance_time false");
 			singleplayer.getServer().runCommand("gamerule spawn_mobs false");
-			singleplayer.getServer().runCommand("item replace entity @a hotbar.0 with minecraft:netherite_sword");
-			singleplayer.getServer().runCommand("item replace entity @a weapon.offhand with minecraft:netherite_sword");
+			singleplayer.getServer().runCommand("item replace entity @a hotbar.0 with minecraft:netherite_sword[minecraft:custom_model_data={strings:[\"sabercraft:standard\",\"sabercraft:red\"]}]");
+			singleplayer.getServer().runCommand("item replace entity @a weapon.offhand with minecraft:netherite_sword[minecraft:custom_model_data={strings:[\"sabercraft:standard\",\"sabercraft:red\"]}]");
 			context.runOnClient(client -> client.player.getInventory().setSelectedSlot(0));
 			context.getInput().lookAt(20.0F, 10.0F);
 
@@ -56,6 +56,7 @@ public class BladeScreenshotGameTest implements FabricClientGameTest {
 	private static void assertBladeModel(ClientGameTestContext context) {
 		context.runOnClient(client -> {
 			ItemStack saber = new ItemStack(Items.NETHERITE_SWORD);
+			new com.phiro.sabercraft.saber.SaberVariant(com.phiro.sabercraft.saber.SaberVariant.STANDARD, com.phiro.sabercraft.saber.SaberVariant.RED).applyTo(saber);
 			ItemStack reference = new ItemStack(Items.IRON_SWORD);
 
 			for (ItemDisplayContext held : new ItemDisplayContext[] {

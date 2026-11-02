@@ -55,6 +55,10 @@ public class DroidEntity extends Pig {
 	static final double TELEPORT_DISTANCE_SQR = 14.0 * 14.0;
 	/** Seconds without getting closer before it teleports anyway (stuck behind something). */
 	static final int STUCK_TICKS = 60;
+	/** Phase 12: ticks between two voices of the same droid. */
+	static final int VOICE_GAP = 30;
+	/** Phase 12: ticks none of an owner's droids may have spoken before one of them chatters. */
+	static final int CHATTER_GAP = 300;
 
 	private final DroidType droid;
 	private final UUID owner;
@@ -64,6 +68,7 @@ public class DroidEntity extends Pig {
 	private @Nullable LivingEntity burstTarget;
 	private int burstLeft;
 	private int burstDelay;
+	private long lastVoice = Long.MIN_VALUE / 2;
 
 	public DroidEntity(ServerLevel level, DroidType droid, ServerPlayer owner) {
 		super(EntityTypes.PIG, level);
@@ -180,10 +185,39 @@ public class DroidEntity extends Pig {
 		return InteractionResult.SUCCESS;
 	}
 
-	/** Plays one of the droid's sounds ({@code ambient}, {@code interact}, {@code ability}). */
+	/**
+	 * Plays one of the droid's sounds ({@code ambient}, {@code interact}, {@code ability}). Phase 12:
+	 * never two voices of the same droid right after each other (within {@value #VOICE_GAP}
+	 * ticks); the ability always speaks, as it says what the droid does.
+	 */
 	public void playVoice(String kind, float volume) {
+		long now = this.level().getGameTime();
+
+		if (!kind.equals("ability") && now - this.lastVoice < VOICE_GAP && now >= this.lastVoice) {
+			return;
+		}
+
+		this.lastVoice = now;
+		Droids.spoke(this, now);
 		this.level().playSound(null, this.getX(), this.getY() + this.droid.height() * 0.7, this.getZ(), sound(this.droid, kind), SoundSource.NEUTRAL,
 				volume, 0.95F + this.random.nextFloat() * 0.1F);
+	}
+
+	/**
+	 * Phase 12: idle chatter is rare. A droid only chatters when none of its owner's droids spoke
+	 * for a while (so they never beep one after the other), its owner is close, and it is not
+	 * busy (following at a distance, firing).
+	 */
+	@Override
+	public void playAmbientSound() {
+		ServerPlayer owner = this.ownerPlayer();
+
+		if (owner == null || this.distanceToSqr(owner) > 16.0 * 16.0 || this.burstLeft > 0 || AbilityConfig.get().droidChatterSeconds <= 0
+				|| !Droids.quietFor(this, this.level().getGameTime(), CHATTER_GAP)) {
+			return;
+		}
+
+		this.playVoice("ambient", 0.55F);
 	}
 
 	static Holder<SoundEvent> sound(DroidType droid, String kind) {
@@ -195,9 +229,11 @@ public class DroidEntity extends Pig {
 		return sound(this.droid, "ambient").value();
 	}
 
+	/** Phase 12: on average about {@code droid_chatter_seconds} between two idle chatters of one droid. */
 	@Override
 	public int getAmbientSoundInterval() {
-		return 240;
+		int seconds = AbilityConfig.get().droidChatterSeconds;
+		return seconds <= 0 ? 72000 : Math.max(100, seconds * 20 - 40);
 	}
 
 	@Override
@@ -214,7 +250,7 @@ public class DroidEntity extends Pig {
 	protected void playStepSound(BlockPos pos, BlockState blockState) {
 		// Servos instead of pig steps; quiet, and not for the rolling or floating ones.
 		if (this.droid != DroidType.BB8 && this.droid != DroidType.PROBE && this.droid != DroidType.MOUSE) {
-			this.playSound(Holder.direct(SoundEvent.createVariableRangeEvent(SaberCraft.id("droid.step"))).value(), 0.15F, 1.0F);
+			this.playSound(Holder.direct(SoundEvent.createVariableRangeEvent(SaberCraft.id("droid.step"))).value(), 0.07F, 1.0F);
 		}
 	}
 

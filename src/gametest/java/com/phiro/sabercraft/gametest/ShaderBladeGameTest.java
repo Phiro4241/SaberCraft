@@ -98,7 +98,7 @@ public class ShaderBladeGameTest implements FabricClientGameTest {
 
 	/** First person, one picture per color, by day against the sky and at night. */
 	private void colors(ClientGameTestContext context, TestServerContext server, String tag) {
-		server.runCommand("item replace entity @a hotbar.0 with minecraft:netherite_sword");
+		server.runCommand("item replace entity @a hotbar.0 with minecraft:netherite_sword[minecraft:custom_model_data={strings:[\"sabercraft:standard\",\"sabercraft:red\"]}]");
 		server.runCommand("item replace entity @a hotbar.1 with minecraft:apple");
 		context.runOnClient(client -> client.player.getInventory().setSelectedSlot(0));
 		context.runOnClient(client -> client.options.setCameraType(CameraType.FIRST_PERSON));

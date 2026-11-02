@@ -90,10 +90,15 @@ Decided by the server (in single player by the integrated server). Players conne
 | `droid_limit` | `4` | How many droids one player can have out at the same time (each kind at most once). |
 | `droid_cooldown` | `1.0` | Multiplier for the cooldowns of the droid abilities. |
 | `droids_hit_players` | `false` | Whether the combat droids (Chopper, B1, K-2SO) may hurt or push other players. |
-| `ships_enabled` | `true` | Players can call and fly the X-Wing (menu or `/sabercraft ship`). |
+| `ships_enabled` | `true` | Players can call and fly starships: X-Wing, TIE Fighter, TIE Interceptor (menu or `/sabercraft ship`). |
 | `ship_speed` | `1.0` | Multiplier for the top speed of the starships. |
 | `ship_laser_damage` | `1.0` | Multiplier for the damage of the starship laser cannons. |
 | `ship_lasers_hit_players` | `true` | Whether the starship laser cannons may hit other players. |
+| `saber_swords` | all seven vanilla swords | Phase 12: which kinds of sword may be chosen as a lightsaber (menu button or `/sabercraft convert`), as item ids such as `"minecraft:iron_sword"`. Only chosen swords are lightsabers; every other sword stays a normal Minecraft sword without blade, glow or saber animations. Sabers chosen before stay sabers even if their kind is removed later. |
+| `netherite_swords_are_sabers` | `false` | Phase 12: the old rule (up to Phase 11) that every netherite sword is a red lightsaber. `true`: a netherite sword held by a player becomes a saber by itself (it is marked on the server, so it also works for clients); one turned back with "Normal sword" or `/sabercraft revert` stays plain. |
+| `droid_chatter_seconds` | `45` | Phase 12: about how many seconds lie between two idle beeps of one droid. Droids chatter only near their owner, and never right after another droid of the same owner spoke (at least 15 s in between). `0`: no idle chatter at all. |
+| `ship_damage` | `true` | Phase 12: starships take damage from other players, mobs, bolts and explosions (never from their own pilot). They mend slowly after 10 s without a hit and explode at 0 hull. `false`: ships cannot be damaged. |
+| `ship_respawn_seconds` | `60` | Phase 12: after a ship was destroyed, its owner waits this many seconds before calling a new one. |
 
 ## `combat_client.json` (client)
 
@@ -143,6 +148,13 @@ Decided by the server (in single player by the integrated server). Players conne
 | `ship_hud` | `true` | The flight display (speed, height, lasers) while flying a starship. |
 | `blaster_draw` | `true` | Drawing and holstering a blaster are animated and heard. |
 | `menu_transitions` | `true` | The menu fades a page in with a soft sweep when switching areas. |
+| `saber_volume` | `1.0` | Phase 12: volume of all lightsaber sounds (ignition, hum, swings, clashes, Force powers), 0..1, on top of Minecraft's sliders. `0` mutes them. Menu: **Sound**. |
+| `saber_hum_volume` | `0.6` | Phase 12: the steady hum of a lit blade, 0..1, on top of `saber_volume`. |
+| `saber_hum_idle_quiet` | `true` | Phase 12: a blade held still for about four seconds hums at half volume; any movement brings the full hum back. |
+| `droid_volume` | `0.8` | Phase 12: volume of the droids (voices, steps, abilities), 0..1. |
+| `droid_chatter` | `true` | Phase 12: hear the droids' idle chatter. `false`: they only sound when they do something. |
+| `ship_volume` | `1.0` | Phase 12: volume of the starships (engines, lasers, hits, explosions), 0..1. |
+| `droid_target_hud` | `true` | Phase 12: while you look at one of your droids, its name, ability and keys show under the crosshair. Menu: **Graphics**. |
 
 ## `character_client.json` (client)
 

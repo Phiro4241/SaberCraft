@@ -2,7 +2,9 @@
 
 Stand: 25.10.2026, Minecraft 26.2, Fabric Loader 0.19.5, Fabric API 0.161.0+26.2, Java 25.
 
-Der **X-Wing ist fliegbar**. TIE Fighter, TIE Interceptor, Millennium Falcon und Sternzerstörer stehen im Hangar (Menü, Reiter „Schiffe“) als „Geplant“ und lassen sich noch nicht rufen. Dieses Dokument beschreibt, wie der X-Wing gebaut ist, und wie die anderen Schiffe auf demselben Aufbau entstehen.
+> **Stand Phase 12 (01.11.2026):** TIE Fighter und TIE Interceptor sind gebaut und fliegbar, Schiffe haben eine Hülle, nehmen Schaden und explodieren (Schritte 1 und 2 der Reihenfolge unten sind damit umgesetzt). Details: [phase-12-status.md](phase-12-status.md). Millennium Falcon und Sternzerstörer bleiben geplant.
+
+Der **X-Wing ist fliegbar**. Millennium Falcon und Sternzerstörer stehen im Hangar (Menü, Reiter „Schiffe“) als „Geplant“ und lassen sich noch nicht rufen. Dieses Dokument beschreibt, wie der X-Wing gebaut ist, und wie die anderen Schiffe auf demselben Aufbau entstehen.
 
 ## Wie der X-Wing gebaut ist
 

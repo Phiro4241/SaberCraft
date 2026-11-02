@@ -41,11 +41,17 @@ import com.phiro.sabercraft.blaster.BlasterBolt;
 import com.phiro.sabercraft.blaster.BlasterType;
 
 /**
- * A starship on the server (Phase 11): the X-Wing. Its owner climbs in with a right-click and
+ * A starship on the server (Phase 11): the X-Wing, since Phase 12 also the TIE Fighter and the TIE
+ * Interceptor, each with its own speed, agility, cannons and hull (see {@link ShipType}). Its owner climbs in with a right-click and
  * flies it with the movement keys: forward opens the throttle, back brakes, left and right turn,
  * jump pulls the nose up and sprint pushes it down (when hovering slowly they lift and lower the
  * ship straight up and down instead). Sneaking climbs out as from any vehicle. The server alone
  * moves the ship, so every player sees the same flight; its position goes out every tick.
+ *
+ * <p>Since Phase 12 ships can be hit (lasers, blasters, sabers, explosions) unless the server turns
+ * that off; at 0 hull the ship explodes without breaking blocks, the pilot glides down, and the
+ * owner can call a new one after {@code ship_respawn_seconds}. A hull that is not hit for ten
+ * seconds mends itself.
  *
  * <p>It collides with blocks like any entity and never breaks them. Flying into something fast
  * stops it with a jolt and a puff of smoke (no explosion, nothing breaks). Without a pilot it
@@ -62,8 +68,11 @@ public class ShipEntity extends Pig {
 	static final double SETTLE = 0.2;
 	/** Steepest climb or dive, degrees. */
 	static final float MAX_PITCH = 35.0F;
+	/** Phase 12: ticks without a hit before the hull starts to mend (one point a second). */
+	static final int REPAIR_DELAY = 200;
 
 	private static int crashes;
+	private static int explosions;
 
 	private final ShipType ship;
 	private final UUID owner;
@@ -72,6 +81,8 @@ public class ShipEntity extends Pig {
 	private int fireCooldown;
 	private int cannon;
 	private int crashCooldown;
+	/** Phase 12: ticks since the hull was last hit; it mends itself after a while. */
+	private int sinceHit = Integer.MAX_VALUE / 2;
 
 	public ShipEntity(ServerLevel level, ShipType ship, ServerPlayer owner) {
 		super(EntityTypes.PIG, level);
@@ -79,11 +90,12 @@ public class ShipEntity extends Pig {
 		this.owner = owner.getUUID();
 		this.setItemSlot(EquipmentSlot.HEAD, ShipMarker.item(ship));
 		this.setDropChance(EquipmentSlot.HEAD, 0.0F);
-		this.setCustomName(Component.literal("X-Wing"));
+		this.setCustomName(Component.literal(ship.displayName()));
 		this.setPersistenceRequired();
 		this.setNoGravity(true);
-		this.getAttribute(Attributes.MAX_HEALTH).setBaseValue(40.0);
-		this.setHealth(40.0F);
+		// Phase 12: the hull; every ship has its own.
+		this.getAttribute(Attributes.MAX_HEALTH).setBaseValue(ship.hull());
+		this.setHealth(ship.hull());
 		// The third-person camera stays far enough behind to see the whole ship.
 		this.getAttribute(Attributes.CAMERA_DISTANCE).setBaseValue(9.0);
 		// Keeps the nose where the pilot puts it (a mob's look control would level it every tick).
@@ -149,6 +161,19 @@ public class ShipEntity extends Pig {
 
 		if (this.isOnFire()) {
 			this.clearFire();
+		}
+
+		// Phase 12: a damaged hull mends slowly once the ship has not been hit for a while, and
+		// smokes while it is badly hurt.
+		this.sinceHit++;
+
+		if (this.sinceHit > REPAIR_DELAY && this.tickCount % 20 == 0 && this.getHealth() < this.getMaxHealth()) {
+			this.heal(1.0F);
+		}
+
+		if (this.getHealth() < this.getMaxHealth() * 0.35F && this.tickCount % 4 == 0) {
+			((ServerLevel) this.level()).sendParticles(ParticleTypes.LARGE_SMOKE, this.getX(), this.getY() + this.ship.height() * 0.6, this.getZ(),
+					1, 0.3, 0.2, 0.3, 0.01);
 		}
 
 		// Every tick, not every third as for pigs: the flight stays smooth for everyone.
@@ -240,8 +265,9 @@ public class ShipEntity extends Pig {
 	}
 
 	/**
-	 * Fires the next laser cannon, if the cannons are ready: a fast red bolt from the wing tip, its
-	 * flash on every client and its sound. Returns whether it fired.
+	 * Fires the next laser cannon, if the cannons are ready: a fast bolt from the cannon, its flash
+	 * on every client and its sound. Ships with a salvo (the TIE Fighter) fire all cannons at once.
+	 * Returns whether it fired.
 	 */
 	boolean fire(ServerPlayer pilot) {
 		if (this.fireCooldown > 0 || this.ship.cannons().isEmpty()) {
@@ -250,23 +276,92 @@ public class ShipEntity extends Pig {
 
 		ServerLevel level = (ServerLevel) this.level();
 		this.fireCooldown = this.ship.interval();
-		int index = this.cannon;
-		this.cannon = (this.cannon + 1) % this.ship.cannons().size();
-		Vec3 local = this.ship.cannons().get(index);
+		int count = this.ship.salvo() ? this.ship.cannons().size() : 1;
 		Vec3 forward = Vec3.directionFromRotation(this.getXRot(), this.getYRot());
 		// Ship space to the world: x to the right of the nose, y up, z along the nose.
 		Vec3 right = Vec3.directionFromRotation(0.0F, this.getYRot() + 90.0F);
 		Vec3 up = right.cross(forward);
-		Vec3 muzzle = this.position().add(right.scale(local.x)).add(up.scale(local.y)).add(forward.scale(local.z));
-		BlasterType type = BlasterType.XWING;
-		BlasterBolt bolt = new BlasterBolt(level, pilot, type, type.damage() * AbilityConfig.get().shipLaserDamage, false,
-				type.knockback());
-		bolt.setPos(muzzle.x, muzzle.y, muzzle.z);
-		bolt.shoot(forward.x, forward.y, forward.z, (float) (type.speed() + this.speed), type.spread());
-		level.addFreshEntity(bolt);
-		level.playSound(null, muzzle.x, muzzle.y, muzzle.z, sound("ship.xwing.laser"), SoundSource.PLAYERS, 1.0F, 0.95F + this.random.nextFloat() * 0.1F);
-		Starships.shot(this, index);
+		BlasterType type = BlasterType.byId(SaberCraft.id(this.ship.laser())).orElse(BlasterType.XWING);
+		Vec3 sound = null;
+
+		for (int i = 0; i < count; i++) {
+			int index = this.cannon;
+			this.cannon = (this.cannon + 1) % this.ship.cannons().size();
+			Vec3 local = this.ship.cannons().get(index);
+			Vec3 muzzle = this.position().add(right.scale(local.x)).add(up.scale(local.y)).add(forward.scale(local.z));
+			BlasterBolt bolt = new BlasterBolt(level, pilot, type, type.damage() * AbilityConfig.get().shipLaserDamage, false, type.knockback());
+			bolt.setPos(muzzle.x, muzzle.y, muzzle.z);
+			bolt.shoot(forward.x, forward.y, forward.z, (float) (type.speed() + this.speed), type.spread());
+			level.addFreshEntity(bolt);
+			Starships.shot(this, index);
+			sound = sound == null ? muzzle : sound.add(muzzle).scale(0.5);
+		}
+
+		level.playSound(null, sound.x, sound.y, sound.z, sound("ship." + this.ship.id() + ".laser"), SoundSource.PLAYERS, 1.0F,
+				0.95F + this.random.nextFloat() * 0.1F);
 		return true;
+	}
+
+	/**
+	 * Phase 12: ships can be hit, when the server allows it ({@code ship_damage}): by attacks of
+	 * creatures and other players (lasers, blasters, arrows, sabers) and by explosions. Never by
+	 * their own owner or pilot, by falling, fire or anything else without an attacker, and never
+	 * when crashing (that only costs speed).
+	 */
+	@Override
+	public boolean isInvulnerableTo(ServerLevel level, DamageSource source) {
+		if (source.is(DamageTypeTags.BYPASSES_INVULNERABILITY)) {
+			return false;
+		}
+
+		if (!AbilityConfig.get().shipDamage) {
+			return true;
+		}
+
+		Entity attacker = source.getEntity();
+
+		if (attacker == null) {
+			return !source.is(DamageTypeTags.IS_EXPLOSION);
+		}
+
+		return attacker == this || attacker.getUUID().equals(this.owner) || this.hasPassenger(attacker);
+	}
+
+	@Override
+	public boolean hurtServer(ServerLevel level, DamageSource source, float damage) {
+		boolean hurt = super.hurtServer(level, source, damage);
+
+		if (hurt) {
+			this.sinceHit = 0;
+			level.sendParticles(ParticleTypes.ELECTRIC_SPARK, this.getX(), this.getY() + this.ship.height() * 0.5, this.getZ(), 10, 0.6, 0.4, 0.6, 0.2);
+			level.playSound(null, this.getX(), this.getY(), this.getZ(), sound("ship.hit"), SoundSource.NEUTRAL, 0.9F,
+					0.9F + this.random.nextFloat() * 0.2F);
+		}
+
+		return hurt;
+	}
+
+	/** Phase 12: the hull at 0: a blast of fire and smoke (no block breaks), the pilot falls out gently. */
+	private void explode() {
+		ServerLevel level = (ServerLevel) this.level();
+		explosions++;
+		level.sendParticles(ParticleTypes.EXPLOSION_EMITTER, this.getX(), this.getY() + this.ship.height() * 0.5, this.getZ(), 1, 0.0, 0.0, 0.0, 0.0);
+		level.sendParticles(ParticleTypes.LARGE_SMOKE, this.getX(), this.getY() + this.ship.height() * 0.5, this.getZ(), 30, 1.2, 0.8, 1.2, 0.05);
+		level.sendParticles(ParticleTypes.FLAME, this.getX(), this.getY() + this.ship.height() * 0.5, this.getZ(), 30, 1.0, 0.6, 1.0, 0.08);
+		level.playSound(null, this.getX(), this.getY(), this.getZ(), sound("ship.explode"), SoundSource.NEUTRAL, 1.5F, 1.0F);
+
+		for (Entity passenger : this.getPassengers()) {
+			passenger.stopRiding();
+
+			if (passenger instanceof LivingEntity living) {
+				living.addEffect(new MobEffectInstance(MobEffects.SLOW_FALLING, 200, 0, false, true));
+			}
+		}
+	}
+
+	/** Only for tests: how many ships were destroyed. */
+	public static int explosions() {
+		return explosions;
 	}
 
 	/** Only for tests: how many crashes there were. */
@@ -324,11 +419,6 @@ public class ShipEntity extends Pig {
 	@Override
 	public boolean canUsePortal(boolean ignorePassenger) {
 		return false;
-	}
-
-	@Override
-	public boolean isInvulnerableTo(ServerLevel level, DamageSource source) {
-		return !source.is(DamageTypeTags.BYPASSES_INVULNERABILITY);
 	}
 
 	@Override
@@ -411,6 +501,11 @@ public class ShipEntity extends Pig {
 
 	@Override
 	public void die(DamageSource source) {
+		if (this.level() instanceof ServerLevel && !source.is(DamageTypeTags.BYPASSES_INVULNERABILITY)) {
+			this.explode();
+			Starships.destroyed(this);
+		}
+
 		super.die(source);
 		Starships.died(this);
 	}

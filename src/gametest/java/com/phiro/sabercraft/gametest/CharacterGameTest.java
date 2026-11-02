@@ -140,7 +140,7 @@ public class CharacterGameTest implements FabricClientGameTest {
 
 			// The menu with a sword in hand: every area.
 			context.runOnClient(client -> OutfitClient.choose(Outfit.SHADOW.id().toString()));
-			server.runCommand("item replace entity @a hotbar.0 with minecraft:netherite_sword");
+			server.runCommand("item replace entity @a hotbar.0 with minecraft:netherite_sword[minecraft:custom_model_data={strings:[\"sabercraft:standard\",\"sabercraft:red\"]}]");
 			context.runOnClient(client -> client.player.getInventory().setSelectedSlot(0));
 			context.waitTicks(10);
 			context.getInput().pressKey(SaberCraftClient.CUSTOMIZE_KEY);

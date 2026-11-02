@@ -1,10 +1,16 @@
 package com.phiro.sabercraft.ability;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import com.google.gson.annotations.SerializedName;
 
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.util.Mth;
+import net.minecraft.world.item.ItemStack;
 
 import com.phiro.sabercraft.config.JsonConfig;
+import com.phiro.sabercraft.saber.SaberVariant;
 
 /**
  * Server settings of the saber abilities, in {@code config/sabercraft/abilities.json}. Read when
@@ -12,6 +18,12 @@ import com.phiro.sabercraft.config.JsonConfig;
  * the server's file counts.
  */
 public final class AbilityConfig {
+	/**
+	 * Phase 12: the sword item ids that can be chosen as sabers by default (all of them). Declared
+	 * before {@link #current}, which needs it while the class is set up.
+	 */
+	public static final List<String> DEFAULT_SABER_SWORDS = SaberVariant.SWORDS.stream()
+			.map(item -> BuiltInRegistries.ITEM.getKey(item).toString()).toList();
 	private static AbilityConfig current = new AbilityConfig();
 
 	@SerializedName("guard_enabled")
@@ -250,6 +262,12 @@ public final class AbilityConfig {
 	/** Whether the combat droids (Chopper, B1, K-2SO) may hurt or push other players. */
 	@SerializedName("droids_hit_players")
 	public boolean droidsHitPlayers = false;
+	/**
+	 * Phase 12: on average seconds between two idle chatters (beeps without a reason) of one droid.
+	 * Droids of one player never chatter right after each other. 0: no idle chatter at all.
+	 */
+	@SerializedName("droid_chatter_seconds")
+	public int droidChatterSeconds = 45;
 	/** Phase 11: players can call and fly the X-Wing (menu or /sabercraft ship). */
 	@SerializedName("ships_enabled")
 	public boolean shipsEnabled = true;
@@ -262,6 +280,35 @@ public final class AbilityConfig {
 	/** Whether the starship laser cannons may hit other players. */
 	@SerializedName("ship_lasers_hit_players")
 	public boolean shipLasersHitPlayers = true;
+	/**
+	 * Phase 12: starships can be hit (lasers, blasters, sabers, arrows, explosions) and destroyed
+	 * when their hull is empty. Never by their own owner. false: ships are invulnerable, as in Phase 11.
+	 */
+	@SerializedName("ship_damage")
+	public boolean shipDamage = true;
+	/** Phase 12: seconds after a destroyed ship before its owner can call a new one. */
+	@SerializedName("ship_respawn_seconds")
+	public int shipRespawnSeconds = 60;
+
+	/**
+	 * Phase 12: which swords may be chosen as lightsabers (menu button, {@code /sabercraft convert}).
+	 * Item ids; only the vanilla swords from wood to netherite are possible. Swords already chosen
+	 * stay sabers when they are taken off this list, until they are turned back.
+	 */
+	@SerializedName("saber_swords")
+	public List<String> saberSwords = new ArrayList<>(DEFAULT_SABER_SWORDS);
+	/**
+	 * Phase 12: the old behavior of Phases 1 to 11. true: every netherite sword a player holds that
+	 * was never chosen nor turned back becomes a saber (standard hilt, red blade) by itself. false
+	 * (default): only explicitly chosen swords are sabers, every other sword stays a normal sword.
+	 */
+	@SerializedName("netherite_swords_are_sabers")
+	public boolean netheriteSwordsAreSabers = false;
+
+	/** Phase 12: whether this sword may become a saber on this server. */
+	public boolean allowsSaber(ItemStack stack) {
+		return SaberVariant.isSword(stack) && this.saberSwords.contains(BuiltInRegistries.ITEM.getKey(stack.getItem()).toString());
+	}
 
 	public static AbilityConfig get() {
 		return current;
@@ -319,8 +366,16 @@ public final class AbilityConfig {
 		config.blasterVentRate = Mth.clamp(config.blasterVentRate, 0.1F, 100.0F);
 		config.droidLimit = Mth.clamp(config.droidLimit, 1, 8);
 		config.droidCooldown = Mth.clamp(config.droidCooldown, 0.1F, 10.0F);
+		config.droidChatterSeconds = Mth.clamp(config.droidChatterSeconds, 0, 3600);
 		config.shipSpeed = Mth.clamp(config.shipSpeed, 0.2F, 2.0F);
 		config.shipLaserDamage = Mth.clamp(config.shipLaserDamage, 0.0F, 10.0F);
+		config.shipRespawnSeconds = Mth.clamp(config.shipRespawnSeconds, 0, 3600);
+		if (config.saberSwords == null) {
+			config.saberSwords = new ArrayList<>(DEFAULT_SABER_SWORDS);
+		}
+		// Short ids ("diamond_sword") mean minecraft:.
+		config.saberSwords = config.saberSwords.stream().filter(java.util.Objects::nonNull)
+				.map(id -> id.contains(":") ? id : "minecraft:" + id).distinct().collect(java.util.stream.Collectors.toCollection(ArrayList::new));
 		current = config;
 	}
 }

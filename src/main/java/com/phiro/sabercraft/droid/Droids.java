@@ -32,6 +32,7 @@ import com.phiro.sabercraft.advancement.SaberAdvancements;
 import com.phiro.sabercraft.network.DroidCommandPayload;
 import com.phiro.sabercraft.network.DroidEventPayload;
 import com.phiro.sabercraft.network.DroidStatusPayload;
+import com.phiro.sabercraft.network.DroidTargetPayload;
 
 /**
  * The droids of all players, on the server (Phase 11).
@@ -58,6 +59,8 @@ public final class Droids {
 	static final double STAY_LIMIT_SQR = 96.0 * 96.0;
 	/** Abilities only work when the droid is this close to its owner (squared). */
 	static final double ABILITY_RANGE_SQR = 32.0 * 32.0;
+	/** Phase 12: how far a player can look at a droid to command it with a key, in blocks. */
+	public static final double TARGET_RANGE = 12.0;
 
 	/** The droids each player has called, by {@link DroidType#id()}. */
 	public static final AttachmentType<List<String>> CREW = AttachmentRegistry.create(SaberCraft.id("droids"),
@@ -66,12 +69,15 @@ public final class Droids {
 	private static final Map<UUID, EnumMap<DroidType, DroidEntity>> LIVE = new HashMap<>();
 	private static final Map<UUID, EnumMap<DroidType, Long>> READY_AT = new HashMap<>();
 	private static final Map<UUID, Long> LAST_COMMAND = new HashMap<>();
+	/** Phase 12: when one of a player's droids last made a sound, so they never chatter in a row. */
+	private static final Map<UUID, Long> LAST_VOICE = new HashMap<>();
 
 	private Droids() {
 	}
 
 	public static void init() {
 		ServerPlayNetworking.registerGlobalReceiver(DroidCommandPayload.TYPE, (payload, context) -> command(context.player(), payload.action(), payload.droid()));
+		ServerPlayNetworking.registerGlobalReceiver(DroidTargetPayload.TYPE, (payload, context) -> target(context.player(), payload.entityId(), payload.action()));
 		ServerTickEvents.END_SERVER_TICK.register(server -> {
 			if (server.getTickCount() % 10 == 0) {
 				tick(server);
@@ -82,6 +88,7 @@ public final class Droids {
 			UUID id = handler.getPlayer().getUUID();
 			EnumMap<DroidType, DroidEntity> live = LIVE.remove(id);
 			LAST_COMMAND.remove(id);
+			LAST_VOICE.remove(id);
 
 			// Not in the middle of the player leaving the level: on the next tick.
 			if (live != null) {
@@ -93,6 +100,7 @@ public final class Droids {
 			LIVE.clear();
 			READY_AT.clear();
 			LAST_COMMAND.clear();
+			LAST_VOICE.clear();
 		});
 	}
 
@@ -161,7 +169,8 @@ public final class Droids {
 						droid.discard();
 					}
 
-					changed |= spawn(player, type, droid != null && droid.isStaying()) != null;
+					// Phase 12: brought back after a chunk reload, a join or a dimension change: quietly.
+					changed |= spawn(player, type, true) != null;
 				} else if (droid.distanceToSqr(player) > (droid.isStaying() ? STAY_LIMIT_SQR : DroidEntity.TELEPORT_DISTANCE_SQR * 4.0)) {
 					// Left far behind (a /tp, an ender pearl): back to the owner.
 					droid.setStaying(false);
@@ -196,6 +205,17 @@ public final class Droids {
 		}
 
 		return droid;
+	}
+
+	/** Phase 12: one of the owner's droids made a sound now. */
+	static void spoke(DroidEntity droid, long now) {
+		LAST_VOICE.put(droid.owner(), now);
+	}
+
+	/** Phase 12: whether none of the owner's droids made a sound in the last {@code ticks} ticks. */
+	static boolean quietFor(DroidEntity droid, long now, int ticks) {
+		Long last = LAST_VOICE.get(droid.owner());
+		return last == null || now - last >= ticks || now < last;
 	}
 
 	/** A droid died (only /kill and the void can do that): its owner has to call it again. */
@@ -242,6 +262,40 @@ public final class Droids {
 
 		sendStatus(player);
 		return message;
+	}
+
+	/**
+	 * Phase 12: a droid key while looking at a droid. Only {@code ability} and {@code stay}, only
+	 * the player's own droid, within {@link #TARGET_RANGE} blocks of the eyes and in sight. Then
+	 * the same as the menu button, with the same rate limit and cooldowns. Returns the message for
+	 * the player, or {@code null} if it was ignored.
+	 */
+	public static @Nullable Component target(ServerPlayer player, int entityId, String action) {
+		if (!action.equals("ability") && !action.equals("stay") || !player.isAlive() || player.isSpectator()) {
+			return null;
+		}
+
+		if (!(player.level().getEntity(entityId) instanceof DroidEntity droid) || droid.isRemoved()
+				|| droid.distanceToSqr(player.getEyePosition()) > (TARGET_RANGE + 2.0) * (TARGET_RANGE + 2.0) || !player.hasLineOfSight(droid)) {
+			return null;
+		}
+
+		if (!droid.owner().equals(player.getUUID())) {
+			ServerPlayer owner = player.level().getServer().getPlayerList().getPlayer(droid.owner());
+			Component message = Component.translatableWithFallback("sabercraft.droid.not_yours", "%s belongs to %s.",
+					Component.translatableWithFallback(droid.droid().translationKey(), droid.droid().displayName()),
+					owner != null ? owner.getDisplayName() : Component.literal("?"));
+			player.sendOverlayMessage(message);
+			return message;
+		}
+
+		if (!isCurrent(droid)) {
+			return null;
+		}
+
+		// Turns to its owner first, so it is clear which droid reacts.
+		droid.getLookControl().setLookAt(player, 30.0F, 30.0F);
+		return command(player, action, droid.droid().id());
 	}
 
 	private static @Nullable Component run(ServerPlayer player, String action, DroidType type) {
@@ -421,5 +475,6 @@ public final class Droids {
 	public static void resetCooldowns() {
 		READY_AT.clear();
 		LAST_COMMAND.clear();
+		LAST_VOICE.clear();
 	}
 }

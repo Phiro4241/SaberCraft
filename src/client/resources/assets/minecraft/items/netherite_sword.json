@@ -568,44 +568,44 @@
         }
       },
       {
-        "when": "sabercraft:plain",
+        "when": "sabercraft:standard",
         "model": {
-          "type": "minecraft:model",
-          "model": "minecraft:item/netherite_sword"
+          "type": "minecraft:select",
+          "property": "minecraft:display_context",
+          "cases": [
+            {
+              "when": [
+                "gui",
+                "ground",
+                "fixed",
+                "on_shelf"
+              ],
+              "model": {
+                "type": "minecraft:model",
+                "model": "sabercraft:item/saber_hilt"
+              }
+            }
+          ],
+          "fallback": {
+            "type": "minecraft:composite",
+            "models": [
+              {
+                "type": "minecraft:model",
+                "model": "sabercraft:item/saber_hilt"
+              },
+              {
+                "type": "sabercraft:saber_blade",
+                "base": "sabercraft:item/saber_hilt",
+                "style": "sabercraft:red"
+              }
+            ]
+          }
         }
       }
     ],
     "fallback": {
-      "type": "minecraft:select",
-      "property": "minecraft:display_context",
-      "cases": [
-        {
-          "when": [
-            "gui",
-            "ground",
-            "fixed",
-            "on_shelf"
-          ],
-          "model": {
-            "type": "minecraft:model",
-            "model": "sabercraft:item/saber_hilt"
-          }
-        }
-      ],
-      "fallback": {
-        "type": "minecraft:composite",
-        "models": [
-          {
-            "type": "minecraft:model",
-            "model": "sabercraft:item/saber_hilt"
-          },
-          {
-            "type": "sabercraft:saber_blade",
-            "base": "sabercraft:item/saber_hilt",
-            "style": "sabercraft:red"
-          }
-        ]
-      }
+      "type": "minecraft:model",
+      "model": "minecraft:item/netherite_sword"
     }
   }
 }

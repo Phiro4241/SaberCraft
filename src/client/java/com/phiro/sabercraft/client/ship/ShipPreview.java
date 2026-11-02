@@ -36,8 +36,8 @@ public final class ShipPreview {
 	public static void draw(GuiGraphicsExtractor graphics, ShipType ship, float foils, float yaw, float pitch, int x0, int y0, int x1, int y1) {
 		Minecraft client = Minecraft.getInstance();
 		List<ItemStackRenderState> parts = ShipModels.resolve(ship, null, client.level, client.player, 0);
-		// The X-Wing is about 5.5 blocks across and 5 long.
-		float scale = (x1 - x0) * 0.8F / 6.0F;
+		// The X-Wing is about 5.5 blocks across and 5 long, the TIEs about 2.7 each way.
+		float scale = (x1 - x0) * 0.8F / (ship.foils() ? 6.0F : 3.6F);
 		graphics.guiRenderState.addPicturesInPictureState(new State(ship, foils, parts, yaw, pitch, x0, y0, x1, y1, scale, graphics.scissorStack.peek()));
 	}
 
