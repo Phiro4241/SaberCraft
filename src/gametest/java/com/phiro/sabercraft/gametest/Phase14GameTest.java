@@ -687,8 +687,27 @@ public class Phase14GameTest implements FabricClientGameTest {
 					context.waitTick();
 				}
 
-				context.runOnClient(client -> ShipClient.command("interior", ShipType.FALCON));
-				until(context, client -> ShipInteriors.isInterior(client.level), 80, "dedicated server: aboard the Falcon");
+				// The hangar button, from the client; a busy server may still answer "land first", so ask
+				// again a few times, and if it never works say what the server answered.
+				for (int attempt = 0; attempt < 4 && !context.computeOnClient(client -> ShipInteriors.isInterior(client.level)); attempt++) {
+					context.runOnClient(client -> ShipClient.command("interior", ShipType.FALCON));
+
+					for (int i = 0; i < 60 && !context.computeOnClient(client -> ShipInteriors.isInterior(client.level)); i++) {
+						context.waitTick();
+					}
+				}
+
+				if (!context.computeOnClient(client -> ShipInteriors.isInterior(client.level))) {
+					String answer = server.computeOnServer(s -> {
+						ServerPlayer player = s.getPlayerList().getPlayers().getFirst();
+						ShipEntity falcon = Starships.ship(player);
+						return (falcon == null ? "no ship" : falcon.ship() + " at " + falcon.position() + " ground=" + falcon.onGround() + " player at " + player.position())
+								+ ": " + ShipInteriors.enterOwn(player, ShipType.FALCON).getString();
+					});
+					check(false, "dedicated server: aboard the Falcon (" + answer + ")");
+				}
+
+				check(true, "dedicated server: aboard the Falcon");
 				context.waitTicks(40);
 				context.takeScreenshot("phase14_dedicated_falcon_interior");
 				check(server.computeOnServer(s -> ShipInteriors.leaveForTest(s.getPlayerList().getPlayers().getFirst())), "dedicated server: leaving");
