@@ -450,8 +450,8 @@ public final class FalconInterior extends InteriorPlan {
 
 		// Pipes under the ceiling and the exhaust grilles in the back wall.
 		for (int x = 11; x <= 30; x++) {
-			b.set(x, FLOOR + 4, 43, "chain[axis=x]");
-			b.set(x, FLOOR + 4, 49, "chain[axis=x]");
+			b.set(x, FLOOR + 4, 43, "iron_chain[axis=x]");
+			b.set(x, FLOOR + 4, 49, "iron_chain[axis=x]");
 		}
 
 		for (int x = 13; x <= 28; x++) {
@@ -505,7 +505,7 @@ public final class FalconInterior extends InteriorPlan {
 		for (int i = 0; i < 4; i++) {
 			int z = 34 + i;
 			b.box(33, 1, z, 37, FLOOR - 1 - i, z, TRIM);
-			b.box(33, FLOOR - i, z, 37, FLOOR - i, z, "smooth_stone_stairs[facing=north]");
+			b.box(33, FLOOR - i, z, 37, FLOOR - i, z, "polished_andesite_stairs[facing=north]");
 		}
 
 		b.box(33, 1, 38, 37, 2, 41, TRIM);

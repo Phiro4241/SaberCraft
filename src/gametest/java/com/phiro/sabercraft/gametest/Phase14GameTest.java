@@ -110,6 +110,13 @@ public class Phase14GameTest implements FabricClientGameTest {
 			context.waitTicks(20);
 			self = context.computeOnClient(client -> client.player.getUUID());
 			context.waitFor(client -> ShipClient.status() != null, 40);
+			// Both plans built once up front (for a stranger), so a wrong block shows at once.
+			server.runOnServer(s -> {
+				ShipInteriors.plotForTest(s, new UUID(0L, 7L), "falcon");
+				ShipInteriors.plotForTest(s, new UUID(0L, 7L), "star_destroyer");
+			});
+			check(com.phiro.sabercraft.interior.InteriorBuilder.unknown().isEmpty(), "every block of both plans exists: "
+					+ com.phiro.sabercraft.interior.InteriorBuilder.unknown());
 
 			flight(context, server, self);
 			cockpits(context, server, self);
@@ -256,15 +263,13 @@ public class Phase14GameTest implements FabricClientGameTest {
 		context.waitTicks(10);
 		server.computeOnServer(s -> Starships.command(me(s, self), "call", "falcon"));
 		context.waitTicks(40);
-		server.runCommand("summon minecraft:husk 0 ~ 8 {NoAI:1b,PersistenceRequired:1b,Silent:1b,HandItems:[{id:\"minecraft:netherite_sword\",count:1,"
-				+ "components:{\"minecraft:custom_model_data\":{strings:[\"sabercraft:standard\",\"sabercraft:red\"]}}},{}]}");
+		server.runCommand("item replace entity @a weapon.mainhand with minecraft:netherite_sword[minecraft:custom_model_data={strings:[\"sabercraft:standard\",\"sabercraft:red\"]}]");
 		context.waitTicks(3);
 
 		server.runOnServer(s -> {
 			ShipEntity falcon = ship(s);
 			ServerLevel level = s.overworld();
-			Entity husk = level.getEntitiesOfClass(net.minecraft.world.entity.monster.zombie.Husk.class, AREA, Entity::isAlive).getFirst();
-			var saber = level.damageSources().mobAttack((net.minecraft.world.entity.LivingEntity) husk);
+			var saber = level.damageSources().playerAttack(me(s, self));
 			check(ShipEntity.weapon(saber).equals("saber"), "a hit with a saber counts as a saber");
 			check(Math.abs(falcon.hullDamage(saber, 10.0F) - 6.0F) < 0.01F, "a saber does 60 % on the Falcon's hull");
 			check(Math.abs(falcon.hullDamage(level.damageSources().explosion(null, null), 10.0F) - 8.5F) < 0.01F, "an explosion 85 %");
@@ -326,7 +331,7 @@ public class Phase14GameTest implements FabricClientGameTest {
 		check(server.computeOnServer(s -> s.overworld().getEntitiesOfClass(ShipEntity.class, AREA, Entity::isAlive).isEmpty()), "no wreck is left");
 		check(server.computeOnServer(s -> s.overworld().getEntitiesOfClass(ItemEntity.class, AREA, Entity::isAlive).isEmpty()), "nothing drops (no duplicates)");
 		check(server.computeOnServer(s -> me(s, self).isAlive()), "the owner is fine");
-		server.runCommand("kill @e[type=husk]");
+		server.runCommand("clear @a");
 		server.runOnServer(s -> Starships.resetCooldowns());
 		context.waitTicks(20);
 	}
@@ -416,6 +421,8 @@ public class Phase14GameTest implements FabricClientGameTest {
 		context.waitTicks(40);
 		BlockPos origin = server.computeOnServer(s -> ShipInteriors.plotForTest(s, self, "falcon"));
 		check(origin != null, "the Falcon has its plot");
+		check(com.phiro.sabercraft.interior.InteriorBuilder.unknown().isEmpty(), "every block of the plan exists: "
+				+ com.phiro.sabercraft.interior.InteriorBuilder.unknown());
 		until(context, client -> "ship.interior_falcon".equals(InteriorAmbience.playing()), 40, "the Falcon's hum plays inside");
 		reachable(server, InteriorPlan.of("falcon"), origin);
 
@@ -429,12 +436,12 @@ public class Phase14GameTest implements FabricClientGameTest {
 		look(context, server, origin, new Vec3(20.5, 13.0, 31.5), 180.0F, -10.0F, "phase14_falcon_top_turret");
 
 		// Protected: nothing can be broken or placed by a survival player.
-		BlockPos wall = origin.offset(21, 7, 24);
+		BlockPos wall = origin.offset(24, 6, 34);
 		BlockState wallState = server.computeOnServer(s -> s.getLevel(ShipInteriors.DIMENSION).getBlockState(wall));
 		check(!wallState.isAir(), "there is a block to try on");
 		check(!server.computeOnServer(s -> me(s, self).gameMode.destroyBlock(wall)), "a block of the interior cannot be broken");
 		check(server.computeOnServer(s -> s.getLevel(ShipInteriors.DIMENSION).getBlockState(wall)) == wallState, "and stays");
-		BlockPos floor = origin.offset(21, 6, 33);
+		BlockPos floor = origin.offset(25, 6, 35);
 		server.runOnServer(s -> {
 			ServerPlayer player = me(s, self);
 			ItemStack stone = new ItemStack(Items.STONE);
@@ -454,23 +461,41 @@ public class Phase14GameTest implements FabricClientGameTest {
 		until(context, client -> client.player.getVehicle() == null, 20, "out again");
 		context.waitTicks(10);
 
+		// The ship settles back onto the ground before anyone can walk aboard.
+		for (int i = 0; i < 300 && !server.computeOnServer(s -> ship(s).onGround()); i++) {
+			context.waitTick();
+		}
+
 		// Aboard again and out by the ramp.
-		server.runOnServer(s -> ShipInteriors.boardFromOutside(me(s, self), ship(s)));
+		Component refused = server.computeOnServer(s -> ShipInteriors.boardForTest(me(s, self), ship(s)));
+		String where = server.computeOnServer(s -> ship(s).position() + " ground=" + ship(s).onGround() + " motion=" + ship(s).getDeltaMovement()
+				+ " pilot=" + ship(s).pilot() + " vehicle=" + me(s, self).getVehicle());
+		check(refused == null, "boarding again is allowed" + (refused != null ? ": " + refused.getString() + " " + where : ""));
 		until(context, client -> ShipInteriors.isInterior(client.level), 60, "aboard again");
 		context.waitTicks(10);
 		AABB exit = InteriorPlan.of("falcon").exits().getFirst();
 		Vec3 ramp = exit.getCenter().add(origin.getX(), origin.getY(), origin.getZ());
 		// First a step away from the entry, then onto the ramp.
-		server.runCommand(String.format(Locale.ROOT, "tp @a %.2f %.2f %.2f", origin.getX() + 35.5, origin.getY() + 7.0, origin.getZ() + 34.5));
+		server.runCommand(String.format(Locale.ROOT, "execute in sabercraft:ship_interiors run tp @a %.2f %.2f %.2f", origin.getX() + 35.5, origin.getY() + 7.0, origin.getZ() + 34.5));
 		context.waitTicks(5);
-		server.runCommand(String.format(Locale.ROOT, "tp @a %.2f %.2f %.2f", ramp.x, origin.getY() + exit.minY + 0.2, ramp.z));
+		server.runCommand(String.format(Locale.ROOT, "execute in sabercraft:ship_interiors run tp @a %.2f %.2f %.2f", ramp.x, origin.getY() + exit.minY + 0.2, ramp.z));
 		until(context, client -> !ShipInteriors.isInterior(client.level), 60, "standing on the ramp takes you off the ship");
 		Vec3 outside = server.computeOnServer(s -> me(s, self).position());
 		check(outside.distanceTo(falcon) < 16.0, "next to the Falcon (" + Math.round(outside.distanceTo(falcon)) + " blocks)");
 		check(server.computeOnServer(s -> s.overworld().noCollision(me(s, self))), "not inside a block");
 		check(server.computeOnServer(s -> ShipInteriors.aboardKey(me(s, self))) == null, "no longer aboard");
+		// The Falcon's chunk was unloaded while nobody was outside; it comes back as soon as its owner is near.
+		for (int i = 0; i < 60 && server.computeOnServer(s -> Starships.liveCount()) == 0; i++) {
+			context.waitTick();
+		}
 
-		// The ship is lost with the crew aboard: an escape pod puts them next to the wreck.
+		check(server.computeOnServer(s -> Starships.liveCount()) == 1, "the Falcon is back, once");
+		context.waitTicks(10);
+
+		// The ship is lost with the crew aboard: an escape pod puts them next to the wreck. Its chunk
+		// is kept loaded here, as it would be when another player is near and shoots it down.
+		String chunk = String.format(Locale.ROOT, "%d %d", (int) Math.floor(falcon.x), (int) Math.floor(falcon.z));
+		server.runCommand("forceload add " + chunk);
 		server.runOnServer(s -> ShipInteriors.boardFromOutside(me(s, self), ship(s)));
 		until(context, client -> ShipInteriors.isInterior(client.level), 60, "aboard for the last time");
 		context.waitTicks(10);
@@ -489,6 +514,7 @@ public class Phase14GameTest implements FabricClientGameTest {
 		check(server.computeOnServer(s -> me(s, self).position().distanceTo(falcon)) < 24.0, "next to the wreck");
 		BlockPos kept = server.computeOnServer(s -> ShipInteriors.plotForTest(s, self, "falcon"));
 		check(origin.equals(kept), "the interior stays for the next Falcon");
+		server.runCommand("forceload remove " + chunk);
 		server.runOnServer(s -> Starships.resetCooldowns());
 		server.runCommand("tp @a 0 ~ 0 180 0");
 		context.waitTicks(60);
@@ -506,6 +532,8 @@ public class Phase14GameTest implements FabricClientGameTest {
 		until(context, client -> ShipInteriors.isInterior(client.level), 60, "from the helm onto the bridge: " + aboard.getString());
 		context.waitTicks(40);
 		BlockPos origin = server.computeOnServer(s -> ShipInteriors.plotForTest(s, self, "star_destroyer"));
+		check(com.phiro.sabercraft.interior.InteriorBuilder.unknown().isEmpty(), "every block of the Star Destroyer plan exists: "
+				+ com.phiro.sabercraft.interior.InteriorBuilder.unknown());
 		reachable(server, InteriorPlan.of("star_destroyer"), origin);
 		until(context, client -> "ship.interior_bridge".equals(InteriorAmbience.playing()), 40, "the bridge drone plays");
 		look(context, server, origin, new Vec3(22.5, 31.0, 30.0), 180.0F, 5.0F, "phase14_destroyer_bridge");
@@ -514,17 +542,17 @@ public class Phase14GameTest implements FabricClientGameTest {
 
 		// The lift down to the hangar.
 		InteriorPlan.Lift up = InteriorPlan.of("star_destroyer").lifts().get(1);
-		server.runCommand(String.format(Locale.ROOT, "tp @a %.2f %.2f %.2f", origin.getX() + 22.5, origin.getY() + 31.0, origin.getZ() + 40.5));
+		server.runCommand(String.format(Locale.ROOT, "execute in sabercraft:ship_interiors run tp @a %.2f %.2f %.2f", origin.getX() + 22.5, origin.getY() + 31.0, origin.getZ() + 40.5));
 		context.waitTicks(5);
 		Vec3 lift = up.area().getCenter();
-		server.runCommand(String.format(Locale.ROOT, "tp @a %.2f %.2f %.2f", origin.getX() + lift.x, origin.getY() + up.area().minY + 0.1,
+		server.runCommand(String.format(Locale.ROOT, "execute in sabercraft:ship_interiors run tp @a %.2f %.2f %.2f", origin.getX() + lift.x, origin.getY() + up.area().minY + 0.1,
 				origin.getZ() + lift.z));
 		until(context, client -> client.player.getY() < origin.getY() + 10.0, 40, "the turbolift takes you down to the hangar");
 		look(context, server, origin, new Vec3(22.5, 5.0, 25.0), 180.0F, 10.0F, "phase14_destroyer_hangar");
 
 		// Out through the hangar: the tractor beam lowers you.
 		AABB exit = InteriorPlan.of("star_destroyer").exits().getFirst();
-		server.runCommand(String.format(Locale.ROOT, "tp @a %.2f %.2f %.2f", origin.getX() + exit.getCenter().x, origin.getY() + exit.minY + 0.1,
+		server.runCommand(String.format(Locale.ROOT, "execute in sabercraft:ship_interiors run tp @a %.2f %.2f %.2f", origin.getX() + exit.getCenter().x, origin.getY() + exit.minY + 0.1,
 				origin.getZ() + exit.getCenter().z));
 		until(context, client -> !ShipInteriors.isInterior(client.level), 60, "the hangar exit lets you down");
 		check(server.computeOnServer(s -> me(s, self).hasEffect(MobEffects.SLOW_FALLING)), "floating down gently");
@@ -540,7 +568,7 @@ public class Phase14GameTest implements FabricClientGameTest {
 		until(context, client -> ShipInteriors.isInterior(client.level), 80, "the tractor beam lifts a sneaking player in");
 		context.getInput().releaseKey(options -> options.keyShift);
 		context.waitTicks(20);
-		server.runCommand(String.format(Locale.ROOT, "tp @a %.2f %.2f %.2f", origin.getX() + exit.getCenter().x, origin.getY() + exit.minY + 0.1,
+		server.runCommand(String.format(Locale.ROOT, "execute in sabercraft:ship_interiors run tp @a %.2f %.2f %.2f", origin.getX() + exit.getCenter().x, origin.getY() + exit.minY + 0.1,
 				origin.getZ() + exit.getCenter().z));
 		until(context, client -> !ShipInteriors.isInterior(client.level), 60, "and out again");
 		for (int i = 0; i < 300 && !server.computeOnServer(s -> me(s, self).onGround()); i++) {
@@ -597,7 +625,11 @@ public class Phase14GameTest implements FabricClientGameTest {
 			TestServerContext server = singleplayer.getServer();
 			context.waitTicks(60);
 			check(context.computeOnClient(client -> ShipInteriors.isInterior(client.level)), "after logging in again, still aboard");
-			until(context, client -> server.computeOnServer(s -> ShipInteriors.aboardKey(me(s, self))) != null, 40, "and the server knows the plot");
+			for (int i = 0; i < 40 && server.computeOnServer(s -> ShipInteriors.aboardKey(me(s, self))) == null; i++) {
+				context.waitTick();
+			}
+
+			check(server.computeOnServer(s -> ShipInteriors.aboardKey(me(s, self))) != null, "and the server knows the plot");
 			BlockPos origin = server.computeOnServer(s -> ShipInteriors.plotForTest(s, self, "falcon"));
 			check(server.computeOnServer(s -> !s.getLevel(ShipInteriors.DIMENSION).getBlockState(origin.offset(21, 6, 33)).isAir()),
 					"the rooms are still there");
@@ -641,6 +673,15 @@ public class Phase14GameTest implements FabricClientGameTest {
 				context.waitTicks(10);
 				context.runOnClient(client -> ShipClient.command("call", ShipType.FALCON));
 				context.waitTicks(60);
+
+				// The called Falcon flies in first; it can be walked into once it has landed.
+				for (int i = 0; i < 300 && !server.computeOnServer(s -> {
+					ShipEntity falcon = Starships.ship(s.getPlayerList().getPlayers().getFirst());
+					return falcon != null && falcon.ship() == ShipType.FALCON && falcon.onGround();
+				}); i++) {
+					context.waitTick();
+				}
+
 				context.runOnClient(client -> ShipClient.command("interior", ShipType.FALCON));
 				until(context, client -> ShipInteriors.isInterior(client.level), 80, "dedicated server: aboard the Falcon");
 				context.waitTicks(40);
@@ -751,7 +792,7 @@ public class Phase14GameTest implements FabricClientGameTest {
 
 	/** Puts the player at a spot of the plot, looking a way, and takes a picture. */
 	private static void look(ClientGameTestContext context, TestServerContext server, BlockPos origin, Vec3 local, float yaw, float pitch, String name) {
-		server.runCommand(String.format(Locale.ROOT, "tp @a %.2f %.2f %.2f %.1f %.1f", origin.getX() + local.x, origin.getY() + local.y,
+		server.runCommand(String.format(Locale.ROOT, "execute in sabercraft:ship_interiors run tp @a %.2f %.2f %.2f %.1f %.1f", origin.getX() + local.x, origin.getY() + local.y,
 				origin.getZ() + local.z, yaw, pitch));
 		context.waitTicks(30);
 		context.takeScreenshot(name);

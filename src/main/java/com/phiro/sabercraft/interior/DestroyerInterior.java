@@ -245,7 +245,7 @@ public final class DestroyerInterior extends InteriorPlan {
 
 		// The rack it hangs from.
 		for (int y = cy + 3; y <= HANGAR + 12; y++) {
-			b.set(34, y, cz, "chain[axis=y]");
+			b.set(34, y, cz, "iron_chain[axis=y]");
 		}
 	}
 

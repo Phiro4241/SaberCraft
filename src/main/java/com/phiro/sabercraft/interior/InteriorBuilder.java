@@ -25,6 +25,7 @@ import net.minecraft.world.level.block.state.BlockState;
  */
 public final class InteriorBuilder {
 	private static final Map<String, BlockState> STATES = new HashMap<>();
+	private static final java.util.Set<String> UNKNOWN = new java.util.TreeSet<>();
 	/** No neighbour updates, no drops, but sent to clients and lit. */
 	private static final int FLAGS = Block.UPDATE_CLIENTS | Block.UPDATE_KNOWN_SHAPE | Block.UPDATE_SUPPRESS_DROPS;
 
@@ -45,7 +46,10 @@ public final class InteriorBuilder {
 			try {
 				return BlockStateParser.parseForBlock(BuiltInRegistries.BLOCK, full, false).blockState();
 			} catch (CommandSyntaxException error) {
-				throw new IllegalArgumentException("Unknown block state in an interior plan: " + key, error);
+				// Never break boarding over one wrong block: air instead, logged and listed for the tests.
+				UNKNOWN.add(key);
+				com.phiro.sabercraft.SaberCraft.LOGGER.warn("Unknown block state in an interior plan: {}", key);
+				return Blocks.AIR.defaultBlockState();
 			}
 		});
 	}
@@ -122,6 +126,11 @@ public final class InteriorBuilder {
 
 	public BlockState get(int x, int y, int z) {
 		return this.level.getBlockState(this.origin.offset(x, y, z));
+	}
+
+	/** The block states of the plans built so far that could not be read (should be none). */
+	public static java.util.Set<String> unknown() {
+		return java.util.Set.copyOf(UNKNOWN);
 	}
 
 	/** How many blocks were set. */

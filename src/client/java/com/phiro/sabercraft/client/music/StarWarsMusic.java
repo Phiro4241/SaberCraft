@@ -757,6 +757,9 @@ public final class StarWarsMusic {
 
 	private static void switchTo(@Nullable Situation wanted, float crossfade) {
 		if (current != null) {
+			// Phase 14: quick changes never stack up: an older piece still fading stops now.
+			FADING.forEach(Minecraft.getInstance().getSoundManager()::stop);
+			FADING.clear();
 			current.fadeOut(crossfade);
 			FADING.add(current);
 			current = null;

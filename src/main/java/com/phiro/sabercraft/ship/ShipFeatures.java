@@ -17,7 +17,8 @@ import net.minecraft.world.phys.Vec3;
  * sounds and, if it has one, an interior plan in {@code com.phiro.sabercraft.interior}).
  *
  * @param cockpit     where the pilot's eyes are in the cockpit view, in blocks in ship space
- *                    (x right, y up from the ground under the middle, z forward)
+ *                    (x right, y up from the ground under the middle, z forward): just in front of
+ *                    the cockpit window of the model, so its own walls never stand in the view
  * @param frame       the cockpit frame drawn over the view: {@code xwing}, {@code tie}, {@code falcon},
  *                    {@code bridge} or {@code none}
  * @param hideHull    parts of the own model that are left out in the cockpit view (they would
@@ -37,14 +38,14 @@ public record ShipFeatures(Vec3 cockpit, String frame, List<String> hideHull, St
 		boolean hyperspace, float jumpScale, @Nullable String interior) {
 	public static final ShipFeatures XWING = new ShipFeatures(new Vec3(0.0, 1.5, 0.3), "xwing", List.of(), "xwing", 1.0F, 1.0F,
 			List.of(new AABB(-0.6, 0.6, -2.0, 0.6, 1.7, 3.1)), true, 1.0F, null);
-	public static final ShipFeatures TIE_FIGHTER = new ShipFeatures(new Vec3(0.0, 1.4, 0.1), "tie", List.of(), "tie_fighter", 1.0F, 1.0F,
+	public static final ShipFeatures TIE_FIGHTER = new ShipFeatures(new Vec3(0.0, 1.375, 0.66), "tie", List.of(), "tie_fighter", 1.0F, 1.0F,
 			List.of(new AABB(-0.8, 0.5, -0.8, 0.8, 2.2, 0.8)), true, 0.85F, null);
-	public static final ShipFeatures TIE_INTERCEPTOR = new ShipFeatures(new Vec3(0.0, 1.4, 0.1), "tie", List.of(), "tie_interceptor", 1.0F,
+	public static final ShipFeatures TIE_INTERCEPTOR = new ShipFeatures(new Vec3(0.0, 1.375, 0.66), "tie", List.of(), "tie_interceptor", 1.0F,
 			1.0F, List.of(new AABB(-0.8, 0.5, -0.8, 0.8, 2.2, 0.8)), true, 0.85F, null);
-	public static final ShipFeatures FALCON = new ShipFeatures(new Vec3(4.12, 1.2, 2.6), "falcon", List.of(), "falcon", 0.6F, 0.85F,
+	public static final ShipFeatures FALCON = new ShipFeatures(new Vec3(4.125, 1.2, 3.7), "falcon", List.of(), "falcon", 0.6F, 0.85F,
 			List.of(new AABB(-5.2, 0.3, -6.0, 5.2, 2.0, 4.0), new AABB(-2.4, 0.3, 2.0, 2.4, 1.9, 6.0), new AABB(2.4, 0.6, 0.0, 4.7, 1.8, 3.8)),
 			true, 1.0F, "falcon");
-	public static final ShipFeatures STAR_DESTROYER = new ShipFeatures(new Vec3(0.0, 14.3, -23.0), "bridge", List.of(), "star_destroyer", 0.15F,
+	public static final ShipFeatures STAR_DESTROYER = new ShipFeatures(new Vec3(0.0, 14.0, -21.8), "bridge", List.of(), "star_destroyer", 0.15F,
 			0.5F, List.of(new AABB(-8.0, 0.0, 6.0, 8.0, 6.0, 40.0), new AABB(-16.0, 0.0, -12.0, 16.0, 6.5, 6.0), new AABB(-21.0, 0.0, -32.0, 21.0, 7.5,
 					-12.0), new AABB(-10.0, 6.0, -30.0, 10.0, 10.0, -12.0), new AABB(-8.5, 10.0, -26.0, 8.5, 15.0, -22.0)), true, 0.6F,
 			"star_destroyer");

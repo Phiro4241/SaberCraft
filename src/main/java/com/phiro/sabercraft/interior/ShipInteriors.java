@@ -484,7 +484,7 @@ public final class ShipInteriors {
 
 		if (interiors != null) {
 			// Players who got here some other way (logged in here, a command): find their plot.
-			for (ServerPlayer player : interiors.players()) {
+			for (ServerPlayer player : List.copyOf(interiors.players())) {
 				if (!ABOARD.containsKey(player.getUUID())) {
 					adopt(player);
 				}
@@ -623,7 +623,7 @@ public final class ShipInteriors {
 
 			Vec3 hangar = ShipFeatures.toWorld(new Vec3(0.0, 0.0, 2.0), ship.position(), ship.getYRot(), 0.0F, 0.0);
 
-			for (ServerPlayer player : level.players()) {
+			for (ServerPlayer player : List.copyOf(level.players())) {
 				double dx = player.getX() - hangar.x;
 				double dz = player.getZ() - hangar.z;
 				double below = hangar.y - player.getY();
@@ -862,6 +862,11 @@ public final class ShipInteriors {
 	public static @Nullable Component helmForTest(ServerPlayer player) {
 		Aboard aboard = ABOARD.get(player.getUUID());
 		return aboard != null ? helm(player, aboard) : null;
+	}
+
+	/** Boards the ship from outside and returns why not, or {@code null} when it went. */
+	public static @Nullable Component boardForTest(ServerPlayer player, ShipEntity ship) {
+		return boardShip(player, ship, false);
 	}
 
 	/** Runs the tractor beam check now. */

@@ -197,6 +197,9 @@ public final class SaberMusic {
 
 	private static void switchTo(Mood wanted, float crossfade) {
 		if (current != null) {
+			// Phase 14: quick changes (boarding, a space battle, climbing out) never stack up: a piece
+			// still fading out from an earlier change stops now, so only the old and the new piece are heard.
+			stopFading();
 			current.fadeOut(crossfade);
 			FADING.add(current);
 			current = null;
@@ -234,6 +237,12 @@ public final class SaberMusic {
 		current = piece;
 		client.getSoundManager().play(piece);
 		SaberCraft.LOGGER.debug("SaberCraft music: {} ({})", pick, wanted.folder());
+	}
+
+	private static void stopFading() {
+		Minecraft client = Minecraft.getInstance();
+		FADING.forEach(client.getSoundManager()::stop);
+		FADING.clear();
 	}
 
 	private static void fadeOutAll(float ticksToSilence) {
