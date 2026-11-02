@@ -24,6 +24,13 @@ public final class CharacterConfig {
 	/** Draw small characters (Yoda) at their size (Phase 9). Only the picture changes, not the hitbox. */
 	@SerializedName("character_size")
 	public boolean characterSize = true;
+	/**
+	 * Phase 13: characters with a cape or cloak (Vader, Dooku, Kylo, Maul, Obi-Wan, Anakin, Yoda and
+	 * two outfits) wear it as a real cape that hangs behind them. Needs the game's own "Cape" skin
+	 * part (Options, Skin Customization), which is on by default.
+	 */
+	@SerializedName("capes")
+	public boolean capes = true;
 
 	public static CharacterConfig get() {
 		return current;

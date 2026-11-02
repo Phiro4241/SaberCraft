@@ -21,8 +21,8 @@ import com.phiro.sabercraft.network.ShipStatusPayload;
 import com.phiro.sabercraft.ship.ShipType;
 
 /**
- * The hangar of the SaberCraft menu (Phase 11). On the left every starship as a card: the X-Wing
- * can be flown, the others are shown as planned. On the right the chosen ship large and turning
+ * The hangar of the SaberCraft menu (Phase 11). On the left every starship as a card; ships not
+ * yet flyable would be shown as planned (since Phase 13 every ship can be flown). On the right the chosen ship large and turning
  * (drag it with the mouse), what it is and how it flies. The buttons call the ship to you, climb
  * straight in, or send it back to the hangar. All of them are requests the server checks, as
  * {@code /sabercraft ship}.

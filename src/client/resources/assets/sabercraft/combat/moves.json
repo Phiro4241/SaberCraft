@@ -60,7 +60,19 @@
         "left": "sabercraft:dodge_roll_left",
         "right": "sabercraft:dodge_roll_right",
         "back": "sabercraft:dodge_backstep"
-      }
+      },
+      "crit_moves": [
+        "sabercraft:flow_diagonal",
+        "sabercraft:flow_backhand",
+        "sabercraft:flow_rising"
+      ],
+      "sprint_moves": [
+        "sabercraft:flow_diagonal",
+        "sabercraft:flow_backhand",
+        "sabercraft:flow_rising"
+      ],
+      "signature_chance": 0.3,
+      "signature_rest": 2
     },
     "sabercraft:heavy": {
       "combo": [
@@ -123,7 +135,19 @@
         "left": "sabercraft:dodge_sidestep_left",
         "right": "sabercraft:dodge_sidestep_right",
         "back": "sabercraft:dodge_backstep"
-      }
+      },
+      "crit_moves": [
+        "sabercraft:heavy_wide",
+        "sabercraft:heavy_rising",
+        "sabercraft:heavy_spin"
+      ],
+      "sprint_moves": [
+        "sabercraft:heavy_wide",
+        "sabercraft:heavy_rising",
+        "sabercraft:heavy_spin"
+      ],
+      "signature_chance": 0.3,
+      "signature_rest": 2
     },
     "sabercraft:staff": {
       "combo": [
@@ -184,7 +208,17 @@
         "left": "sabercraft:dodge_sidestep_left",
         "right": "sabercraft:dodge_sidestep_right",
         "back": "sabercraft:dodge_backstep"
-      }
+      },
+      "crit_moves": [
+        "sabercraft:staff_reverse",
+        "sabercraft:staff_spin"
+      ],
+      "sprint_moves": [
+        "sabercraft:staff_reverse",
+        "sabercraft:staff_spin"
+      ],
+      "signature_chance": 0.3,
+      "signature_rest": 2
     },
     "sabercraft:defensive": {
       "combo": [
@@ -248,7 +282,17 @@
         "left": "sabercraft:dodge_sidestep_left",
         "right": "sabercraft:dodge_sidestep_right",
         "back": "sabercraft:dodge_backstep"
-      }
+      },
+      "crit_moves": [
+        "sabercraft:def_backhand",
+        "sabercraft:def_rising"
+      ],
+      "sprint_moves": [
+        "sabercraft:def_backhand",
+        "sabercraft:def_rising"
+      ],
+      "signature_chance": 0.2,
+      "signature_rest": 2
     },
     "sabercraft:agile": {
       "combo": [
@@ -312,7 +356,19 @@
         "left": "sabercraft:dodge_roll_left",
         "right": "sabercraft:dodge_roll_right",
         "back": "sabercraft:dodge_backflip"
-      }
+      },
+      "crit_moves": [
+        "sabercraft:agile_slash",
+        "sabercraft:agile_backhand",
+        "sabercraft:agile_rising"
+      ],
+      "sprint_moves": [
+        "sabercraft:agile_slash",
+        "sabercraft:agile_backhand",
+        "sabercraft:agile_rising"
+      ],
+      "signature_chance": 0.4,
+      "signature_rest": 2
     },
     "sabercraft:djem_so": {
       "combo": [
@@ -377,7 +433,19 @@
         "left": "sabercraft:dodge_sidestep_left",
         "right": "sabercraft:dodge_sidestep_right",
         "back": "sabercraft:dodge_backstep"
-      }
+      },
+      "crit_moves": [
+        "sabercraft:djem_overhead",
+        "sabercraft:djem_wide",
+        "sabercraft:djem_rising"
+      ],
+      "sprint_moves": [
+        "sabercraft:djem_overhead",
+        "sabercraft:djem_wide",
+        "sabercraft:djem_rising"
+      ],
+      "signature_chance": 0.3,
+      "signature_rest": 2
     },
     "sabercraft:soresu": {
       "combo": [
@@ -442,7 +510,17 @@
         "left": "sabercraft:dodge_sidestep_left",
         "right": "sabercraft:dodge_sidestep_right",
         "back": "sabercraft:dodge_backstep"
-      }
+      },
+      "crit_moves": [
+        "sabercraft:soresu_cut",
+        "sabercraft:soresu_backhand"
+      ],
+      "sprint_moves": [
+        "sabercraft:soresu_cut",
+        "sabercraft:soresu_backhand"
+      ],
+      "signature_chance": 0.2,
+      "signature_rest": 2
     },
     "sabercraft:juyo": {
       "combo": [
@@ -505,7 +583,17 @@
         "left": "sabercraft:dodge_sidestep_left",
         "right": "sabercraft:dodge_sidestep_right",
         "back": "sabercraft:dodge_backflip"
-      }
+      },
+      "crit_moves": [
+        "sabercraft:juyo_spin",
+        "sabercraft:juyo_reverse"
+      ],
+      "sprint_moves": [
+        "sabercraft:juyo_spin",
+        "sabercraft:juyo_reverse"
+      ],
+      "signature_chance": 0.35,
+      "signature_rest": 2
     },
     "sabercraft:onslaught": {
       "combo": [
@@ -569,7 +657,19 @@
         "left": "sabercraft:dodge_roll_left",
         "right": "sabercraft:dodge_roll_right",
         "back": "sabercraft:dodge_backflip"
-      }
+      },
+      "crit_moves": [
+        "sabercraft:ons_overhead",
+        "sabercraft:ons_backhand",
+        "sabercraft:ons_double"
+      ],
+      "sprint_moves": [
+        "sabercraft:ons_overhead",
+        "sabercraft:ons_backhand",
+        "sabercraft:ons_double"
+      ],
+      "signature_chance": 0.3,
+      "signature_rest": 2
     },
     "sabercraft:ataru": {
       "combo": [
@@ -633,7 +733,17 @@
         "left": "sabercraft:dodge_roll_left",
         "right": "sabercraft:dodge_roll_right",
         "back": "sabercraft:dodge_backflip"
-      }
+      },
+      "crit_moves": [
+        "sabercraft:ataru_spin_cut",
+        "sabercraft:ataru_twirl"
+      ],
+      "sprint_moves": [
+        "sabercraft:ataru_spin_cut",
+        "sabercraft:ataru_twirl"
+      ],
+      "signature_chance": 0.45,
+      "signature_rest": 2
     },
     "sabercraft:makashi": {
       "combo": [
@@ -698,7 +808,19 @@
         "left": "sabercraft:dodge_sidestep_left",
         "right": "sabercraft:dodge_sidestep_right",
         "back": "sabercraft:dodge_backstep"
-      }
+      },
+      "crit_moves": [
+        "sabercraft:mak_thrust",
+        "sabercraft:mak_flick",
+        "sabercraft:mak_disengage"
+      ],
+      "sprint_moves": [
+        "sabercraft:mak_thrust",
+        "sabercraft:mak_flick",
+        "sabercraft:mak_disengage"
+      ],
+      "signature_chance": 0.25,
+      "signature_rest": 2
     },
     "sabercraft:reverse_shien": {
       "combo": [
@@ -762,7 +884,19 @@
         "left": "sabercraft:dodge_roll_left",
         "right": "sabercraft:dodge_roll_right",
         "back": "sabercraft:dodge_backflip"
-      }
+      },
+      "crit_moves": [
+        "sabercraft:rev_hook",
+        "sabercraft:rev_backstab",
+        "sabercraft:rev_uppercut"
+      ],
+      "sprint_moves": [
+        "sabercraft:rev_hook",
+        "sabercraft:rev_backstab",
+        "sabercraft:rev_uppercut"
+      ],
+      "signature_chance": 0.3,
+      "signature_rest": 2
     },
     "sabercraft:unbridled": {
       "combo": [
@@ -827,7 +961,19 @@
         "left": "sabercraft:dodge_sidestep_left",
         "right": "sabercraft:dodge_sidestep_right",
         "back": "sabercraft:dodge_backstep"
-      }
+      },
+      "crit_moves": [
+        "sabercraft:wild_wide",
+        "sabercraft:wild_rage",
+        "sabercraft:wild_slam"
+      ],
+      "sprint_moves": [
+        "sabercraft:wild_wide",
+        "sabercraft:wild_rage",
+        "sabercraft:wild_slam"
+      ],
+      "signature_chance": 0.35,
+      "signature_rest": 2
     },
     "sabercraft:improvised": {
       "combo": [
@@ -891,7 +1037,19 @@
         "left": "sabercraft:dodge_roll_left",
         "right": "sabercraft:dodge_roll_right",
         "back": "sabercraft:dodge_backflip"
-      }
+      },
+      "crit_moves": [
+        "sabercraft:imp_slash",
+        "sabercraft:imp_hook",
+        "sabercraft:imp_rising"
+      ],
+      "sprint_moves": [
+        "sabercraft:imp_slash",
+        "sabercraft:imp_hook",
+        "sabercraft:imp_rising"
+      ],
+      "signature_chance": 0.3,
+      "signature_rest": 2
     },
     "sabercraft:shii_cho": {
       "combo": [
@@ -954,7 +1112,19 @@
         "left": "sabercraft:dodge_roll_left",
         "right": "sabercraft:dodge_roll_right",
         "back": "sabercraft:dodge_backstep"
-      }
+      },
+      "crit_moves": [
+        "sabercraft:shii_sweep",
+        "sabercraft:shii_return",
+        "sabercraft:shii_twirl"
+      ],
+      "sprint_moves": [
+        "sabercraft:shii_sweep",
+        "sabercraft:shii_return",
+        "sabercraft:shii_twirl"
+      ],
+      "signature_chance": 0.3,
+      "signature_rest": 2
     }
   },
   "moves": {

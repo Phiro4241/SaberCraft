@@ -1,5 +1,6 @@
 package com.phiro.sabercraft.ability;
 
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -12,6 +13,8 @@ import net.minecraft.util.Mth;
 import net.minecraft.world.item.ItemStack;
 
 import com.phiro.sabercraft.config.JsonConfig;
+import com.phiro.sabercraft.droid.DroidBalance;
+import com.phiro.sabercraft.droid.DroidType;
 import com.phiro.sabercraft.saber.SaberVariant;
 import com.phiro.sabercraft.ship.ShipType;
 
@@ -256,9 +259,12 @@ public final class AbilityConfig {
 	/** Phase 11: players can call droid companions (menu or /sabercraft droid). */
 	@SerializedName("droids_enabled")
 	public boolean droidsEnabled = true;
-	/** How many droids one player can have out at the same time (each kind at most once). */
+	/**
+	 * How many droids one player can have out at the same time (each kind at most once). Phase 13:
+	 * the default is 2 (was 4); files written before Phase 13 that still hold 4 are moved to 2 once.
+	 */
 	@SerializedName("droid_limit")
-	public int droidLimit = 4;
+	public int droidLimit = 2;
 	/** Multiplier for the cooldowns of the droid abilities. */
 	@SerializedName("droid_cooldown")
 	public float droidCooldown = 1.0F;
@@ -269,6 +275,24 @@ public final class AbilityConfig {
 	 * Phase 12: on average seconds between two idle chatters (beeps without a reason) of one droid.
 	 * Droids of one player never chatter right after each other. 0: no idle chatter at all.
 	 */
+	/**
+	 * Phase 13: the numbers of each droid's ability (cooldown, range, damage, strength), by droid id.
+	 * Droids missing here keep their built-in values.
+	 */
+	@SerializedName("droid_balance")
+	public Map<String, DroidBalance> droidBalance = DroidBalance.defaults();
+	/**
+	 * Phase 13: after one combat droid (Chopper, B1, K-2SO) used its ability, the other combat
+	 * droids of the same player wait this many seconds. 0 = no shared cooldown.
+	 */
+	@SerializedName("droid_combat_shared_cooldown_seconds")
+	public float droidCombatSharedCooldownSeconds = 3.0F;
+	/**
+	 * Phase 13: damage of a combat droid is divided by 1 + this value for each other combat droid
+	 * the player has out, so a full combat crew is not much stronger than one droid. 0 = off.
+	 */
+	@SerializedName("droid_group_penalty")
+	public float droidGroupPenalty = 0.25F;
 	@SerializedName("droid_chatter_seconds")
 	public int droidChatterSeconds = 45;
 	/** Phase 11: players can call and fly the X-Wing (menu or /sabercraft ship). */
@@ -329,6 +353,15 @@ public final class AbilityConfig {
 	 */
 	@SerializedName("netherite_swords_are_sabers")
 	public boolean netheriteSwordsAreSabers = false;
+	/**
+	 * Phase 13: the version of this file, so changed defaults can be moved over once. Do not edit.
+	 * 0 = written before Phase 13.
+	 */
+	@SerializedName("config_version")
+	public int configVersion = 0;
+
+	/** The config_version this build writes. */
+	public static final int CONFIG_VERSION = 13;
 
 	private static Map<String, Integer> defaults(java.util.function.ToIntFunction<ShipType.Handling> value) {
 		Map<String, Integer> map = new LinkedHashMap<>();
@@ -419,7 +452,22 @@ public final class AbilityConfig {
 		config.blasterDamage = Mth.clamp(config.blasterDamage, 0.0F, 10.0F);
 		config.blasterCoolRate = Mth.clamp(config.blasterCoolRate, 0.1F, 100.0F);
 		config.blasterVentRate = Mth.clamp(config.blasterVentRate, 0.1F, 100.0F);
+		boolean migrate = config.configVersion < CONFIG_VERSION;
+
+		if (migrate) {
+			// Phase 13 lowered the default droid limit from 4 to 2. A file still holding the old
+			// default is moved once; any other value was chosen by the admin and stays.
+			if (config.configVersion < 13 && config.droidLimit == 4) {
+				config.droidLimit = 2;
+			}
+
+			config.configVersion = CONFIG_VERSION;
+		}
+
 		config.droidLimit = Mth.clamp(config.droidLimit, 1, 8);
+		config.droidBalance = DroidBalance.merged(config.droidBalance);
+		config.droidCombatSharedCooldownSeconds = Mth.clamp(config.droidCombatSharedCooldownSeconds, 0.0F, 600.0F);
+		config.droidGroupPenalty = Mth.clamp(config.droidGroupPenalty, 0.0F, 4.0F);
 		config.droidCooldown = Mth.clamp(config.droidCooldown, 0.1F, 10.0F);
 		config.droidChatterSeconds = Mth.clamp(config.droidChatterSeconds, 0, 3600);
 		config.shipSpeed = Mth.clamp(config.shipSpeed, 0.2F, 2.0F);
@@ -436,6 +484,16 @@ public final class AbilityConfig {
 		// Short ids ("diamond_sword") mean minecraft:.
 		config.saberSwords = config.saberSwords.stream().filter(java.util.Objects::nonNull)
 				.map(id -> id.contains(":") ? id : "minecraft:" + id).distinct().collect(java.util.stream.Collectors.toCollection(ArrayList::new));
+		if (migrate && Files.exists(JsonConfig.path("abilities"))) {
+			JsonConfig.save("abilities", config);
+		}
+
 		current = config;
+	}
+
+	/** Phase 13: the ability numbers of one droid. */
+	public DroidBalance balance(DroidType type) {
+		DroidBalance balance = this.droidBalance == null ? null : this.droidBalance.get(type.id());
+		return balance != null ? balance : DroidBalance.of(type);
 	}
 }

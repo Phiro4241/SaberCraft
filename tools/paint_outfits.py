@@ -10,6 +10,7 @@ fully opaque, like vanilla makes it for downloaded skins. Run from the repositor
 
 Needs Pillow and numpy. Writes src/client/resources/assets/sabercraft/textures/outfit/<name>.png.
 """
+import math
 import os
 
 import numpy as np
@@ -286,27 +287,53 @@ def head_from(o, outer, layout):
 
 
 def vader():
-    """Dark lord in black armor: a domed helmet with a grilled mask, a chest panel, a cape."""
+    """Dark lord in black armor: a domed helmet with a grilled mask, a raised chest box, shoulder
+    armor, a belt with silver boxes, gauntlets and boots. Phase 13: the cape is a real cape now
+    (vader_cape.png), and the outer layer carries the raised armor parts, so the figure has depth
+    instead of one flat black."""
     o = Outfit(66)
-    black, dark, gray, metal, lens = "#0c0c0f", "#1b1b20", "#4a4c52", "#8d9097", "#2a1e22"
+    black, dark, gray, metal, lens, shine = "#0c0c0f", "#1b1b20", "#4a4c52", "#8d9097", "#2a1e22", "#33343b"
     o.fill("body", False, dark)
     o.fill(ARMS, False, black)
     o.fill(LEGS, False, black)
-    # Chest panel with coloured buttons, shoulder plates, belt with silver boxes.
+    # Under the armor: quilted suit lines on the body and the legs.
+    o.paint("body", False, lambda f, x, y, w, h: shade(dark, 0.8) if f in ("front", "back") and (x + y) % 4 == 0 and y > 4 else None)
+    o.paint(LEGS, False, lambda f, x, y, w, h: shine if f in ("front", "left", "right") and y in (2, 5) else None)
+    # Chest panel with coloured buttons, belt with silver boxes (base layer, under the raised parts).
     def chest(f, x, y, w, h):
         if f == "front" and 2 <= x <= 5 and 2 <= y <= 4:
             return {(2, 3): "#c02020", (3, 3): "#2f6fd0", (4, 3): "#30a040", (5, 3): "#c02020"}.get((x, y), gray)
-        if f == "front" and y == 0 and x in (1, 2, 5, 6):
-            return gray
         if f not in ("top", "bottom") and y in (7, 8):
             return metal if f == "front" and x in (2, 3, 4, 5) and y == 7 else black
         return None
     o.paint("body", False, chest)
-    o.paint(ARMS, False, lambda f, x, y, w, h: gray if y < 2 and f != "bottom" else (dark if 8 <= y <= 10 and f != "bottom" else None))
-    # The cape: the back and the sides of the body and the legs, open at the front.
-    o.paint("body", True, lambda f, x, y, w, h: None if f in ("front", "bottom") or f in ("left", "right") and x == 0 and f == "right" else shade(black, 0.85 if f == "back" else 1.0))
-    o.paint(LEGS, True, lambda f, x, y, w, h: None if f in ("front", "top", "bottom") else shade(black, 0.85))
-    o.paint(ARMS, True, lambda f, x, y, w, h: shade(black, 1.0) if f in ("top",) or y < 3 and f != "bottom" else None)
+    o.paint(ARMS, False, lambda f, x, y, w, h: dark if 8 <= y <= 11 and f != "bottom" else None)
+    # Outer layer, body: the shoulder yoke with the cape clasps, the raised chest box and the
+    # belt buckle; the back plate under the cape.
+    def armor(f, x, y, w, h):
+        if f == "front":
+            if y == 0 or y == 1 and x in (0, 1, 6, 7):
+                return shine if x in (1, 6) else black
+            if 2 <= x <= 5 and 2 <= y <= 4:
+                return {(2, 3): "#e03030", (3, 3): "#4a8af0", (4, 3): "#40c050", (5, 3): "#e03030", (2, 2): metal, (5, 2): metal}.get((x, y), gray if y != 4 else dark)
+            if y == 7 and x in (2, 3, 4, 5):
+                return metal if x in (3, 4) else gray
+            if y == 8 and x in (1, 6):
+                return gray
+            return None
+        if f == "back":
+            return black if y < 2 else None
+        if f in ("left", "right"):
+            return black if y < 2 else None
+        if f == "top":
+            return black
+        return None
+    o.paint("body", True, armor)
+    # Outer layer, arms: shoulder armor and gauntlet cuffs.
+    o.paint(ARMS, True, lambda f, x, y, w, h: None if f == "bottom" else (shine if y == 0 and f != "top" else black) if y < 3 or f == "top"
+            else (gray if y == 8 and f in ("front", "right", "left") and x % 2 == 0 else black if 8 <= y <= 9 else None))
+    # Outer layer, legs: tall boots with a shine down the front.
+    o.paint(LEGS, True, lambda f, x, y, w, h: None if f in ("top", "bottom") else ((shine if f == "front" and x == 1 else black) if y >= 7 else None))
     # Helmet: the base layer is the mask, the outer layer the dome and its flared rim.
     head_from(o, False, {
         "_": {"k": black, "d": dark, "g": gray, "m": metal, "l": lens},
@@ -315,11 +342,12 @@ def vader():
         "left": ["kkkkkkkk"] * 8, "right": ["kkkkkkkk"] * 8, "back": ["kkkkkkkk"] * 8,
     })
     head_from(o, True, {
-        "_": {"k": black, "d": dark},
-        "front": ["kkkkkkkk", "kdddddk.".replace(".", "k"), "........", "........", "........", "........", "........", "........"],
-        "top": ["kdkkkkdk", "kkkkkkkk", "kkkdkkkk", "kkkkkkkk", "kkkkkkkk", "kkkkdkkk", "kkkkkkkk", "kdkkkkdk"],
-        "left": ["kkkkkkkk"] * 7 + ["kkkkkk.."], "right": ["kkkkkkkk"] * 7 + ["..kkkkkk"],
-        "back": ["kkkkkkkk"] * 8,
+        "_": {"k": black, "d": dark, "s": shine},
+        "front": ["kkkkkkkk", "ksddddsk", "........", "........", "........", "........", "........", "........"],
+        "top": ["kdkkkkdk", "kkkkkkkk", "kkkdkkkk", "kkskkkkk", "kkkkkkkk", "kkkkdkkk", "kkkkkkkk", "kdkkkkdk"],
+        "left": ["kkkkkkkk", "kkskkkkk", "kkkkkkkk", "kkkkkkkk", "kkkkkkkk", "kkkkkkkk", "kkkkkkkk", "kkkkkk.."],
+        "right": ["kkkkkkkk", "kkkkkskk", "kkkkkkkk", "kkkkkkkk", "kkkkkkkk", "kkkkkkkk", "kkkkkkkk", "..kkkkkk"],
+        "back": ["kkkkkkkk", "kkskkskk", "kkkkkkkk", "kkkkkkkk", "kkkkkkkk", "kkkkkkkk", "kkkkkkkk", "kkkkkkkk"],
     })
     o.save("vader")
 
@@ -669,6 +697,81 @@ def ezra():
     o.save("ezra")
 
 
+# Phase 13: capes. Characters that wear a cape or a cloak get a real one: a 64 x 32 texture in
+# Minecraft's cape layout, drawn by the game's cape layer behind the player, so it hangs and swings
+# as its own piece of cloth instead of being painted flat onto the back. The same texture also
+# dresses an elytra, as for every cape. Written as textures/outfit/<name>_cape.png; the mod picks it
+# up for that character automatically.
+CAPE_PARTS = {
+    # The cape box is 10 x 16 x 1 at (0, 0): outside, inside, edges.
+    "outside": (1, 1, 10, 16), "inside": (12, 1, 10, 16), "left": (0, 1, 1, 16), "right": (11, 1, 1, 16),
+    "top": (1, 0, 10, 1), "bottom": (11, 0, 10, 1),
+}
+# The elytra wings use the area right of the cape.
+ELYTRA_AREA = (22, 0, 24, 22)
+
+
+def paint_cape(name, cloth, lining, seed, trim=None, clasp=None, ragged=False, hood=False):
+    """A cape of cloth with soft vertical folds, a darker hem, an optional trim along the edges, a
+    clasp at the top, a ragged hem or a hood folded down at the top."""
+    rng = np.random.default_rng(seed)
+    img = np.zeros((32, 64, 4), dtype=np.float32)
+    base = np.array(rgb(cloth) if isinstance(cloth, str) else cloth, dtype=float)
+    inner = np.array(rgb(lining) if isinstance(lining, str) else lining, dtype=float)
+
+    def put(x, y, color):
+        grain = 1.0 + rng.normal(0, 0.035)
+        img[y, x] = [min(255, c * grain) for c in color] + [255]
+
+    for part, (x0, y0, w, h) in CAPE_PARTS.items():
+        for y in range(h):
+            for x in range(w):
+                color = base.copy()
+                if part in ("outside", "inside"):
+                    # Folds: a slow wave across the cape, deeper towards the hem.
+                    fold = 0.86 + 0.14 * math.cos((x + 0.5) * math.pi * 2 / 3.4 + (0.6 if part == "inside" else 0.0))
+                    depth = 1.0 - 0.1 * (y / h)
+                    color = color * (fold * depth if part == "outside" else 1.0)
+                    if part == "inside":
+                        color = inner * (0.9 + 0.1 * fold)
+                    if y >= h - 1:
+                        color = color * 0.75
+                    if ragged and y >= h - 2 and (x * 7 + y) % 3 == 0:
+                        color = color * 0.45
+                    if trim and part == "outside" and (x in (0, w - 1)):
+                        color = np.array(rgb(trim), dtype=float)
+                    if hood and part == "outside" and y < 3:
+                        # The hood lies folded down over the shoulders.
+                        color = base * (1.08 if y < 2 else 0.8)
+                else:
+                    color = color * 0.8
+                put(x0 + x, y0 + y, color)
+    if clasp:
+        for x in (1, 2, 9, 10):
+            put(x, 1, np.array(rgb(clasp), dtype=float))
+    ex, ey, ew, eh = ELYTRA_AREA
+    for y in range(eh):
+        for x in range(ew):
+            fold = 0.88 + 0.12 * math.cos(x * math.pi * 2 / 4.0)
+            put(ex + x, ey + y, base * fold)
+    os.makedirs(OUT, exist_ok=True)
+    path = os.path.join(OUT, name + "_cape.png")
+    Image.fromarray(img.astype(np.uint8), "RGBA").save(path)
+    print(path)
+
+
+def capes():
+    paint_cape("vader", "#121216", "#26262c", 661, clasp="#8d9097")
+    paint_cape("dooku", "#2a1e1a", "#3a1416", 662, trim="#40302a", clasp="#b8bcc4")
+    paint_cape("kylo", "#141416", "#1c1c20", 663, ragged=True, hood=True)
+    paint_cape("maul", "#141113", "#1e181b", 664, hood=True)
+    paint_cape("obi_wan", "#6e4a2c", "#5a3c24", 665, hood=True)
+    paint_cape("anakin", "#3a2a1e", "#2a1e16", 666, hood=True)
+    paint_cape("yoda", "#7a5e3e", "#6a5034", 667, hood=True)
+    paint_cape("wanderer", "#76502f", "#5e4026", 668, hood=True)
+    paint_cape("shadow", "#0b090b", "#3a0a10", 669, trim="#6e0f18", hood=True)
+
+
 if __name__ == "__main__":
     wanderer()
     shadow()
@@ -686,3 +789,4 @@ if __name__ == "__main__":
     kylo()
     rey()
     ezra()
+    capes()

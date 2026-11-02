@@ -38,8 +38,7 @@ import com.phiro.sabercraft.ship.Starships;
 /**
  * Phase 11: the X-Wing, through the hangar and the real keys of the player.
  *
- * <p>The hangar calls the ship, which lands in front of the player (planned ships cannot be
- * called); a right-click climbs in, the camera goes behind the ship. Space lifts it while
+ * <p>The hangar calls the ship, which lands in front of the player; a right-click climbs in, the camera goes behind the ship. Space lifts it while
  * hovering, W opens the throttle up to top speed (and the "first flight" advancement), A and D
  * turn and bank it, the S-foils open in the air. The attack key fires the laser cannons in turn at
  * the ship's rate: the bolts hit what is in front, the muzzle flash reaches the client, and no
@@ -92,16 +91,16 @@ public class ShipGameTest implements FabricClientGameTest {
 		dedicatedServer(context);
 	}
 
-	/** The hangar lists the ships; the planned ones (Falcon, Star Destroyer) cannot be called. */
+	/** The hangar lists the ships, all of which can be called since Phase 13. */
 	private static void hangar(ClientGameTestContext context, TestServerContext server, UUID self) {
 		context.waitFor(client -> ShipClient.status() != null, 40);
 		context.runOnClient(client -> SaberMenuScreen.open(client, SaberMenuScreen.Tab.SHIPS));
 		context.waitTicks(5);
 		context.clickScreenButton(ShipType.FALCON.translationKey());
 		context.waitTicks(3);
-		check(!context.computeOnClient(client -> ((ShipMenuScreen) client.gui.screen()).callActive()), "a planned ship cannot be called");
-		check(server.computeOnServer(s -> Starships.command(me(s, self), "call", "falcon")) != null && Starships.liveCount() == 0,
-				"the server refuses a planned ship too");
+		// Phase 13: every ship can be flown now (the Falcon's own flight is in Phase13GameTest).
+		check(context.computeOnClient(client -> ((ShipMenuScreen) client.gui.screen()).callActive()), "the Falcon can be called since Phase 13");
+		check(ShipType.ALL.stream().allMatch(ShipType::available), "no ship is planned any more");
 		server.runOnServer(s -> Starships.resetCooldowns());
 		context.clickScreenButton(ShipType.XWING.translationKey());
 		context.waitTicks(3);

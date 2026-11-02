@@ -70,9 +70,30 @@ public enum DroidType {
 		return this.speed;
 	}
 
-	/** Ticks between two uses of the ability, before the config multiplier. */
+	/**
+	 * Ticks between two uses of the ability in Phases 11 and 12. Since Phase 13 the cooldown comes
+	 * from {@link DroidBalance} ({@code droid_balance} in the config); this is kept for reference.
+	 */
 	public int cooldown() {
 		return this.cooldown;
+	}
+
+	/**
+	 * Phase 13: what the droid is for. Support droids help with items, info droids tell or mark
+	 * things, combat droids hurt or push. Only combat droids share {@code droid_combat_shared_cooldown_seconds}
+	 * and {@code droid_group_penalty}.
+	 */
+	public enum Role {
+		SUPPORT, INFO, COMBAT
+	}
+
+	/** Phase 13: this droid's role. */
+	public Role role() {
+		return switch (this) {
+			case R2D2, MOUSE -> Role.SUPPORT;
+			case C3PO, BB8, PROBE -> Role.INFO;
+			case CHOPPER, B1, K2SO -> Role.COMBAT;
+		};
 	}
 
 	/** Whether the model floats above the ground (the probe droid). */

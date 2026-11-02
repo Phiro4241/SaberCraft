@@ -11,11 +11,13 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import net.minecraft.client.model.HumanoidModel;
 import net.minecraft.client.renderer.entity.player.AvatarRenderer;
 import net.minecraft.client.renderer.entity.state.AvatarRenderState;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.Avatar;
 import net.minecraft.world.item.ItemStack;
 
 import com.phiro.sabercraft.blaster.BlasterType;
+import com.phiro.sabercraft.client.ImmersionConfig;
 import com.phiro.sabercraft.client.character.OutfitClient;
 
 /**
@@ -31,6 +33,30 @@ public abstract class AvatarRendererMixin {
 
 		if (look != null && look.scale() != 1.0F) {
 			poseStack.scale(look.scale(), look.scale(), look.scale());
+		}
+	}
+
+	/**
+	 * Phase 13: a player with a SaberCraft character or outfit is drawn without armor (unless the
+	 * viewer turned {@code character_hide_armor} off), so the character's look and cape stay visible.
+	 * Only this frame's drawing data loses the armor pieces: the player still wears them, they still
+	 * protect, and the inventory is untouched. An elytra stays, as it is no armor. Each client
+	 * decides this for every player it sees from the character it knows for them, so it works the
+	 * same in multiplayer.
+	 */
+	@Inject(method = "extractRenderState(Lnet/minecraft/world/entity/Avatar;Lnet/minecraft/client/renderer/entity/state/AvatarRenderState;F)V",
+			at = @At("TAIL"))
+	private void sabercraft$hideArmorOfCharacters(Avatar avatar, AvatarRenderState state, float partialTicks, CallbackInfo info) {
+		if (!ImmersionConfig.get().characterHideArmor || OutfitClient.look(avatar.getUUID()) == null) {
+			return;
+		}
+
+		state.headEquipment = ItemStack.EMPTY;
+		state.legsEquipment = ItemStack.EMPTY;
+		state.feetEquipment = ItemStack.EMPTY;
+
+		if (!state.chestEquipment.has(DataComponents.GLIDER)) {
+			state.chestEquipment = ItemStack.EMPTY;
 		}
 	}
 

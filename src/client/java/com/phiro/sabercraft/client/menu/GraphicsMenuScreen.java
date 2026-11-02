@@ -75,11 +75,20 @@ public class GraphicsMenuScreen extends SaberMenuScreen {
 			immersion.droidTargetHud = v;
 			ImmersionConfig.save();
 		});
+		// Phase 13: pilots hidden in ships, characters drawn without their armor.
+		this.toggle(0, 6, "sabercraft.option.ship_hide_pilot", immersion.shipHidePilot, v -> {
+			immersion.shipHidePilot = v;
+			ImmersionConfig.save();
+		});
+		this.toggle(1, 6, "sabercraft.option.character_hide_armor", immersion.characterHideArmor, v -> {
+			immersion.characterHideArmor = v;
+			ImmersionConfig.save();
+		});
 		this.closeButton();
 	}
 
 	@Override
 	protected void extractPanel(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float a) {
-		this.note(graphics, Component.translatable("sabercraft.menu.graphics.note"), 6);
+		// Phase 13: row 6 holds options now; the hint stays as the tooltip of the shader option.
 	}
 }

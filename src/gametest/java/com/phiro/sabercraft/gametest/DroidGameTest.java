@@ -25,6 +25,7 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.AABB;
 
 import com.phiro.sabercraft.SaberCraft;
+import com.phiro.sabercraft.ability.AbilityConfig;
 import com.phiro.sabercraft.advancement.SaberAdvancements;
 import com.phiro.sabercraft.client.droid.DroidClient;
 import com.phiro.sabercraft.client.menu.DroidMenuScreen;
@@ -37,7 +38,8 @@ import com.phiro.sabercraft.droid.Droids;
 /**
  * Phase 11: the droids, through the droid menu and real clicks of the player.
  *
- * <p>The menu shows every droid and calls them; the server keeps the limit of four and never makes
+ * <p>The menu shows every droid and calls them; the server keeps the limit (raised to four for this
+ * test, the default is two since Phase 13) and never makes
  * a second droid of the same kind. The droids follow (also after a teleport, and out of a glass
  * cage they are stuck in), wait when told to, answer a right-click, and their abilities work:
  * R2-D2 repairs, C-3PO reports, BB-8 marks, Chopper zaps, the mouse droid fetches, the probe droid
@@ -70,6 +72,13 @@ public class DroidGameTest implements FabricClientGameTest {
 			server.runCommand("kill @e[type=!player]");
 			context.waitTicks(20);
 			self = context.computeOnClient(client -> client.player.getUUID());
+			// Phase 13 lowered the default limit to 2; this test runs two crews of four, so it raises
+			// the (configurable) limit for this world. The next server start reads the file again.
+			UUID me = self;
+			server.runOnServer(s -> {
+				AbilityConfig.get().droidLimit = 4;
+				Droids.sendStatus(me(s, me));
+			});
 
 			menu(context, server, self);
 			follow(context, server, self);
@@ -248,7 +257,8 @@ public class DroidGameTest implements FabricClientGameTest {
 
 		// R2-D2 repairs the sword in hand.
 		ability(context, DroidType.R2D2);
-		check(server.computeOnServer(s -> me(s, self).getMainHandItem().getDamageValue()) == 800 - 1561 / 4, "R2-D2 repairs a quarter of the wear");
+		check(server.computeOnServer(s -> me(s, self).getMainHandItem().getDamageValue()) == 800 - Math.round(1561 * AbilityConfig.get().balance(DroidType.R2D2).strength),
+				"R2-D2 repairs its share of the wear");
 		context.takeScreenshot("droid_r2d2_ability");
 		check(!context.computeOnClient(client -> ((DroidMenuScreen) client.gui.screen()).abilityActive()), "right after, R2-D2's ability waits for its cooldown");
 
@@ -331,7 +341,8 @@ public class DroidGameTest implements FabricClientGameTest {
 		check(server.computeOnServer(s -> husks(s).isEmpty() || husks(s).getFirst().getHealth() < 20.0F), "the B1's bolts hit the husk");
 		server.runCommand("kill @e[type=husk]");
 
-		// K-2SO shoves a husk next to the player away.
+		// K-2SO shoves a husk next to the player away (after the combat droids' shared cooldown).
+		server.runOnServer(s -> Droids.resetCooldowns());
 		var me = server.computeOnServer(s -> me(s, self).position());
 		server.runCommand(String.format("summon minecraft:husk %.2f %.2f %.2f {PersistenceRequired:1b,Silent:1b,Health:20f}", me.x + 2.0, me.y, me.z));
 		context.waitTicks(5);

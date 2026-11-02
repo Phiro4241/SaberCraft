@@ -68,6 +68,8 @@ public final class Droids {
 
 	private static final Map<UUID, EnumMap<DroidType, DroidEntity>> LIVE = new HashMap<>();
 	private static final Map<UUID, EnumMap<DroidType, Long>> READY_AT = new HashMap<>();
+	/** Phase 13: when the combat droids of a player may act again (shared cooldown). */
+	private static final Map<UUID, Long> COMBAT_READY_AT = new HashMap<>();
 	private static final Map<UUID, Long> LAST_COMMAND = new HashMap<>();
 	/** Phase 12: when one of a player's droids last made a sound, so they never chatter in a row. */
 	private static final Map<UUID, Long> LAST_VOICE = new HashMap<>();
@@ -99,6 +101,7 @@ public final class Droids {
 			LIVE.values().forEach(live -> live.values().forEach(DroidEntity::discard));
 			LIVE.clear();
 			READY_AT.clear();
+			COMBAT_READY_AT.clear();
 			LAST_COMMAND.clear();
 			LAST_VOICE.clear();
 		});
@@ -417,10 +420,20 @@ public final class Droids {
 			return Component.translatableWithFallback("sabercraft.droid.cooldown", "%s needs %s more seconds.", name, (ready - now + 19) / 20);
 		}
 
+		long combatReady = COMBAT_READY_AT.getOrDefault(player.getUUID(), 0L);
+
+		if (type.role() == DroidType.Role.COMBAT && now < combatReady) {
+			return Component.translatableWithFallback("sabercraft.droid.combat_cooldown", "Your combat droids need %s more seconds.", (combatReady - now + 19) / 20);
+		}
+
 		DroidAbilities.Result result = DroidAbilities.use(player, droid);
 
 		if (result.used()) {
 			READY_AT.get(player.getUUID()).put(type, now + cooldown(type));
+
+			if (type.role() == DroidType.Role.COMBAT) {
+				COMBAT_READY_AT.put(player.getUUID(), now + Math.round(AbilityConfig.get().droidCombatSharedCooldownSeconds * 20.0F));
+			}
 			droid.playVoice("ability", 1.0F);
 			event(droid, EVENT_ABILITY);
 			SaberAdvancements.award(player, SaberAdvancements.LOYAL_COMPANION, type.id());
@@ -429,9 +442,20 @@ public final class Droids {
 		return result.message();
 	}
 
-	/** The full cooldown of a droid's ability, in ticks. */
+	/** The full cooldown of a droid's ability, in ticks: {@code droid_balance} times {@code droid_cooldown}. */
 	public static int cooldown(DroidType type) {
-		return Math.max(1, Math.round(type.cooldown() * AbilityConfig.get().droidCooldown));
+		AbilityConfig config = AbilityConfig.get();
+		return Math.max(1, Math.round(config.balance(type).cooldownSeconds * 20.0F * config.droidCooldown));
+	}
+
+	/**
+	 * Phase 13: the damage of a combat droid, lowered for every other combat droid the owner has
+	 * out ({@code droid_group_penalty}), so several together are not much stronger than one.
+	 */
+	public static float combatDamage(ServerPlayer owner, DroidType type) {
+		AbilityConfig config = AbilityConfig.get();
+		long others = crew(owner).stream().filter(other -> other != type && other.role() == DroidType.Role.COMBAT).count();
+		return config.balance(type).damage / (1.0F + config.droidGroupPenalty * others);
 	}
 
 	/** Tells everyone who sees the droid what it does, so its model shows it. */
@@ -474,6 +498,7 @@ public final class Droids {
 	/** Only for tests: forgets the cooldowns and the command rate limit. */
 	public static void resetCooldowns() {
 		READY_AT.clear();
+		COMBAT_READY_AT.clear();
 		LAST_COMMAND.clear();
 		LAST_VOICE.clear();
 	}

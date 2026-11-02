@@ -33,6 +33,12 @@ import com.phiro.sabercraft.ability.DodgeDirection;
  * @param guardHit         the blade gives way under a blocked hit
  * @param parry            a successful parry
  * @param guardBreak       the stance breaks when the stamina runs out
+ * @param critMoves        Phase 13: other moves of the style for a critical (falling) attack,
+ *                         besides its special {@code jump} move
+ * @param sprintMoves      Phase 13: other moves for an attack while sprinting, besides {@code sprint}
+ * @param signatureChance  Phase 13: chance that a critical or running attack plays the special
+ *                         move instead of one of the others, 0..1
+ * @param signatureRest    Phase 13: attacks at least between two special moves
  */
 public record CombatStyle(
 		Identifier id,
@@ -52,6 +58,10 @@ public record CombatStyle(
 		@Nullable CombatMove landHeavy,
 		@Nullable CombatMove guardHit,
 		@Nullable CombatMove parry,
-		@Nullable CombatMove guardBreak
+		@Nullable CombatMove guardBreak,
+		List<CombatMove> critMoves,
+		List<CombatMove> sprintMoves,
+		float signatureChance,
+		int signatureRest
 ) {
 }
