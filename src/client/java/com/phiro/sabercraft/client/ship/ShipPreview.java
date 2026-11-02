@@ -17,6 +17,7 @@ import net.minecraft.client.gui.render.pip.PictureInPictureRenderer;
 import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.item.ItemStackRenderState;
 import net.minecraft.client.renderer.state.gui.pip.PictureInPictureRenderState;
+import net.minecraft.util.Util;
 
 import com.phiro.sabercraft.ship.ShipType;
 
@@ -36,8 +37,9 @@ public final class ShipPreview {
 	public static void draw(GuiGraphicsExtractor graphics, ShipType ship, float foils, float yaw, float pitch, int x0, int y0, int x1, int y1) {
 		Minecraft client = Minecraft.getInstance();
 		List<ItemStackRenderState> parts = ShipModels.resolve(ship, null, client.level, client.player, 0);
-		// The X-Wing is about 5.5 blocks across and 5 long, the TIEs about 2.7 each way.
-		float scale = (x1 - x0) * 0.8F / (ship.foils() ? 6.0F : 3.6F);
+		// Fits the model's reach: the X-Wing about 5.5 blocks across, the TIEs 2.7, the Falcon about
+		// 13 and the Star Destroyer over 70 blocks long.
+		float scale = (x1 - x0) * 0.8F / ship.handling().modelRadius();
 		graphics.guiRenderState.addPicturesInPictureState(new State(ship, foils, parts, yaw, pitch, x0, y0, x1, y1, scale, graphics.scissorStack.peek()));
 	}
 
@@ -63,7 +65,9 @@ public final class ShipPreview {
 			poseStack.mulPose(Axis.YP.rotationDegrees(state.yaw()));
 			List<ShipParts.Part> parts = ShipModels.parts(state.ship());
 			poseStack.translate(0.0F, parts.isEmpty() ? -1.0F : -parts.getFirst().y(), 0.0F);
-			ShipModels.submit(poseStack, collector, state.ship(), state.foils(), state.parts(), 0xF000F0, 0);
+			float dish = (Util.getMillis() / 40L) % 360L;
+			ShipModels.submit(poseStack, collector, state.ship(), new ShipModels.Pose(state.foils(), dish, 1.0F - state.foils()), state.parts(),
+					0xF000F0, 0);
 		}
 
 		@Override

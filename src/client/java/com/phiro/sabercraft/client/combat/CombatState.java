@@ -11,6 +11,9 @@ import net.minecraft.world.entity.LivingEntity;
  * <p>Attacks come from the swings vanilla already sends to every client, so everybody sees the
  * same moves without extra packets. Which move a swing starts only depends on things all clients
  * know: the style stored on the saber, the time since the last attack, sprinting and falling.
+ * Since Phase 13 critical and running attacks choose among several moves of the style, and the
+ * normal chain sometimes skips a step; the choice comes from the entity, the shared game time and
+ * the attacks seen, so clients that saw the same fight pick the same moves.
  *
  * <p>Time is measured in client ticks with the partial tick added, see
  * {@code SaberTracker.time(float)}.
@@ -33,6 +36,12 @@ public final class CombatState {
 	private int strikes;
 	private int comboIndex = -1;
 	private float lastAttack = -1000.0F;
+	/** Phase 13: chance that the normal chain skips a step. */
+	static final float SKIP_CHANCE = 0.2F;
+	/** Phase 13: the move of the last attack, attacks since a special move, and all attacks. */
+	private @Nullable CombatMove lastMove;
+	private int sinceSignature = 100;
+	private int attacks;
 	private final FirstPersonPose firstPersonFrom = new FirstPersonPose();
 	private final ThirdPersonPose thirdPersonFrom = ThirdPersonPose.rest();
 	private float idleWeight;
@@ -114,21 +123,107 @@ public final class CombatState {
 			return null;
 		}
 
-		CombatMove next;
 		boolean falling = !entity.onGround() && entity.getY() - entity.yo < -0.05 && !entity.isInWater();
-
-		if (falling && current.jump() != null) {
-			next = current.jump();
-		} else if (entity.isSprinting() && current.sprint() != null) {
-			next = current.sprint();
-		} else {
-			this.comboIndex = now - this.lastAttack > current.comboWindow() ? 0 : (this.comboIndex + 1) % current.combo().size();
-			next = current.combo().get(this.comboIndex);
-		}
-
-		this.lastAttack = now;
+		// The same roll on every client: who swings and when (the game time is shared).
+		float roll = roll(entity.getId(), entity.level().getGameTime(), this.attacks);
+		CombatMove next = this.choose(current, falling, entity.isSprinting(), now, roll, CombatConfig.get());
 		this.play(next, now);
 		return next;
+	}
+
+	/** Phase 13: which move a swing plays, and the bookkeeping for the next one. */
+	private CombatMove choose(CombatStyle current, boolean falling, boolean sprinting, float now, float roll, CombatConfig config) {
+		CombatMove next;
+
+		if (falling && current.jump() != null) {
+			next = config.moveVariety ? this.pick(current, current.jump(), current.critMoves(), roll, config.signatureMoves) : current.jump();
+		} else if (sprinting && current.sprint() != null) {
+			next = config.moveVariety ? this.pick(current, current.sprint(), current.sprintMoves(), roll, config.signatureMoves) : current.sprint();
+		} else {
+			boolean fresh = now - this.lastAttack > current.comboWindow();
+			this.comboIndex = fresh ? 0 : (this.comboIndex + 1) % current.combo().size();
+
+			// Phase 13: now and then the chain skips a step, so a long fight does not loop one
+			// fixed sequence; never onto the move that just played.
+			if (config.moveVariety && !fresh && current.combo().size() > 2 && roll < SKIP_CHANCE) {
+				int skipped = (this.comboIndex + 1) % current.combo().size();
+
+				if (current.combo().get(skipped) != this.lastMove) {
+					this.comboIndex = skipped;
+				}
+			}
+
+			next = current.combo().get(this.comboIndex);
+
+			if (next == this.lastMove && current.combo().size() > 1) {
+				this.comboIndex = (this.comboIndex + 1) % current.combo().size();
+				next = current.combo().get(this.comboIndex);
+			}
+		}
+
+		if (next == current.jump() || next == current.sprint()) {
+			this.sinceSignature = 0;
+		} else {
+			this.sinceSignature++;
+		}
+
+		this.attacks++;
+		this.lastMove = next;
+		this.lastAttack = now;
+		return next;
+	}
+
+	/**
+	 * Only for tests: the moves {@code swings} attacks in a row would play, as crits ({@code crit})
+	 * or normal swings 0.3 s apart, with the rolls of entity {@code entity} from game time 0.
+	 */
+	public static java.util.List<CombatMove> simulateForTest(CombatStyle style, boolean crit, int swings, int entity, CombatConfig config) {
+		CombatState state = new CombatState();
+		java.util.List<CombatMove> moves = new java.util.ArrayList<>();
+
+		for (int i = 0; i < swings; i++) {
+			float now = i * 6.0F;
+			moves.add(state.choose(style, crit, false, now, roll(entity, i * 6L, state.attacks), config));
+		}
+
+		return moves;
+	}
+
+	/**
+	 * Phase 13: the move for a critical or running attack. The style's special move (Ezra's turn,
+	 * a flip, a leap) comes now and then, at the style's chance and never right after itself or
+	 * another special move; otherwise one of the style's other moves for that situation, never the
+	 * one that just played. Without other moves the special move always plays, as before.
+	 */
+	private CombatMove pick(CombatStyle style, CombatMove signature, java.util.List<CombatMove> others, float roll, float signatureMoves) {
+		java.util.List<CombatMove> pool = new java.util.ArrayList<>(others.isEmpty() ? style.combo() : others);
+		pool.removeIf(move -> move == signature || move == this.lastMove);
+
+		if (pool.isEmpty()) {
+			return signature;
+		}
+
+		float chance = Math.min(1.0F, style.signatureChance() * signatureMoves);
+		boolean rested = this.sinceSignature >= style.signatureRest() && this.lastMove != signature;
+
+		if (rested && roll < chance) {
+			return signature;
+		}
+
+		// The rest of the roll picks among the others, so they are evenly spread.
+		float rest = chance >= 1.0F ? roll : Mth.clamp((roll - (rested ? chance : 0.0F)) / (1.0F - (rested ? chance : 0.0F)), 0.0F, 0.9999F);
+		return pool.get(Math.min(pool.size() - 1, (int) (rest * pool.size())));
+	}
+
+	/** A number in 0..1 from the entity, the game time and the count of its attacks. */
+	static float roll(int entity, long gameTime, int attacks) {
+		long h = entity * 0x9E3779B97F4A7C15L + gameTime * 0xC2B2AE3D27D4EB4FL + attacks * 0x165667B19E3779F9L;
+		h ^= h >>> 33;
+		h *= 0xFF51AFD7ED558CCDL;
+		h ^= h >>> 33;
+		h *= 0xC4CEB9FE1A85EC53L;
+		h ^= h >>> 33;
+		return (h >>> 40) / (float) (1L << 24);
 	}
 
 	/** Starts a move right away, for example the move of an ability. */

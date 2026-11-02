@@ -96,6 +96,15 @@ public final class Starships {
 	private static final Map<UUID, Long> LAST_COMMAND = new HashMap<>();
 	/** Phase 12: when a player whose ship was destroyed can call one again (game time). */
 	private static final Map<UUID, Long> GROUNDED_UNTIL = new HashMap<>();
+	/**
+	 * Phase 13: the flight energy of each player's ship when it was last in the world, so calling
+	 * or parking it does not fill it up; a parked ship charges meanwhile. Kept while the server
+	 * runs.
+	 */
+	private static final Map<UUID, StoredEnergy> ENERGY = new HashMap<>();
+
+	private record StoredEnergy(String ship, float energy, boolean depleted, long time) {
+	}
 
 	private Starships() {
 	}
@@ -138,6 +147,7 @@ public final class Starships {
 			LIVE.clear();
 			LAST_COMMAND.clear();
 			GROUNDED_UNTIL.clear();
+			ENERGY.clear();
 		});
 	}
 
@@ -224,6 +234,7 @@ public final class Starships {
 	private static @Nullable ShipEntity spawn(ServerPlayer player, ShipType type, Vec3 pos, float yaw) {
 		ServerLevel level = player.level();
 		ShipEntity ship = new ShipEntity(level, type, player);
+		restoreEnergy(player.getUUID(), ship, level.getGameTime());
 		ship.snapTo(pos.x, pos.y, pos.z, yaw, 0.0F);
 		ship.setYHeadRot(yaw);
 		ship.setYBodyRot(yaw);
@@ -235,6 +246,28 @@ public final class Starships {
 		}
 
 		return ship;
+	}
+
+	/** Phase 13: remembers the energy of a ship, every tick it is in the world. */
+	static void storeEnergy(ShipEntity ship) {
+		if (isCurrent(ship)) {
+			ENERGY.put(ship.owner(), new StoredEnergy(ship.ship().id(), ship.energy(), ship.depleted(), ship.level().getGameTime()));
+		}
+	}
+
+	/** Phase 13: a ship coming back gets the energy it had, plus what it charged while parked. */
+	private static void restoreEnergy(UUID owner, ShipEntity ship, long now) {
+		StoredEnergy stored = ENERGY.get(owner);
+
+		if (stored == null || !stored.ship().equals(ship.ship().id()) || stored.energy() < 0.0F) {
+			return;
+		}
+
+		AbilityConfig config = AbilityConfig.get();
+		float max = config.flightTicks(ship.ship());
+		long elapsed = Math.max(0L, now - stored.time());
+		float energy = Math.min(max, stored.energy() + elapsed * max / config.rechargeTicks(ship.ship()));
+		ship.restoreEnergy(energy, stored.depleted() && energy < max * config.shipRestartShare);
 	}
 
 	/** Logged out in the cockpit: back into the ship, where it was. */
@@ -353,7 +386,7 @@ public final class Starships {
 			case "board" -> {
 				ShipEntity ship = ship(player);
 
-				if (ship == null || ship.level() != player.level() || ship.distanceToSqr(player) > BOARD_RANGE_SQR) {
+				if (ship == null || ship.level() != player.level() || ship.distanceToSqr(player) > boardRangeSqr(type)) {
 					Component called = call(player, type, name);
 
 					if (ship(player) == null) {
@@ -432,16 +465,33 @@ public final class Starships {
 		return Component.translatableWithFallback("sabercraft.ship.called", "%s is ready. Right-click it to climb in.", name);
 	}
 
-	/** A free spot in front of the player, big enough for the ship, or {@code null}. */
+	/**
+	 * Phase 13: how close the owner has to be to climb in from the hangar. The Star Destroyer hovers
+	 * high up, so its pilot is lifted aboard from further away.
+	 */
+	static double boardRangeSqr(ShipType type) {
+		double range = Math.max(Math.sqrt(BOARD_RANGE_SQR), type.handling().modelRadius() + type.handling().hoverHeight() + 8.0);
+		return range * range;
+	}
+
+	/**
+	 * A free spot in front of the player, big enough for the ship, or {@code null}. Larger ships
+	 * come down further away; a capital ship stops high above (Phase 13).
+	 */
 	private static @Nullable Vec3 landingSpot(ServerPlayer player, ShipType type) {
 		ServerLevel level = player.level();
 		Vec3 forward = Vec3.directionFromRotation(0.0F, player.getYRot());
 		Vec3 side = new Vec3(-forward.z, 0.0, forward.x);
 		double half = type.width() / 2.0;
+		double away = Math.max(0.0, half - 1.5);
+		int lift = type.capital() ? Math.round(type.handling().hoverHeight()) : 0;
+		int climb = type.capital() ? 24 : 4;
 
-		for (double distance : new double[] {6.0, 5.0, 8.0, 4.0, 10.0}) {
+		for (double near : new double[] {6.0, 5.0, 8.0, 4.0, 10.0}) {
+			double distance = near + away + (type.capital() ? type.handling().modelRadius() * 0.4 : 0.0);
+
 			for (double sideways : new double[] {0.0, 3.0, -3.0}) {
-				for (int up = 0; up <= 4; up++) {
+				for (int up = lift; up <= lift + climb; up += type.capital() ? 4 : 1) {
 					Vec3 spot = player.position().add(forward.scale(distance)).add(side.scale(sideways)).add(0.0, up, 0.0);
 					AABB box = new AABB(spot.x - half, spot.y, spot.z - half, spot.x + half, spot.y + type.height(), spot.z + half);
 

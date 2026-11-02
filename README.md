@@ -80,7 +80,7 @@ Status labels: ✅ **finished** (built and covered by automated tests) · 🧪 *
 ### 🤖 Droids 🧪
 
 - **8 droid companions**: R2-D2, C-3PO, BB-8, Chopper, Mouse Droid, Probe Droid, B1 and K-2SO, each with moving parts, a wordless synthesized voice and one ability.
-- Call, call back, stay, follow and send home from the droid menu or with `/sabercraft droid`. **Direct control:** look at one of your droids and press **N** for its ability or **U** to let it wait or follow; a hint under the crosshair shows its name, ability and cooldown. Droids sound soft and chatter only now and then. The server enforces a per-player limit, and droids come back after a restart.
+- Call, call back, stay, follow and send home from the droid menu or with `/sabercraft droid`. **Direct control:** look at one of your droids and press **N** for its ability or **U** to let it wait or follow; a hint under the crosshair shows its name, ability and cooldown. Droids sound soft and chatter only now and then. The server enforces a per-player limit (2 by default), every droid's cooldown, range and damage can be set in `droid_balance`, and droids come back after a restart.
 
 ### 🚀 Starships 🧪
 
@@ -88,7 +88,8 @@ Status labels: ✅ **finished** (built and covered by automated tests) · 🧪 *
 - Only the owner can fly their ship. Logging out in the cockpit puts you back in it when you log in.
 - A **TIE Fighter** (agile, twin green cannons that fire together, howling engines) and a **TIE Interceptor** (fastest ship, four wing-tip cannons), each with its own model, sounds and handling.
 - Ships have a **hull**: hits from others wear it down, it mends slowly, and at zero the ship explodes; its owner waits a minute for a new one (configurable).
-- 🗺️ Millennium Falcon and Star Destroyer are **planned** and shown as locked in the hangar ([plan](docs/phase-11-starships.md), German).
+- A **Millennium Falcon** (fast freighter, turning radar dish, landing legs) and a **Star Destroyer** (about 80 blocks long, six turbolaser batteries, cruises at a fixed height and never dips its nose).
+- The pilot is **not drawn** while flying. Landings never cause fall damage; hard landings and crashes cost hull, and a very hard one wrecks the ship. Ships have **flight energy** per ship that charges on the ground, shown in the HUD.
 
 ### 🌌 Skies and planets ✅
 
@@ -110,7 +111,7 @@ Status labels: ✅ **finished** (built and covered by automated tests) · 🧪 *
 
 ### 🗺️ Planned, not built
 
-Force energy as its own resource, ground vehicles, more starships (Falcon, Star Destroyer), shields, an arena and ranking for duels. Plans (German): [docs/folgephasen.md](docs/folgephasen.md), [docs/phase-11-starships.md](docs/phase-11-starships.md).
+Force energy as its own resource, ground vehicles, Falcon co-pilot seats and turrets, shields, an arena and ranking for duels. Plans (German): [docs/folgephasen.md](docs/folgephasen.md), [docs/phase-11-starships.md](docs/phase-11-starships.md).
 
 ## Screenshots
 
@@ -283,7 +284,7 @@ SaberCraft is at version **0.1.0** and under active development (development not
 **Known limitations**
 
 - **Shader packs:** with Complementary Reimagined the planet sky stays pale (the pack overrides custom sky colors); with BSL, raise `SKYBOX_OPACITY` and turn off `SKY_DESATURATION` for better planet skies. Other packs and Iris versions are untested. Blasters, droids, the X-Wing and character skins have not been checked with an active shader pack.
-- **Starships:** X-Wing, TIE Fighter and TIE Interceptor exist; the Falcon and the Star Destroyer are still planned. Ships have a hull but no shields.
+- **Starships:** X-Wing, TIE Fighter, TIE Interceptor, Millennium Falcon and Star Destroyer exist. Ships have a hull but no shields; the Falcon has one seat (no co-pilot seats or turrets yet) and no hyperspace jump.
 - **Blasters:** a converted bow keeps the name "Bow" in the hotbar.
 - **Duels:** no arena border, spectator view or ranking yet.
 - **Not tested:** multiplayer with several real players (droids and ships of two players, ship lasers against another player), a vanilla client joining a SaberCraft server (built for it, never tried), real graphics cards, screen sizes other than 1280×720, other Minecraft versions than 26.2.

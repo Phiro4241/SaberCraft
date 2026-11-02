@@ -56,8 +56,6 @@ final class DroidAbilities {
 			new Ore("iron", BlockItemTags.IRON_ORES.block(), null),
 			new Ore("copper", BlockItemTags.COPPER_ORES.block(), null),
 			new Ore("coal", BlockItemTags.COAL_ORES.block(), null));
-	/** How far the probe droid scans, in blocks in every direction. */
-	static final int PROBE_RADIUS = 16;
 
 	private DroidAbilities() {
 	}
@@ -69,36 +67,38 @@ final class DroidAbilities {
 	}
 
 	static Result use(ServerPlayer owner, DroidEntity droid) {
+		DroidBalance balance = AbilityConfig.get().balance(droid.droid());
 		return switch (droid.droid()) {
-			case R2D2 -> repair(owner);
-			case C3PO -> report(owner, droid);
-			case BB8 -> scan(owner, droid);
-			case CHOPPER -> zap(owner, droid);
-			case MOUSE -> fetch(owner, droid);
-			case PROBE -> survey(owner, droid);
-			case B1 -> burst(owner, droid);
-			case K2SO -> shove(owner, droid);
+			case R2D2 -> repair(owner, balance);
+			case C3PO -> report(owner, droid, balance);
+			case BB8 -> scan(owner, droid, balance);
+			case CHOPPER -> zap(owner, droid, balance);
+			case MOUSE -> fetch(owner, droid, balance);
+			case PROBE -> survey(owner, droid, balance);
+			case B1 -> burst(owner, droid, balance);
+			case K2SO -> shove(owner, droid, balance);
 		};
 	}
 
-	/** R2-D2: a quarter of the wear of the item in the main hand is gone. */
-	private static Result repair(ServerPlayer owner) {
+	/** R2-D2: a share ({@code strength}, 20 % by default) of the wear of the item in the main hand is gone. */
+	private static Result repair(ServerPlayer owner, DroidBalance balance) {
 		ItemStack stack = owner.getMainHandItem();
 
 		if (!stack.isDamageableItem() || !stack.isDamaged()) {
 			return Result.nothing(Component.translatableWithFallback("sabercraft.droid.r2d2.nothing", "R2-D2 beeps: nothing in your hand needs repairing."));
 		}
 
-		int repaired = Math.min(stack.getDamageValue(), Math.max(1, stack.getMaxDamage() / 4));
+		int repaired = Math.min(stack.getDamageValue(), Math.max(1, Math.round(stack.getMaxDamage() * balance.strength)));
 		stack.setDamageValue(stack.getDamageValue() - repaired);
 		owner.level().sendParticles(ParticleTypes.ELECTRIC_SPARK, owner.getX(), owner.getY() + 1.0, owner.getZ(), 8, 0.3, 0.3, 0.3, 0.05);
 		return Result.used(Component.translatableWithFallback("sabercraft.droid.r2d2.repaired", "R2-D2 repaired wear: %s points.", repaired));
 	}
 
 	/** C-3PO: how many hostile creatures are around, the time of day and the weather. */
-	private static Result report(ServerPlayer owner, DroidEntity droid) {
+	private static Result report(ServerPlayer owner, DroidEntity droid, DroidBalance balance) {
 		ServerLevel level = owner.level();
-		int hostiles = hostiles(level, owner, droid, 32.0).size();
+		int range = Math.round(balance.range);
+		int hostiles = hostiles(level, owner, droid, range).size();
 		Component time;
 
 		if (!level.dimensionType().hasFixedTime()) {
@@ -111,46 +111,55 @@ final class DroidAbilities {
 
 		String weather = level.isThundering() ? "thunder" : level.isRaining() ? "rain" : "clear";
 		Component report = hostiles == 0
-				? Component.translatableWithFallback("sabercraft.droid.c3po.safe", "C-3PO: \"No hostile creatures within thirty-two blocks. It is %s, and the weather is %s. How reassuring.\"",
-						time, word("sabercraft.droid.c3po.weather.", weather))
+				? Component.translatableWithFallback("sabercraft.droid.c3po.safe", "C-3PO: \"No hostile creatures within %s blocks. It is %s, and the weather is %s. How reassuring.\"",
+						range, time, word("sabercraft.droid.c3po.weather.", weather))
 				: Component.translatableWithFallback("sabercraft.droid.c3po.danger", "C-3PO: \"Hostile creatures nearby: %s! It is %s, and the weather is %s. Do be careful.\"",
 						hostiles, time, word("sabercraft.droid.c3po.weather.", weather));
 		owner.sendSystemMessage(report);
 		return Result.used(report);
 	}
 
-	/** BB-8: hostile creatures within 24 blocks glow for ten seconds. */
-	private static Result scan(ServerPlayer owner, DroidEntity droid) {
-		List<LivingEntity> found = hostiles(owner.level(), owner, droid, 24.0);
+	/** BB-8: hostile creatures within {@code range} blocks glow for {@code strength} seconds. */
+	private static Result scan(ServerPlayer owner, DroidEntity droid, DroidBalance balance) {
+		List<LivingEntity> found = hostiles(owner.level(), owner, droid, balance.range);
+		int ticks = Math.max(20, Math.round(balance.strength * 20.0F));
 
 		for (LivingEntity entity : found) {
-			entity.addEffect(new MobEffectInstance(MobEffects.GLOWING, 200, 0, false, false), droid);
+			entity.addEffect(new MobEffectInstance(MobEffects.GLOWING, ticks, 0, false, false), droid);
 		}
 
 		return Result.used(Component.translatableWithFallback("sabercraft.droid.bb8.scanned", "BB-8 marked hostile creatures: %s.", found.size()));
 	}
 
 	/** Chopper: an electric zap to every hostile creature right next to it. */
-	private static Result zap(ServerPlayer owner, DroidEntity droid) {
+	private static Result zap(ServerPlayer owner, DroidEntity droid, DroidBalance balance) {
 		ServerLevel level = owner.level();
-		List<LivingEntity> found = hostiles(level, owner, droid, 4.0);
+		List<LivingEntity> found = hostiles(level, owner, droid, balance.range);
+		float damage = Droids.combatDamage(owner, DroidType.CHOPPER);
+		int slow = Math.round(balance.strength * 20.0F);
 
 		if (found.isEmpty()) {
 			return Result.nothing(Component.translatableWithFallback("sabercraft.droid.chopper.nothing", "Chopper grumbles: nobody to zap."));
 		}
 
 		for (LivingEntity entity : found) {
-			entity.hurtServer(level, level.damageSources().mobAttack(droid), 4.0F);
-			entity.addEffect(new MobEffectInstance(MobEffects.SLOWNESS, 40, 1), droid);
+			if (damage > 0.0F) {
+				entity.hurtServer(level, level.damageSources().mobAttack(droid), damage);
+			}
+
+			if (slow > 0) {
+				entity.addEffect(new MobEffectInstance(MobEffects.SLOWNESS, slow, 1), droid);
+			}
+
 			level.sendParticles(ParticleTypes.ELECTRIC_SPARK, entity.getX(), entity.getY() + entity.getBbHeight() * 0.5, entity.getZ(), 12, 0.25, 0.4, 0.25, 0.1);
 		}
 
 		return Result.used(Component.translatableWithFallback("sabercraft.droid.chopper.zapped", "Chopper zapped hostile creatures: %s.", found.size()));
 	}
 
-	/** Mouse droid: dropped items within 12 blocks come to the owner. */
-	private static Result fetch(ServerPlayer owner, DroidEntity droid) {
-		List<ItemEntity> items = owner.level().getEntitiesOfClass(ItemEntity.class, droid.getBoundingBox().inflate(12.0),
+	/** Mouse droid: dropped items within {@code range} blocks come to the owner. */
+	private static Result fetch(ServerPlayer owner, DroidEntity droid, DroidBalance balance) {
+		List<ItemEntity> items = owner.level().getEntitiesOfClass(ItemEntity.class, droid.getBoundingBox().inflate(balance.range),
 				item -> item.isAlive() && !item.getItem().isEmpty());
 
 		if (items.isEmpty()) {
@@ -169,18 +178,19 @@ final class DroidAbilities {
 		return Result.used(Component.translatableWithFallback("sabercraft.droid.mouse.fetched", "The mouse droid brought items: %s.", count));
 	}
 
-	/** Probe droid: the most valuable ore within 16 blocks, and where it is. */
-	private static Result survey(ServerPlayer owner, DroidEntity droid) {
+	/** Probe droid: the most valuable ore within {@code range} blocks, and where it is. */
+	private static Result survey(ServerPlayer owner, DroidEntity droid, DroidBalance balance) {
 		Level level = owner.level();
+		int radius = Math.clamp(Math.round(balance.range), 1, 24);
 		BlockPos center = droid.blockPosition();
 		BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
 		int bestRank = ORES.size();
 		BlockPos best = null;
 		double bestDistance = Double.MAX_VALUE;
 
-		for (int dx = -PROBE_RADIUS; dx <= PROBE_RADIUS; dx++) {
-			for (int dy = -PROBE_RADIUS; dy <= PROBE_RADIUS; dy++) {
-				for (int dz = -PROBE_RADIUS; dz <= PROBE_RADIUS; dz++) {
+		for (int dx = -radius; dx <= radius; dx++) {
+			for (int dy = -radius; dy <= radius; dy++) {
+				for (int dz = -radius; dz <= radius; dz++) {
 					pos.setWithOffset(center, dx, dy, dz);
 
 					if (!level.isLoaded(pos)) {
@@ -211,7 +221,7 @@ final class DroidAbilities {
 		}
 
 		if (best == null) {
-			return Result.used(Component.translatableWithFallback("sabercraft.droid.probe.nothing", "Probe droid: no ore within %s blocks.", PROBE_RADIUS));
+			return Result.used(Component.translatableWithFallback("sabercraft.droid.probe.nothing", "Probe droid: no ore within %s blocks.", radius));
 		}
 
 		int dx = best.getX() - owner.getBlockX();
@@ -226,9 +236,9 @@ final class DroidAbilities {
 		return Result.used(message);
 	}
 
-	/** B1: a burst of three blaster bolts at the nearest hostile creature it can see. */
-	private static Result burst(ServerPlayer owner, DroidEntity droid) {
-		LivingEntity target = hostiles(owner.level(), owner, droid, 16.0).stream()
+	/** B1: a burst of {@code strength} blaster bolts at the nearest hostile creature it can see. */
+	private static Result burst(ServerPlayer owner, DroidEntity droid, DroidBalance balance) {
+		LivingEntity target = hostiles(owner.level(), owner, droid, balance.range).stream()
 				.filter(droid::hasLineOfSight)
 				.min(Comparator.comparingDouble(droid::distanceToSqr))
 				.orElse(null);
@@ -237,14 +247,15 @@ final class DroidAbilities {
 			return Result.nothing(Component.translatableWithFallback("sabercraft.droid.b1.nothing", "B1: \"No targets in sight.\""));
 		}
 
-		droid.startBurst(target, 3);
+		droid.startBurst(target, Math.clamp(Math.round(balance.strength), 1, 10), Droids.combatDamage(owner, DroidType.B1));
 		return Result.used(Component.translatableWithFallback("sabercraft.droid.b1.firing", "B1 opens fire."));
 	}
 
 	/** K-2SO: hostile creatures close to the owner are shoved away. */
-	private static Result shove(ServerPlayer owner, DroidEntity droid) {
+	private static Result shove(ServerPlayer owner, DroidEntity droid, DroidBalance balance) {
 		ServerLevel level = owner.level();
-		List<LivingEntity> found = hostiles(level, owner, owner, 6.0);
+		List<LivingEntity> found = hostiles(level, owner, owner, balance.range);
+		float damage = Droids.combatDamage(owner, DroidType.K2SO);
 		found.removeIf(entity -> entity.distanceToSqr(droid) > 12.0 * 12.0);
 
 		if (found.isEmpty()) {
@@ -254,8 +265,11 @@ final class DroidAbilities {
 		for (LivingEntity entity : found) {
 			Vec3 away = entity.position().subtract(owner.position()).multiply(1.0, 0.0, 1.0);
 			away = away.lengthSqr() < 1.0E-4 ? droid.getLookAngle().multiply(1.0, 0.0, 1.0) : away.normalize();
-			entity.hurtServer(level, level.damageSources().mobAttack(droid), 2.0F);
-			entity.setDeltaMovement(away.scale(1.3).add(0.0, 0.35, 0.0));
+			if (damage > 0.0F) {
+				entity.hurtServer(level, level.damageSources().mobAttack(droid), damage);
+			}
+
+			entity.setDeltaMovement(away.scale(1.3 * balance.strength).add(0.0, 0.35 * Math.min(1.0F, balance.strength), 0.0));
 			entity.hurtMarked = true;
 		}
 

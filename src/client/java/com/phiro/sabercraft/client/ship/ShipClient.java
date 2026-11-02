@@ -21,11 +21,13 @@ import net.minecraft.util.Mth;
 import net.minecraft.util.Util;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.Vec3;
 
 import com.phiro.sabercraft.SaberCraft;
 import com.phiro.sabercraft.client.ImmersionConfig;
 import com.phiro.sabercraft.network.ShipCommandPayload;
+import com.phiro.sabercraft.network.ShipEnergyPayload;
 import com.phiro.sabercraft.network.ShipFirePayload;
 import com.phiro.sabercraft.network.ShipShotPayload;
 import com.phiro.sabercraft.network.ShipStatusPayload;
@@ -51,6 +53,9 @@ public final class ShipClient {
 	private static int shotsSeen;
 	private static @Nullable CameraType cameraBefore;
 	private static boolean wasPiloting;
+	/** Phase 13: the energy of the ship the local player flies, as the server last told it. */
+	private static @Nullable ShipEnergyPayload energy;
+	private static int flybys;
 
 	private ShipClient() {
 	}
@@ -65,6 +70,16 @@ public final class ShipClient {
 		long flashUntil;
 		int flashCannon = -1;
 		boolean seen;
+		/** Phase 13: change of speed over the last tick, blocks per tick. */
+		float accel;
+		/** Phase 13: the radar dish of the Falcon, degrees, and its landing legs, 0 in to 1 out. */
+		float dish;
+		float dishO;
+		float legs;
+		float legsO;
+		/** Phase 13: distance to the camera last tick, and ticks until the next fly-by sound. */
+		double cameraDistance = -1.0;
+		int flybyCooldown;
 
 		public float roll(float partialTicks) {
 			return Mth.lerp(partialTicks, this.rollO, this.roll);
@@ -79,6 +94,19 @@ public final class ShipClient {
 			return this.speed;
 		}
 
+		/** Phase 13: blocks per tick gained (positive) or lost over the last tick. */
+		public float accel() {
+			return this.accel;
+		}
+
+		public float dish(float partialTicks) {
+			return Mth.lerp(partialTicks, this.dishO, this.dish);
+		}
+
+		public float legs(float partialTicks) {
+			return Mth.lerp(partialTicks, this.legsO, this.legs);
+		}
+
 		/** The cannon that just fired, or -1. */
 		public int flashing() {
 			return Util.getMillis() < this.flashUntil ? this.flashCannon : -1;
@@ -88,9 +116,11 @@ public final class ShipClient {
 	public static void init() {
 		ClientPlayNetworking.registerGlobalReceiver(ShipStatusPayload.TYPE, (payload, context) -> status = payload);
 		ClientPlayNetworking.registerGlobalReceiver(ShipShotPayload.TYPE, (payload, context) -> onShot(context.client(), payload));
+		ClientPlayNetworking.registerGlobalReceiver(ShipEnergyPayload.TYPE, (payload, context) -> energy = payload);
 		ClientTickEvents.END_CLIENT_TICK.register(ShipClient::tick);
 		ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> {
 			status = null;
+			energy = null;
 			VISUALS.clear();
 			ENGINES.values().forEach(ShipEngineSound::finish);
 			ENGINES.clear();
@@ -114,6 +144,7 @@ public final class ShipClient {
 			}
 
 			visual.foils = visual.foilsO = landed(ship) ? 0.0F : 1.0F;
+			visual.legs = visual.legsO = visual.foils < 0.5F ? 1.0F : 0.0F;
 		}
 
 		return visual;
@@ -147,13 +178,25 @@ public final class ShipClient {
 			}
 
 			Visual visual = entry.getValue();
+			ShipType type = ShipMarker.of(ship);
 			float turn = Mth.wrapDegrees(ship.getYRot() - ship.yRotO);
+			float bank = type.handling().bank();
 			visual.rollO = visual.roll;
-			visual.roll += (Mth.clamp(turn * BANK, -MAX_BANK, MAX_BANK) - visual.roll) * 0.2F;
+			visual.roll += (Mth.clamp(turn * BANK * bank, -MAX_BANK * bank, MAX_BANK * bank) - visual.roll) * 0.2F;
 			visual.foilsO = visual.foils;
 			float target = landed(ship) ? 0.0F : 1.0F;
 			visual.foils += Mth.clamp(target - visual.foils, -0.06F, 0.06F);
-			visual.speed = (float) ship.position().subtract(ship.xo, ship.yo, ship.zo).length();
+			float speed = (float) ship.position().subtract(ship.xo, ship.yo, ship.zo).length();
+			visual.accel = speed - visual.speed;
+			visual.speed = speed;
+			// Phase 13: the Falcon's dish turns slowly; its legs come out close to the ground.
+			visual.dishO = visual.dish;
+			visual.dish = (visual.dish + 2.5F) % 360.0F;
+			visual.dishO = visual.dish < visual.dishO ? visual.dishO - 360.0F : visual.dishO;
+			visual.legsO = visual.legs;
+			boolean low = landed(ship) || !level.noCollision(ship, ship.getBoundingBox().move(0.0, -2.5, 0.0));
+			visual.legs += Mth.clamp((low && speed < 0.5F ? 1.0F : 0.0F) - visual.legs, -0.05F, 0.05F);
+			flyby(client, level, ship, type, visual);
 
 			if ((visual.foilsO < 0.5F) != (visual.foils < 0.5F) && ShipMarker.of(ship) != null && ShipMarker.of(ship).foils()) {
 				level.playLocalSound(ship.getX(), ship.getY(), ship.getZ(), ShipEngineSound.event("ship.foils"), SoundSource.NEUTRAL,
@@ -162,7 +205,7 @@ public final class ShipClient {
 
 			ShipEngineSound engine = ENGINES.get(entry.getKey());
 
-			if ((engine == null || engine.isStopped()) && ship.distanceToSqr(client.gameRenderer.mainCamera().position()) < 64.0 * 64.0) {
+			if ((engine == null || engine.isStopped()) && ship.position().distanceTo(client.gameRenderer.mainCamera().position()) < 64.0 + type.handling().modelRadius()) {
 				engine = new ShipEngineSound(ship, ShipMarker.of(ship));
 				ENGINES.put(entry.getKey(), engine);
 				client.getSoundManager().play(engine);
@@ -200,6 +243,65 @@ public final class ShipClient {
 		}
 
 		wasPiloting = flying;
+	}
+
+	/**
+	 * Phase 13: a ship that rushes past the camera close and fast makes a short whoosh, once per
+	 * pass. Not for the ship the local player flies.
+	 */
+	private static void flyby(Minecraft client, ClientLevel level, Entity ship, ShipType type, Visual visual) {
+		if (visual.flybyCooldown > 0) {
+			visual.flybyCooldown--;
+		}
+
+		double distance = ship.position().distanceTo(client.gameRenderer.mainCamera().position());
+		double before = visual.cameraDistance;
+		visual.cameraDistance = distance;
+
+		if (before < 0.0 || client.player != null && client.player.getVehicle() == ship || visual.flybyCooldown > 0) {
+			return;
+		}
+
+		double close = 8.0 + type.handling().modelRadius();
+
+		// Closest point of the pass: it came nearer and now moves away, fast.
+		if (distance > before && before < close && visual.speed > type.maxSpeed() * 0.45) {
+			visual.flybyCooldown = 40;
+			flybys++;
+			float volume = (float) Math.min(1.0, 0.5 + visual.speed / type.maxSpeed() * 0.4);
+			level.playLocalSound(ship.getX(), ship.getY(), ship.getZ(), ShipEngineSound.event(type.capital() ? "ship.flyby_heavy" : "ship.flyby"),
+					SoundSource.NEUTRAL, volume, 0.9F + level.getRandom().nextFloat() * 0.2F, false);
+		}
+	}
+
+	/**
+	 * Phase 13: whether an entity is a player sitting in a starship who is not drawn (see
+	 * {@code EntityRenderDispatcherMixin}).
+	 */
+	public static boolean hidesPilot(Entity entity) {
+		return entity instanceof Player && ImmersionConfig.get().shipHidePilot && entity.getVehicle() != null
+				&& ShipMarker.of(entity.getVehicle()) != null;
+	}
+
+	/**
+	 * Phase 13: how far the camera stays behind a pilot's ship. The game caps its camera distance
+	 * attribute at 32 blocks; a ship that needs more (the Star Destroyer) gets its own distance.
+	 */
+	public static float cameraDistance(@Nullable Entity entity, float distance) {
+		Entity vehicle = entity != null ? entity.getVehicle() : null;
+		ShipType type = vehicle != null ? ShipMarker.of(vehicle) : null;
+		return type == null ? distance : Math.max(distance, type.handling().camera());
+	}
+
+	/** Phase 13: the energy of the ship the local player flies, or {@code null} if not known. */
+	public static @Nullable ShipEnergyPayload energy(Entity ship) {
+		ShipEnergyPayload known = energy;
+		return known != null && known.entityId() == ship.getId() ? known : null;
+	}
+
+	/** Only for tests: how many fly-by sounds played. */
+	public static int flybys() {
+		return flybys;
 	}
 
 	/** The ship the local player flies, or {@code null}. */
@@ -247,7 +349,7 @@ public final class ShipClient {
 
 		// The muzzle flash: a burst of light in the bolt's color (red X-Wing, green TIE) and sparks.
 		Vec3 muzzle = cannon(ship, type, payload.cannon(), 1.0F);
-		boolean green = type.laser().equals("tie");
+		boolean green = !type.laser().equals("xwing");
 		level.addParticle(new DustParticleOptions(green ? 0x30FF50 : 0xFF3020, 2.5F), muzzle.x, muzzle.y, muzzle.z, 0.0, 0.0, 0.0);
 		level.addParticle(new DustParticleOptions(green ? 0xB0FFC0 : 0xFFB0A0, 1.2F), muzzle.x, muzzle.y, muzzle.z, 0.0, 0.0, 0.0);
 
@@ -293,6 +395,12 @@ public final class ShipClient {
 	/** Only for tests: how many laser shots this client was told about. */
 	public static int shotsSeen() {
 		return shotsSeen;
+	}
+
+	/** Only for tests: the volume of a ship's engine now, or -1 if it plays none. */
+	public static float engineVolume(Entity ship) {
+		ShipEngineSound engine = ENGINES.get(ship.getId());
+		return engine != null && !engine.isStopped() ? engine.currentVolume() : -1.0F;
 	}
 
 	/** Only for tests: how many ship engines are playing. */

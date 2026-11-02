@@ -740,7 +740,7 @@
     "sounds": [
       {
         "name": "sabercraft:ship/xwing_engine",
-        "attenuation_distance": 40
+        "attenuation_distance": 36
       }
     ],
     "subtitle": "subtitles.sabercraft.ship.engine"
@@ -749,11 +749,15 @@
     "sounds": [
       {
         "name": "sabercraft:ship/xwing_laser1",
-        "attenuation_distance": 64
+        "attenuation_distance": 56
       },
       {
         "name": "sabercraft:ship/xwing_laser2",
-        "attenuation_distance": 64
+        "attenuation_distance": 56
+      },
+      {
+        "name": "sabercraft:ship/xwing_laser3",
+        "attenuation_distance": 56
       }
     ],
     "subtitle": "subtitles.sabercraft.ship.laser"
@@ -805,7 +809,7 @@
     "sounds": [
       {
         "name": "sabercraft:ship/tie_fighter_engine",
-        "attenuation_distance": 40
+        "attenuation_distance": 36
       }
     ],
     "subtitle": "subtitles.sabercraft.ship.tie_engine"
@@ -814,7 +818,7 @@
     "sounds": [
       {
         "name": "sabercraft:ship/tie_interceptor_engine",
-        "attenuation_distance": 40
+        "attenuation_distance": 36
       }
     ],
     "subtitle": "subtitles.sabercraft.ship.tie_engine"
@@ -823,11 +827,15 @@
     "sounds": [
       {
         "name": "sabercraft:ship/tie_laser1",
-        "attenuation_distance": 64
+        "attenuation_distance": 56
       },
       {
         "name": "sabercraft:ship/tie_laser2",
-        "attenuation_distance": 64
+        "attenuation_distance": 56
+      },
+      {
+        "name": "sabercraft:ship/tie_laser3",
+        "attenuation_distance": 56
       }
     ],
     "subtitle": "subtitles.sabercraft.ship.laser"
@@ -836,11 +844,15 @@
     "sounds": [
       {
         "name": "sabercraft:ship/interceptor_laser1",
-        "attenuation_distance": 64
+        "attenuation_distance": 56
       },
       {
         "name": "sabercraft:ship/interceptor_laser2",
-        "attenuation_distance": 64
+        "attenuation_distance": 56
+      },
+      {
+        "name": "sabercraft:ship/interceptor_laser3",
+        "attenuation_distance": 56
       }
     ],
     "subtitle": "subtitles.sabercraft.ship.laser"
@@ -866,5 +878,134 @@
       }
     ],
     "subtitle": "subtitles.sabercraft.ship.explode"
+  },
+  "ship.falcon.engine": {
+    "sounds": [
+      {
+        "name": "sabercraft:ship/falcon_engine",
+        "attenuation_distance": 48
+      }
+    ],
+    "subtitle": "subtitles.sabercraft.ship.engine"
+  },
+  "ship.star_destroyer.engine": {
+    "sounds": [
+      {
+        "name": "sabercraft:ship/star_destroyer_engine",
+        "attenuation_distance": 128
+      }
+    ],
+    "subtitle": "subtitles.sabercraft.ship.engine"
+  },
+  "ship.falcon.laser": {
+    "sounds": [
+      {
+        "name": "sabercraft:ship/falcon_laser1",
+        "attenuation_distance": 64
+      },
+      {
+        "name": "sabercraft:ship/falcon_laser2",
+        "attenuation_distance": 64
+      }
+    ],
+    "subtitle": "subtitles.sabercraft.ship.laser"
+  },
+  "ship.star_destroyer.laser": {
+    "sounds": [
+      {
+        "name": "sabercraft:ship/turbolaser1",
+        "attenuation_distance": 128
+      },
+      {
+        "name": "sabercraft:ship/turbolaser2",
+        "attenuation_distance": 128
+      }
+    ],
+    "subtitle": "subtitles.sabercraft.ship.turbolaser"
+  },
+  "ship.laser_impact": {
+    "sounds": [
+      {
+        "name": "sabercraft:ship/laser_impact1",
+        "attenuation_distance": 32
+      },
+      {
+        "name": "sabercraft:ship/laser_impact2",
+        "attenuation_distance": 32
+      }
+    ],
+    "subtitle": "subtitles.sabercraft.ship.laser_impact"
+  },
+  "ship.laser_impact_heavy": {
+    "sounds": [
+      {
+        "name": "sabercraft:ship/laser_impact_heavy",
+        "attenuation_distance": 48
+      }
+    ],
+    "subtitle": "subtitles.sabercraft.ship.laser_impact"
+  },
+  "ship.small_blast": {
+    "sounds": [
+      {
+        "name": "sabercraft:ship/small_blast",
+        "attenuation_distance": 48
+      }
+    ],
+    "subtitle": "subtitles.sabercraft.ship.small_blast"
+  },
+  "ship.land": {
+    "sounds": [
+      {
+        "name": "sabercraft:ship/land",
+        "attenuation_distance": 20
+      }
+    ],
+    "subtitle": "subtitles.sabercraft.ship.land"
+  },
+  "ship.impact": {
+    "sounds": [
+      {
+        "name": "sabercraft:ship/impact",
+        "attenuation_distance": 32
+      }
+    ],
+    "subtitle": "subtitles.sabercraft.ship.impact"
+  },
+  "ship.power_down": {
+    "sounds": [
+      {
+        "name": "sabercraft:ship/power_down",
+        "attenuation_distance": 24
+      }
+    ],
+    "subtitle": "subtitles.sabercraft.ship.power_down"
+  },
+  "ship.power_up": {
+    "sounds": [
+      {
+        "name": "sabercraft:ship/power_up",
+        "attenuation_distance": 24
+      }
+    ],
+    "subtitle": "subtitles.sabercraft.ship.power_up"
+  },
+  "ship.flyby": {
+    "sounds": [
+      {
+        "name": "sabercraft:ship/flyby",
+        "attenuation_distance": 32
+      }
+    ],
+    "subtitle": "subtitles.sabercraft.ship.flyby"
+  },
+  "ship.flyby_heavy": {
+    "sounds": [
+      {
+        "name": "sabercraft:ship/flyby_heavy",
+        "attenuation_distance": 96
+      }
+    ],
+    "subtitle": "subtitles.sabercraft.ship.flyby"
   }
 }

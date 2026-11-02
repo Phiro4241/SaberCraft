@@ -83,8 +83,14 @@ public record BlasterType(Identifier id, float damage, float speed, int interval
 	 * per bolt than the X-Wing's, as they fire in pairs or faster. Not in {@link #ALL} either.
 	 */
 	public static final BlasterType TIE = new BlasterType(SaberCraft.id("tie"), 6.0F, 6.2F, 5, 0.0F, 0.2F, 1, GREEN, 3.6F, 0, false, true, 112.0F, 0.3F);
+	/**
+	 * Phase 13: the turbolasers of the Star Destroyer: slow, long and heavy green bolts that throw
+	 * targets back. Not in {@link #ALL}.
+	 */
+	public static final BlasterType TURBOLASER = new BlasterType(SaberCraft.id("turbolaser"), 12.0F, 4.6F, 8, 0.0F, 0.3F, 1, GREEN, 7.0F, 0, false, true,
+			160.0F, 0.9F);
 	/** The bolts of starship cannons, which only ships fire. */
-	public static final List<BlasterType> SHIP_LASERS = List.of(XWING, TIE);
+	public static final List<BlasterType> SHIP_LASERS = List.of(XWING, TIE, TURBOLASER);
 
 	/** Phase 12: whether this is the bolt of a starship cannon. */
 	public boolean isShipLaser() {

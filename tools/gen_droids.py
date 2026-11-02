@@ -184,15 +184,21 @@ class Droid:
         lo = [min(min(e["from"][i], e["to"][i]) for e in elements) for i in range(3)]
         hi = [max(max(e["from"][i], e["to"][i]) for e in elements) for i in range(3)]
         centre = [(lo[i] + hi[i]) / 2 for i in range(3)]
+        # Phase 13: a model larger than the allowed range (the Star Destroyer) is shrunk around
+        # its middle to fit, and drawn that much larger again.
+        size = max(hi[i] - lo[i] for i in range(3))
+        shrink = min(1.0, 46.0 / size)
         icon = []
         for element in elements:
             e = json.loads(json.dumps(element))
-            e["from"] = [gb.r4(e["from"][i] + 8 - centre[i]) for i in range(3)]
-            e["to"] = [gb.r4(e["to"][i] + 8 - centre[i]) for i in range(3)]
+            e["from"] = [gb.r4((e["from"][i] - centre[i]) * shrink + 8) for i in range(3)]
+            e["to"] = [gb.r4((e["to"][i] - centre[i]) * shrink + 8) for i in range(3)]
             if "rotation" in e:
-                e["rotation"]["origin"] = [gb.r4(e["rotation"]["origin"][i] + 8 - centre[i]) for i in range(3)]
+                e["rotation"]["origin"] = [gb.r4((e["rotation"]["origin"][i] - centre[i]) * shrink + 8) for i in range(3)]
+            for v in e["from"] + e["to"]:
+                assert -16 <= v <= 32, f"{self.name}/icon: {v} out of the model range"
             icon.append(e)
-        fit = round(min(1.0, 15.0 / max(hi[i] - lo[i] for i in range(3))), 4)
+        fit = round(min(1.0, 15.0 / size) / shrink, 4)
         display = {
             "gui": {"rotation": [12, 155, 0], "translation": [0, 0, 0], "scale": [fit, fit, fit]},
             "fixed": {"rotation": [0, 180, 0], "translation": [0, 0, 0], "scale": [fit, fit, fit]},

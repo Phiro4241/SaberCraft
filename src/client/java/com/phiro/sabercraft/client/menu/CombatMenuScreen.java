@@ -4,6 +4,7 @@ import java.util.List;
 
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.screens.options.controls.KeyBindsScreen;
 import net.minecraft.network.chat.Component;
 
@@ -58,10 +59,20 @@ public class CombatMenuScreen extends SaberMenuScreen {
 			config.finisherEffects = v;
 			CombatConfig.save();
 		});
+		// Phase 13: how varied the attacks are.
+		this.toggle(0, 3, "sabercraft.option.move_variety", config.moveVariety, v -> {
+			config.moveVariety = v;
+			CombatConfig.save();
+		});
+		this.slider(1, 3, "sabercraft.option.signature_moves", 0.0F, 3.0F, config.signatureMoves, SaberMenuScreen::percent, v -> {
+			config.signatureMoves = v;
+			CombatConfig.save();
+		});
+		// The note on server settings moved into the tooltip of the keys button (Phase 13).
 		this.button(0, 7, Component.translatable("sabercraft.menu.combat.keys"), () -> {
 			this.minecraft.gui.setScreen(new KeyBindsScreen(this, this.minecraft.options));
 			return true;
-		});
+		}).setTooltip(Tooltip.create(Component.translatable("sabercraft.menu.combat.note")));
 		this.button(1, 7, Component.translatable("gui.done"), () -> {
 			this.onClose();
 			return true;
@@ -80,6 +91,5 @@ public class CombatMenuScreen extends SaberMenuScreen {
 			graphics.text(this.font, bound, x + COLUMN_WIDTH - this.font.width(bound) - 4, y, 0xFFFFD060);
 		}
 
-		this.note(graphics, Component.translatable("sabercraft.menu.combat.note"), 3);
 	}
 }

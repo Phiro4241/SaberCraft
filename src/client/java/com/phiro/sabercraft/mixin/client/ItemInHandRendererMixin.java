@@ -24,6 +24,7 @@ import com.phiro.sabercraft.client.blaster.BlasterClient;
 import com.phiro.sabercraft.client.combat.FirstPersonPose;
 import com.phiro.sabercraft.client.combat.SaberCombat;
 import com.phiro.sabercraft.client.saber.SaberProfiles;
+import com.phiro.sabercraft.client.ship.ShipClient;
 
 /**
  * First person: a held saber is placed by the fighting animation instead of vanilla's item
@@ -36,6 +37,15 @@ public abstract class ItemInHandRendererMixin {
 	public abstract void renderItem(
 			LivingEntity mob, ItemStack itemStack, ItemDisplayContext type, PoseStack poseStack, SubmitNodeCollector submitNodeCollector, int lightCoords
 	);
+
+	/** Phase 13: flying a starship in first person, the hands and what they hold stay out of view. */
+	@Inject(method = "submitHandsWithItems", at = @At("HEAD"), cancellable = true)
+	private void sabercraft$noHandsInCockpit(float frameInterp, PoseStack poseStack, SubmitNodeCollector submitNodeCollector, LocalPlayer player,
+			int lightCoords, CallbackInfo ci) {
+		if (ShipClient.hidesPilot(player)) {
+			ci.cancel();
+		}
+	}
 
 	@Inject(method = "submitArmWithItem", at = @At("HEAD"), cancellable = true)
 	private void sabercraft$submitSaber(

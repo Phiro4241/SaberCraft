@@ -1174,6 +1174,22 @@ styles["sabercraft:reverse_shien"]["air_third_person"] = {"main_arm": [-70, -10,
 styles["sabercraft:ataru"]["run_third_person"] = {"main_arm": [30, 10, 15], "item": [80, 0, 0], "lean": 22}
 styles["sabercraft:unbridled"]["run_third_person"] = {"main_arm": [-20, -20, 10], "off_arm": [-20, 20, 0], "item": [-30, 0, -40], "lean": 16}
 styles["sabercraft:staff"]["dodge"] = {"forward": "staff_roll", "left": "dodge_sidestep_left", "right": "dodge_sidestep_right", "back": "dodge_backstep"}
+# Phase 13: more variety. Critical (falling) and running attacks pick between the style's special
+# move and its other moves; signature_chance is how often the special one comes (never twice in a
+# row, at least signature_rest attacks apart). Acrobatic styles show their tricks more often, calm
+# ones less.
+SIGNATURE = {"sabercraft:ataru": 0.45, "sabercraft:agile": 0.4, "sabercraft:improvised": 0.3, "sabercraft:juyo": 0.35,
+             "sabercraft:unbridled": 0.35, "sabercraft:reverse_shien": 0.3, "sabercraft:onslaught": 0.3, "sabercraft:makashi": 0.25,
+             "sabercraft:defensive": 0.2, "sabercraft:soresu": 0.2}
+for sid, st in styles.items():
+    others = [m for m in dict.fromkeys(st["combo"]) if m not in (st.get("jump"), st.get("sprint"))]
+    st["crit_moves"] = others[:3]
+    st["sprint_moves"] = [m for m in others if m != st.get("jump")][:3]
+    st["signature_chance"] = SIGNATURE.get(sid, 0.3)
+    st["signature_rest"] = 2
+for s in styles.values():
+    for k in ("crit_moves", "sprint_moves"):
+        s[k] = ["sabercraft:" + v for v in s[k]]
 for s in styles.values():
     for k in ("combo",):
         s[k] = ["sabercraft:" + v for v in s[k]]

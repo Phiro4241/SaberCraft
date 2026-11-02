@@ -68,6 +68,8 @@ public class DroidEntity extends Pig {
 	private @Nullable LivingEntity burstTarget;
 	private int burstLeft;
 	private int burstDelay;
+	/** Phase 13: damage of each bolt of the current burst ({@code droid_balance}, group penalty). */
+	private float burstDamage = 3.0F;
 	private long lastVoice = Long.MIN_VALUE / 2;
 
 	public DroidEntity(ServerLevel level, DroidType droid, ServerPlayer owner) {
@@ -138,9 +140,10 @@ public class DroidEntity extends Pig {
 		}
 	}
 
-	/** B1: fires {@code bolts} blaster bolts at the target, one every few ticks. */
-	void startBurst(LivingEntity target, int bolts) {
+	/** B1: fires {@code bolts} blaster bolts of {@code damage} at the target, one every few ticks. */
+	void startBurst(LivingEntity target, int bolts, float damage) {
 		this.burstTarget = target;
+		this.burstDamage = damage;
 		this.burstLeft = bolts;
 		this.burstDelay = 0;
 	}
@@ -158,7 +161,7 @@ public class DroidEntity extends Pig {
 		this.getLookControl().setLookAt(target, 30.0F, 30.0F);
 		Vec3 from = this.getEyePosition();
 		Vec3 aim = target.getBoundingBox().getCenter().subtract(from);
-		BlasterBolt bolt = new BlasterBolt(level, this, BlasterType.E11, 3.0F * AbilityConfig.get().blasterDamage, false, 0.3F);
+		BlasterBolt bolt = new BlasterBolt(level, this, BlasterType.E11, this.burstDamage * AbilityConfig.get().blasterDamage, false, 0.3F);
 		Vec3 start = from.add(aim.normalize().scale(0.6));
 		bolt.setPos(start.x, start.y, start.z);
 		bolt.shoot(aim.x, aim.y, aim.z, BlasterType.E11.speed(), 1.0F);

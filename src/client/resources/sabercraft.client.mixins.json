@@ -4,10 +4,12 @@
   "compatibilityLevel": "JAVA_25",
   "client": [
     "AbstractClientPlayerMixin",
-    "AvatarMixin",
     "ArmedEntityRenderStateMixin",
+    "AvatarMixin",
     "AvatarRendererMixin",
+    "CameraMixin",
     "ClientPacketListenerMixin",
+    "EntityRenderDispatcherMixin",
     "FogRendererMixin",
     "GameRendererMixin",
     "HumanoidModelMixin",

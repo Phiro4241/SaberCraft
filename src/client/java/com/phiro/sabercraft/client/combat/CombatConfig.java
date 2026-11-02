@@ -52,6 +52,21 @@ public final class CombatConfig {
 	/** Phase 11: the shock ring and screen flash of a finishing blow (the sound always plays). */
 	@SerializedName("finisher_effects")
 	public boolean finisherEffects = true;
+	/**
+	 * Phase 13: how often the special move of a style (its signature jump or sprint attack, like
+	 * Ezra's turn) plays for a critical or running attack, as a multiplier of the style's own
+	 * chance. 0: never (its other attacks instead), 1: as the style wants it, 3: about three times
+	 * as often. The same special move never plays twice in a row.
+	 */
+	@SerializedName("signature_moves")
+	public float signatureMoves = 1.0F;
+	/**
+	 * Phase 13: attacks vary: critical and running attacks pick from several moves of the style, and
+	 * the normal chain sometimes skips a step. false: the fixed order of Phases 6 to 12 (the
+	 * special move for every critical or running attack).
+	 */
+	@SerializedName("move_variety")
+	public boolean moveVariety = true;
 
 	public static CombatConfig get() {
 		return current;
@@ -62,6 +77,7 @@ public final class CombatConfig {
 		config.trailStrength = Mth.clamp(config.trailStrength, 0.0F, 2.0F);
 		config.particles = Mth.clamp(config.particles, 0, 2);
 		config.cameraMotion = Mth.clamp(config.cameraMotion, 0.0F, 1.0F);
+		config.signatureMoves = Mth.clamp(config.signatureMoves, 0.0F, 3.0F);
 		current = config;
 	}
 

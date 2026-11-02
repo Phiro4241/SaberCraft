@@ -1,5 +1,5 @@
 """Builds the starship models of SaberCraft: the X-Wing (Phase 11), the TIE Fighter and the TIE
-Interceptor (Phase 12).
+Interceptor (Phase 12), the Millennium Falcon and the Star Destroyer (Phase 13).
 
 Same tools as the droids (gen_droids.py, gen_blasters.py): boxes and round parts built in code,
 painted with generated textures; nothing is taken from films or games. A ship is far bigger than
@@ -8,6 +8,9 @@ twice as large. The wings are parts of their own that turn around the fuselage's
 the S-foils open into the X when flying and close when landed.
 
 Ship space: 1/8 block, the ground under the middle at (0, 0, 0), y up, the nose looking to -z.
+Phase 13: the larger ships are built at a coarser unit (ship.unit, blocks per model unit): the
+Falcon at 1/4 block, the Star Destroyer at 1 block, so they fit the model range; every part
+carries the scale the game draws it at.
 
     python3 tools/gen_ships.py            -> models, textures, item definitions, ShipParts.java
     python3 tools/gen_ships.py --preview  -> also the whole ship for tools/preview_model.py in /tmp
@@ -216,7 +219,179 @@ def tie_interceptor():
     return d
 
 
-SHIPS = [xwing, tie_fighter, tie_interceptor]
+# Phase 13: the Millennium Falcon and the Star Destroyer, original Minecraft-style designs built
+# from boxes and round parts like the other ships. Worn light-grey freighter hull with rusty patches
+# and a blue engine glow; the Imperial capital ship in cool light grey with dark trenches.
+gb.MATERIALS.update({
+    "falcon_hull": ((196, 192, 182), "metal", {"brush": 0.05}),
+    "falcon_plate": ((170, 166, 158), "metal", {"brush": 0.05}),
+    "falcon_dark": ((104, 102, 98), "metal", {"brush": 0.05}),
+    "falcon_rust": ((150, 112, 88), "polymer", {}),
+    "falcon_red": ((150, 54, 44), "polymer", {}),
+    "falcon_engine": ((140, 205, 255), "glow", {}),
+    "falcon_window": ((30, 38, 46), "lens", {}),
+    "sd_hull": ((176, 180, 186), "metal", {"brush": 0.04}),
+    "sd_light": ((198, 202, 206), "metal", {"brush": 0.04}),
+    "sd_dark": ((86, 90, 98), "metal", {"brush": 0.04}),
+    "sd_engine": ((160, 210, 255), "glow", {}),
+    "sd_window": ((255, 236, 190), "glow", {}),
+})
+gb.EMISSIVE.update({"falcon_engine": 14, "sd_engine": 15, "sd_window": 10})
+
+FALCON_MID = 4.5
+
+
+def falcon():
+    """A round light freighter: a flat saucer with two forward prongs and a cargo notch between
+    them, the cockpit tube on the right, quad cannon turrets on top and below, a radar dish that
+    turns (part "dish") and landing legs that draw in (part "legs"). 1 unit = 1/4 block."""
+    d = gd.Droid("falcon", 1977_13, 12, 40, folder="ship")
+    d.unit = 0.25
+    m = FALCON_MID
+    cz = 3.0  # the middle of the saucer, a little behind the ship's middle
+    d.part("body", (0, m, 0))
+    # The saucer: a thick middle band and two flatter rings above and below it.
+    d.cyl("y", (0.0, cz), m - 1.2, m + 1.2, 20.0, "falcon_hull", "panel", sides=12)
+    d.cyl("y", (0.0, cz), m + 1.2, m + 2.4, 18.0, "falcon_plate", "panel", sides=12)
+    d.cyl("y", (0.0, cz), m - 2.4, m - 1.2, 18.0, "falcon_plate", "panel", sides=12)
+    d.cyl("y", (0.0, cz), m + 2.4, m + 3.0, 12.0, "falcon_hull", sides=12)
+    d.cyl("y", (0.0, cz), m - 3.0, m - 2.4, 12.0, "falcon_hull", sides=12)
+    # The two prongs in front, with the cargo notch between them.
+    for side in (-1, 1):
+        x0, x1 = sorted((side * 2.6, side * 9.5))
+        d.box((x0, m - 1.1, -23.0), (x1, m + 1.4, -12.0), "falcon_hull", "panel")
+        d.box((x0 + 0.4, m + 1.4, -21.0), (x1 - 0.4, m + 1.9, -12.0), "falcon_plate")
+        d.box((x0, m - 1.1, -23.6), (x1, m + 0.6, -23.0), "falcon_dark")
+        # A red stripe on the prong, and a docking light at its tip.
+        a, b = sorted((side * 5.0, side * 6.4))
+        d.box((a, m + 1.42, -20.0), (b, m + 1.5, -13.0), "falcon_red")
+    d.box((-2.6, m - 0.8, -13.0), (2.6, m + 1.0, -11.0), "falcon_dark")
+    # Rusty patches and darker plates on top, so the hull looks used.
+    for x, z, w, l, mat in ((-8.0, 4.0, 4.0, 5.0, "falcon_rust"), (9.0, 10.0, 3.0, 4.0, "falcon_rust"), (-12.0, -4.0, 3.5, 3.0, "falcon_dark"),
+                            (4.0, 14.0, 4.5, 3.0, "falcon_dark"), (-4.0, 15.0, 3.0, 2.5, "falcon_rust"), (12.0, -2.0, 2.5, 3.5, "falcon_plate")):
+        d.box((x - w / 2, m + 2.4, z - l / 2), (x + w / 2, m + 2.55, z + l / 2), mat)
+    # Radial ribs on top, from the middle to the rim.
+    for angle in (-70.0, -35.0, 0.0, 35.0, 70.0, 110.0, 145.0, 180.0, 215.0, 250.0):
+        a = math.radians(angle)
+        x, z = 12.5 * math.sin(a), cz + 12.5 * math.cos(a)
+        d.box((x - 0.4, m + 2.4, z - 3.0), (x + 0.4, m + 2.8, z + 3.0), "falcon_dark",
+              rotation={"origin": [x, m + 2.6, z], "axis": "y", "angle": angle})
+    # The cockpit tube on the right side, with its round window in front.
+    d.box((10.0, m - 0.8, -8.0), (16.0, m + 1.0, -3.0), "falcon_hull", "panel")
+    d.cyl("z", (16.5, m + 0.3), -13.0, -2.0, 2.0, "falcon_hull", sides=8)
+    d.cyl("z", (16.5, m + 0.3), -14.2, -13.0, 1.6, "falcon_plate", sides=8)
+    d.cyl("z", (16.5, m + 0.3), -14.6, -14.2, 1.1, "falcon_window", sides=8)
+    # The engine glow along the back of the saucer.
+    for angle in (-50.0, -30.0, -10.0, 10.0, 30.0, 50.0):
+        a = math.radians(angle)
+        x, z = 20.1 * math.sin(a), cz + 20.1 * math.cos(a)
+        d.box((x - 3.4, m - 0.8, z - 0.4), (x + 3.4, m + 0.9, z + 0.4), "falcon_engine",
+              rotation={"origin": [x, m, z], "axis": "y", "angle": angle})
+    # Quad cannon turrets on top and below.
+    for up in (1, -1):
+        y = m + up * 3.0
+        y0, y1 = sorted((y, y + up * 0.9))
+        d.cyl("y", (0.0, cz - 3.0), y0, y1, 2.4, "falcon_dark", sides=8)
+        gy = y + up * 0.9
+        g0, g1 = sorted((gy, gy + up * 0.9))
+        d.box((-1.6, g0, cz - 6.0), (1.6, g1, cz - 1.5), "falcon_plate")
+        for x in (-1.0, -0.4, 0.4, 1.0):
+            d.box((x - 0.18, (g0 + g1) / 2 - 0.18, cz - 10.0), (x + 0.18, (g0 + g1) / 2 + 0.18, cz - 6.0), "falcon_dark")
+    # The ramp hinge and small lights under the hull.
+    d.box((-3.0, m - 3.1, 8.0), (3.0, m - 2.9, 14.0), "falcon_dark")
+
+    # The radar dish on its post, tilted forward; the game turns it around the post.
+    d.part("dish", (-7.0, m + 3.0, -4.0))
+    d.cyl("y", (-7.0, -4.0), m + 3.0, m + 4.6, 0.5, "falcon_dark", sides=8)
+    tilt = {"origin": [-7.0, m + 5.0, -4.0], "axis": "x", "angle": -35.0}
+    # A rectangular radar plate with a rim and the feed in its middle, tilted forward.
+    d.box((-9.6, m + 4.8, -6.2), (-4.4, m + 5.2, -1.8), "falcon_plate", rotation=dict(tilt))
+    d.box((-9.9, m + 5.2, -6.5), (-4.1, m + 5.5, -5.9), "falcon_dark", rotation=dict(tilt))
+    d.box((-9.9, m + 5.2, -2.1), (-4.1, m + 5.5, -1.5), "falcon_dark", rotation=dict(tilt))
+    d.box((-7.3, m + 5.2, -4.3), (-6.7, m + 6.2, -3.7), "falcon_dark", rotation=dict(tilt))
+
+    # Landing legs; the game draws them up into the hull in flight.
+    d.part("legs", (0, 1.0, 0))
+    for x, z in ((0.0, -6.0), (-11.0, 6.0), (11.0, 6.0), (-6.0, 15.0), (6.0, 15.0)):
+        d.cyl("y", (x, z), 0.6, m - 2.4, 0.7, "falcon_dark", sides=8)
+        d.box((x - 1.3, 0.0, z - 1.3), (x + 1.3, 0.6, z + 1.3), "falcon_plate")
+    return d
+
+
+SD_MID = 6.0
+SD_NOSE = -40.0
+SD_STERN = 32.0
+SD_HALF = 21.0
+
+
+def sd_half(z):
+    """Half the width of the wedge at z."""
+    return SD_HALF * (z - SD_NOSE) / (SD_STERN - SD_NOSE)
+
+
+def star_destroyer():
+    """An Imperial capital ship: a long flat wedge with stepped decks, a raised command tower with a
+    T-shaped bridge and two round shield domes, three big and four small engines at the stern, dark
+    trenches and gun batteries along the edges. 1 unit = 1 block; built in two parts (bow and
+    stern) so each fits the model range."""
+    d = gd.Droid("star_destroyer", 1977_1313, 17, 42, folder="ship")
+    d.unit = 1.0
+    # The wedge in slices from the nose: a dark underside, the main hull and three stepped upper
+    # decks, each narrower than the one below. Towards the stern the hull gets deeper.
+    step = 2.4
+    for part, z0, z1 in (("bow", SD_NOSE, 0.0), ("stern", 0.0, SD_STERN)):
+        d.part(part, (0, SD_MID, (z0 + z1) / 2))
+        z = z0
+        while z < z1 - 1e-6:
+            za, zb = z, min(z + step, z1)
+            w = sd_half(zb)
+            k = 0.35 + 0.65 * (zb - SD_NOSE) / (SD_STERN - SD_NOSE)
+            deck = 3.6
+            levels = [(deck - 3.9 * k, deck - 2.4 * k, 0.8, "sd_dark"), (deck - 2.4 * k, deck, 1.0, "sd_hull"),
+                      (deck, deck + 0.9 * k, 0.96, "sd_light"), (deck + 0.9 * k, deck + 1.8 * k, 0.68, "sd_hull"),
+                      (deck + 1.8 * k, deck + 2.7 * k, 0.36, "sd_light")]
+            for y0, y1, share, mat in levels:
+                hw = max(0.5, w * share)
+                d.box((-hw, y0, za), (hw, y1, zb), mat, "panel" if mat != "sd_dark" else None)
+            z = zb
+        for zc in [zz for zz in (-30.0, -22.0, -14.0, -6.0, 2.0, 10.0, 18.0, 26.0) if z0 <= zz < z1]:
+            k = 0.35 + 0.65 * (zc - SD_NOSE) / (SD_STERN - SD_NOSE)
+            for side in (-1, 1):
+                x = side * (sd_half(zc) * 0.9 - 0.8)
+                y = 3.6 + 0.9 * k
+                d.box((x - 0.5, y, zc - 0.8), (x + 0.5, y + 0.6, zc + 0.8), "sd_dark")
+                d.box((x - 0.15, y + 0.25, zc - 2.2), (x + 0.15, y + 0.45, zc - 0.8), "sd_dark")
+        if part == "bow":
+            # The hangar bay under the middle.
+            k = 0.35 + 0.65 * (-7.0 - SD_NOSE) / (SD_STERN - SD_NOSE)
+            low = 3.6 - 3.9 * k
+            d.box((-3.6, low - 0.08, -12.6), (3.6, low, -1.4), "sd_dark")
+            d.box((-3.0, low - 0.12, -12.0), (3.0, low - 0.05, -2.0), "sd_engine")
+        else:
+            # The superstructure: two tiers, the tower neck, the T-shaped bridge, two shield domes.
+            d.box((-10.0, 6.0, 12.0), (10.0, 8.0, 30.0), "sd_hull", "panel")
+            d.box((-7.0, 8.0, 17.0), (7.0, 10.0, 30.0), "sd_light", "panel")
+            d.box((-2.2, 10.0, 22.0), (2.2, 13.0, 27.0), "sd_hull")
+            d.box((-8.5, 13.0, 22.0), (8.5, 15.0, 26.0), "sd_light", "panel")
+            d.box((-8.0, 13.6, 21.9), (8.0, 14.2, 22.0), "sd_window")
+            for side in (-1, 1):
+                d.cyl("y", (side * 5.5, 25.0), 15.0, 15.6, 0.4, "sd_dark", sides=8)
+                d.ball((side * 5.5, 16.6, 25.0), 1.3, "sd_light", layers=5, sides=8)
+            # Windows along the tiers.
+            for y in (7.0, 9.0):
+                d.box((-6.0 if y > 8 else -9.0, y - 0.15, 11.9 if y < 8 else 16.9), (6.0 if y > 8 else 9.0, y + 0.15, 12.0 if y < 8 else 17.0),
+                      "sd_window")
+            # Engines at the stern: three big ones and four small ones, glowing blue.
+            for x, y, r in ((0.0, 3.0, 2.9), (-7.0, 3.0, 2.4), (7.0, 3.0, 2.4)):
+                d.cyl("z", (x, y), 32.0, 33.6, r, "sd_dark", sides=12)
+                d.cyl("z", (x, y), 33.6, 33.9, r * 0.8, "sd_engine", sides=12)
+            for x, y in ((-3.6, 1.0), (3.6, 1.0), (-11.5, 2.6), (11.5, 2.6)):
+                d.cyl("z", (x, y), 32.0, 33.0, 1.1, "sd_dark", sides=8)
+                d.cyl("z", (x, y), 33.0, 33.2, 0.85, "sd_engine", sides=8)
+    return d
+
+
+SHIPS = [xwing, tie_fighter, tie_interceptor, falcon, star_destroyer]
 
 
 def write_java(rigs):
@@ -232,19 +407,18 @@ def write_java(rigs):
         " * Generated by tools/gen_ships.py, do not edit.",
         " */",
         "public final class ShipParts {",
-        "\t/** How much larger the game draws the models than they are built. */",
-        "\tpublic static final float SCALE = 2.0F;",
-        "",
-        "\t/** One part: its name, its item model, and its pivot. */",
-        "\tpublic record Part(String name, String model, float x, float y, float z) {",
+
+        "\t/** One part: its name, its item model, its pivot, and how much larger the game draws it than it is built. */",
+        "\tpublic record Part(String name, String model, float x, float y, float z, float scale) {",
         "\t}",
         "",
         "\tpublic static final Map<String, List<Part>> PARTS = Map.of(",
     ]
     entries = []
-    for name, parts in rigs:
+    for name, unit, parts in rigs:
         body = ",\n".join(
-            f"\t\t\t\tnew Part(\"{g}\", \"sabercraft:ship/{name}_{g}\", {p[0] / 8:.4f}F, {p[1] / 8:.4f}F, {p[2] / 8:.4f}F)" for g, p, _ in parts)
+            f"\t\t\t\tnew Part(\"{g}\", \"sabercraft:ship/{name}_{g}\", {p[0] * unit:.4f}F, {p[1] * unit:.4f}F, {p[2] * unit:.4f}F, {unit * 16:.4f}F)"
+            for g, p, _ in parts)
         entries.append(f"\t\t\t\"{name}\", List.of(\n{body}\n\t\t\t)")
     lines.append(",\n".join(entries))
     lines += ["\t);", "", "\tprivate ShipParts() {", "\t}", "}", ""]
@@ -258,7 +432,7 @@ def main():
     rigs = []
     for make in SHIPS:
         d = make()
-        rigs.append((d.name, d.write(preview)))
+        rigs.append((d.name, getattr(d, "unit", 1 / 8), d.write(preview)))
     write_java(rigs)
 
 

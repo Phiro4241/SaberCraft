@@ -15,7 +15,9 @@ src/client/resources/assets/sabercraft/sounds/saber/ (default profile) and .../s
 `--phase11-blaster` the new blaster sounds of Phase 11, `--droids` the droid voices of Phase 11
 (.../sounds/droid/: beeps, whistles, servos and wordless robot murmurs, no speech), `--atmosphere` the draw and holster sounds and the menu sweep of Phase 11 G, `--ships` the
 starship engine, laser cannon, crash and S-foil sounds of Phase 11 (.../sounds/ship/), `--imperial-ships` the TIE
-Fighter and TIE Interceptor engines and cannons, hull hits and the explosion of Phase 12. Minecraft only attenuates mono
+Fighter and TIE Interceptor engines and cannons, hull hits and the explosion of Phase 12, `--phase13-ships` the calmer engines and
+cannons of every ship, the Falcon and the Star Destroyer, impacts, landings and the energy sounds of Phase 13 (it rewrites the
+engine and laser files of the two options before). Minecraft only attenuates mono
 sounds by distance, so all files are mono.
 """
 import os
@@ -758,6 +760,165 @@ def imperial_ships():
     write_ogg("explode", ship_explode(rng), SHIP_OUT)
 
 
+# Phase 13: calmer starships ------------------------------------------------------------------------
+# Longer engine loops (4 s, so the repetition is far less noticeable), softer and darker: every
+# engine goes through a gentle low-pass, the hissing noise bands are lower, and the peaks are
+# lower than before. The game varies volume and pitch with the flight (ShipEngineSound). Shots are
+# shorter with a softer crack, so a held trigger does not pile up into a wall of noise. All built
+# from scratch, nothing recorded or taken from films.
+LOOP13 = 4.0
+
+
+def loop_lowpass(x, cutoff):
+    """Low-pass for a loop: filters the loop twice in a row and keeps the second pass, so the
+    filter has settled at the seam and the loop stays seamless."""
+    return lowpass(np.concatenate([x, x]), cutoff)[len(x):]
+
+
+def calm_engine(rng, roar_band, rush_band, rush_level, tones, throb_hz, cutoff, peak):
+    """A soft engine loop: a low roar, a quiet rushing band, a few steady tones and a slow throb.
+    Every frequency is on the 1 / LOOP13 grid, so it loops without a seam."""
+    t = t_axis(LOOP13)
+    roar = periodic_noise(LOOP13, roar_band[0], roar_band[1], rng)
+    rush = periodic_noise(LOOP13, rush_band[0], rush_band[1], rng) * rush_level
+    tone = sum(level * np.sin(2 * np.pi * f * t + i) for i, (f, level) in enumerate(tones))
+    throb = 0.9 + 0.1 * np.sin(2 * np.pi * throb_hz * t) * (0.7 + 0.3 * np.sin(2 * np.pi * 0.25 * t))
+    mix = soft_clip((roar + rush) * throb + tone, 1.2)
+    return normalize(loop_lowpass(mix, cutoff), peak)
+
+
+def calm_tie(rng, base, formants, noise_level, cutoff):
+    """The TIE howl of Phase 12, toned down: fewer high harmonics, less noise, a low-pass."""
+    t = t_axis(LOOP13)
+    freq = base * (1.0 + 0.03 * np.sin(2 * np.pi * 1.0 * t))
+    phase = 2 * np.pi * np.cumsum(freq) / RATE
+    tone = np.zeros_like(t)
+    for h in range(1, 18):
+        f = base * h
+        weight = sum(level * np.exp(-((f - centre) / width) ** 2) for centre, width, level in formants)
+        tone += (weight + 0.03 / h) * np.sin(h * phase)
+    rush = periodic_noise(LOOP13, 400, 1800, rng) * noise_level
+    roar = periodic_noise(LOOP13, 45, 200, rng) * 0.5
+    beat = 0.88 + 0.12 * np.sin(2 * np.pi * 12.0 * t)
+    return normalize(loop_lowpass(soft_clip(tone * beat + rush + roar, 1.3), cutoff), 0.4)
+
+
+def soft_laser(rng, seconds, start, end, body, crack, cutoff, peak=0.7):
+    """A ship cannon shot: a quick falling tone with a low thump and a short, filtered crack."""
+    t = t_axis(seconds)
+    k = np.log(end / start) / seconds
+    phase = 2 * np.pi * start * (np.exp(k * t) - 1) / k
+    chirp = (np.sin(phase) + 0.3 * np.sin(2.0 * phase)) * np.exp(-t * 11) * (1 - np.exp(-t * 700))
+    thump = np.sin(2 * np.pi * 70 * t * (1 - 0.4 * t)) * np.exp(-t * 22) * body
+    snap = bandpass_noise(seconds, 900, 5000, rng) * np.exp(-t * 70) * crack
+    tail = bandpass_noise(seconds, 120, 900, rng) * np.exp(-t * 9) * 0.15
+    fade = np.clip((seconds - t) / 0.06, 0, 1)
+    return normalize(lowpass(soft_clip(chirp + thump + snap + tail, 1.3), cutoff) * fade, peak)
+
+
+def turbolaser(rng, seconds=0.9):
+    """The Star Destroyer's heavy cannon: a deep boom with a long falling tone and a rolling tail."""
+    t = t_axis(seconds)
+    k = np.log(90 / 520) / seconds
+    phase = 2 * np.pi * 520 * (np.exp(k * t) - 1) / k
+    tone = (np.sin(phase) + 0.4 * np.sin(1.5 * phase)) * np.exp(-t * 4.5) * (1 - np.exp(-t * 300))
+    boom = np.sin(2 * np.pi * 42 * t) * np.exp(-t * 6) * 1.2
+    roll = bandpass_noise(seconds, 40, 400, rng) * np.exp(-t * 3.5) * 0.5
+    snap = bandpass_noise(seconds, 700, 3500, rng) * np.exp(-t * 40) * 0.35
+    fade = np.clip((seconds - t) / 0.12, 0, 1)
+    return normalize(lowpass(soft_clip(tone + boom + roll + snap, 1.6), 3500) * fade, 0.8)
+
+
+def laser_impact(rng, seconds=0.45, heavy=False):
+    """A ship bolt hits something: a short burst, crackle and a little debris, no big explosion."""
+    t = t_axis(seconds)
+    burst = bandpass_noise(seconds, 80 if heavy else 150, 2200, rng) * np.exp(-t * (9 if heavy else 16))
+    sizzle = bandpass_noise(seconds, 1500, 6000, rng) * np.exp(-t * 12) * 0.3
+    pop = np.sin(2 * np.pi * (60 if heavy else 110) * t) * np.exp(-t * 18) * 0.8
+    debris = sum(np.sin(2 * np.pi * f * t) * np.exp(-np.maximum(t - d, 0) * 30) * (t > d)
+                 for f, d in ((640, 0.12), (870, 0.2), (520, 0.28))) * 0.06
+    return normalize(lowpass(soft_clip(burst + sizzle + pop + debris, 1.6), 4000), 0.7)
+
+
+def small_blast(rng, seconds=1.2):
+    """Something was destroyed by a ship bolt: a compact explosion, smaller than a ship's."""
+    t = t_axis(seconds)
+    blast = bandpass_noise(seconds, 40, 1500, rng) * np.exp(-t * 6)
+    rumble = bandpass_noise(seconds, 30, 160, rng) * np.exp(-t * 2.8) * 0.6
+    crackle = bandpass_noise(seconds, 1500, 6000, rng) * (rng.random(len(t)) > 0.9) * np.exp(-t * 4) * 0.3
+    attack = np.clip(t / 0.004, 0, 1)
+    return normalize(lowpass(soft_clip((blast + rumble + crackle) * attack, 1.8), 5000), 0.8)
+
+
+def thud(rng, seconds, low, decay, scrape):
+    """A ship touching down: a low thud, the creak of the landing gear and a little scraping."""
+    t = t_axis(seconds)
+    body = bandpass_noise(seconds, 30, low, rng) * np.exp(-t * decay)
+    knock = np.sin(2 * np.pi * 55 * t) * np.exp(-t * decay * 1.5)
+    creak = np.sin(2 * np.pi * (240 - 80 * t) * t) * np.exp(-t * 7) * 0.12
+    grit = bandpass_noise(seconds, 1200, 4500, rng) * np.exp(-t * 6) * scrape * (t > 0.03)
+    return normalize(lowpass(soft_clip(body + knock + creak + grit, 1.5), 3000), 0.75)
+
+
+def power(rng, up, seconds=1.4):
+    """The engines failing (a falling, sputtering whine) or charging back up (a rising hum)."""
+    t = t_axis(seconds)
+    f = (90 + 260 * (t / seconds) ** 1.5) if up else (360 - 280 * (t / seconds) ** 0.7)
+    phase = 2 * np.pi * np.cumsum(f) / RATE
+    tone = np.sin(phase) + 0.4 * np.sin(2 * phase) + 0.15 * np.sin(3 * phase)
+    if up:
+        env = np.clip(t / 0.4, 0, 1) * np.clip((seconds - t) / 0.3, 0, 1)
+    else:
+        stutter = (np.sin(2 * np.pi * (6 + 10 * t) * t) > -0.3).astype(float)
+        env = np.exp(-t * 1.8) * (0.4 + 0.6 * stutter) * np.clip(t / 0.02, 0, 1)
+    hiss = bandpass_noise(seconds, 300, 1800, rng) * 0.12 * env
+    return normalize(lowpass(tone * env + hiss, 2500), 0.55)
+
+
+def flyby(rng, seconds, low, high, peak):
+    """A ship rushing past: noise that swells and falls in pitch (a Doppler sweep), then fades."""
+    t = t_axis(seconds)
+    centre = seconds * 0.4
+    swell = np.exp(-((t - centre) / (seconds * 0.22)) ** 2)
+    noise = bandpass_noise(seconds, low, high, rng)
+    tone_f = 300 * np.where(t < centre, 1.15, 0.8)
+    tone = np.sin(2 * np.pi * np.cumsum(tone_f) / RATE) * 0.2
+    return normalize(lowpass((noise + tone) * swell, high), peak)
+
+
+def phase13_ships():
+    """Phase 13: the reworked ship engines and cannons, the Falcon and the Star Destroyer, impacts,
+    landings and the energy sounds. Replaces the engine and laser files of Phases 11 and 12."""
+    rng = np.random.default_rng(1977_13)
+    write_ogg("xwing_engine", calm_engine(rng, (35, 220), (500, 1600), 0.18, [(220.0, 0.04), (330.0, 0.025)], 3.0, 1600, 0.42), SHIP_OUT)
+    write_ogg("tie_fighter_engine", calm_tie(rng, 150.0, [(780, 240, 1.0), (1150, 280, 0.55), (2200, 400, 0.12)], 0.2, 2200), SHIP_OUT)
+    write_ogg("tie_interceptor_engine", calm_tie(rng, 175.0, [(900, 260, 1.0), (1400, 300, 0.6), (2600, 500, 0.18)], 0.25, 2500), SHIP_OUT)
+    write_ogg("falcon_engine", calm_engine(rng, (28, 180), (400, 1200), 0.14, [(110.0, 0.06), (165.0, 0.035), (55.0, 0.05)], 1.5, 1200, 0.45),
+              SHIP_OUT)
+    write_ogg("star_destroyer_engine", calm_engine(rng, (20, 120), (250, 700), 0.08, [(41.0, 0.08), (61.5, 0.05), (82.0, 0.03)], 0.5, 700, 0.5),
+              SHIP_OUT)
+    for i, (start, end) in enumerate(((1250, 160), (1150, 150), (1350, 170)), start=1):
+        write_ogg("xwing_laser%d" % i, soft_laser(rng, 0.32, start, end, 0.8, 0.25, 4500), SHIP_OUT)
+    for i, start in enumerate((1600, 1750, 1680), start=1):
+        write_ogg("tie_laser%d" % i, soft_laser(rng, 0.28, start, 220, 0.5, 0.3, 5500, 0.65), SHIP_OUT)
+    for i, start in enumerate((1950, 2100, 2020), start=1):
+        write_ogg("interceptor_laser%d" % i, soft_laser(rng, 0.24, start, 260, 0.4, 0.3, 6000, 0.6), SHIP_OUT)
+    for i, start in enumerate((900, 980), start=1):
+        write_ogg("falcon_laser%d" % i, soft_laser(rng, 0.38, start, 110, 1.0, 0.2, 3800, 0.72), SHIP_OUT)
+    write_ogg("turbolaser1", turbolaser(rng), SHIP_OUT)
+    write_ogg("turbolaser2", turbolaser(rng, 1.0), SHIP_OUT)
+    write_ogg("laser_impact1", laser_impact(rng), SHIP_OUT)
+    write_ogg("laser_impact2", laser_impact(rng, 0.5), SHIP_OUT)
+    write_ogg("laser_impact_heavy", laser_impact(rng, 0.7, heavy=True), SHIP_OUT)
+    write_ogg("small_blast", small_blast(rng), SHIP_OUT)
+    write_ogg("land", thud(rng, 0.7, 220, 9, 0.15), SHIP_OUT)
+    write_ogg("impact", thud(rng, 1.0, 500, 5, 0.5), SHIP_OUT)
+    write_ogg("power_down", power(rng, False), SHIP_OUT)
+    write_ogg("power_up", power(rng, True), SHIP_OUT)
+    write_ogg("flyby", flyby(rng, 1.4, 200, 2600, 0.6), SHIP_OUT)
+    write_ogg("flyby_heavy", flyby(rng, 3.0, 30, 600, 0.7), SHIP_OUT)
+
+
 # Planet ambiences (Phase 10) ---------------------------------------------------------------------
 # Loops of AMBIENT_SECONDS. Every slow modulation runs a whole number of times per loop, and every
 # event (a gust, a bird, a crackle) that runs over the end wraps to the start, so they loop
@@ -945,6 +1106,10 @@ def main():
 
     if "--imperial-ships" in sys.argv:
         imperial_ships()
+        return
+
+    if "--phase13-ships" in sys.argv:
+        phase13_ships()
         return
 
     if "--phase11-combat" in sys.argv:

@@ -75,15 +75,39 @@ public final class OutfitClient {
 	 * The skin a player is drawn with, and how big the figure is drawn (1 = normal, Phase 9).
 	 * All characters and outfits are painted for the wide (Steve) model.
 	 */
-	public record Look(Identifier texture, float scale) {
+	public record Look(Identifier texture, float scale, @Nullable Identifier cape) {
 		public Look(Identifier texture) {
-			this(texture, 1.0F);
+			this(texture, 1.0F, null);
 		}
 
-		/** The complete skin: this texture, the wide model, and no cape or elytra. */
-		public PlayerSkin skin() {
-			return SKINS.computeIfAbsent(this.texture, id -> new PlayerSkin(new ClientAsset.ResourceTexture(id, id), null, null, PlayerModelType.WIDE, true));
+		public Look(Identifier texture, float scale) {
+			this(texture, scale, null);
 		}
+
+		/**
+		 * The complete skin: this texture, the wide model, and since Phase 13 the character's cape
+		 * if it has one (drawn by the game's own cape layer, so it hangs behind and swings).
+		 */
+		public PlayerSkin skin() {
+			Identifier key = this.cape == null ? this.texture : this.texture.withSuffix(".with_cape");
+			return SKINS.computeIfAbsent(key, id -> new PlayerSkin(new ClientAsset.ResourceTexture(this.texture, this.texture),
+					this.cape != null ? new ClientAsset.ResourceTexture(this.cape, this.cape) : null, null, PlayerModelType.WIDE, true));
+		}
+	}
+
+	/** Phase 13: which outfits have a cape texture ({@code textures/outfit/<name>_cape.png}). */
+	private static final Map<Identifier, Optional<Identifier>> CAPES = new HashMap<>();
+
+	/** Phase 13: the cape of an outfit, if it has one and capes are on. */
+	static @Nullable Identifier capeOf(Outfit outfit) {
+		if (!CharacterConfig.get().capes) {
+			return null;
+		}
+
+		return CAPES.computeIfAbsent(outfit.id(), id -> {
+			Identifier cape = id.withPath(path -> "textures/outfit/" + path + "_cape.png");
+			return Minecraft.getInstance().getResourceManager().getResource(cape).map(resource -> cape);
+		}).orElse(null);
 	}
 
 	private OutfitClient() {
@@ -134,6 +158,7 @@ public final class OutfitClient {
 	/** Forgets the loaded character skin files, so changed files are read again. */
 	public static void reloadCharacterSkins() {
 		SKINS.clear();
+		CAPES.clear();
 
 		for (Optional<Identifier> texture : CHARACTER_SKINS.values()) {
 			texture.ifPresent(id -> Minecraft.getInstance().getTextureManager().release(id));
@@ -177,7 +202,7 @@ public final class OutfitClient {
 
 		if (profile.base() != null) {
 			Look base = lookOf(profile.base());
-			return new Look(base.texture(), scale);
+			return new Look(base.texture(), scale, base.cape());
 		}
 
 		return null;
@@ -283,7 +308,7 @@ public final class OutfitClient {
 	public static Look lookOf(Outfit outfit) {
 		Identifier own = outfit.character() ? characterSkin(outfit) : null;
 		float scale = CharacterConfig.get().characterSize ? outfit.scale() : 1.0F;
-		return new Look(own != null ? own : outfit.id().withPath(path -> "textures/outfit/" + path + ".png"), scale);
+		return new Look(own != null ? own : outfit.id().withPath(path -> "textures/outfit/" + path + ".png"), scale, capeOf(outfit));
 	}
 
 	/** The look for a render state, found through the entity id it was made from. */

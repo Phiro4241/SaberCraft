@@ -7,6 +7,8 @@ import org.jspecify.annotations.Nullable;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.math.Axis;
 
+import net.minecraft.world.phys.AABB;
+
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.entity.EntityRendererProvider;
@@ -45,6 +47,9 @@ public class DroidRenderer extends PigRenderer {
 		float shipRoll;
 		float foils;
 		boolean piloted;
+		// Phase 13: the Falcon's turning dish and landing legs.
+		float dish;
+		float legs;
 	}
 
 	public DroidRenderer(EntityRendererProvider.Context context) {
@@ -101,8 +106,27 @@ public class DroidRenderer extends PigRenderer {
 		state.shipPitch = entity.getXRot(partialTicks);
 		state.shipRoll = visual.roll(partialTicks);
 		state.foils = visual.foils(partialTicks);
+		state.dish = visual.dish(partialTicks);
+		state.legs = visual.legs(partialTicks);
 		state.piloted = entity.hasPassenger(Minecraft.getInstance().getCameraEntity());
 		state.shadowRadius = ship.width() * 0.6F;
+	}
+
+	/**
+	 * Phase 13: a ship's model reaches far beyond its collision box (the Star Destroyer by far), so
+	 * it stays drawn while any of it is on screen.
+	 */
+	@Override
+	protected AABB getBoundingBoxForCulling(Pig entity) {
+		ShipType ship = ShipMarker.of(entity);
+		AABB box = super.getBoundingBoxForCulling(entity);
+
+		if (ship == null) {
+			return box;
+		}
+
+		double grow = Math.max(0.0, ship.handling().modelRadius() - ship.width() * 0.5);
+		return box.inflate(grow, grow * 0.5, grow);
 	}
 
 	@Override
@@ -119,7 +143,8 @@ public class DroidRenderer extends PigRenderer {
 				poseStack.mulPose(Axis.XP.rotationDegrees(-droid.shipPitch));
 				poseStack.mulPose(Axis.ZP.rotationDegrees(-droid.shipRoll));
 				poseStack.translate(0.0F, -middle, 0.0F);
-				ShipModels.submit(poseStack, collector, droid.ship, droid.foils, droid.shipParts, state.lightCoords, state.outlineColor);
+				ShipModels.submit(poseStack, collector, droid.ship, new ShipModels.Pose(droid.foils, droid.dish, droid.legs), droid.shipParts,
+						state.lightCoords, state.outlineColor);
 				poseStack.popPose();
 			}
 

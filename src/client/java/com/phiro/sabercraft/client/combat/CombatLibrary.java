@@ -21,6 +21,7 @@ import net.minecraft.server.packs.resources.Resource;
 import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.server.packs.resources.ResourceManagerReloadListener;
 import net.minecraft.util.GsonHelper;
+import net.minecraft.util.Mth;
 
 import com.phiro.sabercraft.SaberCraft;
 import com.phiro.sabercraft.ability.DodgeDirection;
@@ -219,8 +220,24 @@ public final class CombatLibrary implements ResourceManagerReloadListener {
 				optionalMove(json, "land_heavy", moves),
 				optionalMove(json, "guard_hit", moves),
 				optionalMove(json, "parry", moves),
-				optionalMove(json, "guard_break", moves)
+				optionalMove(json, "guard_break", moves),
+				moveList(json, "crit_moves", moves),
+				moveList(json, "sprint_moves", moves),
+				Mth.clamp(GsonHelper.getAsFloat(json, "signature_chance", 0.3F), 0.0F, 1.0F),
+				Math.max(0, GsonHelper.getAsInt(json, "signature_rest", 2))
 		);
+	}
+
+	private static List<CombatMove> moveList(JsonObject json, String key, Map<Identifier, CombatMove> moves) {
+		List<CombatMove> list = new ArrayList<>();
+
+		if (json.has(key)) {
+			for (JsonElement element : GsonHelper.getAsJsonArray(json, key)) {
+				list.add(requireMove(moves, element.getAsString()));
+			}
+		}
+
+		return List.copyOf(list);
 	}
 
 	private static @Nullable CombatMove optionalMove(JsonObject json, String key, Map<Identifier, CombatMove> moves) {
