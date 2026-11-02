@@ -1,5 +1,7 @@
 package com.phiro.sabercraft.client.music;
 
+import com.phiro.sabercraft.client.ship.ShipClient;
+
 import java.io.IOException;
 import java.io.Reader;
 import java.io.Writer;
@@ -86,7 +88,11 @@ public final class StarWarsMusic {
 		BOSS("boss", true, true),
 		VICTORY("victory", false, false),
 		DEFEAT("defeat", false, false),
-		CHARACTER("characters", false, false);
+		CHARACTER("characters", false, false),
+		/** Phase 14: while flying a starship (your files in {@code flight/}). */
+		FLIGHT("flight", false, false),
+		/** Phase 14: a fight in the air (your files in {@code space_battle/}). */
+		SPACE_BATTLE("space_battle", true, true);
 
 		private final String folder;
 		private final boolean loops;
@@ -605,7 +611,9 @@ public final class StarWarsMusic {
 				candidateTicks = wanted == candidate ? candidateTicks + 1 : 0;
 				candidate = wanted;
 
-				if (situation == null || wanted == null || wanted.combat() || wanted.once()
+				// Phase 14: boarding and climbing out of a starship change the music at once.
+				boolean flight = wanted == Situation.FLIGHT || situation == Situation.FLIGHT || situation == Situation.SPACE_BATTLE;
+				if (situation == null || wanted == null || wanted.combat() || wanted.once() || flight
 						|| candidateTicks >= MOOD_SETTLE) {
 					switchTo(wanted, crossfade);
 				}
@@ -656,8 +664,12 @@ public final class StarWarsMusic {
 			found = Situation.DEFEAT;
 		} else if (SaberMusic.bossNow(client)) {
 			found = Situation.BOSS;
+		} else if (SaberMusic.flightNow(client) && ShipClient.spaceBattle(client) && !resolve(Situation.SPACE_BATTLE).tracks().isEmpty()) {
+			found = Situation.SPACE_BATTLE;
 		} else if (SaberMusic.fightNow(client) && client.player.isAlive()) {
 			found = SaberMusic.saberLit(client.player) ? Situation.DUEL : Situation.DRAMATIC;
+		} else if (SaberMusic.flightNow(client) && stinger == null && !resolve(Situation.FLIGHT).tracks().isEmpty()) {
+			found = Situation.FLIGHT;
 		} else if (stinger == Situation.VICTORY) {
 			found = Situation.VICTORY;
 		} else if (playingTheme != null || pendingTheme != null) {

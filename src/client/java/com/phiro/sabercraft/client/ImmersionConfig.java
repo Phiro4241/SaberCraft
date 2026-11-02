@@ -115,6 +115,26 @@ public final class ImmersionConfig {
 	/** Phase 11: switch to the third-person view behind the ship when climbing into a starship. */
 	@SerializedName("ship_third_person")
 	public boolean shipThirdPerson = true;
+	/**
+	 * Phase 14: the view when climbing into a starship: {@code cockpit} (first person from the
+	 * pilot's seat, the default), {@code chase} (third person behind the ship, as in Phase 11) or
+	 * {@code keep} (no change). F5 still switches as usual while flying; climbing out brings back
+	 * the view from before. Empty in old files: taken from {@code ship_third_person}.
+	 */
+	@SerializedName("ship_camera")
+	public String shipCamera = "";
+	/** Phase 14: the cockpit frame (struts, window edges, consoles) drawn around the cockpit view. */
+	@SerializedName("ship_cockpit_frame")
+	public boolean shipCockpitFrame = true;
+	/** Phase 14: the camera leans with the ship in turns in the cockpit view. */
+	@SerializedName("ship_cockpit_roll")
+	public boolean shipCockpitRoll = true;
+	/** Phase 14: music of its own while flying a starship (and in space battles). */
+	@SerializedName("music_flight")
+	public boolean musicFlight = true;
+	/** Phase 14: the quiet hum and machinery inside walkable ship interiors. */
+	@SerializedName("ship_interior_ambient")
+	public boolean shipInteriorAmbient = true;
 	/** Phase 11: the flight display (speed, height, lasers) while flying a starship. */
 	@SerializedName("ship_hud")
 	public boolean shipHud = true;
@@ -166,6 +186,9 @@ public final class ImmersionConfig {
 	@SerializedName("droid_target_hud")
 	public boolean droidTargetHud = true;
 
+	public static final String CAMERA_COCKPIT = "cockpit";
+	public static final String CAMERA_CHASE = "chase";
+	public static final String CAMERA_KEEP = "keep";
 	public static final String MODE_SABERCRAFT = "sabercraft";
 	public static final String MODE_STARWARS = "starwars";
 
@@ -190,6 +213,10 @@ public final class ImmersionConfig {
 	}
 
 	private void clamp() {
+		if (!CAMERA_COCKPIT.equals(this.shipCamera) && !CAMERA_CHASE.equals(this.shipCamera) && !CAMERA_KEEP.equals(this.shipCamera)) {
+			// Older settings files: the third-person switch decides between the new cockpit view and no change.
+			this.shipCamera = this.shipThirdPerson ? CAMERA_COCKPIT : CAMERA_KEEP;
+		}
 		this.spaceSkyQuality = Mth.clamp(this.spaceSkyQuality, 0, 3);
 		if (this.planet == null) {
 			this.planet = "";

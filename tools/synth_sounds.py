@@ -17,7 +17,8 @@ src/client/resources/assets/sabercraft/sounds/saber/ (default profile) and .../s
 starship engine, laser cannon, crash and S-foil sounds of Phase 11 (.../sounds/ship/), `--imperial-ships` the TIE
 Fighter and TIE Interceptor engines and cannons, hull hits and the explosion of Phase 12, `--phase13-ships` the calmer engines and
 cannons of every ship, the Falcon and the Star Destroyer, impacts, landings and the energy sounds of Phase 13 (it rewrites the
-engine and laser files of the two options before). Minecraft only attenuates mono
+engine and laser files of the two options before), `--phase14` the Falcon's own drive, thrust layers, boost and brake,
+hyperspace, the big explosion, alarm, ramp, turbolift and interior sounds of Phase 14 (it rewrites falcon_engine). Minecraft only attenuates mono
 sounds by distance, so all files are mono.
 """
 import os
@@ -919,6 +920,238 @@ def phase13_ships():
     write_ogg("flyby_heavy", flyby(rng, 3.0, 30, 600, 0.7), SHIP_OUT)
 
 
+# Phase 14: flight layers, the Falcon's own drive, hyperspace, destruction, interiors ------------------
+# Engine loops of 8 s (twice Phase 13) with slow movements inside, so a loop is hard to hear. Each
+# ship has two layers that the game mixes by flight state (ShipEngineSound): the engine itself and
+# a thrust layer that rises while speeding up. Speeding up and braking also play short one-shots.
+# All built from scratch: noise bands, sines and envelopes, nothing recorded or taken from films.
+LOOP14 = 8.0
+
+
+def fast_lowpass(x, cutoff):
+    """The one-pole low-pass of lowpass(), done in the frequency domain (fast for long loops; the
+    same 6 dB per octave slope, applied circularly, so a loop stays a loop)."""
+    spec = np.fft.rfft(x)
+    f = np.fft.rfftfreq(len(x), 1 / RATE)
+    return np.fft.irfft(spec / np.sqrt(1 + (f / cutoff) ** 2), len(x))
+
+
+def falcon_drive(rng):
+    """The Falcon's sublight drive: a deep, throaty rumble that 'purrs' (a rough beat at 18 Hz),
+    an uneven mid growl that rises and falls twice per loop, and now and then a hull creak, a
+    rattle and a hiss of venting coolant: an old freighter that has seen a lot. 8 s loop."""
+    seconds = LOOP14
+    t = t_axis(seconds)
+    rumble = periodic_noise(seconds, 22, 140, rng)
+    purr = 0.72 + 0.28 * np.sin(2 * np.pi * 18.0 * t) * (0.6 + 0.4 * np.sin(2 * np.pi * 0.5 * t))
+    growl_f = 73.0 * (1.0 + 0.02 * np.sin(2 * np.pi * 0.25 * t))
+    phase = 2 * np.pi * np.cumsum(growl_f) / RATE
+    growl = (np.sin(phase) + 0.55 * np.sin(2 * phase + 0.4) + 0.35 * np.sin(3 * phase) + 0.18 * np.sin(5 * phase)) * \
+        (0.55 + 0.45 * np.sin(2 * np.pi * 0.25 * t) ** 2)
+    rush = periodic_noise(seconds, 280, 1100, rng) * 0.16 * (0.7 + 0.3 * np.sin(2 * np.pi * 0.375 * t))
+    whine = np.sin(2 * np.pi * 296.0 * t) * 0.025 * (0.5 + 0.5 * np.sin(2 * np.pi * 0.125 * t))
+    loop = soft_clip(rumble * purr * 0.9 + growl * 0.32 + rush + whine, 1.3)
+    loop = fast_lowpass(loop, 1100)
+    # Events: wrap around the end, so the loop has no seam.
+    events = np.zeros_like(t)
+    for start, kind in ((1.3, "creak"), (3.9, "rattle"), (5.6, "vent"), (7.1, "creak")):
+        n = int(start * RATE)
+        if kind == "creak":
+            d = 0.45
+            tt = t_axis(d)
+            ev = np.sin(2 * np.pi * (180 + 70 * np.sin(2 * np.pi * 3 * tt)) * tt) * np.exp(-tt * 6) * 0.06
+        elif kind == "rattle":
+            d = 0.35
+            tt = t_axis(d)
+            ev = bandpass_noise(d, 900, 3000, rng) * (np.sin(2 * np.pi * 34 * tt) > 0.3) * np.exp(-tt * 9) * 0.05
+        else:
+            d = 0.9
+            tt = t_axis(d)
+            ev = bandpass_noise(d, 1200, 4500, rng) * np.sin(np.pi * tt / d) ** 2 * 0.045
+        idx = (np.arange(len(ev)) + n) % len(t)
+        events[idx] += ev
+    return normalize(loop + events, 0.45)
+
+
+def thrust_layer(rng, roar, rush, tone_hz, rough, cutoff, peak):
+    """The thrust layer of an engine: a broad roar and a brighter rushing band that the game fades
+    in while the ship speeds up. Optional rough beat (TIE scream) and a tone on the loop grid."""
+    seconds = LOOP14
+    t = t_axis(seconds)
+    body = periodic_noise(seconds, roar[0], roar[1], rng)
+    air = periodic_noise(seconds, rush[0], rush[1], rng) * 0.5
+    swell = 0.8 + 0.2 * np.sin(2 * np.pi * 0.375 * t)
+    tone = 0.0
+    if tone_hz:
+        tone = sum(np.sin(2 * np.pi * tone_hz * h * t + h) / h for h in range(1, 6)) * 0.12
+    beat = 1.0 + rough * np.sin(2 * np.pi * 24.0 * t)
+    return normalize(fast_lowpass(soft_clip((body + air) * swell * beat + tone, 1.4), cutoff), peak)
+
+
+def boost(rng, seconds, low, high, rise, peak, clank=False):
+    """Speeding up hard: a surge of roar that rises in pitch, optionally with a mechanical clank."""
+    t = t_axis(seconds)
+    swell = np.clip(t / 0.08, 0, 1) * np.exp(-t * 2.2)
+    noise = bandpass_noise(seconds, low, high, rng)
+    f = rise[0] + (rise[1] - rise[0]) * (1 - np.exp(-t * 3))
+    tone = np.sin(2 * np.pi * np.cumsum(f) / RATE) * 0.25 + np.sin(4 * np.pi * np.cumsum(f) / RATE) * 0.1
+    out = (noise + tone) * swell
+    if clank:
+        out += sum(np.sin(2 * np.pi * fr * t) * np.exp(-t * 30) for fr in (210, 377, 590)) * 0.25
+    return normalize(lowpass(soft_clip(out, 1.4), high), peak)
+
+
+def brake(rng, seconds, low, high, peak):
+    """Braking: a falling exhale of the engines with a hiss of the manoeuvring jets."""
+    t = t_axis(seconds)
+    env = np.clip(t / 0.05, 0, 1) * np.exp(-t * 2.8)
+    noise = bandpass_noise(seconds, low, high, rng)
+    f = 260 * np.exp(-t * 1.6) + 60
+    tone = np.sin(2 * np.pi * np.cumsum(f) / RATE) * 0.3
+    hiss = bandpass_noise(seconds, 1800, 5000, rng) * np.exp(-t * 7) * 0.25
+    return normalize(lowpass((noise * 0.8 + tone) * env + hiss, high), peak)
+
+
+def hyper_charge(rng, seconds=1.6):
+    """The hyperdrive spooling up: a rising, beating whine over a growing low hum."""
+    t = t_axis(seconds)
+    f = 90 + 520 * (t / seconds) ** 2.2
+    ph = 2 * np.pi * np.cumsum(f) / RATE
+    whine = (np.sin(ph) + 0.5 * np.sin(2.01 * ph) + 0.25 * np.sin(3.02 * ph)) * (t / seconds) ** 1.2
+    hum = np.sin(2 * np.pi * 55 * t) * 0.5 * np.clip(t / 0.4, 0, 1)
+    air = bandpass_noise(seconds, 300, 3000, rng) * (t / seconds) ** 3 * 0.4
+    fade = np.clip((seconds - t) / 0.05, 0, 1)
+    return normalize(lowpass(soft_clip(whine + hum + air, 1.3), 4200) * fade, 0.6)
+
+
+def hyper_jump(rng, seconds=2.2):
+    """The jump: a deep boom, then a long rushing sweep that falls away."""
+    t = t_axis(seconds)
+    boom = np.sin(2 * np.pi * (48 + 60 * np.exp(-t * 10)) * t) * np.exp(-t * 3.0)
+    sweep_f = 2600 * np.exp(-t * 1.8) + 120
+    sweep = bandpass_noise(seconds, 100, 6000, rng)
+    sweep = fast_lowpass(sweep, 2500) * np.exp(-t * 1.2) * np.clip(t / 0.03, 0, 1)
+    zing = np.sin(2 * np.pi * np.cumsum(sweep_f) / RATE) * np.exp(-t * 2.5) * 0.3
+    fade = np.clip((seconds - t) / 0.3, 0, 1)
+    return normalize(soft_clip(boom * 1.1 + sweep + zing, 1.6) * fade, 0.85)
+
+
+def hyper_arrive(rng, seconds=1.4):
+    """Dropping out of hyperspace: a sweep falling in from above and a soft thump."""
+    t = t_axis(seconds)
+    f = 1800 * np.exp(-t * 4) + 70
+    zing = np.sin(2 * np.pi * np.cumsum(f) / RATE) * np.exp(-t * 3) * 0.4
+    air = fast_lowpass(bandpass_noise(seconds, 200, 5000, rng), 3000) * np.exp(-t * 4) * np.clip(t / 0.02, 0, 1)
+    thump = np.sin(2 * np.pi * 50 * t) * np.exp(-t * 9) * 0.9
+    return normalize(soft_clip(zing + air + thump, 1.4), 0.7)
+
+
+def hyper_fail(rng, seconds=0.7):
+    """The jump cannot start: two falling, dull blips and a short fizzle."""
+    t = t_axis(seconds)
+    out = np.zeros_like(t)
+    for start, f in ((0.0, 520), (0.22, 390)):
+        tt = np.maximum(t - start, 0)
+        out += np.sin(2 * np.pi * f * tt) * np.exp(-tt * 14) * (t >= start)
+    fizz = bandpass_noise(seconds, 800, 3000, rng) * np.exp(-np.maximum(t - 0.4, 0) * 10) * (t > 0.4) * 0.2
+    return normalize(lowpass(out + fizz, 3000), 0.45)
+
+
+def big_explosion(rng, seconds=3.6):
+    """A ship breaking apart: a first blast, two secondary blasts, a long rumble and debris."""
+    t = t_axis(seconds)
+    out = np.zeros_like(t)
+    for start, size in ((0.0, 1.0), (0.45, 0.7), (1.05, 0.55)):
+        tt = np.maximum(t - start, 0)
+        gate = t >= start
+        blast = bandpass_noise(seconds, 30, 1800, rng) * np.exp(-tt * 5) * gate
+        boom = np.sin(2 * np.pi * (40 + 30 * np.exp(-tt * 12)) * tt) * np.exp(-tt * 4) * gate
+        out += (blast + boom) * size * np.clip(tt / 0.004, 0, 1)
+    rumble = bandpass_noise(seconds, 20, 140, rng) * np.exp(-t * 0.9) * 0.6
+    debris = sum(np.sin(2 * np.pi * f * t) * np.exp(-np.maximum(t - d, 0) * 18) * (t > d)
+                 for f, d in ((520, 0.8), (690, 1.3), (410, 1.7), (880, 2.1), (610, 2.6))) * 0.1
+    fade = np.clip((seconds - t) / 0.4, 0, 1)
+    return normalize(fast_lowpass(soft_clip(out + rumble + debris, 2.0), 5000) * fade, 0.9)
+
+
+def alarm(rng, seconds=1.2):
+    """Hull critical: a soft two-tone warble, three times (quiet, not shrill)."""
+    t = t_axis(seconds)
+    f = np.where((t * 5).astype(int) % 2 == 0, 660, 520)
+    tone = np.sin(2 * np.pi * np.cumsum(f) / RATE)
+    gate = np.clip(np.sin(np.pi * (t % 0.4) / 0.4) * 1.5, 0, 1)
+    return normalize(lowpass(tone * gate * (t < 1.2), 2200), 0.35)
+
+
+def ramp(rng, seconds=2.0):
+    """A boarding ramp: a hydraulic hiss, a low motor and a clunk when it locks."""
+    t = t_axis(seconds)
+    hiss = bandpass_noise(seconds, 1500, 5000, rng) * np.exp(-t * 4) * 0.5
+    motor = (np.sin(2 * np.pi * (95 + 15 * t) * t) + 0.4 * np.sin(2 * np.pi * 190 * t)) * np.clip(t / 0.1, 0, 1) * np.clip((1.6 - t) / 0.15, 0, 1) * 0.4
+    clunk = bandpass_noise(seconds, 60, 900, rng) * np.exp(-np.maximum(t - 1.6, 0) * 25) * (t > 1.6)
+    return normalize(lowpass(hiss + motor + clunk, 4000), 0.55)
+
+
+def lift(rng, seconds=2.4):
+    """A turbolift: a rising hum with a soft swoosh, and a chime at the end."""
+    t = t_axis(seconds)
+    f = 120 + 160 * np.sin(np.pi * np.minimum(t / 2.0, 1.0) / 2)
+    hum = np.sin(2 * np.pi * np.cumsum(f) / RATE) * np.clip(t / 0.2, 0, 1) * np.clip((2.0 - t) / 0.3, 0, 1) * 0.5
+    air = fast_lowpass(bandpass_noise(seconds, 200, 2500, rng), 1500) * np.sin(np.pi * np.minimum(t / 2.0, 1.0)) * 0.4
+    chime = sum(np.sin(2 * np.pi * fr * np.maximum(t - 2.0, 0)) * np.exp(-np.maximum(t - 2.0, 0) * 6) * (t > 2.0) for fr in (880, 1320)) * 0.2
+    return normalize(hum + air + chime, 0.5)
+
+
+def interior(rng, seconds, hum_hz, hum_level, air_band, beeps, vents):
+    """The air of a ship's inside: a low machine hum, air from the vents, quiet console beeps and
+    now and then a hiss; 16 s loop with wrapped events (no seam)."""
+    t = t_axis(seconds)
+    hum = sum(np.sin(2 * np.pi * hum_hz * h * t + h) / h ** 1.5 for h in range(1, 5)) * hum_level
+    air = fast_lowpass(periodic_noise(seconds, air_band[0], air_band[1], rng), air_band[1]) * 0.25
+    air *= 0.85 + 0.15 * np.sin(2 * np.pi * (2 / seconds) * t)
+    events = np.zeros_like(t)
+    for start, f in beeps:
+        d = 0.18
+        tt = t_axis(d)
+        ev = np.sin(2 * np.pi * f * tt) * np.sin(np.pi * tt / d) ** 2 * 0.05
+        idx = (np.arange(len(ev)) + int(start * RATE)) % len(t)
+        events[idx] += ev
+    for start in vents:
+        d = 1.2
+        tt = t_axis(d)
+        ev = bandpass_noise(d, 1000, 4000, rng) * np.sin(np.pi * tt / d) ** 2 * 0.06
+        idx = (np.arange(len(ev)) + int(start * RATE)) % len(t)
+        events[idx] += ev
+    return normalize(fast_lowpass(hum + air + events, 3000), 0.4)
+
+
+def phase14():
+    """Phase 14: the Falcon's own drive, thrust layers, boost and brake, hyperspace, the big
+    explosion, the hull alarm, ramps, turbolifts and the interiors. Own random stream."""
+    rng = np.random.default_rng(1977_14)
+    write_ogg("falcon_engine", falcon_drive(rng), SHIP_OUT)
+    write_ogg("falcon_thrust", thrust_layer(rng, (30, 260), (500, 2200), 88.0, 0.12, 1800, 0.45), SHIP_OUT)
+    write_ogg("xwing_thrust", thrust_layer(rng, (40, 300), (700, 2800), 0.0, 0.0, 2200, 0.4), SHIP_OUT)
+    write_ogg("tie_thrust", thrust_layer(rng, (60, 280), (800, 3200), 165.0, 0.3, 2600, 0.38), SHIP_OUT)
+    write_ogg("star_destroyer_thrust", thrust_layer(rng, (18, 140), (200, 800), 41.0, 0.0, 800, 0.5), SHIP_OUT)
+    write_ogg("falcon_boost", boost(rng, 1.6, 40, 1600, (120, 330), 0.6, clank=True), SHIP_OUT)
+    write_ogg("boost", boost(rng, 1.2, 60, 2600, (180, 420), 0.55), SHIP_OUT)
+    write_ogg("brake", brake(rng, 1.1, 80, 1800, 0.45), SHIP_OUT)
+    write_ogg("falcon_brake", brake(rng, 1.5, 40, 1300, 0.5), SHIP_OUT)
+    write_ogg("hyperspace_charge", hyper_charge(rng), SHIP_OUT)
+    write_ogg("hyperspace_jump", hyper_jump(rng), SHIP_OUT)
+    write_ogg("hyperspace_arrive", hyper_arrive(rng), SHIP_OUT)
+    write_ogg("hyperspace_fail", hyper_fail(rng), SHIP_OUT)
+    write_ogg("explode_big", big_explosion(rng), SHIP_OUT)
+    write_ogg("alarm", alarm(rng), SHIP_OUT)
+    write_ogg("ramp", ramp(rng), SHIP_OUT)
+    write_ogg("lift", lift(rng), SHIP_OUT)
+    write_ogg("interior_falcon", interior(rng, 16.0, 60.0, 0.5, (150, 900), ((2.1, 1180), (2.35, 880), (9.4, 990), (12.8, 1320)), (5.0, 13.9)),
+              SHIP_OUT)
+    write_ogg("interior_bridge", interior(rng, 16.0, 45.0, 0.6, (100, 700), ((1.0, 1500), (3.2, 1250), (3.4, 1500), (6.6, 1100), (10.1, 1400),
+                                                                              (13.3, 1250)), (8.0,)), SHIP_OUT)
+
+
 # Planet ambiences (Phase 10) ---------------------------------------------------------------------
 # Loops of AMBIENT_SECONDS. Every slow modulation runs a whole number of times per loop, and every
 # event (a gust, a bird, a crackle) that runs over the end wraps to the start, so they loop
@@ -1106,6 +1339,10 @@ def main():
 
     if "--imperial-ships" in sys.argv:
         imperial_ships()
+        return
+
+    if "--phase14" in sys.argv:
+        phase14()
         return
 
     if "--phase13-ships" in sys.argv:

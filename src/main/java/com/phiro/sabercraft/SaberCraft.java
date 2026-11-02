@@ -46,6 +46,7 @@ public class SaberCraft implements ModInitializer {
 		SaberAdvancements.init();
 		Droids.init();
 		Starships.init();
+		com.phiro.sabercraft.interior.ShipInteriors.init();
 		SaberSwords.init();
 		LOGGER.info("SaberCraft initialized");
 	}

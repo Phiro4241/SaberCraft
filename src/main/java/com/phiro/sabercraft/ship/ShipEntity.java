@@ -77,8 +77,8 @@ public class ShipEntity extends Pig {
 	static final double SETTLE = 0.2;
 	/** Steepest climb or dive, degrees. */
 	static final float MAX_PITCH = 35.0F;
-	/** Phase 12: ticks without a hit before the hull starts to mend (one point a second). */
-	static final int REPAIR_DELAY = 200;
+	/** Phase 14: below this share of the hull the pilot hears the hull alarm. */
+	static final float ALARM_SHARE = 0.25F;
 	/** Phase 13: share of the top speed left when the energy is empty. */
 	static final double NO_POWER_SPEED = 0.3;
 	/** Phase 13: how fast a ship without energy sinks, blocks per tick (a safe landing). */
@@ -110,8 +110,22 @@ public class ShipEntity extends Pig {
 	/** Phase 13: ticks since the last laser shot, to soften the sound of long bursts. */
 	private int sinceShot = 100;
 	private int burst;
-	/** Phase 12: ticks since the hull was last hit; it mends itself after a while. */
+	/**
+	 * Phase 12: ticks since the hull was last hit; it mends itself after a while. Phase 14: crash
+	 * damage counts too, the wait is {@code ship_repair_delay_seconds} and the mending is slow.
+	 */
 	private int sinceHit = Integer.MAX_VALUE / 2;
+	/** Phase 14: hull mended but not yet added (less than half a point). */
+	private float repairPool;
+	/** Phase 14: ticks until the next hull alarm in the cockpit. */
+	private int alarmCooldown;
+	/** Phase 14: the hyperspace jump of this ship, while it charges or flies (see {@link Hyperspace}). */
+	Hyperspace.@Nullable Jump jump;
+	/** Phase 14: game time from which this ship can jump again. */
+	long jumpReadyAt;
+	/** Phase 14: the ship is being destroyed; nothing may steer, hit or board it any more. */
+	private boolean wrecked;
+	private static int hullRepairs;
 
 	public ShipEntity(ServerLevel level, ShipType ship, ServerPlayer owner) {
 		super(EntityTypes.PIG, level);
@@ -204,12 +218,12 @@ public class ShipEntity extends Pig {
 		}
 
 		// Phase 12: a damaged hull mends slowly once the ship has not been hit for a while, and
-		// smokes while it is badly hurt.
+		// smokes while it is badly hurt. Phase 14: much later and much slower than before, and by
+		// default only on the ground or parked (see repair).
 		this.sinceHit++;
-
-		if (this.sinceHit > REPAIR_DELAY && this.tickCount % 20 == 0 && this.getHealth() < this.getMaxHealth()) {
-			this.heal(1.0F);
-		}
+		this.repair();
+		this.alarm();
+		Hyperspace.tick(this);
 
 		if (this.getHealth() < this.getMaxHealth() * 0.35F && this.tickCount % 4 == 0) {
 			((ServerLevel) this.level()).sendParticles(ParticleTypes.LARGE_SMOKE, this.getX(), this.getY() + this.ship.height() * 0.6, this.getZ(),
@@ -222,9 +236,79 @@ public class ShipEntity extends Pig {
 
 	@Override
 	public void travel(Vec3 input) {
-		if (this.level() instanceof ServerLevel) {
+		if (this.level() instanceof ServerLevel && !this.wrecked && this.jump == null) {
 			this.fly();
 		}
+	}
+
+	/**
+	 * Phase 14: the hull mends by itself, but only after {@code ship_repair_delay_seconds} without
+	 * any damage (hits and hard landings), and slowly: {@code ship_repair_per_minute} of the hull per
+	 * minute, by default only on the ground or without a pilot.
+	 */
+	private void repair() {
+		AbilityConfig config = AbilityConfig.get();
+
+		if (this.getHealth() >= this.getMaxHealth() || this.wrecked || config.shipRepairPerMinute <= 0.0F
+				|| this.sinceHit < config.shipRepairDelaySeconds * 20) {
+			this.repairPool = 0.0F;
+			return;
+		}
+
+		boolean resting = this.pilot() == null || this.onGround() || this.ship.capital() && this.speed < 0.02;
+
+		if (!resting && !config.shipRepairInFlight) {
+			return;
+		}
+
+		this.repairPool += this.getMaxHealth() * config.shipRepairPerMinute / 1200.0F;
+
+		if (this.repairPool >= 0.5F) {
+			this.heal(this.repairPool);
+			this.repairPool = 0.0F;
+			hullRepairs++;
+		}
+	}
+
+	/** Phase 14: a low hull makes a soft alarm in the cockpit every few seconds. */
+	private void alarm() {
+		if (this.alarmCooldown > 0) {
+			this.alarmCooldown--;
+		}
+
+		ServerPlayer pilot = this.pilot();
+
+		if (pilot != null && this.alarmCooldown == 0 && this.getHealth() < this.getMaxHealth() * ALARM_SHARE && !this.wrecked) {
+			this.alarmCooldown = 80;
+			pilot.connection.send(new net.minecraft.network.protocol.game.ClientboundSoundPacket(sound("ship.alarm"), SoundSource.NEUTRAL,
+					pilot.getX(), pilot.getY(), pilot.getZ(), 0.6F, 1.0F, this.random.nextLong()));
+		}
+	}
+
+	/** Phase 14: ticks since the hull last took damage (a hit or a hard landing). */
+	public int sinceDamage() {
+		return this.sinceHit;
+	}
+
+	/** Only for tests: pretends the last damage was this many ticks ago. */
+	public void setSinceDamageForTest(int ticks) {
+		this.sinceHit = ticks;
+	}
+
+	/** Only for tests: how many times a hull mended a step. */
+	public static int hullRepairs() {
+		return hullRepairs;
+	}
+
+	/** Phase 14: whether the ship is being destroyed. */
+	public boolean wrecked() {
+		return this.wrecked;
+	}
+
+	/** Phase 14: puts the hull to the value it had when the ship was last in the world. */
+	void restoreHull(float hull, int sinceDamage) {
+		this.setHealth(Mth.clamp(hull, 1.0F, this.getMaxHealth()));
+		this.sinceHit = sinceDamage;
 	}
 
 	private void fly() {
@@ -536,6 +620,47 @@ public class ShipEntity extends Pig {
 		return this.depleted;
 	}
 
+	/** Phase 14: uses flight energy (a hyperspace jump), in ticks of full throttle. */
+	void useEnergy(float ticks) {
+		if (this.energy >= 0.0F) {
+			this.energy = Math.max(0.0F, this.energy - ticks);
+		}
+	}
+
+	/** Phase 14: the ship hit something hard less than a second ago. */
+	boolean justCrashed() {
+		return this.crashCooldown > 0;
+	}
+
+	/** Phase 14: holds the ship steady while the hyperdrive spools up: level, no turning. */
+	void holdForJump(double cruise) {
+		this.yawRate = 0.0F;
+		this.setXRot(this.getXRot() * 0.8F);
+		this.speed = Math.min(this.speed, cruise);
+		Vec3 motion = Vec3.directionFromRotation(this.getXRot(), this.getYRot()).scale(this.speed * 0.5);
+		this.setDeltaMovement(motion);
+		this.move(MoverType.SELF, motion);
+		this.resetFallDistance();
+	}
+
+	/** Phase 14: comes out of hyperspace at that spot, level, flying on at {@code speed}. */
+	void arrive(Vec3 at, double speed) {
+		this.snapTo(at.x, at.y, at.z, this.getYRot(), 0.0F);
+		this.setYHeadRot(this.getYRot());
+		this.setYBodyRot(this.getYRot());
+		this.speed = speed;
+		this.yawRate = 0.0F;
+		this.setDeltaMovement(Vec3.ZERO);
+		this.resetFallDistance();
+
+		for (Entity passenger : this.getPassengers()) {
+			this.positionRider(passenger);
+			passenger.resetFallDistance();
+		}
+
+		this.needsSync = true;
+	}
+
 	/** Phase 13: takes over the energy the owner's ship had (parked ships charge meanwhile). */
 	void restoreEnergy(float energy, boolean depleted) {
 		this.energy = energy;
@@ -565,7 +690,7 @@ public class ShipEntity extends Pig {
 	 * Returns whether it fired.
 	 */
 	boolean fire(ServerPlayer pilot) {
-		if (this.fireCooldown > 0 || this.ship.cannons().isEmpty()) {
+		if (this.fireCooldown > 0 || this.ship.cannons().isEmpty() || this.wrecked || this.jump != null) {
 			return false;
 		}
 
@@ -626,12 +751,71 @@ public class ShipEntity extends Pig {
 		return attacker == this || attacker.getUUID().equals(this.owner) || this.hasPassenger(attacker);
 	}
 
+	/**
+	 * Phase 14: what kind of weapon a hit came from: {@code saber}, {@code blaster},
+	 * {@code ship_laser}, {@code explosion} or {@code other} (see {@code ship_weapon_damage}).
+	 */
+	public static String weapon(DamageSource source) {
+		if (source.is(DamageTypeTags.IS_EXPLOSION)) {
+			return "explosion";
+		}
+
+		if (source.getDirectEntity() instanceof BlasterBolt bolt) {
+			return bolt.type().isShipLaser() ? "ship_laser" : "blaster";
+		}
+
+		if (source.getDirectEntity() instanceof LivingEntity attacker && source.getDirectEntity() == source.getEntity()
+				&& com.phiro.sabercraft.saber.SaberVariant.canHold(attacker.getMainHandItem())) {
+			return "saber";
+		}
+
+		return "other";
+	}
+
+	/**
+	 * Phase 14: the damage a hit does to this ship: the weapon's multiplier, the ship's toughness
+	 * against that kind of weapon (big ships shrug off hand weapons), and never more than
+	 * {@code ship_max_hit_share} of the full hull, so no single hit destroys a ship.
+	 */
+	public float hullDamage(DamageSource source, float damage) {
+		String weapon = weapon(source);
+		ShipFeatures features = ShipFeatures.of(this.ship);
+		boolean heavy = weapon.equals("ship_laser") || weapon.equals("explosion");
+		AbilityConfig config = AbilityConfig.get();
+		float scaled = damage * config.weaponDamage(weapon) * (heavy ? features.heavy() : features.smallArms());
+		return Math.min(scaled, this.getMaxHealth() * config.shipMaxHitShare);
+	}
+
 	@Override
 	public boolean hurtServer(ServerLevel level, DamageSource source, float damage) {
+		if (this.wrecked) {
+			return false;
+		}
+
+		boolean plain = !this.crashing && !source.is(DamageTypeTags.BYPASSES_INVULNERABILITY);
+
+		if (plain) {
+			damage = this.hullDamage(source, damage);
+
+			if (damage <= 0.0F) {
+				return false;
+			}
+
+			// Bolts come fast one after another (repeaters, salvos): each counts, unlike the
+			// short invulnerability of a mob after a hit. Melee keeps it.
+			if (source.getDirectEntity() instanceof BlasterBolt) {
+				this.invulnerableTime = 0;
+			}
+		}
+
 		boolean hurt = super.hurtServer(level, source, damage);
 
-		if (hurt && !this.crashing) {
+		if (hurt) {
 			this.sinceHit = 0;
+			this.repairPool = 0.0F;
+		}
+
+		if (hurt && !this.crashing) {
 			level.sendParticles(ParticleTypes.ELECTRIC_SPARK, this.getX(), this.getY() + this.ship.height() * 0.5, this.getZ(), 10, 0.6, 0.4, 0.6, 0.2);
 			level.playSound(null, this.getX(), this.getY(), this.getZ(), sound("ship.hit"), SoundSource.NEUTRAL, 0.9F,
 					0.9F + this.random.nextFloat() * 0.2F);
@@ -640,20 +824,42 @@ public class ShipEntity extends Pig {
 		return hurt;
 	}
 
-	/** Phase 12: the hull at 0: a blast of fire and smoke (no block breaks), the pilot falls out gently. */
+	/**
+	 * Phase 12: the hull at 0: a blast of fire and smoke (no block breaks), the pilot falls out
+	 * gently. Phase 14: a bigger blast with secondary explosions over the next second (see
+	 * {@link Starships#wreckage}), debris, and the pilot is thrown clear: slow falling, a few
+	 * seconds of resistance and fire resistance, so the destruction itself never kills anyone.
+	 */
 	private void explode() {
 		ServerLevel level = (ServerLevel) this.level();
 		explosions++;
-		level.sendParticles(ParticleTypes.EXPLOSION_EMITTER, this.getX(), this.getY() + this.ship.height() * 0.5, this.getZ(), 1, 0.0, 0.0, 0.0, 0.0);
-		level.sendParticles(ParticleTypes.LARGE_SMOKE, this.getX(), this.getY() + this.ship.height() * 0.5, this.getZ(), 30, 1.2, 0.8, 1.2, 0.05);
-		level.sendParticles(ParticleTypes.FLAME, this.getX(), this.getY() + this.ship.height() * 0.5, this.getZ(), 30, 1.0, 0.6, 1.0, 0.08);
-		level.playSound(null, this.getX(), this.getY(), this.getZ(), sound("ship.explode"), SoundSource.NEUTRAL, 1.5F, 1.0F);
+		this.wrecked = true;
+		this.jump = null;
+		double radius = Math.min(12.0, this.ship.handling().modelRadius());
+		Vec3 centre = this.position().add(0.0, this.ship.height() * 0.5, 0.0);
+		level.sendParticles(ParticleTypes.EXPLOSION_EMITTER, centre.x, centre.y, centre.z, 1, 0.0, 0.0, 0.0, 0.0);
+		level.sendParticles(ParticleTypes.LARGE_SMOKE, centre.x, centre.y, centre.z, 40, radius * 0.25, 0.8, radius * 0.25, 0.05);
+		level.sendParticles(ParticleTypes.FLAME, centre.x, centre.y, centre.z, 40, radius * 0.2, 0.6, radius * 0.2, 0.1);
+		level.sendParticles(ParticleTypes.LAVA, centre.x, centre.y, centre.z, 16, radius * 0.15, 0.4, radius * 0.15, 0.0);
+		level.sendParticles(new net.minecraft.core.particles.BlockParticleOption(ParticleTypes.BLOCK,
+				net.minecraft.world.level.block.Blocks.IRON_BLOCK.defaultBlockState()), centre.x, centre.y, centre.z, 60, radius * 0.25, 0.6,
+				radius * 0.25, 0.3);
+		level.playSound(null, centre.x, centre.y, centre.z, sound("ship.explode_big"), SoundSource.NEUTRAL, this.ship.capital() ? 4.0F : 2.0F,
+				this.ship.capital() ? 0.7F : 1.0F);
+		Starships.wreckage(level, this.ship, centre, radius);
 
 		for (Entity passenger : this.getPassengers()) {
 			passenger.stopRiding();
 
 			if (passenger instanceof LivingEntity living) {
-				living.addEffect(new MobEffectInstance(MobEffects.SLOW_FALLING, 200, 0, false, true));
+				living.addEffect(new MobEffectInstance(MobEffects.SLOW_FALLING, 300, 0, false, true));
+				living.addEffect(new MobEffectInstance(MobEffects.RESISTANCE, 100, 4, false, true));
+				living.addEffect(new MobEffectInstance(MobEffects.FIRE_RESISTANCE, 200, 0, false, true));
+				living.clearFire();
+				// Thrown clear of the fireball, a little up and to the side.
+				Vec3 away = Vec3.directionFromRotation(0.0F, this.getYRot() + 90.0F).scale(0.6);
+				living.setDeltaMovement(away.x, 0.5, away.z);
+				living.hurtMarked = true;
 			}
 		}
 	}
@@ -674,12 +880,17 @@ public class ShipEntity extends Pig {
 
 	@Override
 	public InteractionResult mobInteract(Player player, InteractionHand hand) {
-		if (hand != InteractionHand.MAIN_HAND) {
+		if (hand != InteractionHand.MAIN_HAND || this.wrecked) {
 			return InteractionResult.PASS;
 		}
 
 		if (player instanceof ServerPlayer serverPlayer) {
-			Starships.board(serverPlayer, this);
+			// Phase 14: sneaking at a ship with an interior walks aboard instead of into the cockpit.
+			if (serverPlayer.isShiftKeyDown() && ShipFeatures.of(this.ship).interior() != null) {
+				com.phiro.sabercraft.interior.ShipInteriors.boardFromOutside(serverPlayer, this);
+			} else {
+				Starships.board(serverPlayer, this);
+			}
 		}
 
 		return InteractionResult.SUCCESS;
@@ -800,12 +1011,21 @@ public class ShipEntity extends Pig {
 
 	@Override
 	public void die(DamageSource source) {
-		if (this.level() instanceof ServerLevel && !source.is(DamageTypeTags.BYPASSES_INVULNERABILITY)) {
+		boolean destroyed = this.level() instanceof ServerLevel && !source.is(DamageTypeTags.BYPASSES_INVULNERABILITY) && !this.wrecked;
+
+		if (destroyed) {
 			this.explode();
 			Starships.destroyed(this);
 		}
 
 		super.die(source);
 		Starships.died(this);
+
+		// Phase 14: no burning pig on its side for a second: the wreck is gone with the blast, so it
+		// can neither be steered nor boarded nor hit again.
+		if (destroyed && !this.isRemoved()) {
+			this.ejectPassengers();
+			this.discard();
+		}
 	}
 }

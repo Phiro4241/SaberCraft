@@ -34,7 +34,8 @@
 			"com.phiro.sabercraft.gametest.ShipGameTest",
 			"com.phiro.sabercraft.gametest.AtmosphereGameTest",
 			"com.phiro.sabercraft.gametest.Phase12GameTest",
-			"com.phiro.sabercraft.gametest.Phase13GameTest"
+			"com.phiro.sabercraft.gametest.Phase13GameTest",
+			"com.phiro.sabercraft.gametest.Phase14GameTest"
 		]
 	},
 	"depends": {

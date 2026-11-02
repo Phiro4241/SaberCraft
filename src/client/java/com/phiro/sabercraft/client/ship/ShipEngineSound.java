@@ -11,6 +11,7 @@ import net.minecraft.world.entity.Entity;
 
 import com.phiro.sabercraft.SaberCraft;
 import com.phiro.sabercraft.network.ShipEnergyPayload;
+import com.phiro.sabercraft.ship.ShipFeatures;
 import com.phiro.sabercraft.ship.ShipType;
 
 /**
@@ -29,6 +30,12 @@ import com.phiro.sabercraft.ship.ShipType;
  *
  * It fades in when it starts and stops itself when the ship is gone. The ship slider of the sound
  * menu applies on top (see {@code SoundVolumes}).
+ *
+ * <p>Phase 14: every ship has two loops of its own engine family ({@link ShipFeatures#sound()}):
+ * the <b>engine</b> (the steady drone, as before) and the <b>thrust</b> layer, which only swells
+ * while the ship speeds up, holds a quiet rumble while cruising and nearly vanishes while braking.
+ * So speeding up, cruising and braking sound different; the short boost and brake sounds on top are
+ * played by {@link ShipClient}.
  */
 final class ShipEngineSound extends AbstractTickableSoundInstance {
 	private static final int FADE_IN_TICKS = 15;
@@ -39,6 +46,8 @@ final class ShipEngineSound extends AbstractTickableSoundInstance {
 
 	private final Entity ship;
 	private final ShipType type;
+	/** Phase 14: the thrust layer instead of the engine drone. */
+	private final boolean thrust;
 	private final RandomSource drift;
 	private int age;
 	private boolean finished;
@@ -50,9 +59,15 @@ final class ShipEngineSound extends AbstractTickableSoundInstance {
 	private float wobbleTarget;
 
 	ShipEngineSound(Entity ship, ShipType type) {
-		super(event("ship." + type.id() + ".engine"), SoundSource.NEUTRAL, RandomSource.create(ship.getId()));
+		this(ship, type, false);
+	}
+
+	ShipEngineSound(Entity ship, ShipType type, boolean thrust) {
+		super(event(thrust ? "ship." + ShipFeatures.of(type).sound() + ".thrust" : "ship." + type.id() + ".engine"), SoundSource.NEUTRAL,
+				RandomSource.create(ship.getId() * 31L + (thrust ? 1 : 0)));
 		this.ship = ship;
 		this.type = type;
+		this.thrust = thrust;
 		this.drift = RandomSource.create(ship.getId() * 7L + 1L);
 		this.looping = true;
 		this.delay = 0;
@@ -79,7 +94,8 @@ final class ShipEngineSound extends AbstractTickableSoundInstance {
 		ShipEnergyPayload energy = ShipClient.energy(this.ship);
 		boolean empty = energy != null && energy.state() == ShipEnergyPayload.EMPTY;
 		boolean parked = this.ship.onGround() && throttle < 0.02F;
-		float target = target(parked, throttle, empty);
+		float push = this.type.accel() > 0.0 ? (float) (visual.accel() / this.type.accel()) : 0.0F;
+		float target = this.thrust ? thrustTarget(parked, throttle, push, empty) : target(parked, throttle, empty);
 
 		// A surge while speeding up, fading quickly.
 		this.surge = Math.max(this.surge * 0.9F, Mth.clamp(visual.accel() * 6.0F, 0.0F, 0.15F));
@@ -102,7 +118,8 @@ final class ShipEngineSound extends AbstractTickableSoundInstance {
 		}
 
 		this.wobble += (this.wobbleTarget - this.wobble) * 0.03F;
-		float pitchTarget = (this.type.capital() ? 0.8F : 0.75F) + 0.45F * throttle + this.surge * 0.4F;
+		float pitchTarget = this.thrust ? 0.85F + 0.3F * throttle + Mth.clamp(push, 0.0F, 1.0F) * 0.12F
+				: (this.type.capital() ? 0.8F : 0.75F) + 0.45F * throttle + this.surge * 0.4F;
 		this.tone += (pitchTarget - this.tone) * 0.1F;
 		this.volume = Math.min(MAX_VOLUME, this.level) * Math.min(1.0F, this.age / (float) FADE_IN_TICKS);
 		this.pitch = Mth.clamp(this.tone + this.wobble, 0.5F, 2.0F);
@@ -119,6 +136,34 @@ final class ShipEngineSound extends AbstractTickableSoundInstance {
 		}
 
 		return 0.2F + 0.32F * throttle;
+	}
+
+	/**
+	 * Phase 14: how loud the thrust layer wants to be. {@code push} is the change of speed in
+	 * units of the ship's acceleration: 1 while speeding up at full throttle, about -2 while braking.
+	 */
+	static float thrustTarget(boolean parked, float throttle, float push, boolean empty) {
+		if (empty || parked) {
+			return 0.0F;
+		}
+
+		if (push > 0.2F) {
+			// Speeding up: the thrust swells.
+			return 0.12F + 0.3F * Mth.clamp(push, 0.0F, 1.2F);
+		}
+
+		if (push < -0.2F) {
+			// Braking: the thrust falls away, only a breath remains.
+			return 0.02F;
+		}
+
+		// Cruising: a quiet rumble that grows a little with the speed.
+		return 0.04F + 0.1F * throttle;
+	}
+
+	/** Phase 14: whether this is the thrust layer. */
+	boolean isThrust() {
+		return this.thrust;
 	}
 
 	private boolean isOwn() {
