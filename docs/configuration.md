@@ -87,10 +87,13 @@ Decided by the server (in single player by the integrated server). Players conne
 | `blaster_cool_rate` | `2.0` | Heat lost per tick when not firing (out of 100). |
 | `blaster_vent_rate` | `1.5` | Heat lost per tick while overheated; firing is blocked until it is down to 0. |
 | `droids_enabled` | `true` | Players can call droid companions (menu or `/sabercraft droid`). |
-| `droid_limit` | `4` | How many droids one player can have out at the same time (each kind at most once). |
-| `droid_cooldown` | `1.0` | Multiplier for the cooldowns of the droid abilities. |
+| `droid_limit` | `2` | How many droids one player can have out at the same time (each kind at most once), 1..8. Phase 13: the default is 2 (was 4). A file from before Phase 13 that still holds the old default 4 is moved to 2 once (see `config_version`); a 4 set again afterwards stays. |
+| `droid_cooldown` | `1.0` | Multiplier for all droid cooldowns from `droid_balance` (2 = everything twice as slow). |
+| `droid_balance` | see below | Phase 13: the numbers of each droid's ability, by droid id. |
+| `droid_combat_shared_cooldown_seconds` | `3.0` | Phase 13: after one combat droid (Chopper, B1, K-2SO) used its ability, the player's other combat droids wait this long. `0`: off. |
+| `droid_group_penalty` | `0.25` | Phase 13: a combat droid's damage is divided by `1 + penalty × other combat droids out`. With two combat droids each hits for 1/1.25 = 80 %. `0`: off. |
 | `droids_hit_players` | `false` | Whether the combat droids (Chopper, B1, K-2SO) may hurt or push other players. |
-| `ships_enabled` | `true` | Players can call and fly starships: X-Wing, TIE Fighter, TIE Interceptor (menu or `/sabercraft ship`). |
+| `ships_enabled` | `true` | Players can call and fly starships: X-Wing, TIE Fighter, TIE Interceptor, Millennium Falcon and Star Destroyer (menu or `/sabercraft ship`). |
 | `ship_speed` | `1.0` | Multiplier for the top speed of the starships. |
 | `ship_laser_damage` | `1.0` | Multiplier for the damage of the starship laser cannons. |
 | `ship_lasers_hit_players` | `true` | Whether the starship laser cannons may hit other players. |
@@ -99,6 +102,37 @@ Decided by the server (in single player by the integrated server). Players conne
 | `droid_chatter_seconds` | `45` | Phase 12: about how many seconds lie between two idle beeps of one droid. Droids chatter only near their owner, and never right after another droid of the same owner spoke (at least 15 s in between). `0`: no idle chatter at all. |
 | `ship_damage` | `true` | Phase 12: starships take damage from other players, mobs, bolts and explosions (never from their own pilot). They mend slowly after 10 s without a hit and explode at 0 hull. `false`: ships cannot be damaged. |
 | `ship_respawn_seconds` | `60` | Phase 12: after a ship was destroyed, its owner waits this many seconds before calling a new one. |
+| `ship_crash_damage` | `1.0` | Phase 13: multiplier for the hull damage of hard landings and crashes, 0..10. `0`: impacts never cost hull. Gentle landings are always free, and the pilot never takes fall damage from a ship. |
+| `ship_energy` | `true` | Phase 13: ships have flight energy. When it runs out the engines cut out: a fighter glides down slowly and safely, the Star Destroyer holds still. `false`: unlimited flight as before. |
+| `ship_flight_seconds` | `xwing 300`, `tie_fighter 180`, `tie_interceptor 150`, `falcon 480`, `star_destroyer 900` | Phase 13: seconds of flight at full throttle on full energy, per ship (10..36000). Hovering or flying slowly uses half as much. |
+| `ship_recharge_seconds` | `xwing 45`, `tie_fighter 30`, `tie_interceptor 30`, `falcon 60`, `star_destroyer 120` | Phase 13: seconds from empty to full while landed, parked or unpiloted (the Star Destroyer also while it stands still). |
+| `ship_restart_share` | `0.25` | Phase 13: after running empty, the share of energy needed before the engines start again, 0..1. |
+| `config_version` | `13` | Phase 13: the version of the file, used to move changed defaults over once. Do not edit. |
+
+### `droid_balance`
+
+One entry per droid. Missing droids or keys keep their built-in values; values are clamped (cooldown 0.5..3600 s, range 0..48, damage 0..40, strength 0..60). Roles: **support** (R2-D2, mouse droid), **info** (C-3PO, BB-8, probe droid), **combat** (Chopper, B1, K-2SO); only combat droids share `droid_combat_shared_cooldown_seconds` and `droid_group_penalty`.
+
+| Droid | `cooldown_seconds` | `range` | `damage` | `strength` |
+| --- | --- | --- | --- | --- |
+| `r2d2` | 30 | – | – | 0.2: share of the held item's wear repaired |
+| `c3po` | 10 | 32: blocks it counts hostiles in | – | – |
+| `bb8` | 25 | 20: scan radius | – | 8: seconds the found creatures glow |
+| `chopper` | 18 | 4: zap radius | 3 | 2: seconds of slowness |
+| `mouse` | 12 | 10: fetch radius | – | – |
+| `probe` | 40 | 12: ore scan radius (at most 24) | – | – |
+| `b1` | 12 | 16: target range | 3 per bolt | 3: bolts per burst |
+| `k2so` | 14 | 5: shove radius around you | 2 | 1.0: push strength |
+
+Example, a slower and weaker B1:
+
+```json
+"droid_balance": {
+  "b1": { "cooldown_seconds": 20, "range": 12, "damage": 2, "strength": 2 }
+}
+```
+
+Before Phase 13 the cooldowns were shorter (B1 5 s, Chopper 15 s, BB-8 20 s, probe 30 s, mouse 10 s, K-2SO 10 s) and the damage higher (Chopper 4, R2-D2 repaired 25 %).
 
 ## `combat_client.json` (client)
 
@@ -116,6 +150,8 @@ Decided by the server (in single player by the integrated server). Players conne
 | `shader_blade` | `true` | While an Iris shader pack is active, draw the blade as a self-lit beam that the pack knows. Off: the plain blade pipelines, which most packs draw almost transparent. |
 | `hit_marks` | `true` | Glowing marks in the blade color where a saber struck, for a few seconds. |
 | `finisher_effects` | `true` | The shock ring and screen flash of a finishing blow (the sound always plays). |
+| `move_variety` | `true` | Phase 13: crits, sprint and normal swings pick from several moves of the style, never the same move twice in a row; the normal chain sometimes skips a step. The choice comes from who swings and when, so every client sees the same move. Off: the fixed order of Phase 12 (every crit is the signature move). Menu: **Combat**. |
+| `signature_moves` | `1.0` | Phase 13: how often a style's signature move (Ezra's 180° turn, the flips and leaps of the other styles) plays on a crit or sprint attack, as a multiplier of the style's own chance (20 to 45 % per eligible attack; with the rest rule Ezra's turn comes on about one crit in five), 0..3. `0`: never. It never plays twice in a row and only after a few other attacks. Menu: **Combat**. |
 
 ## `immersion_client.json` (client)
 
@@ -145,7 +181,7 @@ Decided by the server (in single player by the integrated server). Players conne
 | `starwars_exploration` | `true` | Star Wars mode: music while exploring and in calm moments. |
 | `starwars_character_themes` | `true` | Star Wars mode: a character's theme when they appear (you or another player). |
 | `ship_third_person` | `true` | Switch to the third-person view behind the ship when climbing into a starship. |
-| `ship_hud` | `true` | The flight display (speed, height, lasers) while flying a starship. |
+| `ship_hud` | `true` | The flight display (speed, height, lasers, hull and, since Phase 13, flight energy with the time left) while flying a starship. |
 | `blaster_draw` | `true` | Drawing and holstering a blaster are animated and heard. |
 | `menu_transitions` | `true` | The menu fades a page in with a soft sweep when switching areas. |
 | `saber_volume` | `1.0` | Phase 12: volume of all lightsaber sounds (ignition, hum, swings, clashes, Force powers), 0..1, on top of Minecraft's sliders. `0` mutes them. Menu: **Sound**. |
@@ -155,6 +191,8 @@ Decided by the server (in single player by the integrated server). Players conne
 | `droid_chatter` | `true` | Phase 12: hear the droids' idle chatter. `false`: they only sound when they do something. |
 | `ship_volume` | `1.0` | Phase 12: volume of the starships (engines, lasers, hits, explosions), 0..1. |
 | `droid_target_hud` | `true` | Phase 12: while you look at one of your droids, its name, ability and keys show under the crosshair. Menu: **Graphics**. |
+| `ship_hide_pilot` | `true` | Phase 13: a player flying a starship is not drawn (no figure sticking out of the cockpit, no hands in first person), for you and for every other player you see. Only drawing is skipped; they show again the moment they climb out, die, the ship is destroyed or they leave. Menu: **Graphics**. |
+| `character_hide_armor` | `true` | Phase 13: players with a character or outfit show it instead of their armor pieces (elytras stay). Only the picture: armor still protects and stays in the inventory. Each client decides for the players it sees, so it works in multiplayer without the server. Menu: **Graphics**. |
 
 ## `character_client.json` (client)
 
@@ -163,6 +201,7 @@ Decided by the server (in single player by the integrated server). Players conne
 | `outfit` | `""` | The outfit or character: empty for your plain skin, the id of a built-in outfit or character (`sabercraft:shadow`, `sabercraft:vader`), `profile:<name>` for a custom profile, or `file:<name>.png` for a file of your own in `config/sabercraft/outfits/`. |
 | `show_other_outfits` | `true` | Show the outfits other players chose. Off: everyone else looks like their plain skin. |
 | `character_size` | `true` | Draw small characters (Yoda) at their size. Only the picture changes, not the hitbox. |
+| `capes` | `true` | Phase 13: Vader, Dooku, Kylo, Maul, Obi-Wan, Anakin, Yoda, the Wanderer and the Shadow wear a real cape or cloak, even if the game's own "Cape" skin part is off. `false`: no character capes. |
 
 ## `blade_styles.json` (client)
 

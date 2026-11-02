@@ -46,7 +46,8 @@ import com.phiro.sabercraft.network.ShipEnergyPayload;
 
 /**
  * A starship on the server (Phase 11): the X-Wing, since Phase 12 also the TIE Fighter and the TIE
- * Interceptor, each with its own speed, agility, cannons and hull (see {@link ShipType}). Its owner climbs in with a right-click and
+ * Interceptor, since Phase 13 the Millennium Falcon and the Star Destroyer, each with its own speed,
+ * agility, cannons and hull (see {@link ShipType}). Its owner climbs in with a right-click and
  * flies it with the movement keys: forward opens the throttle, back brakes, left and right turn,
  * jump pulls the nose up and sprint pushes it down (when hovering slowly they lift and lower the
  * ship straight up and down instead). Sneaking climbs out as from any vehicle. The server alone
@@ -57,9 +58,13 @@ import com.phiro.sabercraft.network.ShipEnergyPayload;
  * owner can call a new one after {@code ship_respawn_seconds}. A hull that is not hit for ten
  * seconds mends itself.
  *
- * <p>It collides with blocks like any entity and never breaks them. Flying into something fast
- * stops it with a jolt and a puff of smoke (no explosion, nothing breaks). Without a pilot it
- * settles to the ground. For the network it is a vanilla pig marked as a ship (see
+ * <p>It collides with blocks like any entity and never breaks them. Phase 13: neither the ship nor
+ * its pilot ever takes fall damage. A gentle landing is free; a hard landing or a crash into a wall
+ * costs hull, more the faster it was, and a very hard one wrecks the ship (see {@link #impact}).
+ * Ships have flight energy that runs down in flight and charges on the ground; when empty, the
+ * engines cut out and a fighter glides down slowly. The Star Destroyer is a capital ship: it never
+ * dips its nose, climbs and sinks straight and keeps its height above the ground. Without a pilot
+ * a ship settles to the ground. For the network it is a vanilla pig marked as a ship (see
  * {@link ShipMarker}); like the droids it is never saved with the world, where it was parked is
  * saved with its owner (see {@link Starships}).
  */
