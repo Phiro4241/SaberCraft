@@ -542,6 +542,13 @@ public class ShipEntity extends Pig {
 		this.energy = energy;
 	}
 
+	/** Only for tests: as if the ship hit something at {@code impact} blocks per tick. */
+	public void impactForTest(double impact, boolean landing) {
+		this.crashCooldown = 0;
+		this.landCooldown = 0;
+		this.impact(impact, landing, false, this.pilot());
+	}
+
 	/** Only for tests: how fast the last hard impact was, blocks per tick. */
 	public static double lastImpact() {
 		return lastImpact;

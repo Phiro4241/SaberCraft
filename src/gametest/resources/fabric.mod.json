@@ -33,7 +33,8 @@
 			"com.phiro.sabercraft.gametest.DroidGameTest",
 			"com.phiro.sabercraft.gametest.ShipGameTest",
 			"com.phiro.sabercraft.gametest.AtmosphereGameTest",
-			"com.phiro.sabercraft.gametest.Phase12GameTest"
+			"com.phiro.sabercraft.gametest.Phase12GameTest",
+			"com.phiro.sabercraft.gametest.Phase13GameTest"
 		]
 	},
 	"depends": {

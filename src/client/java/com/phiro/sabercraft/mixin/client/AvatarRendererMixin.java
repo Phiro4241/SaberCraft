@@ -47,7 +47,15 @@ public abstract class AvatarRendererMixin {
 	@Inject(method = "extractRenderState(Lnet/minecraft/world/entity/Avatar;Lnet/minecraft/client/renderer/entity/state/AvatarRenderState;F)V",
 			at = @At("TAIL"))
 	private void sabercraft$hideArmorOfCharacters(Avatar avatar, AvatarRenderState state, float partialTicks, CallbackInfo info) {
-		if (!ImmersionConfig.get().characterHideArmor || OutfitClient.look(avatar.getUUID()) == null) {
+		OutfitClient.Look look = OutfitClient.look(avatar.getUUID());
+
+		// A character's cape belongs to the costume: it shows even when the player turned the
+		// game's own "Cape" skin part off (SaberCraft's "capes" option switches it off).
+		if (look != null && look.cape() != null) {
+			state.showCape = true;
+		}
+
+		if (!ImmersionConfig.get().characterHideArmor || look == null) {
 			return;
 		}
 

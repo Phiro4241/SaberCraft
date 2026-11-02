@@ -123,15 +123,21 @@ public final class CombatState {
 			return null;
 		}
 
-		CombatMove next;
 		boolean falling = !entity.onGround() && entity.getY() - entity.yo < -0.05 && !entity.isInWater();
 		// The same roll on every client: who swings and when (the game time is shared).
 		float roll = roll(entity.getId(), entity.level().getGameTime(), this.attacks);
-		CombatConfig config = CombatConfig.get();
+		CombatMove next = this.choose(current, falling, entity.isSprinting(), now, roll, CombatConfig.get());
+		this.play(next, now);
+		return next;
+	}
+
+	/** Phase 13: which move a swing plays, and the bookkeeping for the next one. */
+	private CombatMove choose(CombatStyle current, boolean falling, boolean sprinting, float now, float roll, CombatConfig config) {
+		CombatMove next;
 
 		if (falling && current.jump() != null) {
 			next = config.moveVariety ? this.pick(current, current.jump(), current.critMoves(), roll, config.signatureMoves) : current.jump();
-		} else if (entity.isSprinting() && current.sprint() != null) {
+		} else if (sprinting && current.sprint() != null) {
 			next = config.moveVariety ? this.pick(current, current.sprint(), current.sprintMoves(), roll, config.signatureMoves) : current.sprint();
 		} else {
 			boolean fresh = now - this.lastAttack > current.comboWindow();
@@ -164,8 +170,23 @@ public final class CombatState {
 		this.attacks++;
 		this.lastMove = next;
 		this.lastAttack = now;
-		this.play(next, now);
 		return next;
+	}
+
+	/**
+	 * Only for tests: the moves {@code swings} attacks in a row would play, as crits ({@code crit})
+	 * or normal swings 0.3 s apart, with the rolls of entity {@code entity} from game time 0.
+	 */
+	public static java.util.List<CombatMove> simulateForTest(CombatStyle style, boolean crit, int swings, int entity, CombatConfig config) {
+		CombatState state = new CombatState();
+		java.util.List<CombatMove> moves = new java.util.ArrayList<>();
+
+		for (int i = 0; i < swings; i++) {
+			float now = i * 6.0F;
+			moves.add(state.choose(style, crit, false, now, roll(entity, i * 6L, state.attacks), config));
+		}
+
+		return moves;
 	}
 
 	/**

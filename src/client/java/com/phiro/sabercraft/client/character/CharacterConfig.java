@@ -26,8 +26,8 @@ public final class CharacterConfig {
 	public boolean characterSize = true;
 	/**
 	 * Phase 13: characters with a cape or cloak (Vader, Dooku, Kylo, Maul, Obi-Wan, Anakin, Yoda and
-	 * two outfits) wear it as a real cape that hangs behind them. Needs the game's own "Cape" skin
-	 * part (Options, Skin Customization), which is on by default.
+	 * two outfits) wear it as a real cape that hangs behind them, whatever the game's own "Cape" skin
+	 * part (Options, Skin Customization) is set to.
 	 */
 	@SerializedName("capes")
 	public boolean capes = true;

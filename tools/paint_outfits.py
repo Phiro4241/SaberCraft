@@ -711,9 +711,10 @@ CAPE_PARTS = {
 ELYTRA_AREA = (22, 0, 24, 22)
 
 
-def paint_cape(name, cloth, lining, seed, trim=None, clasp=None, ragged=False, hood=False):
+def paint_cape(name, cloth, lining, seed, trim=None, clasp=None, ragged=False, hood=False, sheen=0.0):
     """A cape of cloth with soft vertical folds, a darker hem, an optional trim along the edges, a
-    clasp at the top, a ragged hem or a hood folded down at the top."""
+    clasp at the top, a ragged hem or a hood folded down at the top. sheen > 0 adds a cool shine on
+    the fold ridges (Vader's glossy cape), so a black cape still stands out from a black suit."""
     rng = np.random.default_rng(seed)
     img = np.zeros((32, 64, 4), dtype=np.float32)
     base = np.array(rgb(cloth) if isinstance(cloth, str) else cloth, dtype=float)
@@ -732,6 +733,9 @@ def paint_cape(name, cloth, lining, seed, trim=None, clasp=None, ragged=False, h
                     fold = 0.86 + 0.14 * math.cos((x + 0.5) * math.pi * 2 / 3.4 + (0.6 if part == "inside" else 0.0))
                     depth = 1.0 - 0.1 * (y / h)
                     color = color * (fold * depth if part == "outside" else 1.0)
+                    if sheen and part == "outside":
+                        ridge = max(0.0, math.cos((x + 0.5) * math.pi * 2 / 3.4))
+                        color = color + np.array([150.0, 155.0, 175.0]) * sheen * ridge ** 3 * (1.0 - 0.4 * y / h)
                     if part == "inside":
                         color = inner * (0.9 + 0.1 * fold)
                     if y >= h - 1:
@@ -761,7 +765,7 @@ def paint_cape(name, cloth, lining, seed, trim=None, clasp=None, ragged=False, h
 
 
 def capes():
-    paint_cape("vader", "#121216", "#26262c", 661, clasp="#8d9097")
+    paint_cape("vader", "#18181e", "#2a2a32", 661, trim="#30303a", clasp="#8d9097", sheen=0.22)
     paint_cape("dooku", "#2a1e1a", "#3a1416", 662, trim="#40302a", clasp="#b8bcc4")
     paint_cape("kylo", "#141416", "#1c1c20", 663, ragged=True, hood=True)
     paint_cape("maul", "#141113", "#1e181b", 664, hood=True)

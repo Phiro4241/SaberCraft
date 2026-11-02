@@ -198,7 +198,9 @@ public class SkinLayerGameTest implements FabricClientGameTest {
 		PlayerSkin skin = context.computeOnClient(client -> client.player.getSkin());
 		OutfitClient.Look look = context.computeOnClient(client -> OutfitClient.look(client.player.getUUID()));
 		check(look != null && skin.body().texturePath().equals(look.texture()), tag + " " + name + ": the skin itself is the character's (" + skin.body().texturePath() + ")");
-		check(skin.cape() == null && skin.elytra() == null, tag + " " + name + ": no cape or elytra of your own skin is left");
+		// Phase 13: a character may bring its own cape; nothing of your own skin's cape is left.
+		check(skin.elytra() == null && (skin.cape() == null ? look.cape() == null : skin.cape().texturePath().equals(look.cape())),
+				tag + " " + name + ": no cape or elytra of your own skin is left, only the character's own cape");
 		check(skin.model() == PlayerModelType.WIDE, tag + " " + name + ": the character's own model shape is used");
 		check(context.computeOnClient(client -> client.getEntityRenderDispatcher().getPlayerRenderer(client.player).getModel().leftArm != null),
 				tag + " " + name + ": a player renderer is found");

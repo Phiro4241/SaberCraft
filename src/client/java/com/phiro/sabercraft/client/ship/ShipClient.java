@@ -283,6 +283,16 @@ public final class ShipClient {
 				&& ShipMarker.of(entity.getVehicle()) != null;
 	}
 
+	/**
+	 * Phase 13: how far the camera stays behind a pilot's ship. The game caps its camera distance
+	 * attribute at 32 blocks; a ship that needs more (the Star Destroyer) gets its own distance.
+	 */
+	public static float cameraDistance(@Nullable Entity entity, float distance) {
+		Entity vehicle = entity != null ? entity.getVehicle() : null;
+		ShipType type = vehicle != null ? ShipMarker.of(vehicle) : null;
+		return type == null ? distance : Math.max(distance, type.handling().camera());
+	}
+
 	/** Phase 13: the energy of the ship the local player flies, or {@code null} if not known. */
 	public static @Nullable ShipEnergyPayload energy(Entity ship) {
 		ShipEnergyPayload known = energy;

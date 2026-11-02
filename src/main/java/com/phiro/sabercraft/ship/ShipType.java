@@ -89,7 +89,7 @@ public record ShipType(String id, String displayName, boolean available, float w
 	public static final ShipType STAR_DESTROYER = new ShipType("star_destroyer", "Star Destroyer", true, 14.0F, 7.0F, 0.85, 0.006, 0.8F, 8, false,
 			400, false, "turbolaser", List.of(new Vec3(6.0, 4.8, 14.0), new Vec3(-6.0, 4.8, 14.0), new Vec3(10.2, 4.9, -2.0),
 					new Vec3(-10.2, 4.9, -2.0), new Vec3(1.8, 4.4, 30.0), new Vec3(-1.8, 4.4, 30.0)),
-			new Handling(true, 14.0F, 48.0F, 0.0F, 900, 120, 0.4, 1.2, 40.0F));
+			new Handling(true, 14.0F, 72.0F, 0.0F, 900, 120, 0.4, 1.2, 40.0F));
 
 	public static final List<ShipType> ALL = List.of(XWING, TIE_FIGHTER, TIE_INTERCEPTOR, FALCON, STAR_DESTROYER);
 
