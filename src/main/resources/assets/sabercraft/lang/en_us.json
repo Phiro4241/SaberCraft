@@ -690,7 +690,8 @@
   "sabercraft.interior.helm_offline": "The ship does not answer. Leave by the ramp.",
   "sabercraft.interior.helm_owner": "Only %s can fly this ship.",
   "sabercraft.interior.in_flight": "The ship is being flown. Ask the pilot to land.",
-  "sabercraft.interior.land_first": "Land first to walk around in the ship.",
+  "sabercraft.interior.slow_down": "Slow down first, then you can walk aboard.",
+  "sabercraft.interior.already_aboard": "You are already aboard.",
   "sabercraft.interior.lowered": "The tractor beam lowers you down.",
   "sabercraft.interior.no_ship": "Your ship could not be found. You are back at the spawn.",
   "sabercraft.interior.none": "This ship has no rooms to walk around in.",
@@ -736,5 +737,5 @@
   "sabercraft.option.music_flight": "Flight music",
   "sabercraft.option.music_flight.description": "Music of its own while flying a starship, and a faster piece in space battles.",
   "sabercraft.ship.menu.aboard": "Walk aboard",
-  "sabercraft.ship.menu.aboard.tooltip": "Go inside your ship and walk around. It has to be close by and landed (the Star Destroyer may hover). Leave by the ramp or the hangar exit."
+  "sabercraft.ship.menu.aboard.tooltip": "Go inside your ship and walk around. If it is not close by, it is called first. Works from the cockpit too. Leave by the ramp or the hangar exit."
 }

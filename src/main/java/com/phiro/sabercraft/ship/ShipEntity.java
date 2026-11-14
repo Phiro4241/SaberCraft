@@ -167,6 +167,25 @@ public class ShipEntity extends Pig {
 		return this.speed;
 	}
 
+	/**
+	 * Whether the ship stands on something. Not {@link #onGround()} alone: a parked ship moves
+	 * zero blocks down every other tick, and vanilla then clears its ground flag, so that flag
+	 * flips each tick (and stays off under a hovering pilot). Here the blocks right below count.
+	 */
+	public boolean landed() {
+		return this.onGround() || !this.level().noCollision(this, this.getBoundingBox().move(0.0, -0.1, 0.0).setMaxY(this.getY()));
+	}
+
+	/**
+	 * Bug fix 2026-11-14: whether people can walk aboard now. A capital ship always (it hovers by
+	 * design); any other ship when it has landed or has nearly stopped. A ship that still hangs in
+	 * the air without its pilot settles down onto the ground by itself (see fly), so nobody has to
+	 * land it to the block first.
+	 */
+	public boolean canWalkAboard() {
+		return this.ship.capital() || this.landed() || this.speed < HOVER_SPEED;
+	}
+
 	/** Comes to a standstill (when called somewhere else). */
 	void stop() {
 		this.speed = 0.0;

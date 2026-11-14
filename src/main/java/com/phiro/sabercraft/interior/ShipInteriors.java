@@ -103,6 +103,8 @@ public final class ShipInteriors {
 	/** The ships in the world now, for the tractor beam. */
 	private static final Map<String, WeakReference<ShipEntity>> SHIPS = new HashMap<>();
 	private static final Map<UUID, Integer> TRACTOR = new HashMap<>();
+	/** The last answer to a boarding that did not go (only read by tests). */
+	private static @Nullable Component lastRefusal;
 	private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 	private static boolean dirty;
 	private static @Nullable Path file;
@@ -281,8 +283,18 @@ public final class ShipInteriors {
 		Component message = boardShip(player, ship, false);
 
 		if (message != null) {
+			lastRefusal = message;
 			player.sendOverlayMessage(message);
 		}
+	}
+
+	/**
+	 * How close the owner has to be for the hangar button to take them aboard where the ship is;
+	 * from further away the button calls the ship first (see Starships). The Star Destroyer
+	 * hovers high above, so it reaches further.
+	 */
+	public static double reachSqr(ShipType type) {
+		return Math.max(48.0 * 48.0, Starships.boardRangeSqr(type));
 	}
 
 	/** The hangar's "interior" button: aboard the own ship, from close by or from its cockpit. */
@@ -293,11 +305,21 @@ public final class ShipInteriors {
 			return Component.translatableWithFallback("sabercraft.interior.none", "This ship has no rooms to walk around in.");
 		}
 
-		if (ship == null || ship.ship() != type || ship.level() != player.level() || player.getVehicle() != ship && ship.distanceToSqr(player) > 48.0 * 48.0) {
-			return Component.translatableWithFallback("sabercraft.interior.too_far", "Your ship has to be close by.");
+		if (isInterior(player.level())) {
+			return Component.translatableWithFallback("sabercraft.interior.already_aboard", "You are already aboard.");
+		}
+
+		if (ship == null || ship.ship() != type || ship.level() != player.level() || player.getVehicle() != ship && ship.distanceToSqr(player) > reachSqr(type)) {
+			lastRefusal = Component.translatableWithFallback("sabercraft.interior.too_far", "Your ship has to be close by.");
+			return lastRefusal;
 		}
 
 		Component message = boardShip(player, ship, player.getVehicle() == ship);
+
+		if (message != null) {
+			lastRefusal = message;
+		}
+
 		return message != null ? message : Component.translatableWithFallback("sabercraft.interior.welcome", "Welcome aboard.");
 	}
 
@@ -360,8 +382,8 @@ public final class ShipInteriors {
 			return null;
 		}
 
-		if (!ship.ship().capital() && !ship.onGround()) {
-			return Component.translatableWithFallback("sabercraft.interior.land_first", "Land first to walk around in the ship.");
+		if (!ship.canWalkAboard()) {
+			return Component.translatableWithFallback("sabercraft.interior.slow_down", "Slow down first, then you can walk aboard.");
 		}
 
 		if (ship.pilot() != null && ship.pilot() != player) {
@@ -641,6 +663,7 @@ public final class ShipInteriors {
 					Component message = boardShip(player, ship, false);
 
 					if (message != null) {
+						lastRefusal = message;
 						player.sendOverlayMessage(message);
 					}
 				} else {
@@ -867,6 +890,11 @@ public final class ShipInteriors {
 	/** Boards the ship from outside and returns why not, or {@code null} when it went. */
 	public static @Nullable Component boardForTest(ServerPlayer player, ShipEntity ship) {
 		return boardShip(player, ship, false);
+	}
+
+	/** The last answer to a boarding that did not go, for tests. */
+	public static @Nullable Component lastRefusalForTest() {
+		return lastRefusal;
 	}
 
 	/** Runs the tractor beam check now. */
