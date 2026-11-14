@@ -737,5 +737,7 @@
   "sabercraft.option.music_flight": "Flight music",
   "sabercraft.option.music_flight.description": "Music of its own while flying a starship, and a faster piece in space battles.",
   "sabercraft.ship.menu.aboard": "Walk aboard",
-  "sabercraft.ship.menu.aboard.tooltip": "Go inside your ship and walk around. If it is not close by, it is called first. Works from the cockpit too. Leave by the ramp or the hangar exit."
+  "sabercraft.ship.menu.aboard.tooltip": "Go inside your ship and walk around. If it is not close by, it is called first. Works from the cockpit too. Leave by the ramp or the hangar exit.",
+  "sabercraft.interior.room.star_destroyer.reactor": "Reactor",
+  "sabercraft.interior.room.star_destroyer.hangar_corridor": "Hangar corridor"
 }

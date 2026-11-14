@@ -1152,6 +1152,87 @@ def phase14():
                                                                               (13.3, 1250)), (8.0,)), SHIP_OUT)
 
 
+# Phase 15: machines and computers in the ships' rooms (positional loops, mono) ---------------------
+# 8 s loops; every modulation runs a whole number of times per loop and every event wraps, so they
+# loop without a seam.
+SPOT_SECONDS = 8.0
+
+
+def wrap_event(loop, start, event):
+    idx = (np.arange(len(event)) + int(start * RATE)) % len(loop)
+    loop[idx] += event
+
+
+def reactor_hum(rng):
+    """A Star Destroyer's reactor core: a deep, slowly pulsing drone with a bright electric shimmer."""
+    t = t_axis(SPOT_SECONDS)
+    pulse = 0.75 + 0.25 * np.sin(2 * np.pi * (4 / SPOT_SECONDS) * t)
+    drone = sum(np.sin(2 * np.pi * 36.0 * h * t + h * 0.7) / h ** 1.2 for h in range(1, 7)) * pulse
+    shimmer = fast_lowpass(periodic_noise(SPOT_SECONDS, 1800, 4200, rng), 4200) * 0.18 * (0.6 + 0.4 * np.sin(2 * np.pi * (8 / SPOT_SECONDS) * t))
+    crackle = np.zeros_like(t)
+    for start in rng.uniform(0, SPOT_SECONDS, 7):
+        d = 0.06
+        crackle_ev = bandpass_noise(d, 2500, 7000, rng) * np.exp(-t_axis(d) * 60) * 0.25
+        wrap_event(crackle, start, crackle_ev)
+    return normalize(fast_lowpass(drone * 0.6 + shimmer + crackle, 5000), 0.5)
+
+
+def computer_chatter(rng, low, high, count, shape="sine"):
+    """Consoles at work: soft beeps and chirps in short runs, a faint data hiss under them."""
+    t = t_axis(SPOT_SECONDS)
+    loop = fast_lowpass(periodic_noise(SPOT_SECONDS, 2000, 6000, rng), 6000) * 0.03
+    start = 0.2
+    for _ in range(count):
+        start = (start + rng.uniform(0.25, 1.1)) % SPOT_SECONDS
+        run = rng.integers(1, 4)
+        for k in range(run):
+            d = rng.uniform(0.05, 0.11)
+            f = rng.uniform(low, high)
+            tt = t_axis(d)
+            wave_ = np.sin(2 * np.pi * f * tt) if shape == "sine" else np.sign(np.sin(2 * np.pi * f * tt)) * 0.4
+            ev = wave_ * np.sin(np.pi * tt / d) ** 2 * rng.uniform(0.08, 0.16)
+            wrap_event(loop, start + k * (d + 0.03), ev)
+    return normalize(fast_lowpass(loop, 4500), 0.32)
+
+
+def hyperdrive_hum(rng):
+    """The Falcon's hyperdrive at rest: a warbling, slightly unsteady hum, ticks of cooling metal."""
+    t = t_axis(SPOT_SECONDS)
+    wobble = 1.0 + 0.012 * np.sin(2 * np.pi * (3 / SPOT_SECONDS) * t) + 0.006 * np.sin(2 * np.pi * (11 / SPOT_SECONDS) * t)
+    phase = np.cumsum(2 * np.pi * 74.0 * wobble / RATE)
+    hum = sum(np.sin(h * phase + h) / h ** 1.3 for h in range(1, 6))
+    whine = np.sin(np.cumsum(2 * np.pi * 620.0 * wobble / RATE)) * 0.05
+    ticks = np.zeros_like(t)
+    for start in rng.uniform(0, SPOT_SECONDS, 9):
+        d = 0.03
+        wrap_event(ticks, start, bandpass_noise(d, 1500, 5000, rng) * np.exp(-t_axis(d) * 120) * 0.3)
+    return normalize(fast_lowpass(hum * 0.5 + whine + ticks, 4000), 0.45)
+
+
+def hangar_air(rng):
+    """A big hangar: a wide, low rush of air handlers, a far-off clank now and then."""
+    t = t_axis(SPOT_SECONDS)
+    rush = fast_lowpass(periodic_noise(SPOT_SECONDS, 60, 600, rng), 600) * (0.8 + 0.2 * np.sin(2 * np.pi * (2 / SPOT_SECONDS) * t))
+    hum = np.sin(2 * np.pi * 52.0 * t) * 0.15
+    clank = np.zeros_like(t)
+    for start in (2.3, 6.1):
+        d = 0.5
+        tt = t_axis(d)
+        ev = (np.sin(2 * np.pi * 180 * tt) + 0.5 * np.sin(2 * np.pi * 310 * tt)) * np.exp(-tt * 9) * 0.12
+        wrap_event(clank, start, ev)
+    return normalize(rush + hum + clank, 0.4)
+
+
+def phase15():
+    """Phase 15: positional loops for the ships' machines and computers. Own random stream."""
+    rng = np.random.default_rng(1977_15)
+    write_ogg("reactor_hum", reactor_hum(rng), SHIP_OUT)
+    write_ogg("imperial_consoles", computer_chatter(rng, 900, 1900, 16), SHIP_OUT)
+    write_ogg("falcon_consoles", computer_chatter(rng, 500, 1500, 12, shape="square"), SHIP_OUT)
+    write_ogg("hyperdrive_hum", hyperdrive_hum(rng), SHIP_OUT)
+    write_ogg("hangar_air", hangar_air(rng), SHIP_OUT)
+
+
 # Planet ambiences (Phase 10) ---------------------------------------------------------------------
 # Loops of AMBIENT_SECONDS. Every slow modulation runs a whole number of times per loop, and every
 # event (a gust, a bird, a crackle) that runs over the end wraps to the start, so they loop
@@ -1343,6 +1424,10 @@ def main():
 
     if "--phase14" in sys.argv:
         phase14()
+        return
+
+    if "--phase15" in sys.argv:
+        phase15()
         return
 
     if "--phase13-ships" in sys.argv:
