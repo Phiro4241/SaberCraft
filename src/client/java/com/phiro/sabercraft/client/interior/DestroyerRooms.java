@@ -15,6 +15,7 @@ import net.minecraft.world.level.block.Blocks;
 import com.phiro.sabercraft.client.interior.MeshBuilder.Layer;
 import com.phiro.sabercraft.client.interior.Skin.Kind;
 import com.phiro.sabercraft.client.interior.Skin.Surface;
+import com.phiro.sabercraft.interior.DestroyerInterior;
 import com.phiro.sabercraft.interior.InteriorPlan;
 
 /**
@@ -31,7 +32,7 @@ final class DestroyerRooms {
 			Blocks.POLISHED_BLACKSTONE_BRICKS, Blocks.CONCRETE.yellow(), Blocks.CONCRETE.white(), Blocks.CONCRETE.lightGray());
 
 	/** The radius of the reactor's smooth wall (inside the barrier ring at the catwalk's edge). */
-	static final float REACTOR_WALL = (float) REACTOR_R - 0.8F;
+	static final float REACTOR_WALL = (float) DestroyerInterior.REACTOR_WALL;
 
 	static void build(MeshBuilder b) {
 		InteriorPlan plan = InteriorPlan.of("star_destroyer");
@@ -58,6 +59,11 @@ final class DestroyerRooms {
 		int bx = s.x() + s.toward().getStepX();
 		int by = s.y() + s.toward().getStepY();
 		int bz = s.z() + s.toward().getStepZ();
+
+		// Phase 16: the gallery's way through the reactor wall is lined apart (only where the wall is).
+		if (s.kind() != Kind.FLOOR && GALLERY.contains(s.x(), s.y(), s.z())) {
+			return;
+		}
 
 		// The pedestal of the helm's lever is inside the helm console.
 		if (bx == CX && by == DECK + 1 && bz == WINDOW_Z + 2) {
@@ -174,7 +180,7 @@ final class DestroyerRooms {
 			b.fit(Math.floorMod(along, hangar ? 3 : 4) == 1 ? InteriorAtlas.IMP_WALL_VENT : InteriorAtlas.IMP_WALL);
 			Skin.face(b, s, Skin.EPS);
 			b.tile(InteriorAtlas.IMP_METAL, 1.0F);
-			Skin.skirting(b, s, 0.16F, 0.07F);
+			Skin.skirting(b, s, plot, 0.16F, 0.07F);
 		} else if (h == strip) {
 			b.fit(InteriorAtlas.IMP_WALL_STRIP);
 			Skin.face(b, s, Skin.EPS);
@@ -221,11 +227,12 @@ final class DestroyerRooms {
 		b.twoSided(false).white().layer(Layer.SOLID).tile(InteriorAtlas.IMP_METAL, 1.0F);
 
 		for (float x = wx0; x <= wx1 + 0.01F; x += (wx1 - wx0) / 9.0F) {
-			b.box(x - 0.22F, wy0, wz - 0.1F, x + 0.22F, wy1, WINDOW_Z + 1.0F + 0.15F, MeshBuilder.ALL & ~MeshBuilder.NORTH);
+			b.box(x - 0.22F, wy0, wz - 0.1F, x + 0.22F, wy1, WINDOW_Z + 1.0F + 0.15F, MeshBuilder.ALL & ~MeshBuilder.NORTH & ~MeshBuilder.DOWN & ~MeshBuilder.UP);
 		}
 
+		// The bars across sit a little behind the mullions' faces, so the two never share a plane.
 		for (float y : new float[] {wy0 + 4.0F, wy0 + 9.0F}) {
-			b.box(wx0, y - 0.15F, wz - 0.1F, wx1, y + 0.15F, WINDOW_Z + 1.0F + 0.1F, MeshBuilder.ALL & ~MeshBuilder.NORTH);
+			b.box(wx0, y - 0.15F, wz - 0.08F, wx1, y + 0.15F, WINDOW_Z + 1.0F + 0.12F, MeshBuilder.UP | MeshBuilder.DOWN | MeshBuilder.SOUTH);
 		}
 
 		b.box(wx0, wy1 - 0.3F, wz - 0.1F, wx1, wy1, WINDOW_Z + 1.25F, MeshBuilder.DOWN | MeshBuilder.SOUTH);
@@ -428,7 +435,7 @@ final class DestroyerRooms {
 			b.box(x - 0.6F, y0, z - 0.15F, x + 0.6F, y1, z + 0.15F, MeshBuilder.ALL & ~MeshBuilder.UP & ~MeshBuilder.DOWN);
 		}
 
-		b.box(x - 0.6F, y0 + 1.95F, z0, x + 0.6F, y0 + 2.15F, z1, MeshBuilder.UP | MeshBuilder.DOWN | MeshBuilder.EAST | MeshBuilder.WEST);
+		b.box(x - 0.56F, y0 + 1.95F, z0, x + 0.56F, y0 + 2.15F, z1, MeshBuilder.UP | MeshBuilder.DOWN | MeshBuilder.EAST | MeshBuilder.WEST);
 	}
 
 	/** Screens on a wall facing {@code facing}, at {@code z} (the wall's face), from x0 to x1. */
@@ -536,10 +543,10 @@ final class DestroyerRooms {
 
 		// The landing circle where the tractor beam sets people down.
 		b.tile(InteriorAtlas.IMP_METAL_LIGHT, 1.0F);
-		b.ring(CX + 0.5F, HANGAR + 1.006F, -28.5F, 0.0F, 3.0F, 24, true);
+		b.ring(CX + 0.5F, HANGAR + 1.012F, -28.5F, 0.0F, 3.0F, 24, true);
 		b.layer(Layer.GLOW).fullBright().anim(InteriorScene.ANIM_SLOW).colour(0xFF6F8AB8).fit(InteriorAtlas.IMP_WALL_STRIP_GLOW, 0.0F, 0.42F, 1.0F, 0.58F);
-		b.ring(CX + 0.5F, HANGAR + 1.012F, -28.5F, 2.55F, 2.85F, 24, true);
-		b.ring(CX + 0.5F, HANGAR + 1.012F, -28.5F, 1.2F, 1.4F, 16, true);
+		b.ring(CX + 0.5F, HANGAR + 1.018F, -28.5F, 2.55F, 2.85F, 24, true);
+		b.ring(CX + 0.5F, HANGAR + 1.018F, -28.5F, 1.2F, 1.4F, 16, true);
 		b.white().anim(0).layer(Layer.SOLID).worldLight();
 
 		// Cargo crates on their proxies.
@@ -575,7 +582,8 @@ final class DestroyerRooms {
 		for (int i = 0; i < 4; i++) {
 			float a = i * 45.0F * Mth.DEG_TO_RAD;
 			b.push().translate(x, y, z - 1.22F).rotateZ(i * 45.0F).translate(-x, -y, -(z - 1.22F));
-			b.box(x - 0.03F, y - 0.7F, z - 1.25F, x + 0.03F, y + 0.7F, z - 1.21F, MeshBuilder.NORTH);
+			// Each strut a little behind the last, so where they cross they do not share a plane.
+			b.box(x - 0.03F, y - 0.7F, z - 1.25F + i * 0.004F, x + 0.03F, y + 0.7F, z - 1.21F, MeshBuilder.NORTH);
 			b.pop();
 		}
 
@@ -617,11 +625,35 @@ final class DestroyerRooms {
 		// The frame round the edge and the spars from the hub to the corners.
 		b.colour(0xFF9EA4AE).tile(InteriorAtlas.IMP_METAL, 1.0F);
 
+		// (Phase 16: a band, not cylinders from corner to corner, which overlapped at every corner.)
+		float rim = 0.28F;
+		float ft = t + 0.05F;
+
 		for (int i = 0; i < 6; i++) {
-			Vector3f a = new Vector3f(x, y + corners[i].y, z + corners[i].z);
-			Vector3f c = new Vector3f(x, y + corners[(i + 1) % 6].y, z + corners[(i + 1) % 6].z);
-			b.cylinder(a, new Vector3f(c).sub(a), 0.17F, 0.17F, 5, 1.0F, false, false);
-			b.cylinder(new Vector3f(x, y, z), new Vector3f(a).sub(x, y, z), 0.09F, 0.09F, 4, 1.0F, false, false);
+			Vector3f c0 = corners[i];
+			Vector3f c1 = corners[(i + 1) % 6];
+			Vector3f i0 = new Vector3f(c0).mul((r - rim) / r);
+			Vector3f i1 = new Vector3f(c1).mul((r - rim) / r);
+
+			for (float face : new float[] {-ft, ft}) {
+				b.polyFacing(List.of(new Vector3f(x + face, y + c0.y, z + c0.z), new Vector3f(x + face, y + c1.y, z + c1.z),
+						new Vector3f(x + face, y + i1.y, z + i1.z), new Vector3f(x + face, y + i0.y, z + i0.z)), new Vector3f(Math.signum(face), 0, 0));
+			}
+
+			Vector3f out = new Vector3f(c0).add(c1).normalize();
+			b.polyFacing(List.of(new Vector3f(x - ft, y + c0.y, z + c0.z), new Vector3f(x + ft, y + c0.y, z + c0.z), new Vector3f(x + ft, y + c1.y, z + c1.z),
+					new Vector3f(x - ft, y + c1.y, z + c1.z)), new Vector3f(0, out.y, out.z));
+			// A spar from the hub to the corner, raised on both faces.
+			Vector3f along = new Vector3f(c0).normalize();
+			Vector3f sw = new Vector3f(0, -along.z, along.y).mul(0.07F);
+			// It ends short of the band: its corners would reach into it where the band turns.
+			Vector3f e0 = new Vector3f(c0).mul((r - rim - 0.15F) / r);
+
+			for (float face : new float[] {-ft, ft}) {
+				b.polyFacing(List.of(new Vector3f(x + face, y + sw.y + along.y * 0.6F, z + sw.z + along.z * 0.6F),
+						new Vector3f(x + face, y + sw.y + e0.y, z + sw.z + e0.z), new Vector3f(x + face, y - sw.y + e0.y, z - sw.z + e0.z),
+						new Vector3f(x + face, y - sw.y + along.y * 0.6F, z - sw.z + along.z * 0.6F)), new Vector3f(Math.signum(face), 0, 0));
+			}
 		}
 
 		b.cylinder(new Vector3f(x - 0.25F, y, z), new Vector3f(0.5F, 0, 0), 0.6F, 0.6F, 8, 1.0F, true, true);
@@ -639,7 +671,7 @@ final class DestroyerRooms {
 			b.box(x - 0.6F, HANGAR + 3, z - 0.12F, x + 0.6F, HANGAR + 7, z + 0.12F, MeshBuilder.ALL & ~MeshBuilder.UP & ~MeshBuilder.DOWN);
 		}
 
-		b.box(x - 0.6F, HANGAR + 2.8F, -57, x + 0.6F, HANGAR + 3.0F, -36.95F, MeshBuilder.UP | MeshBuilder.EAST | MeshBuilder.WEST);
+		b.box(x - 0.6F, HANGAR + 2.8F, -57, x + 0.6F, HANGAR + 3.02F, -36.95F, MeshBuilder.UP | MeshBuilder.EAST | MeshBuilder.WEST);
 		Props.at(b, HANGAR_X0 - 0.5, HANGAR + 1, -49.0, Props.west());
 		Props.desk(b, 16.0F, 0.78F, InteriorAtlas.IMP_CONSOLE, InteriorAtlas.IMP_CONSOLE_TOP, InteriorAtlas.IMP_CONSOLE_TOP_GLOW,
 				InteriorAtlas.IMP_SCREEN_TEXT_GLOW, false, 3);
@@ -697,8 +729,9 @@ final class DestroyerRooms {
 	/** A frame round the inside of a corridor at z: posts on both walls and a beam under the ceiling. */
 	private static void arch(MeshBuilder b, float x0, float x1, float y0, float y1, int z) {
 		float d = 0.22F;
-		b.box(x0, y0, z, x0 + d, y1, z + 0.5F, MeshBuilder.ALL & ~MeshBuilder.WEST & ~MeshBuilder.UP & ~MeshBuilder.DOWN);
-		b.box(x1 - d, y0, z, x1, y1, z + 0.5F, MeshBuilder.ALL & ~MeshBuilder.EAST & ~MeshBuilder.UP & ~MeshBuilder.DOWN);
+		// The posts end under the beam (overlapping, their faces lay in the beam's and flickered).
+		b.box(x0, y0, z, x0 + d, y1 - d, z + 0.5F, MeshBuilder.ALL & ~MeshBuilder.WEST & ~MeshBuilder.UP & ~MeshBuilder.DOWN);
+		b.box(x1 - d, y0, z, x1, y1 - d, z + 0.5F, MeshBuilder.ALL & ~MeshBuilder.EAST & ~MeshBuilder.UP & ~MeshBuilder.DOWN);
 		b.box(x0, y1 - d, z, x1, y1, z + 0.5F, MeshBuilder.ALL & ~MeshBuilder.UP);
 		b.layer(Layer.GLOW).fullBright().colour(0xFF90A8D8).fit(InteriorAtlas.IMP_WALL_STRIP_GLOW, 0.0F, 0.42F, 1.0F, 0.58F);
 		b.rect(x0 + 0.5F, y1 - d - 0.002F, z + 0.35F, x1 - x0 - 1.0F, 0, 0, 0, 0, -0.2F);
@@ -718,16 +751,23 @@ final class DestroyerRooms {
 			float f0 = face;
 			float f1 = face + d;
 
+			// The faces towards the opening stand a hair inside it: where the wall is thicker than one
+			// block they would otherwise lie on the faces of the blocks lining the passage.
+			float in = 0.01F;
+			// No face against the wall itself.
+			int mask = MeshBuilder.ALL & ~(axis == Direction.Axis.Z ? (face < wall ? MeshBuilder.SOUTH : MeshBuilder.NORTH)
+					: (face < wall ? MeshBuilder.EAST : MeshBuilder.WEST));
+
 			if (axis == Direction.Axis.Z) {
 				b.tile(InteriorAtlas.IMP_METAL_LIGHT, 1.0F);
-				b.box(a0 - w, y0, f0, a0, y1 + 1 + w, f1);
-				b.box(a1 + 1, y0, f0, a1 + 1 + w, y1 + 1 + w, f1);
-				b.box(a0, y1 + 1, f0, a1 + 1, y1 + 1 + w, f1);
+				b.box(a0 - w, y0, f0, a0 + in, y1 + 1 + w, f1, mask);
+				b.box(a1 + 1 - in, y0, f0, a1 + 1 + w, y1 + 1 + w, f1, mask);
+				b.box(a0 + in, y1 + 1 - in, f0, a1 + 1 - in, y1 + 1 + w, f1, mask);
 			} else {
 				b.tile(InteriorAtlas.IMP_METAL_LIGHT, 1.0F);
-				b.box(f0, y0, a0 - w, f1, y1 + 1 + w, a0);
-				b.box(f0, y0, a1 + 1, f1, y1 + 1 + w, a1 + 1 + w);
-				b.box(f0, y1 + 1, a0, f1, y1 + 1 + w, a1 + 1);
+				b.box(f0, y0, a0 - w, f1, y1 + 1 + w, a0 + in, mask);
+				b.box(f0, y0, a1 + 1 - in, f1, y1 + 1 + w, a1 + 1 + w, mask);
+				b.box(f0, y1 + 1 - in, a0 + in, f1, y1 + 1 + w, a1 + 1 - in, mask);
 			}
 		}
 
@@ -744,8 +784,8 @@ final class DestroyerRooms {
 	/** A lift: a lit frame round the end of a corridor (x0..x1, the end wall at z). */
 	private static void liftFrame(MeshBuilder b, float x0, float x1, float y0, float z) {
 		b.layer(Layer.SOLID).worldLight().white().tile(InteriorAtlas.IMP_METAL_LIGHT, 1.0F);
-		b.box(x0 - 0.3F, y0, z - 2.2F, x0, y0 + 4.3F, z - 0.02F, MeshBuilder.ALL & ~MeshBuilder.WEST);
-		b.box(x1, y0, z - 2.2F, x1 + 0.3F, y0 + 4.3F, z - 0.02F, MeshBuilder.ALL & ~MeshBuilder.EAST);
+		b.box(x0 - 0.3F, y0, z - 2.2F, x0, y0 + 4.0F, z - 0.02F, MeshBuilder.ALL & ~MeshBuilder.WEST & ~MeshBuilder.UP);
+		b.box(x1, y0, z - 2.2F, x1 + 0.3F, y0 + 4.0F, z - 0.02F, MeshBuilder.ALL & ~MeshBuilder.EAST & ~MeshBuilder.UP);
 		b.box(x0 - 0.3F, y0 + 4.0F, z - 2.2F, x1 + 0.3F, y0 + 4.3F, z - 0.02F, MeshBuilder.ALL & ~MeshBuilder.UP);
 		b.layer(Layer.GLOW).fullBright().anim(InteriorScene.ANIM_SLOW).colour(0xFF6F90D0).fit(InteriorAtlas.IMP_WALL_STRIP_GLOW, 0.0F, 0.42F, 1.0F,
 				0.58F);
@@ -770,20 +810,12 @@ final class DestroyerRooms {
 		b.layer(Layer.SOLID).worldLight().white().anim(0);
 		// The round wall, in tall panels, open where the gallery comes in.
 		b.tile(InteriorAtlas.IMP_WALL_TALL, 2.0F);
-		int segments = 48;
-
-		for (int i = 0; i < segments; i++) {
-			float a0 = 360.0F * i / segments;
-			float a1 = 360.0F * (i + 1) / segments;
-			float mid = (a0 + a1) / 2;
-
-			if (mid > GAP_FROM && mid < GAP_TO) {
-				b.arcWall(cx, cz, r, a0, a1, bottom, HANGAR, 1, true);
-				b.arcWall(cx, cz, r, a0, a1, HANGAR + 4, top, 1, true);
-			} else {
-				b.arcWall(cx, cz, r, a0, a1, bottom, top, 1, true);
-			}
-		}
+		// Phase 16: open exactly between the gallery's sides, the gallery lined through the wall.
+		RoundWalls.wall(b, cx, cz, r, (int) bottom, (int) top, true, 0.0F, 360.0F, 48, List.of(DestroyerInterior.GALLERY),
+				(pen, row, index) -> pen.tile(InteriorAtlas.IMP_WALL_TALL, 2.0F));
+		RoundWalls.linings(b, List.of(DestroyerInterior.GALLERY), DestroyerInterior::openReactor, () -> b.tile(InteriorAtlas.IMP_METAL, 1.0F),
+				() -> b.tile(InteriorAtlas.IMP_METAL, 1.0F));
+		b.tile(InteriorAtlas.IMP_WALL_TALL, 2.0F);
 
 		// Ribs and conduits up the wall.
 		b.tile(InteriorAtlas.IMP_PIPE, 1.0F);
@@ -802,6 +834,8 @@ final class DestroyerRooms {
 
 		// Light bands round the wall.
 		b.layer(Layer.GLOW).fullBright().colour(0xFF7AA0E0).fit(InteriorAtlas.IMP_WALL_STRIP_GLOW, 0.0F, 0.4F, 1.0F, 0.6F);
+
+		int segments = 48;
 
 		for (float y : new float[] {HANGAR + 6.0F, top - 4.0F, bottom + 2.0F}) {
 			for (int i = 0; i < segments; i++) {
@@ -850,7 +884,7 @@ final class DestroyerRooms {
 
 		// The catwalk's inner edge.
 		b.tile(InteriorAtlas.IMP_HAZARD, 1.0F);
-		b.ring(cx, HANGAR + 1.004F, cz, 8.55F, 8.95F, 32, true);
+		b.ring(cx, HANGAR + 1.012F, cz, 8.55F, 8.95F, 32, true);
 	}
 
 	// --- Moving parts ----------------------------------------------------------------------------

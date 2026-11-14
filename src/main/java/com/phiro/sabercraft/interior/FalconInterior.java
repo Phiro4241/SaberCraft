@@ -71,7 +71,9 @@ public final class FalconInterior extends InteriorPlan {
 
 	@Override
 	public int version() {
-		return 2;
+		// 3 (Phase 16): the curved walls are barriers shaped like the drawn walls, no stepped blocks
+		// poking through them any more.
+		return 3;
 	}
 
 	@Override
@@ -116,8 +118,8 @@ public final class FalconInterior extends InteriorPlan {
 				new Room("cockpit_tube", new AABB(30, 7, 23, 39, 9, 25)),
 				new Room("top_turret", new AABB(18, 12, 28, 24, 15, 34)),
 				new Room("bottom_turret", new AABB(18, 1, 28, 24, 4, 34)),
-				new Room("quarters", new AABB(4, 7, 22, 10, 10, 29)),
-				new Room("galley", new AABB(5, 7, 33, 10, 10, 40)),
+				new Room("quarters", new AABB(4, 7, 22, 9, 10, 29)),
+				new Room("galley", new AABB(5, 7, 33, 9, 10, 40)),
 				new Room("engine_room", new AABB(8, 7, 41, 33, 11, 50)),
 				new Room("cargo_hold", new AABB(9, 7, 2, 16, 11, 18)),
 				new Room("storage", new AABB(26, 7, 2, 33, 11, 18)),
@@ -126,11 +128,57 @@ public final class FalconInterior extends InteriorPlan {
 				new Room("corridor", new AABB(9, 7, 19, 32, 10, 42)));
 	}
 
+	/** Doorways from the hold to the corridor, and from the corridor to every room. */
+	public static final List<Doorway> DOORWAYS = List.of(
+			new Doorway(20, FLOOR + 1, 21, 21, FLOOR + 3, 24, false),   // hold, north
+			new Doorway(20, FLOOR + 1, 37, 21, FLOOR + 3, 40, false),   // hold, south
+			new Doorway(11, FLOOR + 1, 30, 14, FLOOR + 3, 31, true),   // hold, west
+			new Doorway(27, FLOOR + 1, 30, 30, FLOOR + 3, 31, true),   // hold, east
+			new Doorway(9, FLOOR + 1, 25, 11, FLOOR + 2, 25, true),    // quarters
+			new Doorway(9, FLOOR + 1, 35, 11, FLOOR + 2, 35, true),    // galley
+			new Doorway(20, FLOOR + 1, 41, 21, FLOOR + 3, 43, false),   // engine room
+			new Doorway(12, FLOOR + 1, 18, 13, FLOOR + 3, 22, false),   // cargo hold
+			new Doorway(27, FLOOR + 1, 18, 28, FLOOR + 3, 22, false),   // storage
+			new Doorway(31, FLOOR + 1, 30, 32, FLOOR + 3, 31, true),   // ramp
+			new Doorway(29, FLOOR + 1, 23, 31, FLOOR + 2, 24, true));  // cockpit tube
+
+	/** The smooth walls as drawn: the hold's, both of the ring corridor's, the engine room's inner one. */
+	public static final double HOLD_WALL = HOLD_R + 0.05;
+	public static final double RING_IN_WALL = RING_IN + 0.05;
+	public static final double RING_OUT_WALL = RING_OUT - 0.05;
+	public static final double ENGINE_WALL = ENGINE_R0 + 0.05;
+
+	/**
+	 * Phase 16: whether a point (plot space) at row y is inside one of the round rooms, up to their
+	 * smooth walls: the hold, the ring corridor, the engine room (its inner wall only is round).
+	 */
+	public static boolean open(double x, double z, int y) {
+		int air0 = FLOOR + 1;
+		double dx = x - CX;
+		double dz = z - CZ;
+		double d = Math.sqrt(dx * dx + dz * dz);
+
+		if (y >= air0 && y <= air0 + 3 && d < HOLD_WALL) {
+			return true;
+		}
+
+		if (y >= air0 && y <= air0 + 2 && d > RING_IN_WALL && d < RING_OUT_WALL) {
+			return true;
+		}
+
+		if (y >= air0 && y <= air0 + 3 && d > ENGINE_WALL && d < ENGINE_R1) {
+			// The ends of the engine room are walls of whole blocks: by the cell's middle.
+			double angle = Math.toDegrees(Math.atan2(Math.floor(z) + 0.5 - CZ, Math.floor(x) + 0.5 - CX));
+			return angle >= ENGINE_A0 && angle <= ENGINE_A1;
+		}
+
+		return false;
+	}
+
 	@Override
 	public void build(InteriorBuilder b) {
 		hull(b);
 		carve(b);
-		roundWalls(b);
 		corridor(b);
 		mainHold(b);
 		turrets(b);
@@ -140,6 +188,43 @@ public final class FalconInterior extends InteriorPlan {
 		engineRoom(b);
 		cargo(b);
 		ramp(b);
+		roundShell(b);
+	}
+
+	/**
+	 * Phase 16: the cells the smooth walls run through. A block there would stick out of the drawn
+	 * wall on one side (its corners showed through the curve and flickered, and people bumped into
+	 * nothing or walked into the wall); instead each is a barrier that collides exactly up to the
+	 * drawn wall. Furniture (barriers already) and the doorways stay as they are.
+	 */
+	private static void roundShell(InteriorBuilder b) {
+		int air0 = FLOOR + 1;
+		java.util.Set<net.minecraft.world.level.block.Block> shell = java.util.Set.of(InteriorBuilder.state(HULL).getBlock(),
+				InteriorBuilder.state(SHELL).getBlock(), InteriorBuilder.state(PANEL).getBlock(), InteriorBuilder.state(DECK).getBlock(),
+				InteriorBuilder.state(DARK).getBlock(), InteriorBuilder.state(TRIM).getBlock());
+		b.roundShell(CX, CZ, new double[] {HOLD_WALL, RING_IN_WALL, RING_OUT_WALL, ENGINE_WALL}, 0, air0, 0, 47, air0 + 3, 51, shell, FalconInterior::open,
+				(x, z, y) -> doorAt((int) Math.floor(x), y, (int) Math.floor(z)));
+	}
+
+	/** Whether a cell is in one of the doorways. */
+	public static boolean doorAt(int x, int y, int z) {
+		for (Doorway door : DOORWAYS) {
+			if (door.contains(x, y, z)) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	@Override
+	public List<Doorway> doorways() {
+		return DOORWAYS;
+	}
+
+	@Override
+	public boolean openRound(double x, double z, int y) {
+		return open(x, z, y);
 	}
 
 	/** Whether a cell lies in the engine room's ring sector (radius and angle around the centre). */
@@ -187,8 +272,8 @@ public final class FalconInterior extends InteriorPlan {
 	/** All rooms cut out of the hull, before anything is put into them. */
 	private static void carve(InteriorBuilder b) {
 		int air0 = FLOOR + 1;
-		b.clear(4, air0, 22, 9, air0 + 2, 28);        // quarters
-		b.clear(5, air0, 33, 9, air0 + 2, 39);        // galley
+		b.clear(4, air0, 22, 8, air0 + 2, 28);        // quarters (Phase 16: x to 8, clear of the corridor's curve)
+		b.clear(5, air0, 33, 8, air0 + 2, 39);        // galley
 		sector(b, air0, air0 + 3, ENGINE_R0, ENGINE_R1, 0.0, "air"); // engine room
 		b.clear(9, air0, 2, 15, air0 + 3, 17);        // cargo hold
 		b.clear(26, air0, 2, 32, air0 + 3, 17);       // storage
@@ -219,40 +304,10 @@ public final class FalconInterior extends InteriorPlan {
 		b.disc(CX, FLOOR + 5, CZ, 2.0, "iron_block");
 	}
 
-	/** Doorways from the hold to the corridor, and from the corridor to every room. */
 	private static void doorways(InteriorBuilder b) {
-		int air0 = FLOOR + 1;
-		b.clear(20, air0, 21, 21, air0 + 2, 24);
-		b.clear(20, air0, 37, 21, air0 + 2, 40);
-		b.clear(11, air0, 30, 14, air0 + 2, 31);
-		b.clear(27, air0, 30, 30, air0 + 2, 31);
-		b.clear(10, air0, 25, 11, air0 + 1, 25);
-		b.clear(10, air0, 35, 11, air0 + 1, 35);
-		b.clear(20, air0, 41, 21, air0 + 2, 43);
-		b.clear(12, air0, 18, 13, air0 + 2, 22);
-		b.clear(27, air0, 18, 28, air0 + 2, 22);
-		b.clear(31, air0, 30, 32, air0 + 2, 31);
-		b.clear(29, air0, 23, 31, air0 + 1, 24);
-	}
-
-	/**
-	 * The ring corridor and the hold have smooth round walls (drawn by the client); barriers along
-	 * them keep people from walking into the curve where the blocks step.
-	 */
-	private static void roundWalls(InteriorBuilder b) {
-		int air0 = FLOOR + 1;
-
-		for (int y = air0; y <= air0 + 2; y++) {
-			b.ring(CX, y, CZ, RING_IN, RING_IN + MARGIN, PROXY);
-			b.ring(CX, y, CZ, RING_OUT - MARGIN, RING_OUT, PROXY);
+		for (Doorway door : DOORWAYS) {
+			b.clear(door.x0(), door.y0(), door.z0(), door.x1(), door.y1(), door.z1());
 		}
-
-		for (int y = air0; y <= air0 + 3; y++) {
-			b.ring(CX, y, CZ, HOLD_R - MARGIN, HOLD_R, PROXY);
-		}
-
-		sector(b, air0, air0 + 3, ENGINE_R0, ENGINE_R0 + MARGIN, 0.0, PROXY);
-		doorways(b);
 	}
 
 	/** The ring corridor: deck and ceiling (panels and lights are drawn by the client), light. */
@@ -378,8 +433,8 @@ public final class FalconInterior extends InteriorPlan {
 
 	/** The crew quarters: bunks (proxies), lockers, a table. */
 	private static void quarters(InteriorBuilder b) {
-		b.box(4, FLOOR, 22, 9, FLOOR, 28, DECK);
-		b.box(4, FLOOR + 4, 22, 9, FLOOR + 4, 28, PANEL);
+		b.box(4, FLOOR, 22, 8, FLOOR, 28, DECK);
+		b.box(4, FLOOR + 4, 22, 8, FLOOR + 4, 28, PANEL);
 
 		for (int z : new int[] {22, 25, 28}) {
 			b.box(4, FLOOR + 1, z, 6, FLOOR + 1, z, PROXY);
@@ -387,16 +442,16 @@ public final class FalconInterior extends InteriorPlan {
 
 		b.set(4, FLOOR + 1, 23, "barrel[facing=east]");
 		b.set(4, FLOOR + 1, 26, "barrel[facing=east]");
-		b.set(9, FLOOR + 1, 22, "chest[facing=west]");
-		b.box(8, FLOOR + 1, 27, 9, FLOOR + 1, 27, PROXY);
+		b.set(8, FLOOR + 1, 22, "chest[facing=west]");
+		b.set(8, FLOOR + 1, 27, PROXY);
 		b.light(6, FLOOR + 3, 23, 12);
 		b.light(7, FLOOR + 3, 27, 10);
 	}
 
 	/** The galley and the medical bay: a counter (proxies), storage, a sick bed. */
 	private static void galley(InteriorBuilder b) {
-		b.box(5, FLOOR, 33, 9, FLOOR, 39, DECK);
-		b.box(5, FLOOR + 4, 33, 9, FLOOR + 4, 39, PANEL);
+		b.box(5, FLOOR, 33, 8, FLOOR, 39, DECK);
+		b.box(5, FLOOR + 4, 33, 8, FLOOR + 4, 39, PANEL);
 		b.box(5, FLOOR + 1, 33, 5, FLOOR + 1, 35, PROXY);
 		b.set(5, FLOOR + 1, 36, "barrel[facing=east]");
 		b.box(7, FLOOR + 1, 38, 8, FLOOR + 1, 38, PROXY);

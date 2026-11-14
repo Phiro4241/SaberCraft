@@ -107,8 +107,9 @@ final class Props {
 		b.fit(tile);
 		b.box(-0.24F, 0.42F, -0.22F, 0.24F, 0.5F, 0.24F);
 		b.box(-0.22F, 0.5F, 0.18F, 0.22F, 1.02F, 0.26F);
+		// (Phase 16: no box round the top of the post any more: the post already reaches the seat, and
+		// the box's sides lay in the post's own faces.)
 		b.tile(InteriorAtlas.IMP_METAL, 1.0F);
-		b.box(-0.04F, 0.36F, -0.04F, 0.04F, 0.42F, 0.04F, MeshBuilder.ALL & ~MeshBuilder.UP & ~MeshBuilder.DOWN);
 
 		for (float s : new float[] {-1.0F, 1.0F}) {
 			b.box(s * 0.24F - 0.03F, 0.5F, -0.12F, s * 0.24F + 0.03F, 0.66F, 0.18F);
@@ -160,6 +161,11 @@ final class Props {
 		}
 
 		for (float a : points) {
+			// The post at 360 degrees is the one at 0 (drawn twice, the two fought).
+			if (a >= 359.99F && points.get(0) == 0.0F) {
+				continue;
+			}
+
 			float x = cx + Mth.cos(a * Mth.DEG_TO_RAD) * radius;
 			float z = cz + Mth.sin(a * Mth.DEG_TO_RAD) * radius;
 			b.box(x - 0.04F, y, z - 0.04F, x + 0.04F, y + height, z + 0.04F, MeshBuilder.ALL & ~MeshBuilder.DOWN);

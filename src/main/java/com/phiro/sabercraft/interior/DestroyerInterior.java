@@ -99,6 +99,8 @@ public final class DestroyerInterior extends InteriorPlan {
 	public static final double REACTOR_R = 14.0;
 	public static final int REACTOR_BOTTOM = 14;
 	public static final int REACTOR_TOP = 44;
+	/** Phase 16: where the reactor shaft's round wall is drawn (and collides). */
+	public static final double REACTOR_WALL = REACTOR_R - 0.8;
 
 	private static final String WALL = "gray_concrete";
 	private static final String DARK = "polished_deepslate";
@@ -114,7 +116,8 @@ public final class DestroyerInterior extends InteriorPlan {
 
 	@Override
 	public int version() {
-		return 2;
+		// 3 (Phase 16): the reactor shaft's round wall is shaped barriers where the drawn wall runs.
+		return 3;
 	}
 
 	@Override
@@ -307,6 +310,26 @@ public final class DestroyerInterior extends InteriorPlan {
 	public static final int GALLERY_Z1 = 11;
 
 	/** The reactor: a round shaft with the core in the middle and a catwalk ring around it. */
+	/** Phase 16: the gallery's way through the shaft wall. */
+	public static final Doorway GALLERY = new Doorway(GALLERY_X0 + 1, HANGAR + 1, GALLERY_Z1, GALLERY_X1 - 1, HANGAR + 3, GALLERY_Z1 + 3, false);
+
+	/** Phase 16: whether a point (plot space, row y) is in the reactor shaft, up to its drawn wall. */
+	public static boolean openReactor(double x, double z, int y) {
+		double dx = x - REACTOR_X;
+		double dz = z - REACTOR_Z;
+		return y >= REACTOR_BOTTOM && y < REACTOR_TOP && dx * dx + dz * dz < REACTOR_WALL * REACTOR_WALL;
+	}
+
+	@Override
+	public List<Doorway> doorways() {
+		return List.of(GALLERY);
+	}
+
+	@Override
+	public boolean openRound(double x, double z, int y) {
+		return openReactor(x, z, y);
+	}
+
 	private static void reactor(InteriorBuilder b) {
 		double r = REACTOR_R;
 		b.ringWall(REACTOR_X, REACTOR_BOTTOM - 1, REACTOR_TOP, REACTOR_Z, r - 0.5, r + 1.0, DARK);
@@ -329,11 +352,11 @@ public final class DestroyerInterior extends InteriorPlan {
 		b.ring(REACTOR_X, HANGAR + 1, REACTOR_Z, 8.0, 8.9, PROXY);
 		b.ring(REACTOR_X, HANGAR + 2, REACTOR_Z, 8.0, 8.9, PROXY);
 
-		for (int y = HANGAR + 1; y <= HANGAR + 4; y++) {
-			b.ring(REACTOR_X, y, REACTOR_Z, r - 1.5, r - 0.5, PROXY);
-		}
-
 		b.clear(GALLERY_X0 + 1, HANGAR + 1, GALLERY_Z0, GALLERY_X1 - 1, HANGAR + 3, GALLERY_Z1 + 3);
+		// Phase 16: the wall collides where it is drawn (no more barriers a step in front of it).
+		b.roundShell(REACTOR_X, REACTOR_Z, new double[] {REACTOR_WALL}, (int) (REACTOR_X - r - 2), REACTOR_BOTTOM, (int) (REACTOR_Z - r - 2),
+				(int) (REACTOR_X + r + 2), REACTOR_TOP - 1, (int) (REACTOR_Z + r + 2), java.util.Set.of(InteriorBuilder.state(DARK).getBlock()),
+				DestroyerInterior::openReactor, (x, z, y) -> y == HANGAR || GALLERY.contains((int) Math.floor(x), y, (int) Math.floor(z)));
 		// The core gives off light.
 		b.light((int) REACTOR_X, REACTOR_BOTTOM + 4, (int) REACTOR_Z, 15);
 		b.light((int) REACTOR_X, HANGAR + 3, (int) (REACTOR_Z - 11), 13);

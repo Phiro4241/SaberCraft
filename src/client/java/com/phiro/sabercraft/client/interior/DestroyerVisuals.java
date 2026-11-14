@@ -54,7 +54,7 @@ public final class DestroyerVisuals implements InteriorVisuals {
 
 	@Override
 	public int version() {
-		return 2;
+		return com.phiro.sabercraft.interior.InteriorPlan.of("star_destroyer").version();
 	}
 
 	@Override
@@ -163,10 +163,12 @@ public final class DestroyerVisuals implements InteriorVisuals {
 		b.tile(InteriorAtlas.IMP_HULL_DARK, 4.0F);
 		float top = HANGAR;
 		float bottom = HANGAR - 12.0F;
-		b.box(HOLE_X0, bottom, HOLE_Z0, HOLE_X1, top, HOLE_Z0 + 0.01F, MeshBuilder.SOUTH | MeshBuilder.NORTH);
-		b.box(HOLE_X0, bottom, HOLE_Z1 - 0.01F, HOLE_X1, top, HOLE_Z1, MeshBuilder.NORTH | MeshBuilder.SOUTH);
-		b.box(HOLE_X0, bottom, HOLE_Z0, HOLE_X0 + 0.01F, top, HOLE_Z1, MeshBuilder.EAST | MeshBuilder.WEST);
-		b.box(HOLE_X1 - 0.01F, bottom, HOLE_Z0, HOLE_X1, top, HOLE_Z1, MeshBuilder.WEST | MeshBuilder.EAST);
+		// (A little inside the hole: on its edge they lay on the faces of the deck's blocks.)
+		float in = 0.02F;
+		b.box(HOLE_X0 + in, bottom, HOLE_Z0 + in, HOLE_X1 - in, top, HOLE_Z0 + in + 0.01F, MeshBuilder.SOUTH | MeshBuilder.NORTH);
+		b.box(HOLE_X0 + in, bottom, HOLE_Z1 - in - 0.01F, HOLE_X1 - in, top, HOLE_Z1 - in, MeshBuilder.NORTH | MeshBuilder.SOUTH);
+		b.box(HOLE_X0 + in, bottom, HOLE_Z0 + in, HOLE_X0 + in + 0.01F, top, HOLE_Z1 - in, MeshBuilder.EAST | MeshBuilder.WEST);
+		b.box(HOLE_X1 - in - 0.01F, bottom, HOLE_Z0 + in, HOLE_X1 - in, top, HOLE_Z1 - in, MeshBuilder.WEST | MeshBuilder.EAST);
 		// Landing lights around the opening.
 		b.layer(Layer.GLOW).anim(InteriorScene.ANIM_BLINK).fit(InteriorAtlas.IMP_CEILING_LIGHT_GLOW);
 
@@ -262,6 +264,8 @@ public final class DestroyerVisuals implements InteriorVisuals {
 			float w = 2.0F + random.nextFloat() * 7.0F;
 			float d = 2.0F + random.nextFloat() * 10.0F;
 			float h = 0.6F + random.nextFloat() * (random.nextInt(6) == 0 ? 5.0F : 2.0F);
+			// Two greebles that overlap must not end at the same height, or their tops fight.
+			h += (i % 37) * 0.004F;
 			b.push().translate(x, y - 0.2F, z).basis(right, n, back);
 			b.tiles(4.0F, i, InteriorAtlas.IMP_HULL_C, InteriorAtlas.IMP_HULL_B, InteriorAtlas.IMP_METAL_LIGHT);
 			b.box(-w / 2, 0, -d / 2, w / 2, h, d / 2, MeshBuilder.ALL & ~MeshBuilder.DOWN);
@@ -368,11 +372,13 @@ public final class DestroyerVisuals implements InteriorVisuals {
 
 	private static void bridgeModule(MeshBuilder b) {
 		b.sun(SUN, 0.55F).fullBright().white().layer(Layer.SOLID);
-		float x0 = MOD_X0;
-		float x1 = MOD_X1;
+		// A little outside the blocks: the module's faces would otherwise lie on the outer faces of the
+		// bridge's walls and fight with them (seen from outside and round the window).
+		float x0 = MOD_X0 - 0.03F;
+		float x1 = MOD_X1 + 0.03F;
 		float y0 = MOD_Y0;
 		float y1 = MOD_Y1;
-		float z0 = MOD_Z0;
+		float z0 = MOD_Z0 - 0.03F;
 		float z1 = MOD_Z1;
 		// The window opening in the front.
 		float wx0 = BRIDGE_X0 + 1;

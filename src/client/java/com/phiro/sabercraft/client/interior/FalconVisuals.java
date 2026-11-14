@@ -49,7 +49,7 @@ public final class FalconVisuals implements InteriorVisuals {
 
 	@Override
 	public int version() {
-		return 2;
+		return com.phiro.sabercraft.interior.InteriorPlan.of("falcon").version();
 	}
 
 	@Override

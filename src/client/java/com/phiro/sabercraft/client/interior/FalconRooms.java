@@ -57,25 +57,16 @@ final class FalconRooms {
 		return (float) Math.sqrt((x - CX) * (x - CX) + (z - CZ) * (z - CZ));
 	}
 
-	/** Whether a face seen from an open cell of a round room has a smooth wall drawn in front of it instead. */
-	private static boolean roundWall(int cx, int cy, int cz, Direction toward) {
-		if (cy < Y0 || cy > Y0 + 3) {
-			return false;
-		}
-
-		double x = cx + 0.5;
-		double z = cz + 0.5;
-		float d = dist(x, z);
-		boolean inside = d <= HOLD_R || d > RING_IN && d <= RING_OUT || inEngineSector(x, z, ENGINE_R0, ENGINE_R0 + 1.5, 0.0);
-
-		if (!inside) {
-			return false;
-		}
-
-		// Only the faces looking along the radius (the curve); the jambs of doorways stay.
-		float rx = (float) (x - CX) / d;
-		float rz = (float) (z - CZ) / d;
-		return Math.abs(rx * toward.getStepX() + rz * toward.getStepZ()) > 0.45F;
+	/**
+	 * Whether a wall face seen from an open cell is covered by something else: a smooth round wall
+	 * (everything round the hold and the ring corridor, the engine room's inner wall) or a
+	 * doorway's lining (Phase 16: flat panels there stood out of the curve and showed in the
+	 * corridor).
+	 */
+	private static boolean coveredWall(Surface s) {
+		// The curved walls' cells are barriers that look solid to the panelling, so no flat panel
+		// can stand in front of a curve any more; only the doorways through them are lined apart.
+		return doorAt(s.x(), s.y(), s.z());
 	}
 
 	private static void skin(MeshBuilder b, Surface s, VirtualPlot plot) {
@@ -94,7 +85,7 @@ final class FalconRooms {
 			return;
 		}
 
-		if (s.kind() == Kind.WALL && roundWall(s.x(), s.y(), s.z(), s.toward())) {
+		if (s.kind() == Kind.WALL && coveredWall(s) || s.kind() == Kind.CEILING && doorAt(s.x(), s.y(), s.z())) {
 			return;
 		}
 
@@ -148,7 +139,7 @@ final class FalconRooms {
 
 				if (h == 0) {
 					b.tile(InteriorAtlas.FAL_METAL_DARK, 1.0F);
-					Skin.skirting(b, s, 0.12F, 0.06F);
+					Skin.skirting(b, s, plot, 0.12F, 0.06F);
 				}
 
 				if (s.top() && s.roomHeight() >= 3) {
@@ -160,46 +151,20 @@ final class FalconRooms {
 	}
 
 	/**
-	 * The smooth round walls: in front of the stepped blocks of the hold, both sides of the ring
-	 * corridor and the engine room's inner wall; open where a doorway goes through.
+	 * The smooth round walls: the hold's, both sides of the ring corridor and the engine room's
+	 * inner wall; open exactly between the sides of the doorways (Phase 16: they were open by whole
+	 * segments, so the wall ended a little before or after the doorway), with the doorways lined.
 	 */
 	private static void roundWalls(MeshBuilder b, VirtualPlot plot) {
 		b.layer(Layer.SOLID).worldLight().white().anim(0);
-		roundWall(b, plot, (float) HOLD_R + 0.05F, Y0, Y0 + 4, true, 0.0F, 360.0F, 72);
-		roundWall(b, plot, (float) RING_IN + 0.05F, Y0, Y0 + 3, false, 0.0F, 360.0F, 80);
-		roundWall(b, plot, (float) RING_OUT - 0.05F, Y0, Y0 + 3, true, 0.0F, 360.0F, 96);
-		roundWall(b, plot, (float) ENGINE_R0 + 0.05F, Y0, Y0 + 4, false, (float) ENGINE_A0, (float) ENGINE_A1, 32);
-	}
-
-	/**
-	 * A round wall at radius r from y0 to y1, facing in (towards the middle) or out, from angle a0
-	 * to a1, one block high per row, left open where the cell just behind it is a doorway.
-	 */
-	private static void roundWall(MeshBuilder b, VirtualPlot plot, float r, int y0, int y1, boolean inward, float a0, float a1, int segments) {
-		float behind = inward ? 0.35F : -0.35F;
-
-		for (int i = 0; i < segments; i++) {
-			float s0 = Mth.lerp(i / (float) segments, a0, a1);
-			float s1 = Mth.lerp((i + 1) / (float) segments, a0, a1);
-			float mid = (s0 + s1) / 2 * Mth.DEG_TO_RAD;
-			float wx = CXF + Mth.cos(mid) * (r + behind);
-			float wz = CZF + Mth.sin(mid) * (r + behind);
-
-			for (int y = y0; y < y1; y++) {
-				int cx = Mth.floor(wx);
-				int cz = Mth.floor(wz);
-
-				// A doorway: plain air behind the wall (not the wall's own barriers or blocks).
-				if (plot.get(cx, y, cz).isAir()) {
-					continue;
-				}
-
-				int h = y - y0;
-				int tile = h == 1 ? InteriorAtlas.FAL_WALL_PAD : h == 0 && i % 5 == 2 ? InteriorAtlas.FAL_WALL_TECH : InteriorAtlas.FAL_WALL_RIB;
-				b.fit(tile);
-				b.arcWall(CXF, CZF, r, s0, s1, y, y + 1, 1, inward);
-			}
-		}
+		RoundWalls.Tiles tiles = (pen, h, index) -> pen.fit(h == 1 ? InteriorAtlas.FAL_WALL_PAD
+				: h == 0 && index % 5 == 2 ? InteriorAtlas.FAL_WALL_TECH : InteriorAtlas.FAL_WALL_RIB);
+		RoundWalls.wall(b, CXF, CZF, (float) HOLD_WALL, Y0, Y0 + 4, true, 0.0F, 360.0F, 72, DOORWAYS, tiles);
+		RoundWalls.wall(b, CXF, CZF, (float) RING_IN_WALL, Y0, Y0 + 3, false, 0.0F, 360.0F, 80, DOORWAYS, tiles);
+		RoundWalls.wall(b, CXF, CZF, (float) RING_OUT_WALL, Y0, Y0 + 3, true, 0.0F, 360.0F, 96, DOORWAYS, tiles);
+		RoundWalls.wall(b, CXF, CZF, (float) ENGINE_WALL, Y0, Y0 + 4, false, (float) ENGINE_A0, (float) ENGINE_A1, 32, DOORWAYS, tiles);
+		RoundWalls.linings(b, DOORWAYS, com.phiro.sabercraft.interior.FalconInterior::open, () -> b.tile(InteriorAtlas.FAL_METAL_DARK, 1.0F),
+				() -> b.fit(InteriorAtlas.FAL_CEILING));
 	}
 
 	// --- The ring corridor ---------------------------------------------------------------------
@@ -216,8 +181,9 @@ final class FalconRooms {
 			b.tile(InteriorAtlas.FAL_METAL_DARK, 1.0F);
 			float r0 = (float) RING_IN + 0.05F;
 			float r1 = (float) RING_OUT - 0.05F;
-			b.box(r0, Y0, -0.18F, r0 + 0.22F, y1, 0.18F, MeshBuilder.ALL & ~MeshBuilder.WEST & ~MeshBuilder.DOWN);
-			b.box(r1 - 0.22F, Y0, -0.18F, r1, y1, 0.18F, MeshBuilder.ALL & ~MeshBuilder.EAST & ~MeshBuilder.DOWN);
+			// The posts end under the beam: overlapping, their sides would lie in the beam's.
+			b.box(r0, Y0, -0.18F, r0 + 0.22F, y1 - 0.25F, 0.18F, MeshBuilder.ALL & ~MeshBuilder.WEST & ~MeshBuilder.DOWN & ~MeshBuilder.UP);
+			b.box(r1 - 0.22F, Y0, -0.18F, r1, y1 - 0.25F, 0.18F, MeshBuilder.ALL & ~MeshBuilder.EAST & ~MeshBuilder.DOWN & ~MeshBuilder.UP);
 			b.box(r0, y1 - 0.25F, -0.18F, r1, y1, 0.18F, MeshBuilder.ALL & ~MeshBuilder.UP);
 			// A little lamp under the beam.
 			b.layer(Layer.GLOW).fullBright().colour(0xFFE8D8B0).fit(InteriorAtlas.FAL_CEILING_LIGHT_GLOW);
@@ -247,8 +213,8 @@ final class FalconRooms {
 		b.tile(InteriorAtlas.FAL_METAL_DARK, 1.0F);
 
 		for (int x = 31; x <= 38; x += 2) {
-			b.box(x, Y0, 23.0F, x + 0.25F, Y0 + 2, 23.2F, MeshBuilder.ALL & ~MeshBuilder.NORTH & ~MeshBuilder.DOWN);
-			b.box(x, Y0, 24.8F, x + 0.25F, Y0 + 2, 25.0F, MeshBuilder.ALL & ~MeshBuilder.SOUTH & ~MeshBuilder.DOWN);
+			b.box(x, Y0, 23.0F, x + 0.25F, Y0 + 1.8F, 23.2F, MeshBuilder.ALL & ~MeshBuilder.NORTH & ~MeshBuilder.DOWN & ~MeshBuilder.UP);
+			b.box(x, Y0, 24.8F, x + 0.25F, Y0 + 1.8F, 25.0F, MeshBuilder.ALL & ~MeshBuilder.SOUTH & ~MeshBuilder.DOWN & ~MeshBuilder.UP);
 			b.box(x, Y0 + 1.8F, 23.0F, x + 0.25F, Y0 + 2, 25.0F, MeshBuilder.ALL & ~MeshBuilder.UP);
 		}
 	}
@@ -314,7 +280,9 @@ final class FalconRooms {
 
 		// The gun well's post: a pipe with the ladder on its front.
 		b.tile(InteriorAtlas.FAL_PIPE_GREY, 1.0F);
-		b.box(20.0F, 1.0F, 31.0F, 21.0F, FLOOR + 7.0F, 32.0F, MeshBuilder.ALL & ~MeshBuilder.UP & ~MeshBuilder.DOWN);
+		// It stands on a real block (the ladder needs it): a little bigger, so that its faces never
+		// lie on the block's own (that flickered).
+		b.box(19.985F, 1.0F, 30.985F, 21.015F, FLOOR + 7.015F, 32.015F, MeshBuilder.ALL & ~MeshBuilder.DOWN);
 		b.tile(InteriorAtlas.FAL_METAL_DARK, 1.0F);
 		// Openings in the floor and the ceiling round the ladder.
 		b.box(19.8F, FLOOR + 0.98F, 29.8F, 21.2F, FLOOR + 1.03F, 31.0F, MeshBuilder.UP);
@@ -365,7 +333,7 @@ final class FalconRooms {
 		falconDesk(b, 8.0F, 0.85F, 5);
 		b.pop();
 		b.tile(InteriorAtlas.FAL_METAL_DARK, 1.0F);
-		b.box(40.98F, Y0, 19.0F, 42.02F, Y0 + 1.015F, 20.02F, MeshBuilder.ALL & ~MeshBuilder.DOWN);
+		b.box(40.98F, Y0, 18.98F, 42.02F, Y0 + 1.015F, 20.02F, MeshBuilder.ALL & ~MeshBuilder.DOWN);
 		// Side consoles.
 		for (float x : new float[] {39.5F, 46.5F}) {
 			Props.at(b, x, Y0, 20.5, x < 43 ? Props.east() : Props.west());
@@ -375,7 +343,7 @@ final class FalconRooms {
 
 		// The overhead switch panel.
 		b.tile(InteriorAtlas.FAL_METAL_DARK, 1.0F);
-		b.box(40.0F, Y0 + 3.55F, 20.5F, 46.0F, Y0 + 4.0F, 23.0F, MeshBuilder.ALL & ~MeshBuilder.UP);
+		b.box(40.0F, Y0 + 3.55F, 20.5F, 46.0F, Y0 + 4.0F, 23.0F, MeshBuilder.ALL & ~MeshBuilder.UP & ~MeshBuilder.DOWN);
 		b.fit(InteriorAtlas.FAL_CONSOLE);
 		b.rect(40.0F, Y0 + 3.548F, 23.0F, 6.0F, 0, 0, 0, 0, -2.5F);
 		b.layer(Layer.GLOW).fullBright().anim(InteriorScene.ANIM_BLINK).fit(InteriorAtlas.FAL_CONSOLE_GLOW);
@@ -394,8 +362,8 @@ final class FalconRooms {
 		b.tile(InteriorAtlas.FAL_METAL_DARK, 1.0F);
 
 		for (int z = 21; z <= 25; z += 2) {
-			b.box(39.0F, Y0, z, 39.25F, Y0 + 4.0F, z + 0.3F, MeshBuilder.ALL & ~MeshBuilder.WEST & ~MeshBuilder.DOWN);
-			b.box(46.75F, Y0, z, 47.0F, Y0 + 4.0F, z + 0.3F, MeshBuilder.ALL & ~MeshBuilder.EAST & ~MeshBuilder.DOWN);
+			b.box(39.0F, Y0, z, 39.25F, Y0 + 3.75F, z + 0.3F, MeshBuilder.ALL & ~MeshBuilder.WEST & ~MeshBuilder.DOWN & ~MeshBuilder.UP);
+			b.box(46.75F, Y0, z, 47.0F, Y0 + 3.75F, z + 0.3F, MeshBuilder.ALL & ~MeshBuilder.EAST & ~MeshBuilder.DOWN & ~MeshBuilder.UP);
 			b.box(39.0F, Y0 + 3.75F, z, 47.0F, Y0 + 4.0F, z + 0.3F, MeshBuilder.ALL & ~MeshBuilder.UP);
 		}
 	}
@@ -412,8 +380,8 @@ final class FalconRooms {
 
 		// The table.
 		b.tile(InteriorAtlas.FAL_METAL, 1.0F);
-		b.box(8.05F, Y0 + 0.72F, 27.05F, 9.95F, Y0 + 0.8F, 27.95F);
-		b.box(8.9F, Y0, 27.4F, 9.1F, Y0 + 0.72F, 27.6F, MeshBuilder.ALL & ~MeshBuilder.UP & ~MeshBuilder.DOWN);
+		b.box(8.05F, Y0 + 0.72F, 27.05F, 8.95F, Y0 + 0.8F, 27.95F);
+		b.box(8.4F, Y0, 27.4F, 8.6F, Y0 + 0.72F, 27.6F, MeshBuilder.ALL & ~MeshBuilder.UP & ~MeshBuilder.DOWN);
 	}
 
 	/** A bunk from x0 to x1 in the row z (blocks), its mattress at y. */

@@ -77,7 +77,13 @@ public final class Skin {
 				int y = by + direction.getStepY();
 				int z = bz + direction.getStepZ();
 
-				if (!plot.open(x, y, z) || !inside(plot, x, y, z)) {
+				// Phase 16: the barriers of curved walls are partly room. Blocks next to them are
+				// panelled towards them (the part in the room shows; the rest is behind the curve);
+				// they themselves are panelled like walls where they face a room.
+				boolean wallCell = plot.wall(bx, by, bz);
+				boolean open = plot.open(x, y, z) || !wallCell && plot.wall(x, y, z);
+
+				if (!open || wallCell && direction.getAxis() == Direction.Axis.Y || !inside(plot, x, y, z)) {
 					continue;
 				}
 
@@ -169,17 +175,28 @@ public final class Skin {
 		}
 	}
 
-	/** A low bevelled skirting along the bottom of a wall. */
-	public static void skirting(MeshBuilder b, Surface s, float height, float depth) {
+	/**
+	 * A low bevelled skirting along the bottom of a wall. In an inner corner it stops where the
+	 * other wall's skirting begins, so the two never lie on top of each other (Phase 16: they did,
+	 * and their tops flickered).
+	 */
+	public static void skirting(MeshBuilder b, Surface s, VirtualPlot plot, float height, float depth) {
 		int x = s.x;
 		int y = s.y;
 		int z = s.z;
+		boolean alongX = s.toward.getAxis() == Direction.Axis.Z;
+		// Walls at the two ends of the cell (along the wall): the other skirting runs there.
+		float lo = alongX ? (plot.solid(x - 1, y, z) ? depth : 0.0F) : (plot.solid(x, y, z - 1) ? depth : 0.0F);
+		float hi = alongX ? (plot.solid(x + 1, y, z) ? depth : 0.0F) : (plot.solid(x, y, z + 1) ? depth : 0.0F);
+		// Only an end that was pulled in gets a face: one at the cell's edge would lie on the face of
+		// whatever stands there (a door frame, the next panel).
+		int ends = (lo > 0 ? (alongX ? MeshBuilder.WEST : MeshBuilder.NORTH) : 0) | (hi > 0 ? (alongX ? MeshBuilder.EAST : MeshBuilder.SOUTH) : 0);
 
 		switch (s.toward) {
-			case NORTH -> b.box(x, y, z, x + 1, y + height, z + depth, MeshBuilder.UP | MeshBuilder.SOUTH);
-			case SOUTH -> b.box(x, y, z + 1 - depth, x + 1, y + height, z + 1, MeshBuilder.UP | MeshBuilder.NORTH);
-			case WEST -> b.box(x, y, z, x + depth, y + height, z + 1, MeshBuilder.UP | MeshBuilder.EAST);
-			case EAST -> b.box(x + 1 - depth, y, z, x + 1, y + height, z + 1, MeshBuilder.UP | MeshBuilder.WEST);
+			case NORTH -> b.box(x + lo, y, z, x + 1 - hi, y + height, z + depth, MeshBuilder.UP | MeshBuilder.SOUTH | ends);
+			case SOUTH -> b.box(x + lo, y, z + 1 - depth, x + 1 - hi, y + height, z + 1, MeshBuilder.UP | MeshBuilder.NORTH | ends);
+			case WEST -> b.box(x, y, z + lo, x + depth, y + height, z + 1 - hi, MeshBuilder.UP | MeshBuilder.EAST | ends);
+			case EAST -> b.box(x + 1 - depth, y, z + lo, x + 1, y + height, z + 1 - hi, MeshBuilder.UP | MeshBuilder.WEST | ends);
 			default -> {
 			}
 		}

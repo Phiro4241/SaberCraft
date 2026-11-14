@@ -26,6 +26,37 @@ public abstract class InteriorPlan {
 	public record Lift(AABB area, Vec3 arrival, float yaw) {
 	}
 
+	/**
+	 * Phase 16: a doorway through a curved wall (cells, corners included): the client draws the wall
+	 * open exactly between its sides and lines it.
+	 */
+	public record Doorway(int x0, int y0, int z0, int x1, int y1, int z1, boolean alongX) {
+		public boolean contains(int x, int y, int z) {
+			return x >= this.x0 && x <= this.x1 && y >= this.y0 && y <= this.y1 && z >= this.z0 && z <= this.z1;
+		}
+	}
+
+	/** Phase 16: the doorways through the plan's curved walls. */
+	public List<Doorway> doorways() {
+		return List.of();
+	}
+
+	/** Phase 16: whether a point (plot space, row y) is inside a room with curved walls, up to its drawn walls. */
+	public boolean openRound(double x, double z, int y) {
+		return false;
+	}
+
+	/** Whether a cell is in one of the doorways through curved walls. */
+	public boolean inDoorway(int x, int y, int z) {
+		for (Doorway door : this.doorways()) {
+			if (door.contains(x, y, z)) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
 	/** The plan id ({@code falcon}, {@code star_destroyer}). */
 	public abstract String id();
 
