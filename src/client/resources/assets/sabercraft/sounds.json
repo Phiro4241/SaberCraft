@@ -1262,5 +1262,45 @@
         "attenuation_distance": 16
       }
     ]
+  },
+  "ship.reactor_hum": {
+    "sounds": [
+      {
+        "name": "sabercraft:ship/reactor_hum",
+        "attenuation_distance": 28
+      }
+    ]
+  },
+  "ship.imperial_consoles": {
+    "sounds": [
+      {
+        "name": "sabercraft:ship/imperial_consoles",
+        "attenuation_distance": 10
+      }
+    ]
+  },
+  "ship.falcon_consoles": {
+    "sounds": [
+      {
+        "name": "sabercraft:ship/falcon_consoles",
+        "attenuation_distance": 9
+      }
+    ]
+  },
+  "ship.hyperdrive_hum": {
+    "sounds": [
+      {
+        "name": "sabercraft:ship/hyperdrive_hum",
+        "attenuation_distance": 16
+      }
+    ]
+  },
+  "ship.hangar_air": {
+    "sounds": [
+      {
+        "name": "sabercraft:ship/hangar_air",
+        "attenuation_distance": 40
+      }
+    ]
   }
 }

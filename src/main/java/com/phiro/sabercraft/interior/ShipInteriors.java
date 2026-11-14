@@ -103,8 +103,14 @@ public final class ShipInteriors {
 	/** The ships in the world now, for the tractor beam. */
 	private static final Map<String, WeakReference<ShipEntity>> SHIPS = new HashMap<>();
 	private static final Map<UUID, Integer> TRACTOR = new HashMap<>();
+	/** The last answer to a boarding that did not go (only read by tests). */
+	private static @Nullable Component lastRefusal;
 	private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 	private static boolean dirty;
+	/** Phase 15: raised whenever a plot is built, so clients in the interiors get the new list. */
+	private static int plotRevision = 1;
+	/** Which list each player in the interiors was sent last. */
+	private static final Map<UUID, Integer> SENT_PLOTS = new HashMap<>();
 	private static @Nullable Path file;
 
 	/** A plot: its index along x and whether its rooms have been built (and from which plan version). */
@@ -165,12 +171,14 @@ public final class ShipInteriors {
 			PLACES.clear();
 			SHIPS.clear();
 			TRACTOR.clear();
+			SENT_PLOTS.clear();
 			file = null;
 		});
 		ServerTickEvents.END_SERVER_TICK.register(ShipInteriors::tick);
 		ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> {
 			ABOARD.remove(handler.getPlayer().getUUID());
 			TRACTOR.remove(handler.getPlayer().getUUID());
+			SENT_PLOTS.remove(handler.getPlayer().getUUID());
 		});
 		ServerPlayerEvents.AFTER_RESPAWN.register((oldPlayer, newPlayer, alive) -> ABOARD.remove(newPlayer.getUUID()));
 
@@ -222,10 +230,16 @@ public final class ShipInteriors {
 		}
 
 		InteriorPlan plan = InteriorPlan.ALL.get(row);
-		BlockPos size = plan.size();
 		double lx = x - (index + 1.0) * SPACING;
 		double lz = z - (row + 1.0) * SPACING;
-		return lx >= -8 && lz >= -8 && lx <= size.getX() + 8 && lz <= size.getZ() + 8 ? plan : null;
+
+		for (net.minecraft.world.level.levelgen.structure.BoundingBox box : plan.volumes()) {
+			if (lx >= box.minX() - 8 && lz >= box.minZ() - 8 && lx <= box.maxX() + 9 && lz <= box.maxZ() + 9) {
+				return plan;
+			}
+		}
+
+		return null;
 	}
 
 	/** The corner of a plot. */
@@ -281,8 +295,18 @@ public final class ShipInteriors {
 		Component message = boardShip(player, ship, false);
 
 		if (message != null) {
+			lastRefusal = message;
 			player.sendOverlayMessage(message);
 		}
+	}
+
+	/**
+	 * How close the owner has to be for the hangar button to take them aboard where the ship is;
+	 * from further away the button calls the ship first (see Starships). The Star Destroyer
+	 * hovers high above, so it reaches further.
+	 */
+	public static double reachSqr(ShipType type) {
+		return Math.max(48.0 * 48.0, Starships.boardRangeSqr(type));
 	}
 
 	/** The hangar's "interior" button: aboard the own ship, from close by or from its cockpit. */
@@ -293,11 +317,21 @@ public final class ShipInteriors {
 			return Component.translatableWithFallback("sabercraft.interior.none", "This ship has no rooms to walk around in.");
 		}
 
-		if (ship == null || ship.ship() != type || ship.level() != player.level() || player.getVehicle() != ship && ship.distanceToSqr(player) > 48.0 * 48.0) {
-			return Component.translatableWithFallback("sabercraft.interior.too_far", "Your ship has to be close by.");
+		if (isInterior(player.level())) {
+			return Component.translatableWithFallback("sabercraft.interior.already_aboard", "You are already aboard.");
+		}
+
+		if (ship == null || ship.ship() != type || ship.level() != player.level() || player.getVehicle() != ship && ship.distanceToSqr(player) > reachSqr(type)) {
+			lastRefusal = Component.translatableWithFallback("sabercraft.interior.too_far", "Your ship has to be close by.");
+			return lastRefusal;
 		}
 
 		Component message = boardShip(player, ship, player.getVehicle() == ship);
+
+		if (message != null) {
+			lastRefusal = message;
+		}
+
 		return message != null ? message : Component.translatableWithFallback("sabercraft.interior.welcome", "Welcome aboard.");
 	}
 
@@ -360,8 +394,8 @@ public final class ShipInteriors {
 			return null;
 		}
 
-		if (!ship.ship().capital() && !ship.onGround()) {
-			return Component.translatableWithFallback("sabercraft.interior.land_first", "Land first to walk around in the ship.");
+		if (!ship.canWalkAboard()) {
+			return Component.translatableWithFallback("sabercraft.interior.slow_down", "Slow down first, then you can walk aboard.");
 		}
 
 		if (ship.pilot() != null && ship.pilot() != player) {
@@ -508,9 +542,56 @@ public final class ShipInteriors {
 			tractor(server);
 		}
 
+		if (interiors != null) {
+			sendPlots(interiors);
+		}
+
 		if (dirty && server.getTickCount() % 600 == 0) {
 			save();
 		}
+	}
+
+	/**
+	 * Phase 15: tells every modded client in the interiors where the built plots are (when it came
+	 * in, and whenever a plot was built), so it draws their detailed rooms and outer hulls.
+	 */
+	private static void sendPlots(ServerLevel interiors) {
+		SENT_PLOTS.keySet().removeIf(id -> !(interiors.getPlayerByUUID(id) instanceof ServerPlayer));
+		com.phiro.sabercraft.network.InteriorPlotsPayload payload = null;
+
+		for (ServerPlayer player : interiors.players()) {
+			Integer sent = SENT_PLOTS.get(player.getUUID());
+
+			if (sent != null && sent == plotRevision) {
+				continue;
+			}
+
+			SENT_PLOTS.put(player.getUUID(), plotRevision);
+
+			if (!net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking.canSend(player, com.phiro.sabercraft.network.InteriorPlotsPayload.TYPE)) {
+				continue;
+			}
+
+			if (payload == null) {
+				payload = plotsPayload();
+			}
+
+			net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking.send(player, payload);
+		}
+	}
+
+	static com.phiro.sabercraft.network.InteriorPlotsPayload plotsPayload() {
+		List<com.phiro.sabercraft.network.InteriorPlotsPayload.Plot> list = new ArrayList<>();
+
+		for (Map.Entry<String, Plot> entry : PLOTS.entrySet()) {
+			String[] parts = entry.getKey().split("/", 2);
+
+			if (parts.length == 2 && entry.getValue().version > 0) {
+				list.add(new com.phiro.sabercraft.network.InteriorPlotsPayload.Plot(parts[1], entry.getValue().index, entry.getValue().version));
+			}
+		}
+
+		return new com.phiro.sabercraft.network.InteriorPlotsPayload(list);
 	}
 
 	/** A player in the interiors without a known plot: the plot their position is in, or off to the spawn. */
@@ -543,7 +624,7 @@ public final class ShipInteriors {
 	private static void walk(ServerPlayer player, Aboard aboard) {
 		Vec3 local = aboard.local(player.position());
 
-		if (local.y < -6.0) {
+		if (local.y < -6.0 && !player.isSpectator()) {
 			// Fell out (a creative player broke a floor, an ender pearl): back to the entry.
 			teleport(player, (ServerLevel) player.level(), aboard.world(aboard.plan.entry()), aboard.plan.entryYaw());
 			player.resetFallDistance();
@@ -641,6 +722,7 @@ public final class ShipInteriors {
 					Component message = boardShip(player, ship, false);
 
 					if (message != null) {
+						lastRefusal = message;
 						player.sendOverlayMessage(message);
 					}
 				} else {
@@ -672,6 +754,17 @@ public final class ShipInteriors {
 		if (plot.version == 0) {
 			build(interiors, plan, origin);
 			plot.version = plan.version();
+			plotRevision++;
+			dirty = true;
+			save();
+		} else if (plot.version != plan.version() && nobodyAboard(origin)) {
+			// Phase 15: an interior from an older plan is rebuilt the next time someone comes aboard
+			// (and nobody is inside); what was stored in its chests and barrels moves into the new ones.
+			int moved = rebuild(interiors, plan, origin);
+			SaberCraft.LOGGER.info("Rebuilt the {} interior at {} from plan version {} to {} ({} item stacks moved)", plan.id(), origin,
+					plot.version, plan.version(), moved);
+			plot.version = plan.version();
+			plotRevision++;
 			dirty = true;
 			save();
 		}
@@ -679,19 +772,128 @@ public final class ShipInteriors {
 		return origin;
 	}
 
-	/** Builds a plan into its plot (loading its chunks). Returns how many blocks were set. */
-	static int build(ServerLevel interiors, InteriorPlan plan, BlockPos origin) {
-		BlockPos size = plan.size();
+	private static boolean nobodyAboard(BlockPos origin) {
+		for (Aboard aboard : ABOARD.values()) {
+			if (aboard.origin.equals(origin)) {
+				return false;
+			}
+		}
 
-		for (int cx = (origin.getX() - 2) >> 4; cx <= (origin.getX() + size.getX() + 2) >> 4; cx++) {
-			for (int cz = (origin.getZ() - 2) >> 4; cz <= (origin.getZ() + size.getZ() + 2) >> 4; cz++) {
+		return true;
+	}
+
+	/** Loads the chunks of a box (in plot space) around a plot corner. */
+	private static void load(ServerLevel interiors, BlockPos origin, net.minecraft.world.level.levelgen.structure.BoundingBox box) {
+		for (int cx = (origin.getX() + box.minX() - 2) >> 4; cx <= (origin.getX() + box.maxX() + 2) >> 4; cx++) {
+			for (int cz = (origin.getZ() + box.minZ() - 2) >> 4; cz <= (origin.getZ() + box.maxZ() + 2) >> 4; cz++) {
 				interiors.getChunk(cx, cz);
 			}
+		}
+	}
+
+	/** Builds a plan into its plot (loading its chunks). Returns how many blocks were set. */
+	static int build(ServerLevel interiors, InteriorPlan plan, BlockPos origin) {
+		for (net.minecraft.world.level.levelgen.structure.BoundingBox box : plan.volumes()) {
+			load(interiors, origin, box);
 		}
 
 		InteriorBuilder builder = new InteriorBuilder(interiors, origin);
 		plan.build(builder);
 		return builder.placed();
+	}
+
+	/**
+	 * Phase 15: clears an interior built from an older plan and builds the current one in its place.
+	 * Everything in its containers is moved into the containers of the new rooms (in order); what
+	 * does not fit is set down at the entry. Returns how many item stacks were moved.
+	 */
+	static int rebuild(ServerLevel interiors, InteriorPlan plan, BlockPos origin) {
+		List<ItemStack> stored = new ArrayList<>();
+		BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
+		net.minecraft.world.level.block.state.BlockState air = net.minecraft.world.level.block.Blocks.AIR.defaultBlockState();
+		int flags = net.minecraft.world.level.block.Block.UPDATE_CLIENTS | net.minecraft.world.level.block.Block.UPDATE_KNOWN_SHAPE
+				| net.minecraft.world.level.block.Block.UPDATE_SUPPRESS_DROPS;
+
+		for (net.minecraft.world.level.levelgen.structure.BoundingBox box : plan.clearVolumes()) {
+			load(interiors, origin, box);
+
+			for (int x = box.minX(); x <= box.maxX(); x++) {
+				for (int y = box.minY(); y <= box.maxY(); y++) {
+					for (int z = box.minZ(); z <= box.maxZ(); z++) {
+						pos.set(origin.getX() + x, origin.getY() + y, origin.getZ() + z);
+
+						if (interiors.getBlockState(pos).isAir()) {
+							continue;
+						}
+
+						if (interiors.getBlockEntity(pos) instanceof net.minecraft.world.Container container) {
+							for (int slot = 0; slot < container.getContainerSize(); slot++) {
+								ItemStack stack = container.removeItemNoUpdate(slot);
+
+								if (!stack.isEmpty()) {
+									stored.add(stack);
+								}
+							}
+						}
+
+						interiors.setBlock(pos, air, flags);
+					}
+				}
+			}
+		}
+
+		build(interiors, plan, origin);
+		int moved = stored.size();
+
+		if (stored.isEmpty()) {
+			return 0;
+		}
+
+		for (net.minecraft.world.level.levelgen.structure.BoundingBox box : plan.volumes()) {
+			for (int x = box.minX(); x <= box.maxX() && !stored.isEmpty(); x++) {
+				for (int y = box.minY(); y <= box.maxY() && !stored.isEmpty(); y++) {
+					for (int z = box.minZ(); z <= box.maxZ() && !stored.isEmpty(); z++) {
+						pos.set(origin.getX() + x, origin.getY() + y, origin.getZ() + z);
+
+						if (interiors.getBlockEntity(pos) instanceof net.minecraft.world.Container container) {
+							for (int slot = 0; slot < container.getContainerSize() && !stored.isEmpty(); slot++) {
+								if (container.getItem(slot).isEmpty()) {
+									container.setItem(slot, stored.removeFirst());
+								}
+							}
+
+							container.setChanged();
+						}
+					}
+				}
+			}
+		}
+
+		Vec3 entry = Vec3.atLowerCornerOf(origin).add(plan.entry());
+
+		for (ItemStack stack : stored) {
+			net.minecraft.world.entity.item.ItemEntity item = new net.minecraft.world.entity.item.ItemEntity(interiors, entry.x, entry.y + 0.5, entry.z, stack);
+			item.setDeltaMovement(Vec3.ZERO);
+			interiors.addFreshEntity(item);
+		}
+
+		return moved;
+	}
+
+	/** Phase 15: rebuilds a plot from the current plan now (only for tests). */
+	public static int rebuildForTest(MinecraftServer server, BlockPos origin, String plan) {
+		InteriorPlan p = InteriorPlan.of(plan);
+		ServerLevel interiors = server.getLevel(DIMENSION);
+		return p == null || interiors == null ? -1 : rebuild(interiors, p, origin);
+	}
+
+	/** Phase 15: marks the owner's plot as built from an older plan (only for tests). */
+	public static void agePlotForTest(UUID owner, String plan, int version) {
+		Plot plot = PLOTS.get(key(owner, plan));
+
+		if (plot != null) {
+			plot.version = version;
+		}
 	}
 
 	// --- Helpers -----------------------------------------------------------------------------------
@@ -867,6 +1069,11 @@ public final class ShipInteriors {
 	/** Boards the ship from outside and returns why not, or {@code null} when it went. */
 	public static @Nullable Component boardForTest(ServerPlayer player, ShipEntity ship) {
 		return boardShip(player, ship, false);
+	}
+
+	/** The last answer to a boarding that did not go, for tests. */
+	public static @Nullable Component lastRefusalForTest() {
+		return lastRefusal;
 	}
 
 	/** Runs the tractor beam check now. */

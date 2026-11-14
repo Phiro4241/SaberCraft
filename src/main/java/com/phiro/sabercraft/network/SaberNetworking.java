@@ -47,6 +47,8 @@ public final class SaberNetworking {
 		PayloadTypeRegistry.clientboundPlay().register(ShipEnergyPayload.TYPE, ShipEnergyPayload.CODEC);
 		// Phase 14: hyperspace jumps, seen by everyone near the ship.
 		PayloadTypeRegistry.clientboundPlay().register(HyperspacePayload.TYPE, HyperspacePayload.CODEC);
+		// Phase 15: where the detailed interiors and hulls stand.
+		PayloadTypeRegistry.clientboundPlay().register(InteriorPlotsPayload.TYPE, InteriorPlotsPayload.CODEC);
 		// Phase 12: choosing sabers in the menu, and droid commands for the droid looked at.
 		PayloadTypeRegistry.serverboundPlay().register(ConvertSaberPayload.TYPE, ConvertSaberPayload.CODEC);
 		PayloadTypeRegistry.serverboundPlay().register(DroidTargetPayload.TYPE, DroidTargetPayload.CODEC);

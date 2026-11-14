@@ -35,6 +35,21 @@ public abstract class InteriorPlan {
 	/** The size of the plot the plan uses (from the plot corner), for loading its chunks. */
 	public abstract BlockPos size();
 
+	/**
+	 * Phase 15: the boxes (in plot space, corners included) that hold the plan's blocks: for loading
+	 * their chunks, telling the plan from a position and finding its containers. By default one box
+	 * from the plot corner to {@link #size()}.
+	 */
+	public List<net.minecraft.world.level.levelgen.structure.BoundingBox> volumes() {
+		BlockPos size = this.size();
+		return List.of(new net.minecraft.world.level.levelgen.structure.BoundingBox(0, 0, 0, size.getX(), size.getY(), size.getZ()));
+	}
+
+	/** Phase 15: the boxes cleared before an older interior is rebuilt (the current and every older plan). */
+	public List<net.minecraft.world.level.levelgen.structure.BoundingBox> clearVolumes() {
+		return this.volumes();
+	}
+
 	/** Builds the whole interior. */
 	public abstract void build(InteriorBuilder builder);
 

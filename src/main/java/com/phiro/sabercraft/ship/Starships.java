@@ -477,6 +477,20 @@ public final class Starships {
 				return Hyperspace.request(player);
 			}
 			case "interior" -> {
+				// Bug fix 2026-11-14: one press does it all, as "board" does for the cockpit. Not out
+				// yet, the wrong ship or too far away: the ship is called first, then you walk aboard.
+				ShipEntity ship = ship(player);
+
+				if (!com.phiro.sabercraft.interior.ShipInteriors.isInterior(player.level()) && ShipFeatures.of(type).interior() != null
+						&& (ship == null || ship.ship() != type || ship.level() != player.level()
+								|| player.getVehicle() != ship && ship.distanceToSqr(player) > com.phiro.sabercraft.interior.ShipInteriors.reachSqr(type))) {
+					Component called = call(player, type, name);
+
+					if (ship(player) == null || ship(player).ship() != type) {
+						return called;
+					}
+				}
+
 				return com.phiro.sabercraft.interior.ShipInteriors.enterOwn(player, type);
 			}
 			case "call" -> {
@@ -568,7 +582,7 @@ public final class Starships {
 	 * Phase 13: how close the owner has to be to climb in from the hangar. The Star Destroyer hovers
 	 * high up, so its pilot is lifted aboard from further away.
 	 */
-	static double boardRangeSqr(ShipType type) {
+	public static double boardRangeSqr(ShipType type) {
 		double range = Math.max(Math.sqrt(BOARD_RANGE_SQR), type.handling().modelRadius() + type.handling().hoverHeight() + 8.0);
 		return range * range;
 	}

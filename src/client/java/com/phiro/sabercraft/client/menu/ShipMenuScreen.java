@@ -121,7 +121,9 @@ public class ShipMenuScreen extends SaberMenuScreen {
 		if (this.aboard != null) {
 			boolean interior = com.phiro.sabercraft.ship.ShipFeatures.of(this.chosen).interior() != null;
 			this.aboard.visible = interior;
-			this.aboard.active = usable && out;
+			// Bug fix 2026-11-14: no need to call the ship first; the server calls it if needed.
+			this.aboard.active = usable && this.minecraft != null && this.minecraft.level != null
+					&& !com.phiro.sabercraft.interior.ShipInteriors.isInterior(this.minecraft.level);
 			this.aboard.setTooltip(Tooltip.create(Component.translatable("sabercraft.ship.menu.aboard.tooltip")));
 		}
 	}
