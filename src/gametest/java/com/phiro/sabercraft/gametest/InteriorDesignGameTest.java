@@ -69,6 +69,10 @@ public class InteriorDesignGameTest implements FabricClientGameTest {
 			return "";
 		});
 		check(!put.isEmpty(), "migration: 7 diamonds put into a container of the Falcon at " + put);
+		// Nobody may be aboard while a plot is rebuilt (Phase 16: the camera views leave the player
+		// in this plot, which counts as aboard now): out to the overworld first.
+		server.runCommand("execute in minecraft:overworld run tp @a 0 120 0");
+		context.waitTicks(20);
 		// Break something, as if the old plan had looked different, and mark the plot as old.
 		server.runOnServer(s -> {
 			s.getLevel(ShipInteriors.DIMENSION).setBlock(origin.offset(20, 7, 26), net.minecraft.world.level.block.Blocks.GOLD_BLOCK.defaultBlockState(), 3);
@@ -154,7 +158,7 @@ public class InteriorDesignGameTest implements FabricClientGameTest {
 		SaberCraft.LOGGER.info("Falcon model: {} quads, built in {} ms", context.computeOnClient(client -> InteriorScene.modelQuads("falcon")),
 				context.computeOnClient(client -> InteriorScene.lastBuildMillis()));
 		look(context, server, o, new Vec3(14.0, 7.0, 31.5), 240.0F, 20.0F, "interior_falcon_table");
-		look(context, server, o, new Vec3(42.5, 7.0, 25.0), 180.0F, 5.0F, "interior_falcon_cockpit");
+		look(context, server, o, new Vec3(44.0, 7.0, 28.0), 180.0F, 5.0F, "interior_falcon_cockpit");
 		look(context, server, o, new Vec3(31.5, 7.0, 24.0), 90.0F, 5.0F, "interior_falcon_cockpit_tube");
 		look(context, server, o, new Vec3(9.5, 7.0, 30.5), 180.0F, 5.0F, "interior_falcon_corridor");
 		look(context, server, o, new Vec3(28.5, 7.0, 42.5), 95.0F, 10.0F, "interior_falcon_engine_room");

@@ -49,6 +49,16 @@ public final class SaberNetworking {
 		PayloadTypeRegistry.clientboundPlay().register(HyperspacePayload.TYPE, HyperspacePayload.CODEC);
 		// Phase 15: where the detailed interiors and hulls stand.
 		PayloadTypeRegistry.clientboundPlay().register(InteriorPlotsPayload.TYPE, InteriorPlotsPayload.CODEC);
+		// Phase 16: the hyperdrive and the guns from the seats of an interior.
+		PayloadTypeRegistry.serverboundPlay().register(InteriorActionPayload.TYPE, InteriorActionPayload.CODEC);
+		PayloadTypeRegistry.clientboundPlay().register(InteriorJumpPayload.TYPE, InteriorJumpPayload.CODEC);
+		ServerPlayNetworking.registerGlobalReceiver(InteriorActionPayload.TYPE, (payload, context) -> {
+			if (payload.action() == InteriorActionPayload.HYPERSPACE) {
+				context.player().sendOverlayMessage(com.phiro.sabercraft.interior.InteriorJump.request(context.player()));
+			} else if (payload.action() == InteriorActionPayload.FIRE) {
+				com.phiro.sabercraft.interior.Turrets.fire(context.player());
+			}
+		});
 		// Phase 12: choosing sabers in the menu, and droid commands for the droid looked at.
 		PayloadTypeRegistry.serverboundPlay().register(ConvertSaberPayload.TYPE, ConvertSaberPayload.CODEC);
 		PayloadTypeRegistry.serverboundPlay().register(DroidTargetPayload.TYPE, DroidTargetPayload.CODEC);

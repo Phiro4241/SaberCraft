@@ -740,5 +740,21 @@
   "sabercraft.ship.menu.aboard.tooltip": "Go inside your ship and walk around. If it is not close by, it is called first. Works from the cockpit too. Leave by the ramp or the hangar exit.",
   "sabercraft.interior.room.star_destroyer.reactor": "Reactor",
   "sabercraft.interior.room.star_destroyer.hangar_corridor": "Hangar corridor",
-  "sabercraft.ship.not_inside": "%s cannot be called inside a ship. Leave the ship first."
+  "sabercraft.ship.not_inside": "%s cannot be called inside a ship. Leave the ship first.",
+  "sabercraft.seat.stand_first": "Stand up first (sneak).",
+  "sabercraft.seat.taken": "%s is sitting there.",
+  "sabercraft.seat.cockpit": "Sneak to stand up. Hyperspace: the hyperspace key or the lever by the co-pilot.",
+  "sabercraft.seat.gunner": "Aim with the mouse, attack to fire. Sneak to stand up.",
+  "sabercraft.seat.sit": "Sneak to stand up.",
+  "sabercraft.interior.lights_dim": "Lights dimmed.",
+  "sabercraft.interior.lights_on": "Lights on.",
+  "sabercraft.interior.status_none": "%s: no contact with the ship's systems.",
+  "sabercraft.interior.status_full": "full",
+  "sabercraft.interior.status_cooling": "cooling down (%s s)",
+  "sabercraft.interior.status_ready": "ready",
+  "sabercraft.interior.status": "%s: hull %s %%, energy %s, hyperdrive %s",
+  "sabercraft.interior.jump_seat": "Sit in the pilot's or co-pilot's seat for the jump.",
+  "sabercraft.interior.jump_charging": "Hyperdrive charging...",
+  "sabercraft.interior.guns_hot": "The guns are overheated. Wait a moment.",
+  "subtitles.sabercraft.ship.door": "Door slides"
 }

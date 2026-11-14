@@ -77,6 +77,8 @@ public final class InteriorScene {
 	public static final int ANIM_SLOW = 5;
 	/** Steady, a tiny shimmer (force fields). */
 	public static final int ANIM_SHIMMER = 6;
+	/** Phase 16: a lamp, dimmed with the ship's lights. */
+	public static final int ANIM_LAMP = 7;
 
 	private static final List<InteriorVisuals> VISUALS = List.of(new FalconVisuals(), new DestroyerVisuals());
 	private static final Map<String, Integer> PLOTS = new HashMap<>();
@@ -143,6 +145,8 @@ public final class InteriorScene {
 		final EnumMap<Layer, Mesh> moving = new EnumMap<>(Layer.class);
 		final AABB bounds;
 		int quads;
+		/** Phase 16: whether the plot's lights are dimmed (from its light blocks, looked at now and then). */
+		boolean dimmed;
 
 		Model(String key, int version, BlockPos origin, InteriorVisuals visuals) {
 			this.key = key;
@@ -283,6 +287,12 @@ public final class InteriorScene {
 			}
 
 			relight(level, model);
+
+			if (level.getGameTime() % 10 == 0) {
+				model.dimmed = InteriorClient.dimmed(level, model.origin, plan);
+			}
+
+			boolean dim = model.dimmed;
 			poseStack.pushPose();
 			poseStack.translate(origin.getX() - camera.x, origin.getY() - camera.y, origin.getZ() - camera.z);
 
@@ -301,7 +311,7 @@ public final class InteriorScene {
 					}
 
 					quads += mesh.count;
-					submitMesh(collector, poseStack, layer.getKey(), mesh, seconds);
+					submitMesh(collector, poseStack, layer.getKey(), mesh, seconds, dim);
 				}
 			}
 
@@ -311,7 +321,7 @@ public final class InteriorScene {
 			for (Map.Entry<Layer, Mesh> layer : moving.entrySet()) {
 				if (!layer.getValue().isEmpty() && !(shadow && layer.getKey() != Layer.SOLID)) {
 					quads += layer.getValue().count;
-					submitMesh(collector, poseStack, layer.getKey(), layer.getValue(), seconds);
+					submitMesh(collector, poseStack, layer.getKey(), layer.getValue(), seconds, dim);
 				}
 			}
 
@@ -322,9 +332,10 @@ public final class InteriorScene {
 		lastCells = cells;
 	}
 
-	private static void submitMesh(SubmitNodeCollector collector, PoseStack poseStack, Layer layer, Mesh mesh, float seconds) {
+	private static void submitMesh(SubmitNodeCollector collector, PoseStack poseStack, Layer layer, Mesh mesh, float seconds, boolean dim) {
 		boolean alpha = layer == Layer.GLASS || layer == Layer.HOLO;
-		collector.submitCustomGeometry(poseStack, renderType(layer), (pose, buffer) -> mesh.emit(pose, buffer, (anim, quad) -> factor(anim, quad, seconds), alpha));
+		collector.submitCustomGeometry(poseStack, renderType(layer), (pose, buffer) -> mesh.emit(pose, buffer,
+				(anim, quad) -> anim == ANIM_LAMP ? (dim ? 0.22F : 1.0F) : factor(anim, quad, seconds), alpha));
 	}
 
 	private static RenderType renderType(Layer layer) {
@@ -351,7 +362,7 @@ public final class InteriorScene {
 			Mesh mesh = moving.computeIfAbsent(layer, unused -> new Mesh());
 			mesh.add(xyzuv, nx, ny, nz, colours, lightMode, fixedLight, anim, samples);
 		});
-		model.visuals.animate(builder, seconds);
+		model.visuals.animate(builder, seconds, new InteriorVisuals.PlotView(model.origin, level));
 
 		for (Mesh mesh : moving.values()) {
 			mesh.relight((x, y, z) -> light(level, model.origin, x, y, z));

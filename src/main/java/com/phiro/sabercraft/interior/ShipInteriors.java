@@ -183,9 +183,24 @@ public final class ShipInteriors {
 		ServerPlayerEvents.AFTER_RESPAWN.register((oldPlayer, newPlayer, alive) -> ABOARD.remove(newPlayer.getUUID()));
 
 		// The rooms are no building site (creative players may still change them).
-		PlayerBlockBreakEvents.BEFORE.register((level, player, pos, state, blockEntity) -> !protectedFor(level, player));
+		PlayerBlockBreakEvents.BEFORE.register((level, player, pos, state, blockEntity) -> !protectedFor(level, player)
+				// Phase 16: nobody breaks anything from a seat (a gunner's attack key fires the guns).
+				&& !(player instanceof ServerPlayer seated && Seats.seat(seated) != null));
 		UseBlockCallback.EVENT.register((player, level, hand, hit) -> {
-			if (level.isClientSide() || !isInterior(level) || !(player instanceof ServerPlayer serverPlayer)) {
+			if (!isInterior(level) || player.isSpectator()) {
+				return InteractionResult.PASS;
+			}
+
+			// Phase 16: seats and consoles (on both sides, so the client does not use the item in hand).
+			if (!player.isShiftKeyDown() && InteriorSystems.handles(level, hit.getBlockPos(), hit.getLocation())) {
+				if (player instanceof ServerPlayer serverPlayer && hand == net.minecraft.world.InteractionHand.MAIN_HAND) {
+					InteriorSystems.use(serverPlayer, hit.getBlockPos(), hit.getLocation());
+				}
+
+				return InteractionResult.SUCCESS;
+			}
+
+			if (level.isClientSide() || !(player instanceof ServerPlayer serverPlayer)) {
 				return InteractionResult.PASS;
 			}
 
@@ -208,6 +223,42 @@ public final class ShipInteriors {
 
 			return InteractionResult.PASS;
 		});
+	}
+
+	/** Phase 16: the owner of the ship whose interior a player is in, or {@code null}. */
+	public static @Nullable UUID ownerOf(ServerPlayer player) {
+		Aboard aboard = ABOARD.get(player.getUUID());
+		return aboard != null ? aboard.owner : null;
+	}
+
+	/** Phase 16: the players in the interior with that plot corner. */
+	public static List<ServerPlayer> playersIn(MinecraftServer server, BlockPos origin) {
+		List<ServerPlayer> players = new ArrayList<>();
+
+		for (Map.Entry<UUID, Aboard> entry : ABOARD.entrySet()) {
+			if (entry.getValue().origin.equals(origin) && server.getPlayerList().getPlayer(entry.getKey()) instanceof ServerPlayer player) {
+				players.add(player);
+			}
+		}
+
+		return players;
+	}
+
+	/** Phase 16: the plots someone is in now, with their plans. */
+	public static Map<BlockPos, InteriorPlan> plotsInUse() {
+		Map<BlockPos, InteriorPlan> plots = new HashMap<>();
+
+		for (Aboard aboard : ABOARD.values()) {
+			plots.put(aboard.origin, aboard.plan);
+		}
+
+		return plots;
+	}
+
+	/** Phase 16: the plot corner of a position in the interiors dimension (with its plan), or {@code null}. */
+	public static @Nullable BlockPos originAt(double x, double z) {
+		InteriorPlan plan = planAt(x, z);
+		return plan != null ? origin(plan, Mth.floor(x / SPACING) - 1) : null;
 	}
 
 	/** Whether that level is the interiors dimension (on either side). */
@@ -519,8 +570,18 @@ public final class ShipInteriors {
 		if (interiors != null) {
 			// Players who got here some other way (logged in here, a command): find their plot.
 			for (ServerPlayer player : List.copyOf(interiors.players())) {
-				if (!ABOARD.containsKey(player.getUUID())) {
+				Aboard aboard = ABOARD.get(player.getUUID());
+
+				if (aboard == null) {
 					adopt(player);
+				} else if (player.tickCount % 10 == 0) {
+					// Phase 16: moved to another plot (a command, a test): that plot is theirs now.
+					BlockPos here = originAt(player.getX(), player.getZ());
+
+					if (here != null && !here.equals(aboard.origin)) {
+						ABOARD.remove(player.getUUID());
+						adopt(player);
+					}
 				}
 			}
 		}

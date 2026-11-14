@@ -740,5 +740,21 @@
   "sabercraft.ship.menu.aboard.tooltip": "Geh in dein Schiff und lauf darin herum. Ist es nicht in der Nähe, wird es zuerst gerufen. Geht auch aus dem Cockpit. Raus geht es über die Rampe oder den Hangarausgang.",
   "sabercraft.interior.room.star_destroyer.reactor": "Reaktor",
   "sabercraft.interior.room.star_destroyer.hangar_corridor": "Hangargang",
-  "sabercraft.ship.not_inside": "%s kann nicht in einem Schiff gerufen werden. Verlasse zuerst das Schiff."
+  "sabercraft.ship.not_inside": "%s kann nicht in einem Schiff gerufen werden. Verlasse zuerst das Schiff.",
+  "sabercraft.seat.stand_first": "Steh zuerst auf (Schleichen).",
+  "sabercraft.seat.taken": "Dort sitzt %s.",
+  "sabercraft.seat.cockpit": "Schleichen zum Aufstehen. Hyperraum: die Hyperraum-Taste oder der Hebel beim Kopiloten.",
+  "sabercraft.seat.gunner": "Mit der Maus zielen, Angriffstaste zum Feuern. Schleichen zum Aufstehen.",
+  "sabercraft.seat.sit": "Schleichen zum Aufstehen.",
+  "sabercraft.interior.lights_dim": "Licht gedimmt.",
+  "sabercraft.interior.lights_on": "Licht an.",
+  "sabercraft.interior.status_none": "%s: keine Verbindung zu den Schiffssystemen.",
+  "sabercraft.interior.status_full": "voll",
+  "sabercraft.interior.status_cooling": "kühlt ab (%s s)",
+  "sabercraft.interior.status_ready": "bereit",
+  "sabercraft.interior.status": "%s: Hülle %s %%, Energie %s, Hyperantrieb %s",
+  "sabercraft.interior.jump_seat": "Setz dich für den Sprung auf den Piloten- oder Kopilotensitz.",
+  "sabercraft.interior.jump_charging": "Hyperantrieb lädt...",
+  "sabercraft.interior.guns_hot": "Die Geschütze sind überhitzt. Warte einen Moment.",
+  "subtitles.sabercraft.ship.door": "Tür gleitet"
 }

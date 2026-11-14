@@ -93,6 +93,16 @@ public final class DestroyerVisuals implements InteriorVisuals {
 		}
 	}
 
+	@Override
+	public void animate(MeshBuilder b, float seconds, PlotView plot) {
+		this.animate(b, seconds);
+
+		if (com.phiro.sabercraft.client.ImmersionConfig.get().shipInteriorDetail) {
+			DoorModels.draw(b, plot, com.phiro.sabercraft.interior.InteriorPlan.of("star_destroyer"), InteriorAtlas.IMP_DOOR,
+					InteriorAtlas.IMP_WALL_STRIP_GLOW);
+		}
+	}
+
 	// --- The hull ------------------------------------------------------------------------------
 
 	/** 0 at the nose, 1 at the stern. */

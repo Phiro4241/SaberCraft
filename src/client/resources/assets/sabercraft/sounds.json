@@ -1302,5 +1302,14 @@
         "attenuation_distance": 40
       }
     ]
+  },
+  "ship.door": {
+    "sounds": [
+      {
+        "name": "sabercraft:ship/door",
+        "attenuation_distance": 16
+      }
+    ],
+    "subtitle": "subtitles.sabercraft.ship.door"
   }
 }

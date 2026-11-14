@@ -109,6 +109,76 @@ public final class DestroyerInterior extends InteriorPlan {
 	private static final String PANE = "barrier";
 	private static final String PROXY = "barrier";
 
+	/** Phase 16: a chair collides only with its seat (people walk past its back and arms). */
+	static final net.minecraft.world.phys.shapes.VoxelShape CHAIR = net.minecraft.world.phys.shapes.Shapes.box(0.22, 0.0, 0.22, 0.78, 0.5, 0.78);
+
+	/** Phase 16: the chairs: in the bridge pits, round the conference table, in flight control. */
+	public static final List<Seat> SEATS = buildSeats();
+
+	private static List<Seat> buildSeats() {
+		List<Seat> list = new java.util.ArrayList<>();
+
+		for (int z : PIT_ROWS) {
+			for (int x = BRIDGE_X0 + 2; x <= BRIDGE_X1 - 2; x++) {
+				if ((x < WALK_X0 - 4 || x > WALK_X1 + 4) && (x & 1) == 0) {
+					list.add(Seat.chair(x, PIT + 1, z + 1, 0.5, 180.0F, Seat.CHAIR));
+				}
+			}
+		}
+
+		int tx = (SIDE_WEST + CX - 4) / 2;
+
+		for (int x = tx - 5; x <= tx + 5; x += 2) {
+			list.add(Seat.chair(x, DECK + 1, 105, 0.5, 0.0F, Seat.CHAIR));
+			list.add(Seat.chair(x, DECK + 1, 109, 0.5, 180.0F, Seat.CHAIR));
+		}
+
+		for (int z = -56; z <= -46; z += 2) {
+			list.add(Seat.chair(HANGAR_X0 - 2, HANGAR + 1, z, 0.5, -90.0F, Seat.CHAIR));
+		}
+
+		return List.copyOf(list);
+	}
+
+	@Override
+	public List<Seat> seats() {
+		return SEATS;
+	}
+
+	/** The doors: bridge, conference and sensor rooms, hangar, flight control, reactor gallery. */
+	public static final List<Door> DOORS = List.of(
+			Door.wall(false, BRIDGE_BACK, CX - 2, CX + 2, DECK + 1, DECK + 4),
+			Door.wall(true, CX - 4, 106, 108, DECK + 1, DECK + 3),
+			Door.wall(true, CX + 4, 106, 108, DECK + 1, DECK + 3),
+			Door.wall(false, HANGAR_Z1, CX - 2, CX + 2, HANGAR + 1, HANGAR + 4),
+			Door.wall(true, HANGAR_X0, -40, -38, HANGAR + 1, HANGAR + 3),
+			Door.wall(true, CX + 4, LOBBY_Z0, LOBBY_Z0 + 2, HANGAR + 1, HANGAR + 3));
+
+	@Override
+	public List<Door> doors() {
+		return DOORS;
+	}
+
+	/** The officers' stations on the bridge (lights), the sensor room's tactical table (the ship's state). */
+	@Override
+	public List<Console> consoles() {
+		List<Console> list = new java.util.ArrayList<>();
+
+		for (int x : new int[] {BRIDGE_X0 + 4, BRIDGE_X1 - 4}) {
+			list.add(new Console(new BlockPos(x, DECK + 1, WINDOW_Z + 2), Console.LIGHTS));
+		}
+
+		int sx = (CX + 4 + SIDE_EAST) / 2 + 4;
+
+		for (int x = sx - 2; x <= sx + 2; x++) {
+			for (int z = 105; z <= 109; z++) {
+				list.add(new Console(new BlockPos(x, DECK + 1, z), Console.STATUS));
+			}
+		}
+
+		return list;
+	}
+
 	@Override
 	public String id() {
 		return "star_destroyer";
@@ -117,7 +187,7 @@ public final class DestroyerInterior extends InteriorPlan {
 	@Override
 	public int version() {
 		// 3 (Phase 16): the reactor shaft's round wall is shaped barriers where the drawn wall runs.
-		return 3;
+		return 4;
 	}
 
 	@Override
@@ -270,7 +340,7 @@ public final class DestroyerInterior extends InteriorPlan {
 		}
 
 		for (int z = -56; z <= -46; z += 2) {
-			b.set(HANGAR_X0 - 2, HANGAR + 1, z, PROXY);
+			b.shaped(HANGAR_X0 - 2, HANGAR + 1, z, CHAIR, false);
 		}
 
 		// Screens on the back wall.
@@ -416,7 +486,7 @@ public final class DestroyerInterior extends InteriorPlan {
 
 				// A seat behind every other console.
 				if ((x & 1) == 0) {
-					b.set(x, PIT + 1, z + 1, PROXY);
+					b.shaped(x, PIT + 1, z + 1, CHAIR, false);
 				}
 			}
 		}
@@ -473,8 +543,8 @@ public final class DestroyerInterior extends InteriorPlan {
 		b.box(tx - 6, DECK + 1, 106, tx + 6, DECK + 1, 108, PROXY);
 
 		for (int x = tx - 5; x <= tx + 5; x += 2) {
-			b.set(x, DECK + 1, 105, PROXY);
-			b.set(x, DECK + 1, 109, PROXY);
+			b.shaped(x, DECK + 1, 105, CHAIR, false);
+			b.shaped(x, DECK + 1, 109, CHAIR, false);
 		}
 		// The sensor room's consoles along its inner wall and the tactical table.
 		for (int z = SIDE_Z0 + 2; z <= SIDE_Z1 - 2; z += 2) {

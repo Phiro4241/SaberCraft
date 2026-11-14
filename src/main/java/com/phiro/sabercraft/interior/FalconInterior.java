@@ -2,9 +2,12 @@ package com.phiro.sabercraft.interior;
 
 import java.util.List;
 
+import org.jspecify.annotations.Nullable;
+
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.phys.shapes.Shapes;
 
 /**
  * Phase 14: the walkable interior of the Millennium Falcon, at about real size (one block a
@@ -55,6 +58,17 @@ public final class FalconInterior extends InteriorPlan {
 	public static final double TABLE_Z = 27.5;
 	public static final double TABLE_R = 1.7;
 
+	/**
+	 * Phase 16: the cockpit is a round pod along z: its axis at (x, y), the inner wall's radius, the
+	 * walkable room from the window (z) to the back wall (z), floor and ceiling heights.
+	 */
+	public static final double COCKPIT_X = 44.0;
+	public static final double COCKPIT_AXIS = 9.0;
+	public static final double COCKPIT_R = 3.1;
+	public static final int COCKPIT_FRONT = 19;
+	public static final int COCKPIT_BACK = 29;
+	public static final int COCKPIT_CEILING = 10;
+
 	private static final String HULL = "white_terracotta";
 	private static final String SHELL = "light_gray_terracotta";
 	private static final String PANEL = "light_gray_concrete";
@@ -72,8 +86,8 @@ public final class FalconInterior extends InteriorPlan {
 	@Override
 	public int version() {
 		// 3 (Phase 16): the curved walls are barriers shaped like the drawn walls, no stepped blocks
-		// poking through them any more.
-		return 3;
+		// poking through them any more. 4: the new cockpit, slim seats.
+		return 4;
 	}
 
 	@Override
@@ -103,7 +117,7 @@ public final class FalconInterior extends InteriorPlan {
 
 	@Override
 	public BlockPos helm() {
-		return new BlockPos(41, FLOOR + 2, 19);
+		return new BlockPos(42, FLOOR + 2, COCKPIT_FRONT + 1);
 	}
 
 	@Override
@@ -114,7 +128,7 @@ public final class FalconInterior extends InteriorPlan {
 	@Override
 	public List<Room> rooms() {
 		return List.of(
-				new Room("cockpit", new AABB(39, 7, 19, 47, 11, 26)),
+				new Room("cockpit", new AABB(41, 7, 20, 47, 10, 29)),
 				new Room("cockpit_tube", new AABB(30, 7, 23, 39, 9, 25)),
 				new Room("top_turret", new AABB(18, 12, 28, 24, 15, 34)),
 				new Room("bottom_turret", new AABB(18, 1, 28, 24, 4, 34)),
@@ -140,7 +154,8 @@ public final class FalconInterior extends InteriorPlan {
 			new Doorway(12, FLOOR + 1, 18, 13, FLOOR + 3, 22, false),   // cargo hold
 			new Doorway(27, FLOOR + 1, 18, 28, FLOOR + 3, 22, false),   // storage
 			new Doorway(31, FLOOR + 1, 30, 32, FLOOR + 3, 31, true),   // ramp
-			new Doorway(29, FLOOR + 1, 23, 31, FLOOR + 2, 24, true));  // cockpit tube
+			new Doorway(29, FLOOR + 1, 23, 31, FLOOR + 2, 24, true),   // cockpit tube
+			new Doorway(39, FLOOR + 1, 23, 41, FLOOR + 2, 24, true));  // into the cockpit
 
 	/** The smooth walls as drawn: the hold's, both of the ring corridor's, the engine room's inner one. */
 	public static final double HOLD_WALL = HOLD_R + 0.05;
@@ -166,6 +181,10 @@ public final class FalconInterior extends InteriorPlan {
 			return true;
 		}
 
+		if (cockpitOpen(x, z, y)) {
+			return true;
+		}
+
 		if (y >= air0 && y <= air0 + 3 && d > ENGINE_WALL && d < ENGINE_R1) {
 			// The ends of the engine room are walls of whole blocks: by the cell's middle.
 			double angle = Math.toDegrees(Math.atan2(Math.floor(z) + 0.5 - CZ, Math.floor(x) + 0.5 - CX));
@@ -173,6 +192,106 @@ public final class FalconInterior extends InteriorPlan {
 		}
 
 		return false;
+	}
+
+	/** Half the cockpit's width in row y (the narrowest within the row), or -1 above or below the room. */
+	public static double cockpitHalfWidth(int y) {
+		if (y < FLOOR + 1 || y >= COCKPIT_CEILING) {
+			return -1.0;
+		}
+
+		double dy = Math.max(Math.abs(y - COCKPIT_AXIS), Math.abs(y + 1 - COCKPIT_AXIS));
+		return Math.sqrt(COCKPIT_R * COCKPIT_R - dy * dy);
+	}
+
+	/** Phase 16: whether a point (plot space, row y) is inside the round cockpit, up to its drawn wall. */
+	public static boolean cockpitOpen(double x, double z, int y) {
+		double half = cockpitHalfWidth(y);
+		return half > 0 && z >= COCKPIT_FRONT + 1 && z < COCKPIT_BACK && Math.abs(x - COCKPIT_X) < half;
+	}
+
+	/** The seats: four in the cockpit, the engineer's, the couch round the table, the two gunners'. */
+	public static final List<Seat> SEATS = List.of(
+			// The front seats a little back in their cells: room for the knees under the dashboard.
+			new Seat(new BlockPos(42, FLOOR + 1, 21), new Vec3(42.5, FLOOR + 1.575, 21.7), 180.0F, Seat.PILOT),
+			new Seat(new BlockPos(45, FLOOR + 1, 21), new Vec3(45.5, FLOOR + 1.575, 21.7), 180.0F, Seat.COPILOT),
+			Seat.chair(42, FLOOR + 1, 24, 0.575, 180.0F, Seat.CHAIR),
+			Seat.chair(45, FLOOR + 1, 24, 0.575, 180.0F, Seat.CHAIR),
+			Seat.chair(25, FLOOR + 1, 31, 0.5, -90.0F, Seat.CHAIR),
+			Seat.chair(20, FLOOR + 6, 28, 0.5, 180.0F, Seat.GUNNER),
+			Seat.chair(20, 1, 28, 0.5, 180.0F, Seat.GUNNER),
+			couch(80.0F), couch(105.0F), couch(130.0F));
+
+	/** A place on the couch at that angle round the table, facing the table. */
+	private static Seat couch(float angle) {
+		double a = Math.toRadians(angle);
+		double x = TABLE_X + Math.cos(a) * 2.75;
+		double z = TABLE_Z + Math.sin(a) * 2.75;
+		// Facing the table: Minecraft yaw of the direction (table - seat).
+		float yaw = (float) Math.toDegrees(Math.atan2(-(TABLE_X - x), TABLE_Z - z));
+		return new Seat(BlockPos.containing(x, FLOOR + 1, z), new Vec3(x, FLOOR + 1.45, z), yaw, Seat.COUCH);
+	}
+
+	@Override
+	public List<Seat> seats() {
+		return SEATS;
+	}
+
+	/** The doors: to the quarters, the galley, the engine room, both forward holds, the cockpit. */
+	public static final List<Door> DOORS = List.of(
+			Door.wall(true, 10, 25, 25, FLOOR + 1, FLOOR + 2),
+			Door.wall(true, 10, 35, 35, FLOOR + 1, FLOOR + 2),
+			Door.wall(false, 42, 20, 21, FLOOR + 1, FLOOR + 3),
+			Door.wall(false, 18, 12, 13, FLOOR + 1, FLOOR + 3),
+			Door.wall(false, 18, 27, 28, FLOOR + 1, FLOOR + 3),
+			Door.wall(true, 38, 23, 24, FLOOR + 1, FLOOR + 2));
+
+	@Override
+	public List<Door> doors() {
+		return DOORS;
+	}
+
+	/** The hyperdrive lever on the dashboard (co-pilot's side), the engineering station's desk and bank. */
+	public static final List<Console> CONSOLES = List.of(
+			new Console(new BlockPos(44, FLOOR + 1, COCKPIT_FRONT + 1), Console.HYPERSPACE),
+			new Console(new BlockPos(45, FLOOR + 1, COCKPIT_FRONT + 1), Console.HYPERSPACE),
+			new Console(new BlockPos(26, FLOOR + 1, 29), Console.STATUS),
+			new Console(new BlockPos(26, FLOOR + 1, 30), Console.STATUS),
+			new Console(new BlockPos(26, FLOOR + 1, 31), Console.STATUS),
+			new Console(new BlockPos(26, FLOOR + 1, 32), Console.STATUS),
+			new Console(new BlockPos(26, FLOOR + 1, 33), Console.STATUS),
+			new Console(new BlockPos(27, FLOOR + 2, 31), Console.LIGHTS),
+			new Console(new BlockPos(27, FLOOR + 1, 31), Console.LIGHTS));
+
+	@Override
+	public List<Console> consoles() {
+		return CONSOLES;
+	}
+
+	@Override
+	public @Nullable Seat seatFor(BlockPos cell, Vec3 hit) {
+		Seat exact = super.seatFor(cell, hit);
+
+		if (exact != null || cell.getY() != FLOOR + 1) {
+			return exact;
+		}
+
+		// The couch: the nearest place on it to where it was clicked.
+		double d = Math.hypot(cell.getX() + 0.5 - TABLE_X, cell.getZ() + 0.5 - TABLE_Z);
+
+		if (d < 2.3 || d > 3.4) {
+			return null;
+		}
+
+		Seat best = null;
+
+		for (Seat seat : SEATS) {
+			if (seat.role().equals(Seat.COUCH) && (best == null || seat.at().distanceToSqr(hit) < best.at().distanceToSqr(hit))) {
+				best = seat;
+			}
+		}
+
+		return best;
 	}
 
 	@Override
@@ -259,8 +378,7 @@ public final class FalconInterior extends InteriorPlan {
 		sector(b, 5, 11, ENGINE_R0 - 1.0, ENGINE_R1 + 0.5, 6.0, HULL); // engine room
 		b.box(8, 5, 1, 16, 11, 18, HULL);       // port cargo pod
 		b.box(25, 5, 1, 33, 11, 18, HULL);      // starboard pod
-		b.box(29, 6, 22, 39, 9, 25, HULL);      // cockpit tube
-		b.box(38, 5, 18, 47, 11, 26, HULL);     // cockpit
+		b.box(29, 6, 22, 41, 9, 25, HULL);      // cockpit tube (the pod has no blocks: see cockpit())
 		b.box(32, 1, 29, 38, 11, 42, HULL);     // boarding ramp
 		// The gun turrets above and below the middle (the glass is drawn by the client).
 		b.disc(CX, FLOOR + 5, CZ, 3.5, SHELL);
@@ -278,7 +396,6 @@ public final class FalconInterior extends InteriorPlan {
 		b.clear(9, air0, 2, 15, air0 + 3, 17);        // cargo hold
 		b.clear(26, air0, 2, 32, air0 + 3, 17);       // storage
 		b.clear(30, air0, 23, 38, air0 + 1, 24);      // tube
-		b.clear(39, air0, 19, 46, air0 + 3, 25);      // cockpit
 		b.clear(33, 3, 30, 37, 10, 41);               // ramp hall
 		// The ring corridor (3 high) and the main hold in the middle (4 high).
 		for (int y = air0; y <= air0 + 2; y++) {
@@ -371,7 +488,7 @@ public final class FalconInterior extends InteriorPlan {
 		// The engineering station on the right: a bank of consoles (proxies) and its seat.
 		b.box(26, FLOOR + 1, 29, 26, FLOOR + 1, 33, PROXY);
 		b.box(27, FLOOR + 1, 28, 27, FLOOR + 3, 34, PROXY);
-		b.set(25, FLOOR + 1, 31, PROXY);
+		b.shaped(25, FLOOR + 1, 31, Shapes.box(0.2, 0.0, 0.2, 0.8, 0.5, 0.8), false);
 		// A locker and a barrel by the corridor door.
 		b.set(24, FLOOR + 1, 25, PROXY);
 		b.set(24, FLOOR + 2, 25, PROXY);
@@ -384,51 +501,77 @@ public final class FalconInterior extends InteriorPlan {
 	/** The two gun turrets: a seat (proxy) and the controls; the glass and the guns are drawn by the client. */
 	private static void turrets(InteriorBuilder b) {
 		int top = FLOOR + 6;
-		b.set(20, top, 28, PROXY);
+		b.shaped(20, top, 28, Shapes.box(0.2, 0.0, 0.2, 0.8, 0.5, 0.8), false);
 		b.set(20, top, 27, PROXY);
 		b.light(21, top + 2, 31, 10);
-		b.set(20, 1, 28, PROXY);
+		b.shaped(20, 1, 28, Shapes.box(0.2, 0.0, 0.2, 0.8, 0.5, 0.8), false);
 		b.set(20, 1, 27, PROXY);
 		b.light(21, 2, 31, 10);
 	}
 
-	/** The cockpit: four seats, the consoles, the window (drawn by the client), the helm lever. */
+	/**
+	 * The cockpit (Phase 16: rebuilt): a round pod, narrow and long, the window cone at its front.
+	 * Nothing of it is a visible block: the floor, ceiling and window are barriers, the curved
+	 * walls barriers shaped like the drawn wall (blocks would stick out of the round pod outside),
+	 * the client draws all of it. Four seats in two rows, the dashboard under the window, the helm
+	 * lever on the pilot's side, the hyperdrive lever on the co-pilot's.
+	 */
 	private static void cockpit(InteriorBuilder b) {
 		int y0 = FLOOR + 1;
 
-		for (int x = 30; x <= 38; x++) {
-			b.set(x, FLOOR, 23, DECK);
-			b.set(x, FLOOR, 24, DECK);
-			b.set(x, FLOOR + 3, 23, PANEL);
-			b.set(x, FLOOR + 3, 24, PANEL);
+		for (int x = 39; x <= 48; x++) {
+			for (int z = COCKPIT_FRONT; z <= COCKPIT_BACK; z++) {
+				double half = cockpitHalfWidth(y0);
+				boolean under = Math.abs(x + 0.5 - COCKPIT_X) < half + 0.5;
+
+				for (int y = FLOOR; y <= COCKPIT_CEILING; y++) {
+					if (doorAt(x, y, z)) {
+						continue;
+					}
+
+					boolean room = y > FLOOR && y < COCKPIT_CEILING && z > COCKPIT_FRONT && z < COCKPIT_BACK;
+
+					if (!room) {
+						// Floor, ceiling, window and back wall, as far as the pod reaches.
+						if (Math.abs(x + 0.5 - COCKPIT_X) < COCKPIT_R + 0.2 && (under || y > FLOOR)) {
+							b.set(x, y, z, PANE);
+						}
+
+						continue;
+					}
+
+					int row = y;
+					ProxyShapes.Solid solid = (px, pz) -> !cockpitOpen(px, pz, row);
+
+					if (ProxyShapes.mixed(x, z, 8, solid)) {
+						b.shaped(x, y, z, ProxyShapes.columns(x, z, 8, solid), false);
+					} else if (!solid.at(x + 0.5, z + 0.5)) {
+						b.set(x, y, z, "air");
+					} else if (Math.abs(x + 0.5 - COCKPIT_X) < COCKPIT_R + 1.0) {
+						b.set(x, y, z, PANE);
+					}
+				}
+			}
 		}
 
-		for (int x = 31; x <= 38; x += 3) {
-			b.light(x, FLOOR + 2, 23, 11);
+		// The dashboard across the front (proxies), the helm lever on the pilot's side, the
+		// hyperdrive lever on the co-pilot's.
+		b.box(42, y0, COCKPIT_FRONT + 1, 45, y0, COCKPIT_FRONT + 1, PROXY);
+		b.set(42, y0, COCKPIT_FRONT + 1, DARK);
+		b.set(42, y0 + 1, COCKPIT_FRONT + 1, "lever[face=floor,facing=south]");
+
+		// The seats: pilot (left), co-pilot (right), two behind; slim, so one can walk between them.
+		for (Seat seat : SEATS) {
+			if (seat.cell().getX() >= 41) {
+				double dx = seat.at().x - seat.cell().getX();
+				double dz = seat.at().z - seat.cell().getZ();
+				b.shaped(seat.cell().getX(), seat.cell().getY(), seat.cell().getZ(),
+						Shapes.box(Math.max(0.0, dx - 0.32), 0.0, Math.max(0.0, dz - 0.32), Math.min(1.0, dx + 0.32), 0.58, Math.min(1.0, dz + 0.32)), false);
+			}
 		}
 
-		b.box(39, FLOOR, 19, 46, FLOOR, 25, DECK);
-		b.box(39, FLOOR + 5, 19, 46, FLOOR + 5, 25, PANEL);
-		// The window: the front (the whole front row, the client draws the round window beyond),
-		// the front of the roof, and the right side.
-		b.box(38, FLOOR - 1, 18, 47, FLOOR + 5, 18, PANE);
-		b.box(39, FLOOR + 5, 19, 46, FLOOR + 5, 20, PANE);
-		b.box(47, y0 + 1, 19, 47, y0 + 3, 22, PANE);
-
-		// The consoles in front of the seats (proxies), the helm lever on the pilot's.
-		b.box(39, y0, 19, 46, y0, 19, PROXY);
-		b.set(41, y0, 19, DARK);
-		b.set(41, y0 + 1, 19, "lever[face=floor,facing=south]");
-		b.set(39, y0, 20, PROXY);
-		b.set(46, y0, 20, PROXY);
-
-		// Seats: pilot (left), co-pilot (right), two behind.
-		for (int[] seat : new int[][] {{41, 21}, {44, 21}, {41, 24}, {44, 24}}) {
-			b.set(seat[0], y0, seat[1], PROXY);
-		}
-
-		b.light(42, FLOOR + 4, 23, 11);
-		b.light(45, FLOOR + 4, 25, 9);
+		b.light(44, COCKPIT_CEILING - 1, 23, 11);
+		b.light(44, COCKPIT_CEILING - 1, 27, 9);
 	}
 
 	/** The crew quarters: bunks (proxies), lockers, a table. */

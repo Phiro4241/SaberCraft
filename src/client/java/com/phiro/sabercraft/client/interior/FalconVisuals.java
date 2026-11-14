@@ -83,6 +83,53 @@ public final class FalconVisuals implements InteriorVisuals {
 	}
 
 	@Override
+	public void animate(MeshBuilder b, float seconds, PlotView plot) {
+		this.animate(b, seconds);
+		float partial = net.minecraft.client.Minecraft.getInstance().getDeltaTracker().getGameTimeDeltaPartialTick(false);
+
+		if (ImmersionConfig.get().shipInteriorDetail) {
+			DoorModels.draw(b, plot, com.phiro.sabercraft.interior.InteriorPlan.of("falcon"), InteriorAtlas.FAL_HATCH, InteriorAtlas.FAL_CEILING_LIGHT_GLOW);
+		}
+
+		b.sun(SUN, 0.55F).fullBright().colour(HULL_TINT).layer(Layer.SOLID);
+		guns(b, InteriorClient.aim(plot, true, partial), true);
+		guns(b, InteriorClient.aim(plot, false, partial), false);
+		b.sun(null, 0.0F).white().worldLight();
+		InteriorClient.Jump jump = InteriorClient.jump(plot.origin(), plot.level());
+		FalconJump.draw(b, jump, jump != null ? InteriorClient.progress(jump, plot.level(), partial) : 0.0F, seconds);
+	}
+
+	/**
+	 * Phase 16: a turret's guns: a pair on each side of the dome, turned with the gunner's aim
+	 * (straight ahead when nobody sits there), their muzzles where the server fires from.
+	 */
+	private static void guns(MeshBuilder b, float @org.jspecify.annotations.Nullable [] aim, boolean upper) {
+		float yaw = aim != null ? aim[0] : 180.0F;
+		float pitch = aim != null ? aim[1] : 0.0F;
+		float y = (float) (upper ? com.phiro.sabercraft.interior.Turrets.TOP_Y : com.phiro.sabercraft.interior.Turrets.BOTTOM_Y);
+		b.tile(InteriorAtlas.FAL_METAL_DARK, 1.0F);
+		// Minecraft yaw 180 looks north (-z); the model is built pointing north.
+		b.push().translate(CXF, y, CZF).rotateY(180.0F - yaw);
+
+		for (int g = -1; g <= 1; g += 2) {
+			float side = (float) (g * com.phiro.sabercraft.interior.Turrets.SIDE);
+			// The mount on the dome, then the gun pitched round it.
+			b.box(side - 0.35F, -0.45F, -0.35F, side + 0.35F, 0.45F, 0.35F);
+			b.push().translate(side, 0, 0).rotateX(-pitch);
+			b.box(-0.5F, -0.4F, -2.2F, 0.5F, 0.4F, 0.3F);
+
+			for (int k = -1; k <= 1; k += 2) {
+				b.cylinder(new Vector3f(k * 0.22F, 0, -2.2F), new Vector3f(0, 0, (float) -(com.phiro.sabercraft.interior.Turrets.BARREL - 2.2)), 0.12F, 0.1F, 6,
+						1.0F, false, true);
+			}
+
+			b.pop();
+		}
+
+		b.pop();
+	}
+
+	@Override
 	public void animate(MeshBuilder b, float seconds) {
 		if (ImmersionConfig.get().shipInteriorDetail) {
 			FalconRooms.animate(b, seconds);
@@ -149,7 +196,7 @@ public final class FalconVisuals implements InteriorVisuals {
 			b.polyFacing(List.of(at(a0, RIM_IN, BOTTOM_RIM), at(a1, RIM_IN, BOTTOM_RIM), at(a1, R, BAND_BOTTOM), at(a0, R, BAND_BOTTOM)),
 					new Vector3f(out).add(0, -1, 0));
 			b.tiles(2.0F, 50, InteriorAtlas.FAL_HULL_GREEBLE, InteriorAtlas.FAL_HULL_VENTS, InteriorAtlas.FAL_HULL_B);
-			b.polyFacing(List.of(at(a0, R, BAND_TOP), at(a1, R, BAND_TOP), at(a1, R, BAND_BOTTOM), at(a0, R, BAND_BOTTOM)), out);
+			band(b, a0, a1, out);
 		}
 
 		// Trenches: two dark rings in the upper surface, and radial seams.
@@ -171,6 +218,44 @@ public final class FalconVisuals implements InteriorVisuals {
 			Vector3f side = new Vector3f(-Mth.sin(a * Mth.DEG_TO_RAD), 0, Mth.cos(a * Mth.DEG_TO_RAD)).mul(0.18F);
 			b.polyFacing(List.of(new Vector3f(p0).add(side), new Vector3f(p1).add(side), new Vector3f(p1).sub(side), new Vector3f(p0).sub(side)),
 					new Vector3f(0, 1, 0));
+		}
+	}
+
+	/**
+	 * One facet of the rim's band; where the tube to the cockpit passes through the rim (Phase 16:
+	 * the band stood across the tube's end, a wall seen from the cockpit) it is cut round the tube
+	 * in narrow strips.
+	 */
+	private static void band(MeshBuilder b, float a0, float a1, Vector3f out) {
+		Vector3f p0 = at(a0, R, 0);
+		Vector3f p1 = at(a1, R, 0);
+
+		if (Math.max(p0.x, p1.x) < 36.0F || Math.min(p0.z, p1.z) > TUBE_Z + TUBE_R || Math.max(p0.z, p1.z) < TUBE_Z - TUBE_R) {
+			b.polyFacing(List.of(at(a0, R, BAND_TOP), at(a1, R, BAND_TOP), at(a1, R, BAND_BOTTOM), at(a0, R, BAND_BOTTOM)), out);
+			return;
+		}
+
+		int strips = 12;
+
+		for (int k = 0; k < strips; k++) {
+			float s0 = Mth.lerp((float) k / strips, a0, a1);
+			float s1 = Mth.lerp((float) (k + 1) / strips, a0, a1);
+			float z = (at(s0, R, 0).z + at(s1, R, 0).z) / 2.0F;
+			float dz = Math.abs(z - TUBE_Z);
+			float h = dz < TUBE_R ? (float) Math.sqrt(TUBE_R * TUBE_R - dz * dz) : 0.0F;
+
+			if (h <= 0.0F) {
+				b.polyFacing(List.of(at(s0, R, BAND_TOP), at(s1, R, BAND_TOP), at(s1, R, BAND_BOTTOM), at(s0, R, BAND_BOTTOM)), out);
+				continue;
+			}
+
+			if (TUBE_Y + h < BAND_TOP) {
+				b.polyFacing(List.of(at(s0, R, BAND_TOP), at(s1, R, BAND_TOP), at(s1, R, TUBE_Y + h), at(s0, R, TUBE_Y + h)), out);
+			}
+
+			if (TUBE_Y - h > BAND_BOTTOM) {
+				b.polyFacing(List.of(at(s0, R, TUBE_Y - h), at(s1, R, TUBE_Y - h), at(s1, R, BAND_BOTTOM), at(s0, R, BAND_BOTTOM)), out);
+			}
 		}
 	}
 
@@ -237,22 +322,56 @@ public final class FalconVisuals implements InteriorVisuals {
 
 	// --- The cockpit ---------------------------------------------------------------------------
 
-	static final float COCKPIT_X = 43.0F;
-	static final float COCKPIT_Y = 8.5F;
-	static final float COCKPIT_R = 6.2F;
-	static final float COCKPIT_BACK = 27.4F;
-	static final float COCKPIT_FRONT = 19.0F;
-	static final float WINDOW_TIP = 15.6F;
-	static final float WINDOW_R = 3.0F;
+	// Phase 16: the pod is slimmer and longer (it was far wider than the cockpit in it).
+	static final float COCKPIT_X = (float) com.phiro.sabercraft.interior.FalconInterior.COCKPIT_X;
+	static final float COCKPIT_Y = (float) com.phiro.sabercraft.interior.FalconInterior.COCKPIT_AXIS;
+	static final float COCKPIT_R = (float) com.phiro.sabercraft.interior.FalconInterior.COCKPIT_R + 0.28F;
+	static final float COCKPIT_BACK = com.phiro.sabercraft.interior.FalconInterior.COCKPIT_BACK + 0.3F;
+	static final float COCKPIT_FRONT = com.phiro.sabercraft.interior.FalconInterior.COCKPIT_FRONT;
+	static final float WINDOW_TIP = 15.8F;
+	static final float WINDOW_R = 1.3F;
+	/** The tube from the saucer to the pod: its axis (y, z) and radius. */
+	static final float TUBE_Y = 8.0F;
+	static final float TUBE_Z = 24.0F;
+	static final float TUBE_R = 2.95F;
 
 	private static void cockpit(MeshBuilder b) {
-		// The pod: a cylinder along z, closed at the back.
+		// The pod: a cylinder along z, closed at the back; open where the tube comes in (the tube
+		// covers the opening outside).
 		b.tiles(2.0F, 70, InteriorAtlas.FAL_HULL_A, InteriorAtlas.FAL_HULL_B);
-		b.cylinder(new Vector3f(COCKPIT_X, COCKPIT_Y, COCKPIT_BACK), new Vector3f(0, 0, COCKPIT_FRONT - COCKPIT_BACK), COCKPIT_R, COCKPIT_R, 24, 6.0F,
-				true, false);
-		// The tube from the saucer, under the pod's side.
+		int around = 24;
+
+		for (int i = 0; i < around; i++) {
+			float a0 = 360.0F * i / around;
+			float a1 = 360.0F * (i + 1) / around;
+			Vector3f d0 = new Vector3f(Mth.cos(a0 * Mth.DEG_TO_RAD), Mth.sin(a0 * Mth.DEG_TO_RAD), 0);
+			Vector3f d1 = new Vector3f(Mth.cos(a1 * Mth.DEG_TO_RAD), Mth.sin(a1 * Mth.DEG_TO_RAD), 0);
+			Vector3f out = new Vector3f(d0).add(d1);
+
+			for (float z = COCKPIT_FRONT; z < COCKPIT_BACK - 0.01F; z += 1.0F) {
+				float zb = Math.min(COCKPIT_BACK, z + 1.0F);
+				float ym = COCKPIT_Y + (d0.y + d1.y) / 2.0F * COCKPIT_R;
+
+				if (out.x < 0.0F && z >= 23.0F && zb <= 25.0F && ym > TUBE_Y - 1.4F && ym < TUBE_Y + 1.4F) {
+					continue;
+				}
+
+				b.polyFacing(List.of(new Vector3f(d0).mul(COCKPIT_R).add(COCKPIT_X, COCKPIT_Y, z), new Vector3f(d1).mul(COCKPIT_R).add(COCKPIT_X, COCKPIT_Y, z),
+						new Vector3f(d1).mul(COCKPIT_R).add(COCKPIT_X, COCKPIT_Y, zb), new Vector3f(d0).mul(COCKPIT_R).add(COCKPIT_X, COCKPIT_Y, zb)), out);
+			}
+		}
+
+		List<Vector3f> cap = new ArrayList<>();
+
+		for (int i = 0; i < around; i++) {
+			float a = 360.0F * i / around * Mth.DEG_TO_RAD;
+			cap.add(new Vector3f(COCKPIT_X + Mth.cos(a) * COCKPIT_R, COCKPIT_Y + Mth.sin(a) * COCKPIT_R, COCKPIT_BACK));
+		}
+
+		b.polyFacing(cap, new Vector3f(0, 0, 1));
+		// The tube from the saucer, under the pod's side, up to the pod's wall.
 		b.tile(InteriorAtlas.FAL_HULL_B, 2.0F);
-		b.cylinder(new Vector3f(36.0F, 8.0F, 24.0F), new Vector3f(3.5F, 0, 0), 2.95F, 2.95F, 14, 2.0F, false, false);
+		b.cylinder(new Vector3f(36.0F, TUBE_Y, TUBE_Z), new Vector3f(COCKPIT_X - COCKPIT_R + 0.6F - 36.0F, 0, 0), TUBE_R, TUBE_R, 14, 2.0F, false, false);
 		// Bands round the pod.
 		b.tile(InteriorAtlas.FAL_METAL_DARK, 1.0F);
 
@@ -356,18 +475,7 @@ public final class FalconVisuals implements InteriorVisuals {
 			float c0 = s > 0 ? 12.4F : 3.8F;
 			// No cap: the gunner looks out over it through the dome.
 			b.cylinder(new Vector3f(CXF, c0, CZF), new Vector3f(0, s * 1.2F, 0), 4.45F, 4.1F, 20, 3.0F, false, false);
-			// The guns: two pairs of barrels pointing forward, on the dome's sides.
-			b.tile(InteriorAtlas.FAL_METAL_DARK, 1.0F);
-
-			for (int g = -1; g <= 1; g += 2) {
-				float gx = CXF + g * 2.4F;
-				float gy = base + s * 2.2F;
-				b.box(gx - 0.5F, gy - 0.5F, CZF - 2.2F, gx + 0.5F, gy + 0.5F, CZF + 0.3F);
-
-				for (int k = -1; k <= 1; k += 2) {
-					b.cylinder(new Vector3f(gx + k * 0.22F, gy, CZF - 2.2F), new Vector3f(0, 0, -3.2F), 0.12F, 0.1F, 6, 1.0F, false, true);
-				}
-			}
+			// (Phase 16: the guns turn with their gunner's aim: see guns().)
 
 			// The glass dome (seen from both sides).
 			b.layer(Layer.GLASS).worldLight().colourAlpha(0x46A0B8D0).fit(InteriorAtlas.FAL_COCKPIT_GLASS).twoSided(true);

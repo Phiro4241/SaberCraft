@@ -1233,6 +1233,23 @@ def phase15():
     write_ogg("hangar_air", hangar_air(rng), SHIP_OUT)
 
 
+def door_hiss(rng, seconds=0.75):
+    """A sliding door: a short pneumatic hiss over a low servo whirr, a soft thud at the end."""
+    t = t_axis(seconds)
+    hiss = bandpass_noise(seconds, 1800, 7000, rng) * np.exp(-t * 5.5) * 0.45
+    whirr = np.sin(2 * np.pi * np.cumsum(140 + 60 * np.exp(-t * 4)) / RATE) * (1 - np.exp(-t * 30)) * np.exp(-t * 3.5) * 0.35
+    thud_t = np.clip(t - seconds * 0.62, 0, None)
+    thud = np.sin(2 * np.pi * 70 * thud_t) * np.exp(-thud_t * 28) * (t > seconds * 0.62) * 0.5
+    fade = np.minimum(1.0, (seconds - t) / 0.05)
+    return normalize((hiss + whirr + thud) * fade, 0.6)
+
+
+def phase16():
+    """Phase 16: the sliding doors aboard. Own random stream."""
+    rng = np.random.default_rng(1977_16)
+    write_ogg("door", door_hiss(rng), SHIP_OUT)
+
+
 # Planet ambiences (Phase 10) ---------------------------------------------------------------------
 # Loops of AMBIENT_SECONDS. Every slow modulation runs a whole number of times per loop, and every
 # event (a gust, a bird, a crackle) that runs over the end wraps to the start, so they loop
@@ -1428,6 +1445,9 @@ def main():
 
     if "--phase15" in sys.argv:
         phase15()
+
+    if "--phase16" in sys.argv:
+        phase16()
         return
 
     if "--phase13-ships" in sys.argv:

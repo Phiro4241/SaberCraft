@@ -49,6 +49,7 @@ import com.phiro.sabercraft.client.ship.HyperspaceClient;
 import com.phiro.sabercraft.client.ship.InteriorAmbience;
 import com.phiro.sabercraft.client.ship.ShipClient;
 import com.phiro.sabercraft.interior.InteriorPlan;
+import com.phiro.sabercraft.interior.InteriorSystems;
 import com.phiro.sabercraft.interior.ShipInteriors;
 import com.phiro.sabercraft.ship.Hyperspace;
 import com.phiro.sabercraft.ship.ShipEntity;
@@ -428,7 +429,7 @@ public class Phase14GameTest implements FabricClientGameTest {
 
 		// The rooms, as pictures.
 		look(context, server, origin, new Vec3(21.0, 7.0, 36.0), 180.0F, 15.0F, "phase14_falcon_main_hold");
-		look(context, server, origin, new Vec3(42.5, 8.0, 25.0), 180.0F, 10.0F, "phase14_falcon_cockpit");
+		look(context, server, origin, new Vec3(44.0, 7.0, 28.0), 180.0F, 10.0F, "phase14_falcon_cockpit");
 		look(context, server, origin, new Vec3(31.5, 7.0, 24.0), 90.0F, 5.0F, "phase14_falcon_cockpit_tube");
 		look(context, server, origin, new Vec3(21.0, 7.0, 44.5), 0.0F, 10.0F, "phase14_falcon_engine_room");
 		look(context, server, origin, new Vec3(12.5, 7.0, 15.0), 180.0F, 10.0F, "phase14_falcon_cargo_hold");
@@ -721,6 +722,9 @@ public class Phase14GameTest implements FabricClientGameTest {
 	private static void reachable(TestServerContext server, InteriorPlan plan, BlockPos origin) {
 		String result = server.computeOnServer(s -> {
 			ServerLevel level = s.getLevel(ShipInteriors.DIMENSION);
+			// Phase 16: the doors are closed (barriers) while nobody stands at them; someone walking
+			// through opens them, so they count as open here.
+			InteriorSystems.openDoorsForTest(level, origin, plan);
 			Set<BlockPos> seen = new HashSet<>();
 			ArrayDeque<BlockPos> queue = new ArrayDeque<>();
 			queue.add(BlockPos.containing(plan.entry()));

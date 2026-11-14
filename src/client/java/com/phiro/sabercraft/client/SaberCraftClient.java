@@ -109,6 +109,7 @@ public class SaberCraftClient implements ClientModInitializer {
 		HitMarks.init();
 		// Phase 15: the detailed starship interiors and hulls.
 		com.phiro.sabercraft.client.interior.InteriorScene.init();
+		com.phiro.sabercraft.client.interior.InteriorClient.init();
 		ClientTickEvents.END_CLIENT_TICK.register(SaberCraftClient::handleKeys);
 
 		SaberCraft.LOGGER.info(

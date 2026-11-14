@@ -181,6 +181,17 @@ public final class Starships {
 		return ship != null && !ship.isRemoved() ? ship : null;
 	}
 
+	/** Only for tests: runs a ship command as if the player had sent it. */
+	public static @Nullable Component commandForTest(ServerPlayer player, String action, ShipType type) {
+		return run(player, action, type);
+	}
+
+	/** Phase 16: the ship a player owns, if it is in the world now (the player may be offline or elsewhere). */
+	public static @Nullable ShipEntity shipOf(UUID owner) {
+		ShipEntity ship = LIVE.get(owner);
+		return ship != null && !ship.isRemoved() ? ship : null;
+	}
+
 	/** Where the player's ship is parked, if they have one out. */
 	public static @Nullable Parked parked(ServerPlayer player) {
 		return player.getAttached(PARKED);
@@ -696,7 +707,7 @@ public final class Starships {
 	}
 
 	/** Tells everyone who sees the ship that a cannon fired, for its muzzle flash. */
-	static void shot(ShipEntity ship, int cannon) {
+	public static void shot(ShipEntity ship, int cannon) {
 		ShipShotPayload payload = new ShipShotPayload(ship.getId(), (byte) cannon);
 
 		for (ServerPlayer viewer : PlayerLookup.tracking(ship)) {

@@ -79,6 +79,9 @@ public final class HyperspaceClient {
 
 		if (type != null) {
 			ShipClient.command("hyperspace", type);
+		} else {
+			// Phase 16: from a cockpit seat in a ship's interior.
+			com.phiro.sabercraft.client.interior.InteriorClient.hyperspaceKey(client);
 		}
 	}
 

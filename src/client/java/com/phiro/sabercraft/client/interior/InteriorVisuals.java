@@ -21,6 +21,15 @@ public interface InteriorVisuals {
 	default void animate(MeshBuilder b, float seconds) {
 	}
 
+	/** Phase 16: everything that moves in one plot (doors, the guns, a hyperspace jump). */
+	default void animate(MeshBuilder b, float seconds, PlotView plot) {
+		this.animate(b, seconds);
+	}
+
+	/** Phase 16: the plot being drawn: its corner and the level it is in. */
+	record PlotView(net.minecraft.core.BlockPos origin, net.minecraft.client.multiplayer.ClientLevel level) {
+	}
+
 	/** Roughly where the models are (plot space), to skip plots that are far away. */
 	AABB reach();
 

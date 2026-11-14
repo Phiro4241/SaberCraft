@@ -36,6 +36,87 @@ public abstract class InteriorPlan {
 		}
 	}
 
+	/**
+	 * Phase 16: a place to sit. {@code cell} is the block that is clicked (an invisible barrier,
+	 * slim for chairs), {@code at} the middle of the seat's surface, {@code yaw} where the sitter
+	 * looks (Minecraft yaw), {@code role} what the seat is for ({@link #CHAIR}, {@link #PILOT},
+	 * {@link #COPILOT}, {@link #GUNNER}, {@link #COUCH}).
+	 */
+	public record Seat(BlockPos cell, Vec3 at, float yaw, String role) {
+		public static final String CHAIR = "chair";
+		public static final String PILOT = "pilot";
+		public static final String COPILOT = "copilot";
+		public static final String GUNNER = "gunner";
+		public static final String COUCH = "couch";
+
+		/** A chair standing in the middle of its cell, its seat {@code height} over the floor. */
+		public static Seat chair(int x, int y, int z, double height, float yaw, String role) {
+			return new Seat(new BlockPos(x, y, z), new Vec3(x + 0.5, y + height, z + 0.5), yaw, role);
+		}
+
+		/** Whether the seat is in the cockpit (from there the hyperdrive can be started). */
+		public boolean cockpit() {
+			return PILOT.equals(this.role) || COPILOT.equals(this.role);
+		}
+	}
+
+	/** Phase 16: the seats of the plan. */
+	public List<Seat> seats() {
+		return List.of();
+	}
+
+	/**
+	 * Phase 16: the seat taken by clicking a cell (plot space): the seat of that cell, or
+	 * {@code null}. Plans can widen this (a couch: the nearest place on it).
+	 */
+	public @Nullable Seat seatFor(BlockPos cell, Vec3 hit) {
+		for (Seat seat : this.seats()) {
+			if (seat.cell().equals(cell)) {
+				return seat;
+			}
+		}
+
+		return null;
+	}
+
+	/**
+	 * Phase 16: a sliding door: the cells (one thick, corners included) that close, the way people
+	 * pass through it ({@code alongX}: along x, the door standing in a plane of constant x), and
+	 * where its leaves stand along that way. The server opens it when someone comes near and
+	 * closes it behind them (the cells are barriers while it is closed); the client draws the
+	 * leaves sliding from where they are.
+	 */
+	public record Door(int x0, int y0, int z0, int x1, int y1, int z1, boolean alongX, double plane) {
+		public boolean contains(int x, int y, int z) {
+			return x >= this.x0 && x <= this.x1 && y >= this.y0 && y <= this.y1 && z >= this.z0 && z <= this.z1;
+		}
+
+		/** A door closing one cell wide slice of a wall: at x (alongX) or z, across from a0 to a1, y0 to y1. */
+		public static Door wall(boolean alongX, int at, int a0, int a1, int y0, int y1) {
+			return alongX ? new Door(at, y0, a0, at, y1, a1, true, at + 0.5) : new Door(a0, y0, at, a1, y1, at, false, at + 0.5);
+		}
+	}
+
+	/** Phase 16: the plan's sliding doors. */
+	public List<Door> doors() {
+		return List.of();
+	}
+
+	/**
+	 * Phase 16: something to use on a console: {@link #HYPERSPACE} (the hyperdrive lever, from a
+	 * cockpit seat), {@link #STATUS} (the ship's state), {@link #LIGHTS} (normal or dimmed lights).
+	 */
+	public record Console(BlockPos cell, String action) {
+		public static final String HYPERSPACE = "hyperspace";
+		public static final String STATUS = "status";
+		public static final String LIGHTS = "lights";
+	}
+
+	/** Phase 16: the consoles that do something. */
+	public List<Console> consoles() {
+		return List.of();
+	}
+
 	/** Phase 16: the doorways through the plan's curved walls. */
 	public List<Doorway> doorways() {
 		return List.of();

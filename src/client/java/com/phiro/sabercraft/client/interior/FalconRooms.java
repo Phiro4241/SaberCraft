@@ -81,7 +81,7 @@ final class FalconRooms {
 		int bz = s.z() + s.toward().getStepZ();
 
 		// The helm lever's pedestal is inside the console; the gun well post has its own model.
-		if (bx == 41 && by == Y0 && bz == 19 || bx == 20 && bz == 31) {
+		if (bx == 42 && by == Y0 && bz == COCKPIT_FRONT + 1 || bx == 20 && bz == 31) {
 			return;
 		}
 
@@ -238,17 +238,26 @@ final class FalconRooms {
 
 		// The curved couch round the table's far side.
 		b.fit(InteriorAtlas.FAL_COUCH);
+		float runStart = Float.NaN;
 
-		for (int k = 0; k < 24; k++) {
+		for (int k = 0; k <= 24; k++) {
 			float a0 = 60.0F + k * 10.0F;
 			float a1 = a0 + 10.0F;
 			Vector3f mid = new Vector3f(tx + Mth.cos((a0 + 5.0F) * Mth.DEG_TO_RAD) * 2.85F, 0, tz + Mth.sin((a0 + 5.0F) * Mth.DEG_TO_RAD) * 2.85F);
+			boolean there = k < 24 && Mth.cos((a0 + 5.0F) * Mth.DEG_TO_RAD) * 2.85F < 1.2F && dist(mid.x, mid.z) < HOLD_R - MARGIN - 0.1F;
 
-			if (Mth.cos((a0 + 5.0F) * Mth.DEG_TO_RAD) * 2.85F >= 1.2F || dist(mid.x, mid.z) >= HOLD_R - MARGIN - 0.1F) {
-				continue;
+			if (there) {
+				couch(b, tx, tz, a0, a1);
+
+				if (Float.isNaN(runStart)) {
+					runStart = a0;
+				}
+			} else if (!Float.isNaN(runStart)) {
+				// Both ends of the couch closed (they were open: the missing faces).
+				couchEnd(b, tx, tz, runStart, -1.0F);
+				couchEnd(b, tx, tz, a0, 1.0F);
+				runStart = Float.NaN;
 			}
-
-			couch(b, tx, tz, a0, a1);
 		}
 
 		// The engineering station: a desk facing the hold, the tall bank of instruments behind it.
@@ -314,6 +323,22 @@ final class FalconRooms {
 		b.polyFacing(java.util.List.of(y(o0, back), y(o1, back), y(o1, Y0), y(o0, Y0)), new Vector3f(o0.x + o1.x - 2 * tx, 0, o0.z + o1.z - 2 * tz));
 	}
 
+	/** The end of the couch at an angle: its side profile, facing on along the angle (side 1) or back (-1). */
+	private static void couchEnd(MeshBuilder b, float tx, float tz, float a, float side) {
+		float c = Mth.cos(a * Mth.DEG_TO_RAD);
+		float s = Mth.sin(a * Mth.DEG_TO_RAD);
+		Vector3f i = new Vector3f(tx + c * 2.4F, 0, tz + s * 2.4F);
+		Vector3f o = new Vector3f(tx + c * 3.25F, 0, tz + s * 3.25F);
+		Vector3f m = new Vector3f(i).lerp(o, 0.72F);
+		float seat = Y0 + 0.45F;
+		float back = Y0 + 1.15F;
+		// The tangent round the table: the way the angle grows.
+		Vector3f facing = new Vector3f(-s * side, 0, c * side);
+		// In two convex pieces (under the seat, under the back), side by side.
+		b.polyFacing(java.util.List.of(y(i, Y0), y(i, seat), y(m, seat), y(m, Y0)), facing);
+		b.polyFacing(java.util.List.of(y(m, Y0), y(m, seat), y(o, back), y(o, Y0)), facing);
+	}
+
 	private static Vector3f y(Vector3f p, float y) {
 		return new Vector3f(p.x, y, p.z);
 	}
@@ -326,45 +351,172 @@ final class FalconRooms {
 
 	// --- The cockpit ---------------------------------------------------------------------------
 
+	/** A point on the cockpit's round wall at an angle round its axis (0 = the right side, 90 = up), at z. */
+	private static Vector3f pod(float angle, float r, float z) {
+		return new Vector3f((float) COCKPIT_X + Mth.cos(angle * Mth.DEG_TO_RAD) * r, (float) COCKPIT_AXIS + Mth.sin(angle * Mth.DEG_TO_RAD) * r, z);
+	}
+
+	/** The angle at which the cockpit's wall (radius r) reaches height y on its right side. */
+	private static float podAngle(float r, float y) {
+		return (float) Math.toDegrees(Math.asin((y - COCKPIT_AXIS) / r));
+	}
+
+	/**
+	 * Phase 16: the cockpit, rebuilt: a narrow round pod, longer than wide, the window cone in front.
+	 * The round wall from the floor to the low ceiling on both sides (open where the tube comes
+	 * in), arches across it, the back wall; the dashboard under the window with the helm lever on
+	 * the pilot's side and the hyperdrive lever on the co-pilot's, console bands along both walls,
+	 * the overhead switch panel, two rows of seats.
+	 */
 	private static void cockpit(MeshBuilder b) {
-		b.layer(Layer.SOLID).worldLight().white();
-		// The main console across the front, the helm lever on the pilot's side.
-		Props.at(b, 43.0, Y0, 19.5, Props.south());
-		falconDesk(b, 8.0F, 0.85F, 5);
+		b.layer(Layer.SOLID).worldLight().white().anim(0);
+		float r = (float) COCKPIT_R;
+		float cx = (float) COCKPIT_X;
+		float z0 = COCKPIT_FRONT;
+		float z1 = COCKPIT_BACK;
+		float ceiling = COCKPIT_CEILING;
+		float low = podAngle(r, Y0);
+		float high = podAngle(r, ceiling);
+		float floorHalf = (float) Math.sqrt(r * r - (Y0 - COCKPIT_AXIS) * (Y0 - COCKPIT_AXIS));
+		float ceilingHalf = (float) Math.sqrt(r * r - (ceiling - COCKPIT_AXIS) * (ceiling - COCKPIT_AXIS));
+
+		// The floor and the ceiling.
+		b.tile(InteriorAtlas.FAL_FLOOR_PLATE, 2.0F);
+		b.polyFacing(java.util.List.of(new Vector3f(cx - floorHalf, Y0, z0), new Vector3f(cx + floorHalf, Y0, z0), new Vector3f(cx + floorHalf, Y0, z1),
+				new Vector3f(cx - floorHalf, Y0, z1)), new Vector3f(0, 1, 0));
+		b.tile(InteriorAtlas.FAL_CEILING, 1.0F);
+		b.polyFacing(java.util.List.of(new Vector3f(cx - ceilingHalf, ceiling, z0), new Vector3f(cx + ceilingHalf, ceiling, z0),
+				new Vector3f(cx + ceilingHalf, ceiling, z1), new Vector3f(cx - ceilingHalf, ceiling, z1)), new Vector3f(0, -1, 0));
+
+		// The round wall, in strips a block long, both sides; open where the tube comes in.
+		int steps = 10;
+
+		for (int side = 0; side < 2; side++) {
+			for (int i = 0; i < steps; i++) {
+				float a0 = Mth.lerp((float) i / steps, low, high);
+				float a1 = Mth.lerp((float) (i + 1) / steps, low, high);
+
+				if (side == 1) {
+					a0 = 180.0F - a0;
+					a1 = 180.0F - a1;
+				}
+
+				for (int z = (int) z0; z < (int) z1; z++) {
+					Vector3f p0 = pod(a0, r, z);
+					Vector3f p1 = pod(a1, r, z);
+					float ym = (p0.y + p1.y) / 2.0F;
+
+					if (side == 1 && z >= 23 && z < 25 && ym < Y0 + 2) {
+						continue;
+					}
+
+					b.fit(i < 3 ? InteriorAtlas.FAL_WALL_PAD : (z & 1) == 0 ? InteriorAtlas.FAL_WALL_RIB : InteriorAtlas.FAL_WALL_TECH,
+							0.0F, (float) i / steps, 1.0F, (float) (i + 1) / steps);
+					Vector3f inward = new Vector3f(cx - (p0.x + p1.x) / 2.0F, (float) COCKPIT_AXIS - ym, 0);
+					b.polyFacing(java.util.List.of(p0, p1, pod(a1, r, z + 1), pod(a0, r, z + 1)), inward);
+				}
+			}
+		}
+
+		// The back wall: the circle between floor and ceiling.
+		java.util.List<Vector3f> back = new java.util.ArrayList<>();
+
+		for (int i = 0; i <= 12; i++) {
+			back.add(pod(Mth.lerp(i / 12.0F, low, high), r, z1));
+		}
+
+		for (int i = 0; i <= 12; i++) {
+			back.add(pod(180.0F - Mth.lerp(i / 12.0F, high, low), r, z1));
+		}
+
+		b.fit(InteriorAtlas.FAL_WALL_TECH);
+		b.polyFacing(back, new Vector3f(0, 0, -1));
+
+		// Arches across the pod, on the wall.
+		b.tile(InteriorAtlas.FAL_METAL_DARK, 1.0F);
+
+		for (float z : new float[] {z0 + 0.6F, 26.2F, z1 - 0.3F}) {
+			// Up both walls to just under the ceiling, then a flat beam across it, a little thicker
+			// than the pipes so that its faces never lie in theirs (a bent pipe's faces met in the
+			// corners and flickered there).
+			float top = podAngle(r - 0.06F, ceiling - 0.1F);
+			int n = 6;
+
+			for (int side = 0; side < 2; side++) {
+				float[] arch = new float[3 * (n + 1)];
+
+				for (int i = 0; i <= n; i++) {
+					float a = Mth.lerp((float) i / n, low + 2.0F, top);
+					Vector3f p = pod(side == 0 ? a : 180.0F - a, r - 0.06F, z);
+					arch[i * 3] = p.x;
+					arch[i * 3 + 1] = p.y;
+					arch[i * 3 + 2] = p.z;
+				}
+
+				b.pipe(0.07F, 5, arch);
+			}
+
+			float half = pod(top, r - 0.06F, z).x - cx + 0.12F;
+			b.box(cx - half, ceiling - 0.17F, z - 0.1F, cx + half, ceiling - 0.01F, z + 0.1F, MeshBuilder.ALL & ~MeshBuilder.UP);
+		}
+
+		// Console bands along both walls beside the front seats: switches and lit screens.
+		for (int side = 0; side < 2; side++) {
+			float a0 = podAngle(r, Y0 + 1.25F);
+			float a1 = podAngle(r, Y0 + 0.75F);
+
+			if (side == 1) {
+				a0 = 180.0F - a0;
+				a1 = 180.0F - a1;
+			}
+
+			Vector3f p0 = pod(a0, r - 0.03F, z0 + 0.2F);
+			Vector3f p1 = pod(a1, r - 0.03F, z0 + 0.2F);
+			Vector3f q0 = pod(a0, r - 0.03F, 23.0F);
+			Vector3f q1 = pod(a1, r - 0.03F, 23.0F);
+			Vector3f inward = new Vector3f(cx - p0.x, 0.3F, 0);
+			b.layer(Layer.SOLID).worldLight().fit(InteriorAtlas.FAL_CONSOLE);
+			b.polyFacing(java.util.List.of(p0, p1, q1, q0), inward);
+			b.layer(Layer.GLOW).fullBright().anim(InteriorScene.ANIM_BLINK).fit(InteriorAtlas.FAL_CONSOLE_GLOW);
+			b.polyFacing(java.util.List.of(pod(a0, r - 0.04F, z0 + 0.2F), pod(a1, r - 0.04F, z0 + 0.2F), pod(a1, r - 0.04F, 23.0F),
+					pod(a0, r - 0.04F, 23.0F)), inward);
+			b.layer(Layer.SOLID).worldLight().anim(0);
+		}
+
+		// The dashboard across the front, under the window.
+		Props.at(b, cx, Y0, z0 + 1.5, Props.south());
+		falconDesk(b, 2.0F * Math.min(floorHalf, 2.6F) - 0.1F, 0.85F, 5);
 		b.pop();
+		// The helm lever's pedestal (a real block inside the dashboard).
 		b.tile(InteriorAtlas.FAL_METAL_DARK, 1.0F);
-		b.box(40.98F, Y0, 18.98F, 42.02F, Y0 + 1.015F, 20.02F, MeshBuilder.ALL & ~MeshBuilder.DOWN);
-		// Side consoles.
-		for (float x : new float[] {39.5F, 46.5F}) {
-			Props.at(b, x, Y0, 20.5, x < 43 ? Props.east() : Props.west());
-			falconDesk(b, 1.0F, 0.85F, 7);
-			b.pop();
-		}
+		b.box(41.98F, Y0, z0 + 0.98F, 43.02F, Y0 + 1.015F, z0 + 2.02F, MeshBuilder.ALL & ~MeshBuilder.DOWN);
+		// The hyperdrive lever on the co-pilot's side: a handle in a lit slot.
+		b.tile(InteriorAtlas.FAL_METAL, 1.0F);
+		b.box(cx + 0.95F, Y0 + 0.86F, z0 + 1.3F, cx + 1.45F, Y0 + 0.9F, z0 + 1.75F, MeshBuilder.ALL & ~MeshBuilder.DOWN);
+		b.cylinder(new Vector3f(cx + 1.2F, Y0 + 0.9F, z0 + 1.55F), new Vector3f(0, 0.32F, -0.12F), 0.04F, 0.04F, 6, 1.0F, false, false);
+		b.tile(InteriorAtlas.FAL_PIPE, 1.0F);
+		b.sphere(new Vector3f(cx + 1.2F, Y0 + 1.25F, z0 + 1.42F), 0.07F, 6, 4);
 
-		// The overhead switch panel.
+		// The overhead switch panel above the front seats.
 		b.tile(InteriorAtlas.FAL_METAL_DARK, 1.0F);
-		b.box(40.0F, Y0 + 3.55F, 20.5F, 46.0F, Y0 + 4.0F, 23.0F, MeshBuilder.ALL & ~MeshBuilder.UP & ~MeshBuilder.DOWN);
+		b.box(cx - 1.9F, ceiling - 0.4F, z0 + 1.6F, cx + 1.9F, ceiling - 0.02F, z0 + 4.2F, MeshBuilder.ALL & ~MeshBuilder.UP & ~MeshBuilder.DOWN);
 		b.fit(InteriorAtlas.FAL_CONSOLE);
-		b.rect(40.0F, Y0 + 3.548F, 23.0F, 6.0F, 0, 0, 0, 0, -2.5F);
+		b.rect(cx - 1.9F, ceiling - 0.402F, z0 + 4.2F, 3.8F, 0, 0, 0, 0, -2.6F);
 		b.layer(Layer.GLOW).fullBright().anim(InteriorScene.ANIM_BLINK).fit(InteriorAtlas.FAL_CONSOLE_GLOW);
-		b.rect(40.0F, Y0 + 3.545F, 23.0F, 6.0F, 0, 0, 0, 0, -2.5F);
-		b.layer(Layer.SOLID).worldLight().anim(0);
+		b.rect(cx - 1.9F, ceiling - 0.405F, z0 + 4.2F, 3.8F, 0, 0, 0, 0, -2.6F);
+		// A lamp strip down the middle of the ceiling behind it.
+		b.anim(InteriorScene.ANIM_LAMP).colour(0xFFE8DCC0).fit(InteriorAtlas.FAL_CEILING_LIGHT_GLOW);
+		b.rect(cx - 0.35F, ceiling - 0.01F, z1 - 0.6F, 0.7F, 0, 0, 0, 0, -(z1 - z0 - 5.0F));
+		b.white().layer(Layer.SOLID).worldLight().anim(0);
 
-		// Four seats, high backed, facing the window.
-		for (int[] seat : new int[][] {{41, 21}, {44, 21}, {41, 24}, {44, 24}}) {
-			Props.at(b, seat[0] + 0.5, Y0, seat[1] + 0.5, Props.south());
-			b.scale(1.25F, 1.15F, 1.25F);
-			Props.chair(b, InteriorAtlas.FAL_COUCH);
-			b.pop();
-		}
-
-		// Frames round the inside of the pod.
-		b.tile(InteriorAtlas.FAL_METAL_DARK, 1.0F);
-
-		for (int z = 21; z <= 25; z += 2) {
-			b.box(39.0F, Y0, z, 39.25F, Y0 + 3.75F, z + 0.3F, MeshBuilder.ALL & ~MeshBuilder.WEST & ~MeshBuilder.DOWN & ~MeshBuilder.UP);
-			b.box(46.75F, Y0, z, 47.0F, Y0 + 3.75F, z + 0.3F, MeshBuilder.ALL & ~MeshBuilder.EAST & ~MeshBuilder.DOWN & ~MeshBuilder.UP);
-			b.box(39.0F, Y0 + 3.75F, z, 47.0F, Y0 + 4.0F, z + 0.3F, MeshBuilder.ALL & ~MeshBuilder.UP);
+		// Four seats, high backed, facing the window: pilot (left), co-pilot (right), two behind.
+		for (InteriorPlan.Seat seat : SEATS) {
+			if (seat.cell().getX() >= 41) {
+				Props.at(b, seat.at().x, Y0, seat.at().z, Props.south());
+				b.scale(1.25F, 1.15F, 1.25F);
+				Props.chair(b, InteriorAtlas.FAL_COUCH);
+				b.pop();
+			}
 		}
 	}
 

@@ -22,17 +22,26 @@ import net.minecraft.world.phys.shapes.VoxelShape;
  * collide with full blocks there (a little earlier, never through a wall).
  */
 public final class ProxyShapes {
-	private static final Map<String, Long2ObjectMap<VoxelShape>> SHAPES = new ConcurrentHashMap<>();
+	private static final Map<String, Recorder> BUILT = new ConcurrentHashMap<>();
 
 	private ProxyShapes() {
 	}
 
 	/** The shapes of a plan, by cell in plot space (built from the plan once). */
 	public static Long2ObjectMap<VoxelShape> of(InteriorPlan plan) {
-		return SHAPES.computeIfAbsent(plan.id(), unused -> {
+		return built(plan).shapes;
+	}
+
+	/** Phase 16: the blocks of a plan as built (plot space; no air). */
+	public static Long2ObjectMap<BlockState> blocks(InteriorPlan plan) {
+		return built(plan).blocks;
+	}
+
+	private static Recorder built(InteriorPlan plan) {
+		return BUILT.computeIfAbsent(plan.id(), unused -> {
 			Recorder recorder = new Recorder();
 			plan.build(new InteriorBuilder(recorder));
-			return recorder.shapes;
+			return recorder;
 		});
 	}
 

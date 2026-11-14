@@ -147,6 +147,11 @@ public final class Hyperspace {
 		};
 	}
 
+	/** Phase 16: a jump made from a ship's interior: the drive of the owner's ship cools down as after any jump. */
+	public static void startCooldown(UUID owner, long now) {
+		READY_AT.put(owner, now + AbilityConfig.get().hyperspaceCooldownSeconds * 20L);
+	}
+
 	/** Seconds until a player's ship can jump again, 0 if it can. */
 	public static int cooldownSeconds(UUID owner, long now) {
 		long left = READY_AT.getOrDefault(owner, 0L) - now;
