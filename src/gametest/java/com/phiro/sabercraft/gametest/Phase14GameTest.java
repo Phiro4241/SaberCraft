@@ -541,19 +541,19 @@ public class Phase14GameTest implements FabricClientGameTest {
 				+ com.phiro.sabercraft.interior.InteriorBuilder.unknown());
 		reachable(server, InteriorPlan.of("star_destroyer"), origin);
 		until(context, client -> "ship.interior_bridge".equals(InteriorAmbience.playing()), 40, "the bridge drone plays");
-		look(context, server, origin, new Vec3(22.5, 31.0, 30.0), 180.0F, 5.0F, "phase14_destroyer_bridge");
-		look(context, server, origin, new Vec3(22.5, 31.0, 8.0), 180.0F, 0.0F, "phase14_destroyer_window");
-		look(context, server, origin, new Vec3(22.5, 31.0, 40.0), 90.0F, 0.0F, "phase14_destroyer_command_deck");
+		look(context, server, origin, new Vec3(40.5, 151.0, 90.0), 180.0F, 5.0F, "phase14_destroyer_bridge");
+		look(context, server, origin, new Vec3(40.5, 151.0, 68.5), 180.0F, 0.0F, "phase14_destroyer_window");
+		look(context, server, origin, new Vec3(40.5, 151.0, 108.5), 90.0F, 0.0F, "phase14_destroyer_command_deck");
 
 		// The lift down to the hangar.
 		InteriorPlan.Lift up = InteriorPlan.of("star_destroyer").lifts().get(1);
-		server.runCommand(String.format(Locale.ROOT, "execute in sabercraft:ship_interiors run tp @a %.2f %.2f %.2f", origin.getX() + 22.5, origin.getY() + 31.0, origin.getZ() + 40.5));
+		server.runCommand(String.format(Locale.ROOT, "execute in sabercraft:ship_interiors run tp @a %.2f %.2f %.2f", origin.getX() + 40.5, origin.getY() + 151.0, origin.getZ() + 108.5));
 		context.waitTicks(5);
 		Vec3 lift = up.area().getCenter();
 		server.runCommand(String.format(Locale.ROOT, "execute in sabercraft:ship_interiors run tp @a %.2f %.2f %.2f", origin.getX() + lift.x, origin.getY() + up.area().minY + 0.1,
 				origin.getZ() + lift.z));
-		until(context, client -> client.player.getY() < origin.getY() + 10.0, 40, "the turbolift takes you down to the hangar");
-		look(context, server, origin, new Vec3(22.5, 5.0, 25.0), 180.0F, 10.0F, "phase14_destroyer_hangar");
+		until(context, client -> client.player.getY() < origin.getY() + 40.0, 40, "the turbolift takes you down to the hangar deck");
+		look(context, server, origin, new Vec3(40.5, 20.0, -20.0), 180.0F, 10.0F, "phase14_destroyer_hangar");
 
 		// Out through the hangar: the tractor beam lowers you.
 		AABB exit = InteriorPlan.of("star_destroyer").exits().getFirst();
@@ -724,7 +724,7 @@ public class Phase14GameTest implements FabricClientGameTest {
 			Set<BlockPos> seen = new HashSet<>();
 			ArrayDeque<BlockPos> queue = new ArrayDeque<>();
 			queue.add(BlockPos.containing(plan.entry()));
-			BlockPos size = plan.size();
+			List<net.minecraft.world.level.levelgen.structure.BoundingBox> volumes = plan.volumes();
 
 			while (!queue.isEmpty()) {
 				BlockPos p = queue.poll();
@@ -743,7 +743,7 @@ public class Phase14GameTest implements FabricClientGameTest {
 					for (int dy = 1; dy >= -3; dy--) {
 						BlockPos n = p.relative(direction).above(dy);
 
-						if (n.getX() < 0 || n.getZ() < 0 || n.getY() < 0 || n.getX() > size.getX() || n.getZ() > size.getZ() || n.getY() > size.getY()) {
+						if (volumes.stream().noneMatch(box -> box.isInside(n))) {
 							continue;
 						}
 

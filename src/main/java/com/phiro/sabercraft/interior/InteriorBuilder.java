@@ -29,13 +29,32 @@ public final class InteriorBuilder {
 	/** No neighbour updates, no drops, but sent to clients and lit. */
 	private static final int FLAGS = Block.UPDATE_CLIENTS | Block.UPDATE_KNOWN_SHAPE | Block.UPDATE_SUPPRESS_DROPS;
 
-	private final ServerLevel level;
-	private final BlockPos origin;
+	/** Phase 15: where the blocks go: the interiors dimension, or a copy in memory (the client builds its models from one). */
+	public interface Target {
+		void set(int x, int y, int z, BlockState state);
+
+		BlockState get(int x, int y, int z);
+	}
+
+	private final Target target;
 	private int placed;
 
 	InteriorBuilder(ServerLevel level, BlockPos origin) {
-		this.level = level;
-		this.origin = origin;
+		this(new Target() {
+			@Override
+			public void set(int x, int y, int z, BlockState state) {
+				level.setBlock(origin.offset(x, y, z), state, FLAGS);
+			}
+
+			@Override
+			public BlockState get(int x, int y, int z) {
+				return level.getBlockState(origin.offset(x, y, z));
+			}
+		});
+	}
+
+	public InteriorBuilder(Target target) {
+		this.target = target;
 	}
 
 	/** A block state from its command form; unknown names become air (and are logged by the test). */
@@ -59,7 +78,7 @@ public final class InteriorBuilder {
 	}
 
 	public void set(int x, int y, int z, BlockState state) {
-		this.level.setBlock(this.origin.offset(x, y, z), state, FLAGS);
+		this.target.set(x, y, z, state);
 		this.placed++;
 	}
 
@@ -121,11 +140,11 @@ public final class InteriorBuilder {
 
 	/** Whether the block there is air (in plot space). */
 	public boolean isAir(int x, int y, int z) {
-		return this.level.getBlockState(this.origin.offset(x, y, z)).isAir();
+		return this.target.get(x, y, z).isAir();
 	}
 
 	public BlockState get(int x, int y, int z) {
-		return this.level.getBlockState(this.origin.offset(x, y, z));
+		return this.target.get(x, y, z);
 	}
 
 	/** The block states of the plans built so far that could not be read (should be none). */

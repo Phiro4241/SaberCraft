@@ -135,6 +135,12 @@ public final class ImmersionConfig {
 	/** Phase 14: the quiet hum and machinery inside walkable ship interiors. */
 	@SerializedName("ship_interior_ambient")
 	public boolean shipInteriorAmbient = true;
+	/**
+	 * Phase 15: draws the detailed models of the ship interiors (panelled walls, consoles, screens,
+	 * holograms) and the ship's hull around them. Off: the plain block rooms.
+	 */
+	@SerializedName("ship_interior_detail")
+	public boolean shipInteriorDetail = true;
 	/** Phase 11: the flight display (speed, height, lasers) while flying a starship. */
 	@SerializedName("ship_hud")
 	public boolean shipHud = true;

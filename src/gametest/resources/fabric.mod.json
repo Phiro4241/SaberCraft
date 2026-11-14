@@ -36,7 +36,8 @@
 			"com.phiro.sabercraft.gametest.Phase12GameTest",
 			"com.phiro.sabercraft.gametest.Phase13GameTest",
 			"com.phiro.sabercraft.gametest.Phase14GameTest",
-			"com.phiro.sabercraft.gametest.ShipBoardingGameTest"
+			"com.phiro.sabercraft.gametest.ShipBoardingGameTest",
+			"com.phiro.sabercraft.gametest.InteriorDesignGameTest"
 		]
 	},
 	"depends": {

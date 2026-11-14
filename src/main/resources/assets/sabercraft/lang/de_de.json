@@ -737,5 +737,7 @@
   "sabercraft.option.music_flight": "Flugmusik",
   "sabercraft.option.music_flight.description": "Eigene Musik, während du ein Raumschiff fliegst, und ein schnelleres Stück in Raumschlachten.",
   "sabercraft.ship.menu.aboard": "An Bord gehen",
-  "sabercraft.ship.menu.aboard.tooltip": "Geh in dein Schiff und lauf darin herum. Ist es nicht in der Nähe, wird es zuerst gerufen. Geht auch aus dem Cockpit. Raus geht es über die Rampe oder den Hangarausgang."
+  "sabercraft.ship.menu.aboard.tooltip": "Geh in dein Schiff und lauf darin herum. Ist es nicht in der Nähe, wird es zuerst gerufen. Geht auch aus dem Cockpit. Raus geht es über die Rampe oder den Hangarausgang.",
+  "sabercraft.interior.room.star_destroyer.reactor": "Reaktor",
+  "sabercraft.interior.room.star_destroyer.hangar_corridor": "Hangargang"
 }

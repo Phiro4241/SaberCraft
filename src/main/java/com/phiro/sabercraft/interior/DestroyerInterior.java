@@ -3,39 +3,109 @@ package com.phiro.sabercraft.interior;
 import java.util.List;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
 /**
- * Phase 14: the walkable part of the Star Destroyer. Not the whole ship (it would be kilometres
- * long), but the two places that matter, connected by turbolifts:
+ * The walkable part of the Star Destroyer (Phase 14, rebuilt in Phase 15).
+ *
+ * <p>Phase 15 places the rooms where they are in the ship: a client with SaberCraft draws the
+ * whole ship around them (see {@code client.interior.DestroyerVisuals}): a wedge
+ * {@value #LENGTH} blocks long, the stepped superstructure, the command tower and the bridge on
+ * top of it. So the rooms sit in two groups, in plot space (x east, y up, z south, the nose to the
+ * north):
  *
  * <ul>
- * <li><b>Hangar deck</b>, where the tractor beam sets people down: a tall hangar with a glowing
- * force field open to space, a TIE fighter on its rack, crates, and the flight control room with
- * its consoles. Standing on the striped pad at the force field a moment lowers you back to the
- * ground under the ship.</li>
- * <li><b>Command deck</b>, up the turbolift: a corridor with the conference room (long table,
- * holo projector) and the sensor room (screens, consoles), and the bridge: the long raised
- * walkway between the two sunken crew pits full of consoles and seats, the command platform at
- * the front and the great window onto space. The lever on the helm console at the front hands
- * the ship to its owner.</li>
+ * <li><b>Bridge deck</b>, at the top of the tower: the bridge with its great window looking
+ * forward over the whole length of the ship, the raised walkway between the two sunken crew pits,
+ * the command platform with the helm at the window; behind it the command corridor, the
+ * conference room and the sensor room, each with side windows over the hull, and the turbolift.</li>
+ * <li><b>Hangar deck</b>, in the belly: the main hangar with its force field open to space below
+ * (standing on it lowers you to the ground), TIE fighters on their racks, crates, the flight
+ * control room behind a window; a corridor to the turbolift lobby and the reactor room with the
+ * glowing core in its shaft.</li>
  * </ul>
  *
- * Dark grey and black Imperial surfaces, white ceiling lights, glowing console lights. Vanilla
- * blocks only.
+ * The blocks give the walls, floors, light and what can be used (the helm lever, the crates);
+ * window panes are barriers, so the view is clear. Players without SaberCraft see the block rooms.
  */
 public final class DestroyerInterior extends InteriorPlan {
-	static final int HANGAR = 4;
-	static final int BRIDGE = 30;
-	static final int PIT = 27;
+	// --- The ship (shared with the client's models) ----------------------------------------------
+
+	/** The centre line of the ship. */
+	public static final int CX = 40;
+	/** The height of the hull's rim (the "equator" between the upper and the lower hull). */
+	public static final int EQUATOR = 40;
+	/** Where the nose and the stern are. */
+	public static final int NOSE = -470;
+	public static final int STERN = 150;
+	public static final int LENGTH = STERN - NOSE;
+	/** Half the width at the stern. */
+	public static final int HALF_WIDTH = 190;
+
+	// --- Bridge deck ---------------------------------------------------------------------------
+
+	/** Floor blocks of the crew pits; people stand at + 1. */
+	public static final int PIT = 146;
+	/** Floor blocks of the walkway, the platform and the command deck; people stand at + 1. */
+	public static final int DECK = 150;
+	/** Ceiling blocks of the bridge. */
+	public static final int BRIDGE_TOP = 161;
+	/** The window wall of the bridge, and its sides. */
+	public static final int WINDOW_Z = 65;
+	public static final int BRIDGE_X0 = 17;
+	public static final int BRIDGE_X1 = 63;
+	/** The back wall of the bridge. */
+	public static final int BRIDGE_BACK = 97;
+	/** The walkway down the middle. */
+	public static final int WALK_X0 = 37;
+	public static final int WALK_X1 = 43;
+	/** The command platform along the window. */
+	public static final int PLATFORM_Z1 = 70;
+	/** The rows of consoles in the pits. */
+	public static final int[] PIT_ROWS = {74, 80, 86, 92};
+	/** The command deck behind the bridge: ceiling blocks, back wall. */
+	public static final int COMMAND_TOP = 157;
+	public static final int COMMAND_BACK = 118;
+	/** The side rooms: their outer walls (with windows). */
+	public static final int SIDE_WEST = 3;
+	public static final int SIDE_EAST = 77;
+	public static final int SIDE_Z0 = 99;
+	public static final int SIDE_Z1 = 115;
+
+	// --- Hangar deck ---------------------------------------------------------------------------
+
+	/** Floor blocks of the hangar deck; people stand at + 1. */
+	public static final int HANGAR = 19;
+	public static final int HANGAR_TOP = 36;
+	public static final int HANGAR_X0 = 17;
+	public static final int HANGAR_X1 = 63;
+	public static final int HANGAR_Z0 = -66;
+	public static final int HANGAR_Z1 = -16;
+	/** The force field in the floor, open to space below. */
+	public static final int FIELD_X0 = 31;
+	public static final int FIELD_X1 = 49;
+	public static final int FIELD_Z0 = -54;
+	public static final int FIELD_Z1 = -36;
+	/** The flight control room on the west side. */
+	public static final int CONTROL_X0 = 5;
+	/** The corridor and the lift lobby behind the hangar. */
+	public static final int LOBBY_Z0 = -2;
+	public static final int LOBBY_Z1 = 6;
+	/** The reactor room: a round shaft. */
+	public static final double REACTOR_X = 40.5;
+	public static final double REACTOR_Z = 24.5;
+	public static final double REACTOR_R = 14.0;
+	public static final int REACTOR_BOTTOM = 14;
+	public static final int REACTOR_TOP = 44;
 
 	private static final String WALL = "gray_concrete";
 	private static final String DARK = "polished_deepslate";
 	private static final String BLACK = "polished_blackstone";
 	private static final String FLOOR = "polished_blackstone_bricks";
-	private static final String LIGHT = "sea_lantern";
-	private static final String GLOW = "pearlescent_froglight";
+	private static final String PANE = "barrier";
+	private static final String PROXY = "barrier";
 
 	@Override
 	public String id() {
@@ -44,39 +114,50 @@ public final class DestroyerInterior extends InteriorPlan {
 
 	@Override
 	public int version() {
-		return 1;
+		return 2;
 	}
 
 	@Override
 	public BlockPos size() {
-		return new BlockPos(45, 44, 50);
+		return new BlockPos(80, 176, 120);
+	}
+
+	@Override
+	public List<BoundingBox> volumes() {
+		return List.of(new BoundingBox(1, 10, -70, 79, 46, 42), new BoundingBox(1, 143, 62, 79, 165, 120));
+	}
+
+	@Override
+	public List<BoundingBox> clearVolumes() {
+		// The Phase 14 rooms stood from the plot corner up to (45, 44, 50).
+		return List.of(new BoundingBox(0, 0, 0, 46, 45, 51), new BoundingBox(1, 10, -70, 79, 46, 42), new BoundingBox(1, 143, 62, 79, 165, 120));
 	}
 
 	@Override
 	public Vec3 entry() {
-		return new Vec3(22.5, HANGAR + 1, 12.5);
+		return new Vec3(CX + 0.5, HANGAR + 1, -28.5);
 	}
 
 	@Override
 	public float entryYaw() {
-		return 0.0F;
+		return 180.0F;
 	}
 
 	@Override
 	public List<AABB> exits() {
-		return List.of(new AABB(20.0, HANGAR + 1, 3.0, 26.0, HANGAR + 4, 8.0));
+		return List.of(new AABB(FIELD_X0 + 2, HANGAR + 1, FIELD_Z0 + 2, FIELD_X1 - 1, HANGAR + 4, FIELD_Z1 - 1));
 	}
 
 	@Override
 	public List<Lift> lifts() {
 		return List.of(
-				new Lift(new AABB(20.0, HANGAR + 1, 27.0, 25.0, HANGAR + 4, 30.0), new Vec3(22.5, BRIDGE + 1, 47.5), 180.0F),
-				new Lift(new AABB(20.0, BRIDGE + 1, 46.0, 25.0, BRIDGE + 4, 49.0), new Vec3(22.5, HANGAR + 1, 28.5), 180.0F));
+				new Lift(new AABB(CX - 2, HANGAR + 1, LOBBY_Z1 - 2, CX + 3, HANGAR + 4, LOBBY_Z1 + 1), new Vec3(CX + 0.5, DECK + 1, COMMAND_BACK - 3.5), 180.0F),
+				new Lift(new AABB(CX - 2, DECK + 1, COMMAND_BACK - 2, CX + 3, DECK + 4, COMMAND_BACK), new Vec3(CX + 0.5, HANGAR + 1, LOBBY_Z1 - 4.5), 0.0F));
 	}
 
 	@Override
 	public BlockPos helm() {
-		return new BlockPos(22, BRIDGE + 2, 3);
+		return new BlockPos(CX, DECK + 2, WINDOW_Z + 2);
 	}
 
 	@Override
@@ -87,307 +168,309 @@ public final class DestroyerInterior extends InteriorPlan {
 	@Override
 	public List<Room> rooms() {
 		return List.of(
-				new Room("flight_control", new AABB(2, HANGAR + 1, 20, 9, HANGAR + 5, 30)),
-				new Room("lift", new AABB(20, HANGAR + 1, 27, 25, HANGAR + 4, 30)),
-				new Room("hangar", new AABB(2, HANGAR + 1, 2, 43, HANGAR + 13, 31)),
-				new Room("lift", new AABB(20, BRIDGE + 1, 46, 25, BRIDGE + 4, 49)),
-				new Room("conference", new AABB(6, BRIDGE + 1, 36, 19, BRIDGE + 5, 45)),
-				new Room("sensor_room", new AABB(26, BRIDGE + 1, 36, 39, BRIDGE + 5, 45)),
-				new Room("command_corridor", new AABB(20, BRIDGE + 1, 34, 25, BRIDGE + 5, 46)),
-				new Room("bridge", new AABB(2, PIT + 1, 2, 43, BRIDGE + 10, 33)));
+				new Room("lift", new AABB(CX - 2, HANGAR + 1, LOBBY_Z1 - 2, CX + 3, HANGAR + 4, LOBBY_Z1 + 1)),
+				new Room("lift", new AABB(CX - 2, DECK + 1, COMMAND_BACK - 2, CX + 3, DECK + 4, COMMAND_BACK)),
+				new Room("flight_control", new AABB(CONTROL_X0 + 1, HANGAR + 1, -58, HANGAR_X0, HANGAR + 6, -36)),
+				new Room("hangar", new AABB(HANGAR_X0 + 1, HANGAR + 1, HANGAR_Z0 + 1, HANGAR_X1, HANGAR_TOP, HANGAR_Z1)),
+				new Room("reactor", new AABB(REACTOR_X - REACTOR_R, REACTOR_BOTTOM, REACTOR_Z - REACTOR_R, REACTOR_X + REACTOR_R, REACTOR_TOP,
+						REACTOR_Z + REACTOR_R)),
+				new Room("hangar_corridor", new AABB(CX - 3, HANGAR + 1, HANGAR_Z1, CX + 4, HANGAR + 5, LOBBY_Z1 + 1)),
+				new Room("conference", new AABB(SIDE_WEST + 1, DECK + 1, SIDE_Z0 + 1, CX - 4, COMMAND_TOP, SIDE_Z1)),
+				new Room("sensor_room", new AABB(CX + 5, DECK + 1, SIDE_Z0 + 1, SIDE_EAST, COMMAND_TOP, SIDE_Z1)),
+				new Room("command_corridor", new AABB(CX - 3, DECK + 1, BRIDGE_BACK, CX + 4, COMMAND_TOP, COMMAND_BACK)),
+				new Room("bridge", new AABB(BRIDGE_X0 + 1, PIT + 1, WINDOW_Z + 1, BRIDGE_X1, BRIDGE_TOP, BRIDGE_BACK)));
 	}
 
 	@Override
 	public void build(InteriorBuilder b) {
 		hangar(b);
 		flightControl(b);
-		tie(b);
-		commandDeck(b);
+		corridor(b);
+		reactor(b);
 		bridge(b);
+		commandDeck(b);
 	}
+
+	// --- Hangar deck ---------------------------------------------------------------------------
 
 	private static void hangar(InteriorBuilder b) {
-		b.box(1, HANGAR - 1, 1, 43, HANGAR + 13, 31, WALL);
-		b.clear(2, HANGAR + 1, 2, 42, HANGAR + 12, 30);
-		b.box(2, HANGAR, 2, 42, HANGAR, 30, FLOOR);
-		b.box(2, HANGAR + 13, 2, 42, HANGAR + 13, 30, DARK);
+		b.room(HANGAR_X0, HANGAR, HANGAR_Z0, HANGAR_X1, HANGAR_TOP + 1, HANGAR_Z1, WALL);
+		b.box(HANGAR_X0 + 1, HANGAR, HANGAR_Z0 + 1, HANGAR_X1 - 1, HANGAR, HANGAR_Z1 - 1, FLOOR);
+		b.box(HANGAR_X0 + 1, HANGAR_TOP + 1, HANGAR_Z0 + 1, HANGAR_X1 - 1, HANGAR_TOP + 1, HANGAR_Z1 - 1, DARK);
 
-		// Walls: dark above, a band of light panels, grey below.
-		for (int y = HANGAR + 5; y <= HANGAR + 12; y++) {
-			b.box(1, y, 1, 1, y, 31, DARK);
-			b.box(43, y, 1, 43, y, 31, DARK);
-			b.box(1, y, 31, 43, y, 31, DARK);
-		}
+		// The force field: an opening in the floor (barriers to stand on), a frame of hazard stripes.
+		b.box(FIELD_X0, HANGAR, FIELD_Z0, FIELD_X1, HANGAR, FIELD_Z1, PANE);
+		b.box(FIELD_X0 - 1, HANGAR, FIELD_Z0 - 1, FIELD_X1 + 1, HANGAR, FIELD_Z0 - 1, "yellow_concrete");
+		b.box(FIELD_X0 - 1, HANGAR, FIELD_Z1 + 1, FIELD_X1 + 1, HANGAR, FIELD_Z1 + 1, "yellow_concrete");
+		b.box(FIELD_X0 - 1, HANGAR, FIELD_Z0, FIELD_X0 - 1, HANGAR, FIELD_Z1, "yellow_concrete");
+		b.box(FIELD_X1 + 1, HANGAR, FIELD_Z0, FIELD_X1 + 1, HANGAR, FIELD_Z1, "yellow_concrete");
+		// The shaft below the field, down through the hull.
+		b.box(FIELD_X0 - 1, HANGAR - 6, FIELD_Z0 - 1, FIELD_X1 + 1, HANGAR - 1, FIELD_Z1 + 1, DARK);
+		b.clear(FIELD_X0, HANGAR - 6, FIELD_Z0, FIELD_X1, HANGAR - 1, FIELD_Z1);
 
-		for (int z = 3; z <= 29; z += 4) {
-			b.set(1, HANGAR + 4, z, GLOW);
-			b.set(43, HANGAR + 4, z, GLOW);
-		}
+		// The landing circle where the tractor beam sets people down.
+		b.ring(CX + 0.5, HANGAR, -28.5, 1.6, 2.6, "white_concrete");
+		b.disc(CX + 0.5, HANGAR, -28.5, 1.6, "light_gray_concrete");
 
-		// Ceiling lights and light.
-		for (int x = 5; x <= 40; x += 6) {
-			for (int z = 5; z <= 29; z += 6) {
-				b.set(x, HANGAR + 13, z, LIGHT);
-				b.light(x, HANGAR + 10, z, 15);
+		// TIE fighter racks along both sides: a rail under the ceiling, the TIEs hang from it
+		// (drawn by the client); each rack has a gantry walkway below.
+		for (int z = HANGAR_Z0 + 8; z <= HANGAR_Z1 - 8; z += 12) {
+			for (int x : new int[] {HANGAR_X0 + 7, HANGAR_X1 - 7}) {
+				for (int y = HANGAR_TOP - 3; y <= HANGAR_TOP; y++) {
+					b.set(x, y, z, "iron_chain[axis=y]");
+				}
 			}
 		}
 
-		// Lanes on the floor.
-		for (int z = 2; z <= 30; z++) {
-			b.set(14, HANGAR, z, "gray_concrete");
-			b.set(31, HANGAR, z, "gray_concrete");
+		// Crates, stacked against the walls (the lower ones are real storage).
+		for (int z = HANGAR_Z0 + 3; z <= HANGAR_Z0 + 9; z += 3) {
+			b.set(HANGAR_X1 - 2, HANGAR + 1, z, "barrel[facing=west]");
+			b.set(HANGAR_X1 - 2, HANGAR + 1, z + 1, "chest[facing=west]");
+			b.set(HANGAR_X1 - 3, HANGAR + 1, z, "barrel[facing=west]");
+			b.set(HANGAR_X1 - 2, HANGAR + 2, z, "iron_block");
 		}
 
-		// The force field, open to space.
-		b.box(9, HANGAR + 1, 1, 35, HANGAR + 10, 1, "light_blue_stained_glass");
-		b.box(8, HANGAR + 1, 1, 8, HANGAR + 11, 1, BLACK);
-		b.box(36, HANGAR + 1, 1, 36, HANGAR + 11, 1, BLACK);
-		b.box(8, HANGAR + 11, 1, 36, HANGAR + 11, 1, BLACK);
+		for (int x = HANGAR_X0 + 3; x <= HANGAR_X0 + 9; x += 3) {
+			b.set(x, HANGAR + 1, HANGAR_Z0 + 2, "barrel[facing=south]");
+			b.set(x + 1, HANGAR + 1, HANGAR_Z0 + 2, "chest[facing=south]");
+		}
 
-		// The tractor beam pad where people arrive, and the striped pad to leave.
-		b.ring(22.5, HANGAR, 12.5, 1.6, 2.6, "white_concrete");
-		b.disc(22.5, HANGAR, 12.5, 1.6, "light_gray_concrete");
-		b.set(22, HANGAR, 12, "sea_lantern");
+		// Stacks of cargo crates (proxies for the client's models).
+		b.box(HANGAR_X1 - 3, HANGAR + 1, -32, HANGAR_X1 - 1, HANGAR + 2, -29, PROXY);
+		b.box(HANGAR_X1 - 2, HANGAR + 3, -31, HANGAR_X1 - 1, HANGAR + 3, -30, PROXY);
+		b.box(HANGAR_X0 + 1, HANGAR + 1, -27, HANGAR_X0 + 3, HANGAR + 2, -24, PROXY);
+		b.box(HANGAR_X0 + 1, HANGAR + 3, -26, HANGAR_X0 + 2, HANGAR + 3, -25, PROXY);
 
-		for (int x = 20; x <= 25; x++) {
-			for (int z = 3; z <= 7; z++) {
-				b.set(x, HANGAR, z, (x + z) % 2 == 0 ? "yellow_concrete" : "black_concrete");
+		// Light: high bay lamps and a band along the walls.
+		for (int x = HANGAR_X0 + 4; x <= HANGAR_X1 - 4; x += 7) {
+			for (int z = HANGAR_Z0 + 4; z <= HANGAR_Z1 - 4; z += 7) {
+				b.light(x, HANGAR_TOP - 1, z, 15);
+				b.light(x, HANGAR + 4, z, 11);
 			}
 		}
 
-		b.light(22, HANGAR + 3, 5, 15);
-
-		// Crates along the east wall.
-		for (int z = 3; z <= 12; z += 3) {
-			b.set(41, HANGAR + 1, z, "barrel[facing=west]");
-			b.set(41, HANGAR + 2, z, "iron_block");
-			b.set(40, HANGAR + 1, z, "smooth_stone");
-			b.set(41, HANGAR + 1, z + 1, "chest[facing=west]");
-		}
-
-		// The turbolift at the back: a cabin with a lit floor.
-		b.box(19, HANGAR + 1, 26, 25, HANGAR + 4, 30, DARK);
-		b.clear(20, HANGAR + 1, 27, 24, HANGAR + 3, 30);
-		b.clear(21, HANGAR + 1, 26, 23, HANGAR + 3, 26);
-		b.box(20, HANGAR, 27, 24, HANGAR, 30, "white_concrete");
-		b.set(22, HANGAR, 29, "sea_lantern");
-		b.set(20, HANGAR + 2, 26, "stone_button[face=wall,facing=north]");
-		b.light(22, HANGAR + 3, 28, 13);
+		// The door to the corridor at the back.
+		b.clear(CX - 2, HANGAR + 1, HANGAR_Z1, CX + 2, HANGAR + 4, HANGAR_Z1);
 	}
 
-	/** The flight control room on the west side: consoles behind a window onto the hangar. */
+	/** The flight control room on the west side, its window onto the hangar. */
 	private static void flightControl(InteriorBuilder b) {
-		b.box(1, HANGAR, 19, 9, HANGAR + 5, 30, DARK);
-		b.clear(2, HANGAR + 1, 20, 8, HANGAR + 4, 29);
-		b.box(2, HANGAR, 20, 8, HANGAR, 29, FLOOR);
-		b.box(9, HANGAR + 2, 20, 9, HANGAR + 4, 29, "glass");
-		b.clear(9, HANGAR + 1, 24, 9, HANGAR + 2, 25);
-		b.set(9, HANGAR + 3, 24, DARK);
-		b.set(9, HANGAR + 3, 25, DARK);
+		b.room(CONTROL_X0, HANGAR, -59, HANGAR_X0, HANGAR + 7, -35, DARK);
+		b.box(CONTROL_X0 + 1, HANGAR, -58, HANGAR_X0 - 1, HANGAR, -36, FLOOR);
+		// The window wall (the hangar's west wall) and the door.
+		b.box(HANGAR_X0, HANGAR + 3, -57, HANGAR_X0, HANGAR + 6, -37, PANE);
+		b.clear(HANGAR_X0, HANGAR + 1, -40, HANGAR_X0, HANGAR + 3, -38);
 
-		for (int z = 21; z <= 28; z++) {
-			if (z == 24 || z == 25) {
-				continue;
-			}
-
-			b.set(8, HANGAR + 1, z, BLACK);
-			b.set(8, HANGAR + 2, z, z % 2 == 0 ? "lever[face=floor,facing=west]" : "stone_button[face=floor,facing=west]");
-			b.set(7, HANGAR + 1, z, "polished_blackstone_stairs[facing=west]");
+		// Consoles under the window (proxies for the client's models), seats behind them.
+		for (int z = -57; z <= -42; z++) {
+			b.set(HANGAR_X0 - 1, HANGAR + 1, z, PROXY);
 		}
 
-		for (int z = 20; z <= 29; z++) {
-			b.set(2, HANGAR + 2, z, z % 3 == 0 ? "verdant_froglight" : "tinted_glass");
-			b.set(2, HANGAR + 3, z, z % 4 == 1 ? "ochre_froglight" : "tinted_glass");
-			b.set(3, HANGAR + 1, z, z % 2 == 0 ? "observer[facing=east]" : "polished_blackstone");
+		for (int z = -56; z <= -46; z += 2) {
+			b.set(HANGAR_X0 - 2, HANGAR + 1, z, PROXY);
 		}
 
-		b.light(5, HANGAR + 4, 24, 12);
+		// Screens on the back wall.
+		for (int z = -56; z <= -38; z += 3) {
+			b.set(CONTROL_X0 + 1, HANGAR + 1, z, PROXY);
+		}
+
+		b.light(CONTROL_X0 + 6, HANGAR + 5, -47, 12);
+		b.light(CONTROL_X0 + 6, HANGAR + 5, -40, 11);
+		b.light(CONTROL_X0 + 6, HANGAR + 5, -54, 11);
 	}
 
-	/** A TIE fighter on its rack: a ball cockpit between two hexagonal wings. */
-	private static void tie(InteriorBuilder b) {
-		int cy = HANGAR + 7;
-		int cz = 20;
+	/** The corridor from the hangar to the lift lobby, and the door to the reactor. */
+	private static void corridor(InteriorBuilder b) {
+		b.room(CX - 4, HANGAR, HANGAR_Z1, CX + 4, HANGAR + 6, LOBBY_Z1 + 1, DARK);
+		b.box(CX - 3, HANGAR, HANGAR_Z1, CX + 3, HANGAR, LOBBY_Z1, FLOOR);
+		b.clear(CX - 2, HANGAR + 1, HANGAR_Z1, CX + 2, HANGAR + 4, HANGAR_Z1);
+		// The lift at the end of the lobby (a lit floor).
+		b.box(CX - 2, HANGAR, LOBBY_Z1 - 2, CX + 2, HANGAR, LOBBY_Z1, "white_concrete");
 
-		for (int x = 32; x <= 36; x++) {
-			for (int y = cy - 2; y <= cy + 2; y++) {
-				for (int z = cz - 2; z <= cz + 2; z++) {
-					double d = Math.sqrt((x - 34) * (x - 34) + (y - cy) * (y - cy) + (z - cz) * (z - cz));
-
-					if (d <= 2.3) {
-						b.set(x, y, z, "gray_concrete");
-					}
-				}
-			}
+		for (int z = HANGAR_Z1 + 2; z <= LOBBY_Z1 - 2; z += 4) {
+			b.light(CX, HANGAR + 4, z, 12);
 		}
 
-		// Its round front window with frame spokes, facing north.
-		b.set(34, cy, cz - 2, "black_stained_glass");
-		b.set(33, cy, cz - 2, "black_stained_glass");
-		b.set(35, cy, cz - 2, "black_stained_glass");
-		b.set(34, cy + 1, cz - 2, "black_stained_glass");
-		b.set(34, cy - 1, cz - 2, "black_stained_glass");
-
-		// Pylons and the wings: tall six-sided panels with a frame and a grid.
-		b.box(30, cy, cz, 31, cy, cz, "light_gray_concrete");
-		b.box(37, cy, cz, 38, cy, cz, "light_gray_concrete");
-
-		for (int x : new int[] {29, 39}) {
-			for (int y = cy - 5; y <= cy + 5; y++) {
-				int half = 5 - Math.max(0, Math.abs(y - cy) - 2);
-
-				for (int z = cz - half; z <= cz + half; z++) {
-					boolean edge = Math.abs(z - cz) == half || Math.abs(y - cy) == 5 || z == cz || y == cy;
-					b.set(x, y, z, edge ? "gray_concrete" : "black_concrete");
-				}
-			}
-		}
-
-		// The rack it hangs from.
-		for (int y = cy + 3; y <= HANGAR + 12; y++) {
-			b.set(34, y, cz, "iron_chain[axis=y]");
-		}
+		// The door to the reactor gallery, east of the lobby.
+		b.room(CX + 4, HANGAR, LOBBY_Z0 - 1, CX + 10, HANGAR + 4, LOBBY_Z0 + 3, DARK);
+		b.clear(CX + 4, HANGAR + 1, LOBBY_Z0, CX + 4, HANGAR + 3, LOBBY_Z0 + 2);
+		b.box(CX + 5, HANGAR, LOBBY_Z0, CX + 9, HANGAR, LOBBY_Z0 + 2, FLOOR);
+		b.clear(CX + 7, HANGAR + 1, LOBBY_Z0 + 3, CX + 9, HANGAR + 3, LOBBY_Z0 + 3);
+		b.light(CX + 7, HANGAR + 3, LOBBY_Z0 + 1, 11);
 	}
 
-	/** The command deck: the turbolift, the corridor and the two rooms off it. */
-	private static void commandDeck(InteriorBuilder b) {
-		b.box(18, BRIDGE - 1, 33, 26, BRIDGE + 5, 50, DARK);
-		b.box(5, BRIDGE - 1, 35, 19, BRIDGE + 6, 46, DARK);
-		b.box(25, BRIDGE - 1, 35, 40, BRIDGE + 6, 46, DARK);
-		b.clear(20, BRIDGE + 1, 34, 24, BRIDGE + 4, 45);
-		b.clear(20, BRIDGE + 1, 46, 24, BRIDGE + 3, 48);
-		b.clear(6, BRIDGE + 1, 36, 18, BRIDGE + 5, 44);
-		b.clear(26, BRIDGE + 1, 36, 39, BRIDGE + 5, 44);
-		b.box(20, BRIDGE, 34, 24, BRIDGE, 48, FLOOR);
-		b.box(6, BRIDGE, 36, 18, BRIDGE, 44, "dark_oak_planks");
-		b.box(26, BRIDGE, 36, 39, BRIDGE, 44, FLOOR);
-		b.box(20, BRIDGE, 46, 24, BRIDGE, 48, "white_concrete");
-		b.set(22, BRIDGE, 47, LIGHT);
-		// Doors into the side rooms.
-		b.clear(19, BRIDGE + 1, 39, 19, BRIDGE + 3, 41);
-		b.clear(25, BRIDGE + 1, 39, 25, BRIDGE + 3, 41);
+	/** The gallery from the side room to the reactor's catwalk. */
+	public static final int GALLERY_X0 = CX + 6;
+	public static final int GALLERY_X1 = CX + 10;
+	public static final int GALLERY_Z0 = LOBBY_Z0 + 3;
+	public static final int GALLERY_Z1 = 11;
 
-		for (int z = 35; z <= 45; z += 3) {
-			b.set(22, BRIDGE + 5, z, LIGHT);
-			b.set(19, BRIDGE + 3, z, z == 38 || z == 41 ? DARK : GLOW);
-			b.set(25, BRIDGE + 3, z, z == 38 || z == 41 ? DARK : GLOW);
+	/** The reactor: a round shaft with the core in the middle and a catwalk ring around it. */
+	private static void reactor(InteriorBuilder b) {
+		double r = REACTOR_R;
+		b.ringWall(REACTOR_X, REACTOR_BOTTOM - 1, REACTOR_TOP, REACTOR_Z, r - 0.5, r + 1.0, DARK);
+		b.disc(REACTOR_X, REACTOR_BOTTOM - 1, REACTOR_Z, r, DARK);
+		b.disc(REACTOR_X, REACTOR_TOP, REACTOR_Z, r, DARK);
+
+		for (int y = REACTOR_BOTTOM; y < REACTOR_TOP; y++) {
+			b.disc(REACTOR_X, y, REACTOR_Z, r - 0.5, "air");
 		}
 
-		b.light(22, BRIDGE + 3, 40, 14);
-		b.light(22, BRIDGE + 2, 47, 13);
+		// The catwalk ring at deck height.
+		b.ring(REACTOR_X, HANGAR, REACTOR_Z, 8.5, r - 0.5, FLOOR);
+		// The gallery from the lobby's side room, through the shaft wall onto the catwalk.
+		b.room(GALLERY_X0, HANGAR, GALLERY_Z0, GALLERY_X1, HANGAR + 4, GALLERY_Z1, DARK);
+		b.box(GALLERY_X0 + 1, HANGAR, GALLERY_Z0, GALLERY_X1 - 1, HANGAR, GALLERY_Z1 + 3, FLOOR);
+		b.clear(GALLERY_X0 + 1, HANGAR + 1, GALLERY_Z0, GALLERY_X1 - 1, HANGAR + 3, GALLERY_Z1 + 3);
+		b.light(CX + 8, HANGAR + 3, 6, 11);
+		// Railings (invisible here, drawn by the client) keep people out of the shaft, and off the
+		// uneven outer edge of the catwalk where the round wall is.
+		b.ring(REACTOR_X, HANGAR + 1, REACTOR_Z, 8.0, 8.9, PROXY);
+		b.ring(REACTOR_X, HANGAR + 2, REACTOR_Z, 8.0, 8.9, PROXY);
 
-		// The conference room: a long table, chairs and the holo projector in its middle.
-		b.box(9, BRIDGE + 1, 39, 15, BRIDGE + 1, 41, "dark_oak_slab[type=top]");
-
-		for (int x = 9; x <= 15; x += 2) {
-			b.set(x, BRIDGE + 1, 38, "dark_oak_stairs[facing=north]");
-			b.set(x, BRIDGE + 1, 42, "dark_oak_stairs[facing=south]");
+		for (int y = HANGAR + 1; y <= HANGAR + 4; y++) {
+			b.ring(REACTOR_X, y, REACTOR_Z, r - 1.5, r - 0.5, PROXY);
 		}
 
-		b.set(12, BRIDGE + 2, 40, "beacon");
-		b.set(12, BRIDGE + 3, 40, "light_blue_stained_glass");
-		b.set(12, BRIDGE + 5, 40, LIGHT);
-		b.light(8, BRIDGE + 4, 37, 12);
-		b.light(16, BRIDGE + 4, 43, 12);
-
-		// The sensor room: a wall of screens with blips, consoles in front.
-		for (int x = 27; x <= 38; x++) {
-			for (int y = BRIDGE + 1; y <= BRIDGE + 4; y++) {
-				boolean blip = (x * 5 + y * 3) % 7 == 0;
-				b.set(x, y, 44, blip ? (x % 2 == 0 ? "verdant_froglight" : "ochre_froglight") : "black_stained_glass");
-			}
-
-			if (x % 3 != 0) {
-				b.set(x, BRIDGE + 1, 41, BLACK);
-				b.set(x, BRIDGE + 2, 41, x % 2 == 0 ? "comparator[facing=south]" : "stone_button[face=floor,facing=south]");
-				b.set(x, BRIDGE + 1, 40, "polished_blackstone_stairs[facing=south]");
-			}
-		}
-
-		b.set(38, BRIDGE + 1, 36, "lectern[facing=west]");
-		b.light(32, BRIDGE + 4, 38, 12);
+		b.clear(GALLERY_X0 + 1, HANGAR + 1, GALLERY_Z0, GALLERY_X1 - 1, HANGAR + 3, GALLERY_Z1 + 3);
+		// The core gives off light.
+		b.light((int) REACTOR_X, REACTOR_BOTTOM + 4, (int) REACTOR_Z, 15);
+		b.light((int) REACTOR_X, HANGAR + 3, (int) (REACTOR_Z - 11), 13);
+		b.light((int) REACTOR_X, HANGAR + 3, (int) (REACTOR_Z + 11), 13);
+		b.light((int) (REACTOR_X - 11), HANGAR + 3, (int) REACTOR_Z, 13);
+		b.light((int) (REACTOR_X + 11), HANGAR + 3, (int) REACTOR_Z, 13);
+		b.light((int) REACTOR_X, REACTOR_TOP - 3, (int) REACTOR_Z, 14);
 	}
 
-	/** The bridge: the walkway between the crew pits, the command platform and the great window. */
+	// --- Bridge deck ---------------------------------------------------------------------------
+
 	private static void bridge(InteriorBuilder b) {
-		b.box(1, PIT - 1, 1, 43, BRIDGE + 10, 33, DARK);
-		b.clear(2, PIT + 1, 2, 42, BRIDGE + 9, 32);
-		// The crew pits, three blocks below the walkway.
-		b.box(2, PIT, 2, 42, PIT, 32, FLOOR);
-		// The command platform across the front, the walkway down the middle, at bridge height.
-		b.box(2, PIT + 1, 2, 42, BRIDGE, 5, DARK);
-		b.box(2, BRIDGE, 2, 42, BRIDGE, 5, FLOOR);
-		b.box(19, PIT + 1, 6, 25, BRIDGE, 32, DARK);
-		b.box(19, BRIDGE, 6, 25, BRIDGE, 32, FLOOR);
-		b.box(21, BRIDGE, 6, 23, BRIDGE, 32, "gray_concrete");
-		// The entrance from the corridor.
-		b.clear(20, BRIDGE + 1, 33, 24, BRIDGE + 4, 33);
+		b.room(BRIDGE_X0, PIT, WINDOW_Z, BRIDGE_X1, BRIDGE_TOP, BRIDGE_BACK, DARK);
+		b.box(BRIDGE_X0 + 1, PIT, WINDOW_Z + 1, BRIDGE_X1 - 1, PIT, BRIDGE_BACK - 1, FLOOR);
 
-		// The great window: the front wall from side to side, with a frame.
-		b.box(3, BRIDGE + 1, 1, 41, BRIDGE + 8, 1, "glass");
+		// The great window: the whole front wall from the pits to near the ceiling.
+		b.box(BRIDGE_X0 + 1, PIT + 1, WINDOW_Z, BRIDGE_X1 - 1, BRIDGE_TOP - 2, WINDOW_Z, PANE);
 
-		for (int x = 3; x <= 41; x += 4) {
-			b.box(x, BRIDGE + 1, 1, x, BRIDGE + 8, 1, BLACK);
+		// The command platform along the window, and the walkway down the middle, at deck height.
+		b.box(BRIDGE_X0 + 1, PIT + 1, WINDOW_Z + 1, BRIDGE_X1 - 1, DECK, PLATFORM_Z1, BLACK);
+		b.box(BRIDGE_X0 + 1, DECK, WINDOW_Z + 1, BRIDGE_X1 - 1, DECK, PLATFORM_Z1, FLOOR);
+		b.box(WALK_X0, PIT + 1, PLATFORM_Z1, WALK_X1, DECK, BRIDGE_BACK - 1, BLACK);
+		b.box(WALK_X0, DECK, PLATFORM_Z1, WALK_X1, DECK, BRIDGE_BACK - 1, FLOOR);
+
+		// Railings along the walkway and the platform edge (invisible blocks, drawn by the client).
+		for (int z = PLATFORM_Z1 + 1; z <= BRIDGE_BACK - 1; z++) {
+			if (!isStep(z)) {
+				b.set(WALK_X0, DECK + 1, z, PROXY);
+				b.set(WALK_X1, DECK + 1, z, PROXY);
+			}
 		}
 
-		b.box(3, BRIDGE + 4, 1, 41, BRIDGE + 4, 1, BLACK);
-		// Railings along the walkway and the platform.
-		for (int z = 6; z <= 32; z++) {
-			if (z % 8 != 3) {
-				b.set(19, BRIDGE + 1, z, "iron_bars");
-				b.set(25, BRIDGE + 1, z, "iron_bars");
+		for (int x = BRIDGE_X0 + 1; x <= BRIDGE_X1 - 1; x++) {
+			if (x < WALK_X0 || x > WALK_X1) {
+				b.set(x, DECK + 1, PLATFORM_Z1, PROXY);
 			}
 		}
 
 		// Steps down into the pits.
-		for (int z : new int[] {11, 19, 27}) {
-			for (int i = 0; i < 3; i++) {
-				b.set(18 - i, BRIDGE - i, z, "polished_blackstone_stairs[facing=east]");
-				b.set(26 + i, BRIDGE - i, z, "polished_blackstone_stairs[facing=west]");
+		for (int z : new int[] {77, 89}) {
+			for (int i = 0; i < 4; i++) {
+				b.set(WALK_X0 - 1 - i, DECK - i, z, "polished_blackstone_stairs[facing=east]");
+				b.set(WALK_X0 - 1 - i, DECK - i, z + 1, "polished_blackstone_stairs[facing=east]");
+				b.set(WALK_X1 + 1 + i, DECK - i, z, "polished_blackstone_stairs[facing=west]");
+				b.set(WALK_X1 + 1 + i, DECK - i, z + 1, "polished_blackstone_stairs[facing=west]");
 			}
 		}
 
-		// Rows of consoles with seats in both pits, every crew member looking to the window.
-		for (int z = 8; z <= 30; z += 4) {
-			for (int x = 3; x <= 41; x++) {
-				if (x >= 16 && x <= 28 || x == 3 || x == 41) {
+		// Rows of consoles in both pits (proxies for the client's models), everyone facing the window.
+		for (int z : PIT_ROWS) {
+			for (int x = BRIDGE_X0 + 2; x <= BRIDGE_X1 - 2; x++) {
+				if (x >= WALK_X0 - 4 && x <= WALK_X1 + 4) {
 					continue;
 				}
 
-				b.set(x, PIT + 1, z, BLACK);
-				b.set(x, PIT + 2, z, (x + z) % 5 == 0 ? "cyan_stained_glass" : (x + z) % 3 == 0 ? "stone_button[face=floor,facing=south]"
-						: "polished_blackstone_slab[type=bottom]");
+				b.set(x, PIT + 1, z, PROXY);
 
-				if (x % 2 == 0) {
-					b.set(x, PIT + 1, z + 1, "polished_blackstone_stairs[facing=south]");
+				// A seat behind every other console.
+				if ((x & 1) == 0) {
+					b.set(x, PIT + 1, z + 1, PROXY);
 				}
 			}
-
-			b.set(9, PIT + 1, z, "verdant_froglight");
-			b.set(35, PIT + 1, z, "ochre_froglight");
 		}
 
-		// The helm and the command station at the front of the walkway.
-		b.box(20, BRIDGE + 1, 3, 24, BRIDGE + 1, 3, BLACK);
-		b.set(22, BRIDGE + 2, 3, "lever[face=floor,facing=south]");
-		b.set(21, BRIDGE + 2, 3, "cyan_stained_glass");
-		b.set(23, BRIDGE + 2, 3, "cyan_stained_glass");
-		b.set(20, BRIDGE + 2, 3, "stone_button[face=floor,facing=south]");
-		b.set(24, BRIDGE + 2, 3, "stone_button[face=floor,facing=south]");
-		b.set(10, BRIDGE + 1, 3, BLACK);
-		b.set(34, BRIDGE + 1, 3, BLACK);
-		b.set(10, BRIDGE + 2, 3, "comparator[facing=south]");
-		b.set(34, BRIDGE + 2, 3, "comparator[facing=south]");
+		// The helm at the front of the walkway: the lever on a console.
+		b.box(CX - 2, DECK + 1, WINDOW_Z + 2, CX + 2, DECK + 1, WINDOW_Z + 2, PROXY);
+		b.set(CX, DECK + 1, WINDOW_Z + 2, BLACK);
+		b.set(CX, DECK + 2, WINDOW_Z + 2, "lever[face=floor,facing=south]");
+		// The officers' stations at the ends of the platform.
+		for (int x : new int[] {BRIDGE_X0 + 4, BRIDGE_X1 - 4}) {
+			b.set(x, DECK + 1, WINDOW_Z + 2, PROXY);
+		}
 
-		// Ceiling lights in lines along the bridge, and light down into the pits.
-		for (int z = 3; z <= 31; z += 4) {
-			for (int x = 6; x <= 38; x += 8) {
-				b.set(x, BRIDGE + 9, z, LIGHT);
+		// The door to the command deck.
+		b.clear(CX - 2, DECK + 1, BRIDGE_BACK, CX + 2, DECK + 4, BRIDGE_BACK);
+
+		// Light: rows in the ceiling, softer light down in the pits.
+		for (int z = WINDOW_Z + 3; z <= BRIDGE_BACK - 2; z += 5) {
+			for (int x = BRIDGE_X0 + 4; x <= BRIDGE_X1 - 4; x += 8) {
+				b.light(x, BRIDGE_TOP - 2, z, 14);
 			}
 
-			b.light(10, PIT + 4, z, 13);
-			b.light(34, PIT + 4, z, 13);
-			b.light(22, BRIDGE + 4, z, 12);
+			b.light(BRIDGE_X0 + 8, PIT + 3, z, 11);
+			b.light(BRIDGE_X1 - 8, PIT + 3, z, 11);
+		}
+	}
+
+	/** Whether the walkway railing has an opening for the steps there. */
+	public static boolean isStep(int z) {
+		return z == 77 || z == 78 || z == 89 || z == 90;
+	}
+
+	/** The command corridor, the side rooms and the turbolift behind the bridge. */
+	private static void commandDeck(InteriorBuilder b) {
+		// The corridor.
+		b.room(CX - 4, DECK, BRIDGE_BACK, CX + 4, COMMAND_TOP, COMMAND_BACK, DARK);
+		b.box(CX - 3, DECK, BRIDGE_BACK, CX + 3, DECK, COMMAND_BACK - 1, FLOOR);
+		b.clear(CX - 2, DECK + 1, BRIDGE_BACK, CX + 2, DECK + 4, BRIDGE_BACK);
+		b.box(CX - 2, DECK, COMMAND_BACK - 2, CX + 2, DECK, COMMAND_BACK - 1, "white_concrete");
+
+		// The conference room (west) and the sensor room (east), with windows in their outer walls.
+		b.room(SIDE_WEST, DECK, SIDE_Z0, CX - 4, COMMAND_TOP, SIDE_Z1, DARK);
+		b.box(SIDE_WEST + 1, DECK, SIDE_Z0 + 1, CX - 5, DECK, SIDE_Z1 - 1, FLOOR);
+		b.box(SIDE_WEST, DECK + 2, SIDE_Z0 + 2, SIDE_WEST, COMMAND_TOP - 2, SIDE_Z1 - 2, PANE);
+		b.room(CX + 4, DECK, SIDE_Z0, SIDE_EAST, COMMAND_TOP, SIDE_Z1, DARK);
+		b.box(CX + 5, DECK, SIDE_Z0 + 1, SIDE_EAST - 1, DECK, SIDE_Z1 - 1, FLOOR);
+		b.box(SIDE_EAST, DECK + 2, SIDE_Z0 + 2, SIDE_EAST, COMMAND_TOP - 2, SIDE_Z1 - 2, PANE);
+		// Doors from the corridor.
+		b.clear(CX - 4, DECK + 1, 106, CX - 4, DECK + 3, 108);
+		b.clear(CX + 4, DECK + 1, 106, CX + 4, DECK + 3, 108);
+
+		// The conference table (proxies) with the hologram projector in its middle.
+		int tx = (SIDE_WEST + CX - 4) / 2;
+		b.box(tx - 6, DECK + 1, 106, tx + 6, DECK + 1, 108, PROXY);
+
+		for (int x = tx - 5; x <= tx + 5; x += 2) {
+			b.set(x, DECK + 1, 105, PROXY);
+			b.set(x, DECK + 1, 109, PROXY);
+		}
+		// The sensor room's consoles along its inner wall and the tactical table.
+		for (int z = SIDE_Z0 + 2; z <= SIDE_Z1 - 2; z += 2) {
+			b.set(CX + 5, DECK + 1, z, z >= 105 && z <= 109 ? "air" : PROXY);
+		}
+
+		int sx = (CX + 4 + SIDE_EAST) / 2 + 4;
+		b.box(sx - 2, DECK + 1, 105, sx + 2, DECK + 1, 109, PROXY);
+		b.set(SIDE_EAST - 2, DECK + 1, SIDE_Z0 + 2, "chest[facing=west]");
+
+		for (int z = SIDE_Z0 + 3; z <= SIDE_Z1 - 3; z += 5) {
+			b.light(tx - 5, COMMAND_TOP - 2, z, 12);
+			b.light(tx + 5, COMMAND_TOP - 2, z, 12);
+			b.light(sx - 6, COMMAND_TOP - 2, z, 12);
+			b.light(sx + 4, COMMAND_TOP - 2, z, 12);
+		}
+
+		for (int z = BRIDGE_BACK + 2; z <= COMMAND_BACK - 2; z += 4) {
+			b.light(CX, COMMAND_TOP - 2, z, 12);
 		}
 	}
 }
