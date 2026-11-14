@@ -739,5 +739,6 @@
   "sabercraft.ship.menu.aboard": "An Bord gehen",
   "sabercraft.ship.menu.aboard.tooltip": "Geh in dein Schiff und lauf darin herum. Ist es nicht in der Nähe, wird es zuerst gerufen. Geht auch aus dem Cockpit. Raus geht es über die Rampe oder den Hangarausgang.",
   "sabercraft.interior.room.star_destroyer.reactor": "Reaktor",
-  "sabercraft.interior.room.star_destroyer.hangar_corridor": "Hangargang"
+  "sabercraft.interior.room.star_destroyer.hangar_corridor": "Hangargang",
+  "sabercraft.ship.not_inside": "%s kann nicht in einem Schiff gerufen werden. Verlasse zuerst das Schiff."
 }

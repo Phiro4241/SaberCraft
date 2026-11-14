@@ -152,6 +152,17 @@ public final class Starships {
 			if (entity instanceof Pig pig && !(pig instanceof ShipEntity) && ShipMarker.of(pig) != null) {
 				pig.discard();
 			}
+
+			// Phase 16: no ship inside a ship's interior, however it got there; its owner is told.
+			if (entity instanceof ShipEntity ship && com.phiro.sabercraft.interior.ShipInteriors.isInterior(level)) {
+				ship.ejectPassengers();
+				ship.discard();
+
+				if (level.getServer().getPlayerList().getPlayer(ship.owner()) instanceof ServerPlayer owner) {
+					LIVE.remove(owner.getUUID(), ship);
+					owner.sendOverlayMessage(noShipsInside(Component.translatableWithFallback(ship.ship().translationKey(), ship.ship().displayName())));
+				}
+			}
 		});
 		ServerLifecycleEvents.SERVER_STOPPING.register(server -> {
 			LIVE.values().forEach(ShipEntity::discard);
@@ -252,6 +263,11 @@ public final class Starships {
 	/** Puts the player's ship into the world at that spot. */
 	private static @Nullable ShipEntity spawn(ServerPlayer player, ShipType type, Vec3 pos, float yaw) {
 		ServerLevel level = player.level();
+
+		// Phase 16: never in the ship interiors (whatever asks for it).
+		if (com.phiro.sabercraft.interior.ShipInteriors.isInterior(level)) {
+			return null;
+		}
 		ShipEntity ship = new ShipEntity(level, type, player);
 		restoreEnergy(player.getUUID(), ship, level.getGameTime());
 		restoreHull(player, ship, level.getGameTime());
@@ -266,6 +282,11 @@ public final class Starships {
 		}
 
 		return ship;
+	}
+
+	/** Phase 16: what a player hears who wants a ship inside a ship's interior. */
+	public static Component noShipsInside(Component name) {
+		return Component.translatableWithFallback("sabercraft.ship.not_inside", "%s cannot be called inside a ship. Leave the ship first.", name);
 	}
 
 	/** Phase 13: remembers the energy of a ship, every tick it is in the world. Phase 14: and its hull. */
@@ -537,6 +558,11 @@ public final class Starships {
 
 	/** Brings the ship (or a new one) down a few blocks in front of the player. */
 	private static Component call(ServerPlayer player, ShipType type, Component name) {
+		// Phase 16: no ship inside a ship.
+		if (com.phiro.sabercraft.interior.ShipInteriors.isInterior(player.level())) {
+			return noShipsInside(name);
+		}
+
 		Vec3 spot = landingSpot(player, type);
 
 		if (spot == null) {

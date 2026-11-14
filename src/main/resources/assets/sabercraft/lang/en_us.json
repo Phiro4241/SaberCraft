@@ -739,5 +739,6 @@
   "sabercraft.ship.menu.aboard": "Walk aboard",
   "sabercraft.ship.menu.aboard.tooltip": "Go inside your ship and walk around. If it is not close by, it is called first. Works from the cockpit too. Leave by the ramp or the hangar exit.",
   "sabercraft.interior.room.star_destroyer.reactor": "Reactor",
-  "sabercraft.interior.room.star_destroyer.hangar_corridor": "Hangar corridor"
+  "sabercraft.interior.room.star_destroyer.hangar_corridor": "Hangar corridor",
+  "sabercraft.ship.not_inside": "%s cannot be called inside a ship. Leave the ship first."
 }
