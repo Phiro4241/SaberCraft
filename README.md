@@ -199,6 +199,8 @@ All keys are in **Options → Controls → Key Binds → SaberCraft** and can be
 | **X** | Hyperspace jump of the ship you fly (Phase 14) |
 | Sneak + right-click the Falcon | Walk aboard (Phase 14); easier: the hangar button **Walk aboard**, one press, the ship is called if needed |
 | Right mouse button (blaster) | Fire; costs one arrow |
+| Right mouse button on a crew member (aboard) | They answer in the chat (Phase 18) |
+| Sneak in front of an open vent hatch (Star Destroyer) | Get down on all fours and crawl in (Phase 18) |
 
 **Starships** (fixed keys, they reuse your movement keys):
 
@@ -223,6 +225,7 @@ All keys are in **Options → Controls → Key Binds → SaberCraft** and can be
 | `/sabercraft duel <player>` | Challenge a player; `accept`, `decline`, `leave`, `ignore` |
 | `/sabercraft droid <droid>` | Call a droid; `recall`, `stay`, `ability`, `dismiss <droid>` |
 | `/sabercraft ship call\|board\|dismiss [ship]` | Call, board or send away your ship: `xwing` (default), `tie_fighter`, `tie_interceptor` |
+| `/sabercraft_collision [true\|false]` | Client only: shows the collision boxes around you inside a ship (red full blocks, orange shaped, green seats and consoles, yellow doors); without an argument it switches |
 
 `convert`, `revert` and `blaster` are open to everyone by default; with `commands_for_everyone: false` only operators may use them.
 

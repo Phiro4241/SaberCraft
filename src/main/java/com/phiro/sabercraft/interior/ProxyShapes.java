@@ -32,6 +32,11 @@ public final class ProxyShapes {
 		return built(plan).shapes;
 	}
 
+	/** Phase 18: the cells of a plan that only collide (plot space): no outline, the crosshair passes. */
+	public static it.unimi.dsi.fastutil.longs.LongSet ghosts(InteriorPlan plan) {
+		return built(plan).ghosts;
+	}
+
 	/** Phase 16: the blocks of a plan as built (plot space; no air). */
 	public static Long2ObjectMap<BlockState> blocks(InteriorPlan plan) {
 		return built(plan).blocks;
@@ -47,6 +52,14 @@ public final class ProxyShapes {
 
 	/** The shape of the barrier at a position of the interiors dimension, or {@code null} for a full block. */
 	public static @Nullable VoxelShape at(BlockPos pos) {
+		return at(pos, false);
+	}
+
+	/**
+	 * The shape of the barrier at a position, or {@code null} for a full block; for the outline
+	 * (what the crosshair hits) the cells that only collide are empty.
+	 */
+	public static @Nullable VoxelShape at(BlockPos pos, boolean outline) {
 		InteriorPlan plan = ShipInteriors.planAt(pos.getX() + 0.5, pos.getZ() + 0.5);
 
 		if (plan == null) {
@@ -55,7 +68,13 @@ public final class ProxyShapes {
 
 		int index = Math.floorDiv(pos.getX(), ShipInteriors.SPACING) - 1;
 		BlockPos origin = ShipInteriors.origin(plan, index);
-		return of(plan).get(BlockPos.asLong(pos.getX() - origin.getX(), pos.getY() - origin.getY(), pos.getZ() - origin.getZ()));
+		long key = BlockPos.asLong(pos.getX() - origin.getX(), pos.getY() - origin.getY(), pos.getZ() - origin.getZ());
+
+		if (outline && ghosts(plan).contains(key)) {
+			return Shapes.empty();
+		}
+
+		return of(plan).get(key);
 	}
 
 	/** A test on a point of the plot (plot space, x and z); true where something solid is. */
@@ -149,12 +168,14 @@ public final class ProxyShapes {
 	private static final class Recorder implements InteriorBuilder.Target {
 		final Long2ObjectMap<BlockState> blocks = new Long2ObjectOpenHashMap<>();
 		final Long2ObjectMap<VoxelShape> shapes = new Long2ObjectOpenHashMap<>();
+		final it.unimi.dsi.fastutil.longs.LongSet ghosts = new it.unimi.dsi.fastutil.longs.LongOpenHashSet();
 
 		@Override
 		public void set(int x, int y, int z, BlockState state) {
 			long key = BlockPos.asLong(x, y, z);
 			// Whatever is put there later replaces the shape too.
 			this.shapes.remove(key);
+			this.ghosts.remove(key);
 
 			if (state.isAir()) {
 				this.blocks.remove(key);
@@ -172,6 +193,11 @@ public final class ProxyShapes {
 		@Override
 		public void shape(int x, int y, int z, VoxelShape shape, boolean wall) {
 			this.shapes.put(BlockPos.asLong(x, y, z), shape);
+		}
+
+		@Override
+		public void ghost(int x, int y, int z) {
+			this.ghosts.add(BlockPos.asLong(x, y, z));
 		}
 	}
 }

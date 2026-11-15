@@ -36,9 +36,30 @@ abstract class BlockStateBaseMixin {
 		this.sabercraft$shape(level, pos, info);
 	}
 
+	/**
+	 * Phase 18: the outline (what the crosshair hits) is the same shape: a full invisible block
+	 * round a seat or a console took the click before (the couch, the hyperdrive lever). The slim
+	 * columns where the crew stand have no outline at all (a click there is meant for them).
+	 */
+	@Inject(method = "getShape(Lnet/minecraft/world/level/BlockGetter;Lnet/minecraft/core/BlockPos;Lnet/minecraft/world/phys/shapes/CollisionContext;)Lnet/minecraft/world/phys/shapes/VoxelShape;",
+			at = @At("HEAD"), cancellable = true)
+	private void sabercraft$shapedOutline(BlockGetter level, BlockPos pos, CollisionContext context, CallbackInfoReturnable<VoxelShape> info) {
+		this.sabercraft$shape(level, pos, info, true);
+	}
+
+	@Inject(method = "getShape(Lnet/minecraft/world/level/BlockGetter;Lnet/minecraft/core/BlockPos;)Lnet/minecraft/world/phys/shapes/VoxelShape;",
+			at = @At("HEAD"), cancellable = true)
+	private void sabercraft$shapedOutlineNoContext(BlockGetter level, BlockPos pos, CallbackInfoReturnable<VoxelShape> info) {
+		this.sabercraft$shape(level, pos, info, true);
+	}
+
 	private void sabercraft$shape(BlockGetter level, BlockPos pos, CallbackInfoReturnable<VoxelShape> info) {
+		this.sabercraft$shape(level, pos, info, false);
+	}
+
+	private void sabercraft$shape(BlockGetter level, BlockPos pos, CallbackInfoReturnable<VoxelShape> info, boolean outline) {
 		if (level instanceof Level world && ((BlockState) (Object) this).is(Blocks.BARRIER) && ShipInteriors.isInterior(world)) {
-			VoxelShape shape = ProxyShapes.at(pos);
+			VoxelShape shape = ProxyShapes.at(pos, outline);
 
 			if (shape != null) {
 				info.setReturnValue(shape);

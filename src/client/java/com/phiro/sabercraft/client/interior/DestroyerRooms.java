@@ -44,7 +44,50 @@ final class DestroyerRooms {
 		flightControl(b);
 		corridors(b);
 		reactor(b);
+		hiddenRoom(b);
 		b.layer(Layer.SOLID).worldLight().white().anim(0).twoSided(false);
+	}
+
+	/**
+	 * Phase 18: the hidden room off the crawl way: a store room nobody remembers, with a cot, a
+	 * stack of crates, a desk with a terminal someone has been using, a lamp on a cable.
+	 */
+	private static void hiddenRoom(MeshBuilder b) {
+		float y = HANGAR + 1;
+		b.layer(Layer.SOLID).worldLight().white().anim(0);
+		// The cot: a metal frame, a blanket, a rolled-up jacket for a pillow.
+		b.tile(InteriorAtlas.IMP_METAL, 1.0F);
+		b.box(14.02F, y, -5.95F, 15.98F, y + 0.33F, -5.05F);
+		b.fit(InteriorAtlas.IMP_CHAIR);
+		b.box(14.08F, y + 0.33F, -5.9F, 15.92F, y + 0.45F, -5.1F, MeshBuilder.ALL & ~MeshBuilder.DOWN);
+		b.colour(0xFFB86A2E).fit(InteriorAtlas.CREW_REBEL_LIMB, 0.0F, 0.0F, 1.0F, 0.6F);
+		b.box(14.12F, y + 0.45F, -5.8F, 14.5F, y + 0.58F, -5.2F, MeshBuilder.ALL & ~MeshBuilder.DOWN);
+		b.white();
+		// Crates, stacked in the corner.
+		Props.crate(b, 21, y, -7, 23, y + 2, -5, InteriorAtlas.IMP_CRATE);
+		Props.crate(b, 22, y, -5, 23, y + 1, -4, InteriorAtlas.IMP_CRATE);
+		// The desk against the south wall, a terminal on it, its screen lit.
+		b.tile(InteriorAtlas.IMP_METAL, 1.0F);
+		b.box(17.02F, y + 0.76F, -1.7F, 18.98F, y + 0.82F, -1.0F, MeshBuilder.ALL);
+		b.box(17.1F, y, -1.6F, 17.2F, y + 0.76F, -1.1F);
+		b.box(18.8F, y, -1.6F, 18.9F, y + 0.76F, -1.1F);
+		b.fit(InteriorAtlas.IMP_BLACK);
+		b.box(17.7F, y + 0.82F, -1.35F, 18.3F, y + 1.22F, -1.25F);
+		b.layer(Layer.GLOW).fullBright().anim(InteriorScene.ANIM_SLOW).fit(InteriorAtlas.IMP_SCREEN_TEXT_GLOW);
+		b.rect(17.74F, y + 1.19F, -1.249F, 0.52F, 0, 0, 0, -0.34F, 0);
+		b.layer(Layer.SOLID).worldLight().anim(0);
+		// Datapads on the desk, a cup.
+		b.fit(InteriorAtlas.IMP_CONSOLE_TOP);
+		b.box(17.2F, y + 0.82F, -1.6F, 17.5F, y + 0.84F, -1.4F, MeshBuilder.ALL & ~MeshBuilder.DOWN);
+		b.box(18.5F, y + 0.82F, -1.62F, 18.8F, y + 0.84F, -1.38F, MeshBuilder.ALL & ~MeshBuilder.DOWN);
+		b.tile(InteriorAtlas.IMP_METAL_LIGHT, 1.0F);
+		b.box(17.55F, y + 0.82F, -1.65F, 17.63F, y + 0.92F, -1.57F, MeshBuilder.ALL & ~MeshBuilder.DOWN);
+		// A lamp hanging on its cable.
+		b.tile(InteriorAtlas.IMP_BLACK, 1.0F);
+		b.box(17.98F, y + 2.4F, -4.02F, 18.02F, y + 3.0F, -3.98F);
+		b.layer(Layer.GLOW).fullBright().colour(0xFFE8C890).fit(InteriorAtlas.IMP_CEILING_LIGHT_GLOW);
+		b.box(17.85F, y + 2.3F, -4.15F, 18.15F, y + 2.4F, -3.85F);
+		b.white().layer(Layer.SOLID).worldLight();
 	}
 
 	// --- The panelling ---------------------------------------------------------------------------
@@ -258,7 +301,41 @@ final class DestroyerRooms {
 				InteriorAtlas.IMP_SCREEN_TACTICAL_GLOW, false, 1);
 		b.tile(InteriorAtlas.IMP_METAL, 1.0F);
 		b.box(-0.52F, 0.0F, -0.52F, 0.52F, 1.015F, 0.52F, MeshBuilder.ALL & ~MeshBuilder.DOWN);
+		// Phase 18: the throttle on it (a drawn lever: a black base, two arms leaning forward, the grip across).
+		b.fit(InteriorAtlas.IMP_BLACK);
+		b.box(-0.2F, 1.015F, -0.16F, 0.2F, 1.085F, 0.16F, MeshBuilder.ALL & ~MeshBuilder.DOWN);
+		b.push().translate(0, 1.07F, -0.04F).rotateX(28.0F);
+		b.tile(InteriorAtlas.IMP_METAL_LIGHT, 1.0F);
+		b.box(-0.13F, 0.0F, -0.025F, -0.09F, 0.42F, 0.025F);
+		b.box(0.09F, 0.0F, -0.025F, 0.13F, 0.42F, 0.025F);
+		b.fit(InteriorAtlas.IMP_BLACK);
+		b.box(-0.17F, 0.38F, -0.04F, 0.17F, 0.47F, 0.04F);
 		b.pop();
+		b.pop();
+		// Phase 18: the steps down into the pits, drawn (they were blackstone stairs).
+		for (int z : new int[] {77, 89}) {
+			for (int i = 0; i < 4; i++) {
+				for (int side = 0; side < 2; side++) {
+					float x = side == 0 ? WALK_X0 - 1 - i : WALK_X1 + 1 + i;
+					float y = DECK - i;
+					float hx0 = side == 0 ? x + 0.5F : x;
+					b.tile(InteriorAtlas.IMP_FLOOR_WALKWAY, 1.0F);
+					b.box(x, y + 0.5F - 0.002F, z, x + 1, y + 0.5F, z + 2, MeshBuilder.UP);
+					b.box(hx0, y + 1.0F - 0.002F, z, hx0 + 0.5F, y + 1.0F, z + 2, MeshBuilder.UP);
+					b.tile(InteriorAtlas.IMP_METAL, 1.0F);
+					b.box(x, y, z, x + 1, y + 0.5F - 0.002F, z + 2, side == 0 ? MeshBuilder.WEST | MeshBuilder.NORTH | MeshBuilder.SOUTH
+							: MeshBuilder.EAST | MeshBuilder.NORTH | MeshBuilder.SOUTH);
+					b.box(hx0, y + 0.5F, z, hx0 + 0.5F, y + 1.0F - 0.002F, z + 2, side == 0 ? MeshBuilder.WEST | MeshBuilder.NORTH | MeshBuilder.SOUTH
+							: MeshBuilder.EAST | MeshBuilder.NORTH | MeshBuilder.SOUTH);
+					// A lit edge on each step.
+					b.layer(Layer.GLOW).fullBright().colour(0xFF7FA0C8).fit(InteriorAtlas.IMP_WALL_STRIP_GLOW, 0.0F, 0.45F, 1.0F, 0.55F);
+					float edge = side == 0 ? hx0 - 0.004F : hx0 + 0.504F;
+					b.twoSided(true).rect(edge, y + 0.98F, z + 2, 0, 0, -2, 0, -0.04F, 0);
+					b.twoSided(false).white().layer(Layer.SOLID).worldLight();
+				}
+			}
+		}
+
 		// A screen hanging over the helm, facing the walkway.
 		b.tile(InteriorAtlas.IMP_METAL, 1.0F);
 		b.box(CX - 2.0F, BRIDGE_TOP - 4.2F, WINDOW_Z + 2.2F, CX + 3.0F, BRIDGE_TOP - 2.6F, WINDOW_Z + 2.5F);
@@ -564,7 +641,26 @@ final class DestroyerRooms {
 		b.ring(CX + 0.5F, HANGAR + 1.018F, -28.5F, 1.2F, 1.4F, 16, true);
 		b.white().anim(0).layer(Layer.SOLID).worldLight();
 
-		// Cargo crates on their proxies.
+		// Phase 18: the hangers holding the TIE racks up (they were iron chains).
+		b.tile(InteriorAtlas.IMP_METAL, 1.0F);
+
+		for (int x : TIE_X) {
+			for (int z : tieZ()) {
+				b.box(x + 0.38F, HANGAR_TOP - 3.0F, z + 0.38F, x + 0.62F, top - 0.9F, z + 0.62F, MeshBuilder.ALL & ~MeshBuilder.UP);
+				b.box(x + 0.25F, HANGAR_TOP - 3.0F, z + 0.25F, x + 0.75F, HANGAR_TOP - 2.8F, z + 0.75F);
+			}
+		}
+
+		// Cargo crates on their proxies (Phase 18: also where barrels and chests stood).
+		for (int z = HANGAR_Z0 + 3; z <= HANGAR_Z0 + 9; z += 3) {
+			Props.crate(b, HANGAR_X1 - 3, HANGAR + 1, z, HANGAR_X1 - 1, HANGAR + 2, z + 2, InteriorAtlas.IMP_CRATE);
+			Props.crate(b, HANGAR_X1 - 2, HANGAR + 2, z, HANGAR_X1 - 1, HANGAR + 3, z + 1, InteriorAtlas.IMP_CRATE);
+		}
+
+		for (int x = HANGAR_X0 + 3; x <= HANGAR_X0 + 9; x += 3) {
+			Props.crate(b, x, HANGAR + 1, HANGAR_Z0 + 2, x + 2, HANGAR + 2, HANGAR_Z0 + 3, InteriorAtlas.IMP_CRATE);
+		}
+
 		Props.crate(b, HANGAR_X1 - 3, HANGAR + 1, -32, HANGAR_X1, HANGAR + 3, -28, InteriorAtlas.IMP_CRATE);
 		Props.crate(b, HANGAR_X1 - 2, HANGAR + 3, -31, HANGAR_X1, HANGAR + 4, -29, InteriorAtlas.IMP_CRATE);
 		Props.crate(b, HANGAR_X0 + 1, HANGAR + 1, -27, HANGAR_X0 + 4, HANGAR + 3, -23, InteriorAtlas.IMP_CRATE);
@@ -856,9 +952,6 @@ final class DestroyerRooms {
 
 	// --- The reactor ---------------------------------------------------------------------------
 
-	/** The gap in the round wall where the gallery comes in, in degrees (0 = east, 90 = south). */
-	static final float GAP_FROM = 296.0F;
-	static final float GAP_TO = 320.0F;
 
 	private static void reactor(MeshBuilder b) {
 		float cx = (float) REACTOR_X;
@@ -879,15 +972,10 @@ final class DestroyerRooms {
 		// Ribs and conduits up the wall.
 		b.tile(InteriorAtlas.IMP_PIPE, 1.0F);
 
-		for (int i = 0; i < 12; i++) {
-			float a = i * 30.0F + 15.0F;
-
-			if (a > GAP_FROM - 6 && a < GAP_TO + 6) {
-				continue;
-			}
-
-			float x = cx + Mth.cos(a * Mth.DEG_TO_RAD) * (r - 0.25F);
-			float z = cz + Mth.sin(a * Mth.DEG_TO_RAD) * (r - 0.25F);
+		// Phase 18: where the server has them collide (none by the gallery).
+		for (float a : RIB_ANGLES) {
+			float x = cx + Mth.cos(a * Mth.DEG_TO_RAD) * (float) RIB_R;
+			float z = cz + Mth.sin(a * Mth.DEG_TO_RAD) * (float) RIB_R;
 			b.cylinder(new Vector3f(x, bottom, z), new Vector3f(0, top - bottom, 0), 0.22F, 0.22F, 6, 6.0F, false, false);
 		}
 
@@ -938,12 +1026,95 @@ final class DestroyerRooms {
 			float a = (22.5F + i * 45.0F) * Mth.DEG_TO_RAD;
 			float dx = Mth.cos(a);
 			float dz = Mth.sin(a);
-			b.pipe(0.14F, 6, cx + dx * (r - 0.2F), HANGAR - 4.0F, cz + dz * (r - 0.2F), cx + dx * 9.2F, HANGAR - 0.1F, cz + dz * 9.2F);
+			b.pipe(0.14F, 6, cx + dx * (r - 0.2F), HANGAR - 2.0F, cz + dz * (r - 0.2F), cx + dx * 9.2F, HANGAR - 0.1F, cz + dz * 9.2F);
 		}
 
 		// The catwalk's inner edge.
 		b.tile(InteriorAtlas.IMP_HAZARD, 1.0F);
 		b.ring(cx, HANGAR + 1.012F, cz, 8.55F, 8.95F, 32, true);
+		reactorFloor(b);
+	}
+
+	/**
+	 * Phase 18: the reactor's lower level on the shaft floor: a grated deck round the core's base,
+	 * four energy converters (tall machines up to the catwalk, glowing bands, a pipe each into the
+	 * core), consoles along the wall, a status hologram, the lift pads here and on the catwalk.
+	 */
+	private static void reactorFloor(MeshBuilder b) {
+		float cx = (float) REACTOR_X;
+		float cz = (float) REACTOR_Z;
+		float floor = REACTOR_BOTTOM;
+		b.layer(Layer.SOLID).worldLight().white().anim(0);
+		// The deck: grating in a ring round the core, a hazard band at the core's foot.
+		b.tile(InteriorAtlas.IMP_FLOOR_GRATE, 1.0F);
+		b.ring(cx, floor + 0.01F, cz, 5.6F, REACTOR_WALL - 0.05F, 48, true);
+		b.tile(InteriorAtlas.IMP_HAZARD, 1.0F);
+		b.ring(cx, floor + 0.015F, cz, 5.5F, 6.0F, 40, true);
+
+		for (double angle : CONVERTER_ANGLES) {
+			float a = (float) Math.toRadians(angle);
+			float x = cx + Mth.cos(a) * (float) CONVERTER_R;
+			float z = cz + Mth.sin(a) * (float) CONVERTER_R;
+			float r = (float) CONVERTER_SIZE - 0.05F;
+			float top = HANGAR - 0.1F;
+			// A base, the body, a collar near the top, a cap.
+			b.tile(InteriorAtlas.IMP_METAL, 2.0F);
+			b.cylinder(new Vector3f(x, floor, z), new Vector3f(0, 0.5F, 0), r + 0.05F, r, 12, 2.0F, false, true);
+			b.tile(InteriorAtlas.IMP_PIPE, 1.0F);
+			b.cylinder(new Vector3f(x, floor + 0.5F, z), new Vector3f(0, top - floor - 1.2F, 0), r - 0.2F, r - 0.2F, 12, 3.0F, false, false);
+			b.tile(InteriorAtlas.IMP_METAL, 2.0F);
+			b.cylinder(new Vector3f(x, top - 0.7F, z), new Vector3f(0, 0.7F, 0), r, r - 0.3F, 12, 2.0F, false, true);
+			// A pipe across to the core's housing.
+			b.tile(InteriorAtlas.IMP_PIPE, 1.0F);
+			float px = cx + Mth.cos(a) * 4.2F;
+			float pz = cz + Mth.sin(a) * 4.2F;
+			b.pipe(0.28F, 8, x - Mth.cos(a) * (r - 0.2F), floor + 3.2F, z - Mth.sin(a) * (r - 0.2F), px, floor + 3.2F, pz, px - Mth.cos(a) * 0.6F,
+					floor + 2.4F, pz - Mth.sin(a) * 0.6F);
+			b.layer(Layer.GLOW).fullBright().colour(0xFF6F9CE0).anim(InteriorScene.ANIM_PULSE).fit(InteriorAtlas.IMP_WALL_STRIP_GLOW, 0.0F, 0.42F, 1.0F, 0.58F);
+
+			for (float band : new float[] {1.3F, 2.6F, 3.9F}) {
+				b.cylinder(new Vector3f(x, floor + band, z), new Vector3f(0, 0.18F, 0), r - 0.17F, r - 0.17F, 12, 1.0F, false, false);
+			}
+
+			b.white().anim(0).layer(Layer.SOLID).worldLight();
+		}
+
+		// The consoles along the wall, facing the core.
+		int[] glow = {InteriorAtlas.IMP_SCREEN_RADAR_GLOW, InteriorAtlas.IMP_SCREEN_TEXT_GLOW, InteriorAtlas.IMP_SCREEN_TACTICAL_GLOW};
+		float[] side = {Props.west(), Props.north(), Props.south()};
+
+		for (int i = 0; i < REACTOR_CONSOLES.size(); i++) {
+			net.minecraft.core.BlockPos c = REACTOR_CONSOLES.get(i);
+			Props.at(b, c.getX() + 0.5, c.getY(), c.getZ() + 0.5, side[i]);
+			Props.desk(b, 1.0F, 0.78F, InteriorAtlas.IMP_CONSOLE, InteriorAtlas.IMP_CONSOLE_TOP, InteriorAtlas.IMP_CONSOLE_TOP_GLOW, glow[i], true, i + 7);
+			b.pop();
+		}
+
+		// The lift pads: a lit plate with a ring, below and on the catwalk right above.
+		for (float y : new float[] {floor, HANGAR + 1}) {
+			float x0 = (float) REACTOR_LIFT.minX;
+			float z0 = (float) REACTOR_LIFT.minZ;
+			b.tile(InteriorAtlas.IMP_METAL_LIGHT, 1.0F);
+			b.box(x0 + 0.05F, y, z0 + 0.05F, x0 + 1.95F, y + 0.04F, z0 + 1.95F, MeshBuilder.ALL & ~MeshBuilder.DOWN);
+			b.layer(Layer.GLOW).fullBright().anim(InteriorScene.ANIM_SLOW).colour(0xFF6F8AB8).fit(InteriorAtlas.IMP_WALL_STRIP_GLOW, 0.0F, 0.42F, 1.0F, 0.58F);
+			b.ring(x0 + 1.0F, y + 0.045F, z0 + 1.0F, 0.6F, 0.75F, 16, true);
+			b.white().anim(0).layer(Layer.SOLID).worldLight();
+		}
+
+		// The lift's shaft: four posts from the floor through the catwalk, a hazard band round the hole.
+		b.tile(InteriorAtlas.IMP_METAL, 1.0F);
+		float lx0 = (float) REACTOR_LIFT.minX;
+		float lz0 = (float) REACTOR_LIFT.minZ;
+
+		// Phase 18: as thick as they collide (LIFT_POST either side of the corner).
+		float p = (float) LIFT_POST;
+
+		for (float[] post : new float[][] {{lx0 - p, lz0 - p}, {lx0 + 2.0F - p, lz0 - p}, {lx0 - p, lz0 + 2.0F - p}, {lx0 + 2.0F - p, lz0 + 2.0F - p}}) {
+			b.box(post[0], floor, post[1], post[0] + 2.0F * p, HANGAR - 0.01F, post[1] + 2.0F * p, MeshBuilder.ALL & ~MeshBuilder.DOWN & ~MeshBuilder.UP);
+		}
+
+		// Phase 18: the railing round the core's foot (it collides, the core is no stair).
+		Props.ringRailing(b, cx, floor, cz, (float) CORE_RAIL_R, 1.0F, 0.0F, 0.0F);
 	}
 
 	// --- Moving parts ----------------------------------------------------------------------------
@@ -959,6 +1130,26 @@ final class DestroyerRooms {
 			b.push().translate(cx, y + 0.6F * Mth.sin(seconds * 0.8F + i), cz).rotateY(seconds * (20.0F + i * 12.0F) * (i % 2 == 0 ? 1 : -1))
 					.rotateX(12.0F * Mth.sin(seconds * 0.5F + i * 2.0F));
 			b.ring(0, 0, 0, 3.6F, 4.0F, 24, true);
+			b.pop();
+		}
+
+		// Phase 18: the reactor's lower level: the core's state over the south console (a column of
+		// rings rising), and the converters' collars turning.
+		b.colourAlpha(0x4870C0FF).fit(InteriorAtlas.IMP_HOLO);
+
+		for (int i = 0; i < 4; i++) {
+			float rise = (seconds * 0.35F + i * 0.25F) % 1.0F;
+			b.ring(40.5F, REACTOR_BOTTOM + 1.3F + rise * 1.1F, 36.5F, 0.18F + rise * 0.12F, 0.24F + rise * 0.12F, 12, true);
+		}
+
+		b.colourAlpha(0x5878B8FF).fit(InteriorAtlas.IMP_REACTOR_GLOW);
+
+		for (double angle : CONVERTER_ANGLES) {
+			float a = (float) Math.toRadians(angle);
+			float x = cx + Mth.cos(a) * (float) CONVERTER_R;
+			float z = cz + Mth.sin(a) * (float) CONVERTER_R;
+			b.push().translate(x, HANGAR - 1.6F, z).rotateY(seconds * 45.0F + (float) angle);
+			b.ring(0, 0, 0, (float) CONVERTER_SIZE + 0.05F, (float) CONVERTER_SIZE + 0.2F, 6, true);
 			b.pop();
 		}
 

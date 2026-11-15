@@ -41,6 +41,13 @@ public final class InteriorBuilder {
 		 */
 		default void shape(int x, int y, int z, net.minecraft.world.phys.shapes.VoxelShape shape, boolean wall) {
 		}
+
+		/**
+		 * Phase 18: the cell just shaped only collides: the crosshair goes through it (someone of the
+		 * crew stands there, and a click is meant for them).
+		 */
+		default void ghost(int x, int y, int z) {
+		}
 	}
 
 	private final Target target;
@@ -108,6 +115,12 @@ public final class InteriorBuilder {
 		if (wall) {
 			this.wallCells.add(key);
 		}
+	}
+
+	/** Phase 18: a shaped barrier that only collides (the crosshair passes through it). */
+	public void ghost(int x, int y, int z, net.minecraft.world.phys.shapes.VoxelShape shape) {
+		this.shaped(x, y, z, shape, false);
+		this.target.ghost(x, y, z);
 	}
 
 	/**

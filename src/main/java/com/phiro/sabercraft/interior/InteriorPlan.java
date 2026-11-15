@@ -60,6 +60,29 @@ public abstract class InteriorPlan {
 		}
 	}
 
+	/**
+	 * Phase 18: a small hatch low in a wall where a crawl way (one block high) opens into a room
+	 * ({@code room}: the way into the room). Closed it is a barrier the client draws as a grille;
+	 * a click opens it (the cell becomes air), it closes by itself when nobody is near.
+	 */
+	public record Hatch(BlockPos cell, net.minecraft.core.Direction room) {
+	}
+
+	/** Phase 18: the plan's hatches. */
+	public List<Hatch> hatches() {
+		return List.of();
+	}
+
+	/** Phase 18: where one gets down to crawl into a crawl way: the hatches and other openings. */
+	public List<BlockPos> crawlMouths() {
+		return this.hatches().stream().map(Hatch::cell).toList();
+	}
+
+	/** Phase 18: the plan's crew (drawn by the clients, spoken to by players). */
+	public List<Crew> crew() {
+		return List.of();
+	}
+
 	/** Phase 16: the seats of the plan. */
 	public List<Seat> seats() {
 		return List.of();
@@ -111,6 +134,8 @@ public abstract class InteriorPlan {
 		public static final String HYPERSPACE = "hyperspace";
 		public static final String STATUS = "status";
 		public static final String LIGHTS = "lights";
+		/** Phase 18: a container drawn over a chest in the floor: opens the chest. */
+		public static final String STORAGE = "storage";
 	}
 
 	/** Phase 16: the consoles that do something. */

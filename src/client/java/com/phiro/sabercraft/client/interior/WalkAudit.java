@@ -27,6 +27,7 @@ import net.minecraft.world.phys.shapes.VoxelShape;
 
 import com.phiro.sabercraft.client.interior.MeshBuilder.Layer;
 import com.phiro.sabercraft.interior.InteriorPlan;
+import com.phiro.sabercraft.interior.ProxyShapes;
 
 /**
  * Phase 17: walks through a built interior the way a player does and compares where one can go
@@ -89,11 +90,10 @@ public final class WalkAudit {
 	public static Result walk(ServerLevel level, ServerPlayer player, BlockPos origin, InteriorPlan plan, List<Vec3> starts, int limit) {
 		InteriorVisuals visuals = InteriorScene.visuals(plan.id());
 		Map<Long, List<Tri>> grid = new HashMap<>();
+		// Phase 18: holograms and force fields apart: one walks through them, but one sees a force
+		// field one stands on (the hangar's opening in the floor).
+		Map<Long, List<Tri>> holo = new HashMap<>();
 		MeshBuilder builder = new MeshBuilder((layer, xyzuv, nx, ny, nz, colours, lightMode, fixedLight, anim, samples) -> {
-			if (layer == Layer.HOLO) {
-				return;
-			}
-
 			Vector3f[] p = new Vector3f[4];
 
 			for (int v = 0; v < 4; v++) {
@@ -101,10 +101,13 @@ public final class WalkAudit {
 			}
 
 			String from = from();
-			add(grid, new Tri(p[0], p[1], p[2], layer, from));
-			add(grid, new Tri(p[0], p[2], p[3], layer, from));
+			Map<Long, List<Tri>> into = layer == Layer.HOLO ? holo : grid;
+			add(into, new Tri(p[0], p[1], p[2], layer, from));
+			add(into, new Tri(p[0], p[2], p[3], layer, from));
 		});
 		visuals.build(builder);
+		// Phase 18: the crew who stand in their place (they collide there).
+		CrewModels.draw(builder, plan.crew().stream().filter(com.phiro.sabercraft.interior.Crew::still).toList(), 0.0);
 
 		Vec3 home = player.position();
 		float homeYaw = player.getYRot();
@@ -143,6 +146,7 @@ public final class WalkAudit {
 			nodes++;
 			int before = counts[0] + counts[1] * 2;
 			check(grid, plan, origin, at, places, counts);
+			ground(level, grid, holo, plan, origin, at, places, counts);
 			NODES.add(new double[] {at.x, at.y, at.z, counts[0] + counts[1] * 2 - before});
 
 			for (double[] dir : dirs) {
@@ -468,6 +472,42 @@ public final class WalkAudit {
 		report(places, plan, origin, at, eye ? "at the eyes" : "in a wall", hit);
 	}
 
+	/**
+	 * Phase 18: whether the player stands on an invisible barrier with nothing drawn under the
+	 * feet (standing in the air on top of an invisible block: one climbed onto it).
+	 */
+	private static void ground(ServerLevel level, Map<Long, List<Tri>> grid, Map<Long, List<Tri>> holo, InteriorPlan plan, BlockPos origin, Vec3 at,
+			TreeMap<String, int[]> places, int[] counts) {
+		AABB feet = new AABB(at.x - 0.3, at.y - 0.04, at.z - 0.3, at.x + 0.3, at.y - 0.001, at.z + 0.3);
+		BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
+		BlockPos barrier = null;
+
+		for (int x = Mth.floor(feet.minX); x <= Mth.floor(feet.maxX); x++) {
+			for (int z = Mth.floor(feet.minZ); z <= Mth.floor(feet.maxZ); z++) {
+				pos.set(x, Mth.floor(feet.minY), z);
+				BlockState state = level.getBlockState(pos);
+
+				for (AABB part : state.getCollisionShape(level, pos, CollisionContext.empty()).toAabbs()) {
+					if (part.move(pos).intersects(feet)) {
+						if (!state.is(Blocks.BARRIER)) {
+							return;
+						}
+
+						barrier = pos.immutable();
+					}
+				}
+			}
+		}
+
+		AABB under = new AABB(at.x - 0.4, at.y - 0.15, at.z - 0.4, at.x + 0.4, at.y + 0.05, at.z + 0.4);
+
+		if (barrier != null && first(grid, under, null) == null && first(holo, under, null) == null && !vanilla(level, under)) {
+			counts[2]++;
+			STOPS.add(new double[] {at.x, at.y, at.z});
+			report(places, plan, origin, new Vec3(barrier.getX() + 0.5, barrier.getY(), barrier.getZ() + 0.5), "invisible ground", null, at);
+		}
+	}
+
 	/** The player was stopped going that way: by what, and is anything drawn there? */
 	private static void stopped(ServerLevel level, Map<Long, List<Tri>> grid, InteriorPlan plan, BlockPos origin, Vec3 at, double[] dir,
 			TreeMap<String, int[]> places, int[] counts) {
@@ -484,6 +524,12 @@ public final class WalkAudit {
 						continue;
 					}
 
+					// Phase 18: someone of the crew stands there (drawn, a little slimmer than the
+					// room they take); being stopped by a person is no invisible wall.
+					if (ProxyShapes.ghosts(plan).contains(BlockPos.asLong(x - origin.getX(), y - origin.getY(), z - origin.getZ()))) {
+						continue;
+					}
+
 					VoxelShape shape = state.getCollisionShape(level, pos, CollisionContext.empty());
 
 					for (AABB part : shape.toAabbs()) {
@@ -496,7 +542,13 @@ public final class WalkAudit {
 						AABB overlap = solid.intersect(box);
 
 						// A cap over furniture (one cannot climb onto it) is seen with the furniture under it.
-						if (first(grid, overlap.inflate(SEEN_REACH).expandTowards(0, -0.7, 0), null) == null) {
+						// Phase 18: but never by the floor one stands on (it reached down to the floor
+						// before, so nearly every invisible wall counted as seen).
+						AABB seenBox = overlap.inflate(SEEN_REACH, 0.0, SEEN_REACH).expandTowards(0, -0.7, 0);
+						seenBox = new AABB(seenBox.minX, Math.max(seenBox.minY, at.y + 0.06), seenBox.minZ, seenBox.maxX, Math.max(seenBox.maxY, at.y + 0.07),
+								seenBox.maxZ);
+
+						if (first(grid, seenBox, null) == null && !vanilla(level, seenBox)) {
 							counts[2]++;
 							STOPS.add(new double[] {(overlap.minX + overlap.maxX) / 2.0, at.y, (overlap.minZ + overlap.maxZ) / 2.0});
 							report(places, plan, origin, new Vec3(x + 0.5, y, z + 0.5), "invisible", null, at);
@@ -548,6 +600,36 @@ public final class WalkAudit {
 				}
 			}
 		}
+	}
+
+	/**
+	 * Phase 18: whether a block the game draws itself (a barrel, a chest: not a barrier, not light)
+	 * is in the box; the audit only knows the interior's own models, so it took the cap over the
+	 * galley's barrel for an invisible wall.
+	 */
+	private static boolean vanilla(ServerLevel level, AABB box) {
+		BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
+
+		for (int x = Mth.floor(box.minX); x <= Mth.floor(box.maxX); x++) {
+			for (int y = Mth.floor(box.minY); y <= Mth.floor(box.maxY); y++) {
+				for (int z = Mth.floor(box.minZ); z <= Mth.floor(box.maxZ); z++) {
+					pos.set(x, y, z);
+					BlockState state = level.getBlockState(pos);
+
+					if (state.isAir() || state.is(Blocks.BARRIER) || state.is(Blocks.LIGHT)) {
+						continue;
+					}
+
+					for (AABB part : state.getCollisionShape(level, pos, CollisionContext.empty()).toAabbs()) {
+						if (part.move(pos).intersects(box)) {
+							return true;
+						}
+					}
+				}
+			}
+		}
+
+		return false;
 	}
 
 	/** The first triangle of that layer (any layer if {@code null}) that passes through the box. */

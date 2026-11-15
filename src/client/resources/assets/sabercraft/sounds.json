@@ -1311,5 +1311,23 @@
       }
     ],
     "subtitle": "subtitles.sabercraft.ship.door"
+  },
+  "ship.crew_comm": {
+    "sounds": [
+      {
+        "name": "sabercraft:ship/crew_comm",
+        "attenuation_distance": 10
+      }
+    ],
+    "subtitle": "subtitles.sabercraft.ship.crew_comm"
+  },
+  "ship.crew_chirp": {
+    "sounds": [
+      {
+        "name": "sabercraft:ship/crew_chirp",
+        "attenuation_distance": 10
+      }
+    ],
+    "subtitle": "subtitles.sabercraft.ship.crew_chirp"
   }
 }

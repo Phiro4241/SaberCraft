@@ -37,8 +37,12 @@ import com.phiro.sabercraft.interior.ShipLights;
  * <p>Screenshots: {@code phase17_*}.
  */
 public class Phase17GameTest implements FabricClientGameTest {
-	/** How many places of the Falcon may still not fit (single grid places at the hold's doorways and the lower gun well, see the report). */
-	static final int FALCON_ALLOWED = 15;
+	/**
+	 * How many places of the Falcon may still not fit (see the report). Phase 18: the audit is
+	 * stricter (the floor under the feet no longer hides invisible walls), so the same limit as
+	 * Phase 18's test.
+	 */
+	static final int FALCON_ALLOWED = Phase18GameTest.FALCON_ALLOWED;
 
 	@Override
 	public void runTest(ClientGameTestContext context) {
@@ -135,8 +139,9 @@ public class Phase17GameTest implements FabricClientGameTest {
 		Phase16GameTest.look(context, server, falcon, new Vec3(35.5, 7, 31.5), 0, 30, "phase17_falcon_ramp");
 		Phase16GameTest.look(context, server, falcon, new Vec3(20.5, 1, 29.6), 0, -30, "phase17_falcon_lower_turret");
 		Phase16GameTest.look(context, server, destroyer, new Vec3(38.5, DestroyerInterior.HANGAR + 1, -11.5), 30, 5, "phase17_sd_corridor");
-		Phase16GameTest.look(context, server, destroyer, new Vec3(30.5, DestroyerInterior.HANGAR + 1, -10.5), 90, 0, "phase17_sd_vent");
-		Phase16GameTest.look(context, server, destroyer, new Vec3(35.5, DestroyerInterior.PIT + 1, 84.5), -90, 0, "phase17_sd_bridge_vent");
+		// Phase 18: the vents are crawl ways behind hatches now; their hatches seen from the rooms.
+		Phase16GameTest.look(context, server, destroyer, new Vec3(38.5, DestroyerInterior.HANGAR + 1, -9.5), 90, 25, "phase17_sd_vent");
+		Phase16GameTest.look(context, server, destroyer, new Vec3(34.5, DestroyerInterior.PIT + 1, 84.5), -90, 25, "phase17_sd_bridge_vent");
 	}
 
 	/** The dimmer: five steps on both ships, each darker than the one before, back to full light. */

@@ -44,6 +44,93 @@ public final class DestroyerInterior extends InteriorPlan {
 	/** Half the width at the stern. */
 	public static final int HALF_WIDTH = 190;
 
+	/** Phase 18: the shaft floor: the core's base, the converters and consoles collide as drawn. */
+	private static void reactorFloor(InteriorBuilder b) {
+		int x0 = (int) (REACTOR_X - REACTOR_R);
+		int x1 = (int) (REACTOR_X + REACTOR_R);
+		int z0 = (int) (REACTOR_Z - REACTOR_R);
+		int z1 = (int) (REACTOR_Z + REACTOR_R);
+
+		for (int y = REACTOR_BOTTOM; y < HANGAR; y++) {
+			b.solid(x0, z0, x1, z1, y, DestroyerInterior::converterAt, 1.0, java.util.Set.of());
+			// The core's base collides as drawn, a cone (it stood in steps of a block before: one
+			// climbed them and stood in the air beside the drawn cone).
+			int row = y - REACTOR_BOTTOM;
+			b.spans(x0, z0, x1, z1, y, (x, z) -> {
+				double d = Math.hypot(x - REACTOR_X, z - REACTOR_Z);
+
+				if (d < CORE_TOP_R) {
+					return new double[] {0.0, 1.0};
+				}
+
+				double top = (CORE_BASE_R - d) / (CORE_BASE_R - CORE_TOP_R) * CORE_CONE - row;
+				return top <= 0.0 ? null : new double[] {0.0, Math.min(1.0, top)};
+			}, java.util.Set.of());
+		}
+
+		for (BlockPos console : REACTOR_CONSOLES) {
+			b.shaped(console.getX(), console.getY(), console.getZ(), net.minecraft.world.phys.shapes.Shapes.box(0.0, 0.0, 0.0, 1.0, 1.0, 1.0), false);
+			// Nobody climbs onto a console (one stood in its screen).
+			b.ghost(console.getX(), console.getY() + 1, console.getZ(), net.minecraft.world.phys.shapes.Shapes.box(0.0, 0.0, 0.0, 1.0, 0.5, 1.0));
+		}
+
+		// A railing round the core's foot: the core is no stair (people climbed its cone into the
+		// pipes and the glowing column). A rail a block high, a cap half a block over it (collision
+		// only) so nobody jumps over.
+		ProxyShapes.Span rail = (x, z) -> Math.abs(Math.hypot(x - REACTOR_X, z - REACTOR_Z) - CORE_RAIL_R) <= CORE_RAIL_HALF ? new double[] {0.0, 1.0} : null;
+		ProxyShapes.Span railCap = (x, z) -> rail.at(x, z) == null ? null : new double[] {0.0, 0.5};
+		int r0 = (int) Math.floor(REACTOR_X - CORE_RAIL_R - 1);
+		int r1 = (int) Math.ceil(REACTOR_X + CORE_RAIL_R + 1);
+		int q0 = (int) Math.floor(REACTOR_Z - CORE_RAIL_R - 1);
+		int q1 = (int) Math.ceil(REACTOR_Z + CORE_RAIL_R + 1);
+		b.spans(r0, q0, r1, q1, REACTOR_BOTTOM, rail, java.util.Set.of());
+
+		for (int x = r0; x <= r1; x++) {
+			for (int z = q0; z <= q1; z++) {
+				net.minecraft.world.phys.shapes.VoxelShape cap = ProxyShapes.spans(x, z, 16, railCap);
+
+				if (!cap.isEmpty() && b.isAir(x, REACTOR_BOTTOM + 1, z)) {
+					b.ghost(x, REACTOR_BOTTOM + 1, z, cap);
+				}
+			}
+		}
+
+		// The lift's four posts and the ribs up the shaft wall collide as drawn (one walked into them).
+		for (int y = REACTOR_BOTTOM; y < HANGAR; y++) {
+			b.solid((int) REACTOR_LIFT.minX - 1, (int) REACTOR_LIFT.minZ - 1, (int) REACTOR_LIFT.maxX, (int) REACTOR_LIFT.maxZ, y,
+					DestroyerInterior::liftPostAt, 1.0, java.util.Set.of());
+		}
+
+		for (float angle : RIB_ANGLES) {
+			double rx = REACTOR_X + Math.cos(Math.toRadians(angle)) * RIB_R;
+			double rz = REACTOR_Z + Math.sin(Math.toRadians(angle)) * RIB_R;
+			ProxyShapes.Solid rib = (x, z) -> (x - rx) * (x - rx) + (z - rz) * (z - rz) < RIB_SIZE * RIB_SIZE;
+
+			for (int y = REACTOR_BOTTOM; y < REACTOR_TOP; y++) {
+				b.solid((int) Math.floor(rx - 1), (int) Math.floor(rz - 1), (int) Math.floor(rx + 1), (int) Math.floor(rz + 1), y, rib, 1.0,
+						java.util.Set.of());
+			}
+		}
+
+		b.light((int) REACTOR_X - 9, REACTOR_BOTTOM + 2, (int) REACTOR_Z, 12);
+		b.light((int) REACTOR_X + 9, REACTOR_BOTTOM + 2, (int) REACTOR_Z, 12);
+		b.light((int) REACTOR_X, REACTOR_BOTTOM + 2, (int) REACTOR_Z - 9, 12);
+		b.light((int) REACTOR_X, REACTOR_BOTTOM + 2, (int) REACTOR_Z + 9, 12);
+	}
+
+	/** Phase 18: whether a point (plot space) is inside one of the energy converters on the shaft floor. */
+	public static boolean converterAt(double x, double z) {
+		for (double angle : CONVERTER_ANGLES) {
+			double a = Math.toRadians(angle);
+
+			if (Math.hypot(x - (REACTOR_X + Math.cos(a) * CONVERTER_R), z - (REACTOR_Z + Math.sin(a) * CONVERTER_R)) < CONVERTER_SIZE) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
 	// --- Bridge deck ---------------------------------------------------------------------------
 
 	/** Floor blocks of the crew pits; people stand at + 1. */
@@ -110,41 +197,47 @@ public final class DestroyerInterior extends InteriorPlan {
 	private static final String PROXY = "barrier";
 
 	/** Phase 16: a chair collides only with its seat (people walk past its back and arms). */
-	static final net.minecraft.world.phys.shapes.VoxelShape CHAIR = net.minecraft.world.phys.shapes.Shapes.box(0.22, 0.0, 0.22, 0.78, 0.5, 0.78);
+	// Phase 18: as high as the backrest (one stepped onto the seat and stood in the armrests and the
+	// backrest); one sits down with a click as before.
+	static final net.minecraft.world.phys.shapes.VoxelShape CHAIR = net.minecraft.world.phys.shapes.Shapes.box(0.22, 0.0, 0.22, 0.78, 1.0, 0.78);
 
 	// --- Phase 17: the crew ------------------------------------------------------------------------
 
-	/**
-	 * Phase 17: someone of the ship's crew, drawn by the client (no entity: nothing for the server
-	 * to tick, the same for every player). {@code kind}: {@link #TROOPER}, {@link #OFFICER},
-	 * {@link #TECH}; {@code pose}: {@link #STAND} (on guard), {@link #WORK} (at a console),
-	 * {@link #SIT}, {@link #TALK}, {@link #PATROL} (walks round {@code path}, a closed loop, at
-	 * {@code speed} blocks a second, starting {@code phase} blocks along it). (x, y, z) are the
-	 * feet (plot space), {@code yaw} Minecraft's (0 = facing south, 90 west, 180 north).
-	 */
-	public record Crew(String kind, String pose, double x, double y, double z, float yaw, List<Vec3> path, double speed, double phase) {
-		static Crew at(String kind, String pose, double x, double y, double z, float yaw) {
-			return new Crew(kind, pose, x, y, z, yaw, List.of(), 0.0, 0.0);
+	// Phase 18: the crew's kinds and poses are in Crew (kept here under their old names).
+	public static final String TROOPER = Crew.TROOPER;
+	public static final String OFFICER = Crew.OFFICER;
+	public static final String TECH = Crew.TECH;
+	public static final String STAND = Crew.STAND;
+	public static final String WORK = Crew.WORK;
+	public static final String SIT = Crew.SIT;
+	public static final String TALK = Crew.TALK;
+	public static final String PATROL = Crew.PATROL;
+
+	/** Phase 18: the hangar's stores: chests in the floor under the cargo containers. */
+	public static final List<BlockPos> STORES = buildStores();
+
+	private static List<BlockPos> buildStores() {
+		List<BlockPos> list = new java.util.ArrayList<>();
+
+		for (int z = HANGAR_Z0 + 3; z <= HANGAR_Z0 + 9; z += 3) {
+			list.add(new BlockPos(HANGAR_X1 - 3, HANGAR, z));
+			list.add(new BlockPos(HANGAR_X1 - 3, HANGAR, z + 1));
+			list.add(new BlockPos(HANGAR_X1 - 2, HANGAR, z + 1));
 		}
 
-		static Crew patrol(String kind, double speed, double phase, Vec3... path) {
-			return new Crew(kind, PATROL, path[0].x, path[0].y, path[0].z, 0.0F, List.of(path), speed, phase);
+		for (int x = HANGAR_X0 + 3; x <= HANGAR_X0 + 9; x += 3) {
+			list.add(new BlockPos(x, HANGAR, HANGAR_Z0 + 2));
+			list.add(new BlockPos(x + 1, HANGAR, HANGAR_Z0 + 2));
 		}
 
-		/** Whether this one stays in its place (and collides there). */
-		public boolean still() {
-			return this.path.isEmpty() && !SIT.equals(this.pose);
-		}
+		return List.copyOf(list);
 	}
 
-	public static final String TROOPER = "trooper";
-	public static final String OFFICER = "officer";
-	public static final String TECH = "tech";
-	public static final String STAND = "stand";
-	public static final String WORK = "work";
-	public static final String SIT = "sit";
-	public static final String TALK = "talk";
-	public static final String PATROL = "patrol";
+	/** Phase 18: a step down into the pits: its upper half towards the walkway (east, or west). */
+	static final net.minecraft.world.phys.shapes.VoxelShape STEP_EAST = net.minecraft.world.phys.shapes.Shapes.or(
+			net.minecraft.world.phys.shapes.Shapes.box(0.0, 0.0, 0.0, 1.0, 0.5, 1.0), net.minecraft.world.phys.shapes.Shapes.box(0.5, 0.5, 0.0, 1.0, 1.0, 1.0));
+	static final net.minecraft.world.phys.shapes.VoxelShape STEP_WEST = net.minecraft.world.phys.shapes.Shapes.or(
+			net.minecraft.world.phys.shapes.Shapes.box(0.0, 0.0, 0.0, 1.0, 0.5, 1.0), net.minecraft.world.phys.shapes.Shapes.box(0.0, 0.5, 0.0, 0.5, 1.0, 1.0));
 
 	/** Phase 17: the chairs the crew sits on (not free for players). */
 	static final List<BlockPos> CREW_CHAIRS = List.of(new BlockPos(24, PIT + 1, 87), new BlockPos(28, PIT + 1, 75), new BlockPos(52, PIT + 1, 81),
@@ -152,63 +245,84 @@ public final class DestroyerInterior extends InteriorPlan {
 
 	public static final List<Crew> CREW = buildCrew();
 
+	@Override
+	public List<Crew> crew() {
+		return CREW;
+	}
+
 	private static List<Crew> buildCrew() {
 		List<Crew> list = new java.util.ArrayList<>();
 		int deck = DECK + 1;
 		int hangar = HANGAR + 1;
 
-		// The bridge: the officer of the watch at the window, a pair talking on the platform, one
-		// walking the walkway, guards at the door, the crew at the consoles in the pits.
-		list.add(Crew.at(OFFICER, STAND, CX - 5.5, deck, WINDOW_Z + 1.7, 180.0F));
-		list.add(Crew.at(OFFICER, TALK, CX + 7.2, deck, WINDOW_Z + 3.4, 100.0F));
-		list.add(Crew.at(OFFICER, TALK, CX + 5.9, deck, WINDOW_Z + 3.6, 280.0F));
-		list.add(Crew.patrol(OFFICER, 0.9, 0.0, new Vec3(CX + 0.5, deck, PLATFORM_Z1 + 2.5), new Vec3(CX + 0.5, deck, BRIDGE_BACK - 3.5)));
-		list.add(Crew.at(TROOPER, STAND, CX - 2.5, deck, BRIDGE_BACK + 1.6, 0.0F));
-		list.add(Crew.at(TROOPER, STAND, CX + 3.5, deck, BRIDGE_BACK + 1.6, 0.0F));
+		// The bridge: the admiral at the window, an officer of the watch beside, a pair talking on
+		// the platform (the fleet and the security bureau), one walking the walkway, guards at the
+		// door, the crew at the consoles in the pits (Phase 18: officers and technicians in turn).
+		list.add(Crew.at(Crew.ADMIRAL, STAND, CX - 5.5, deck, WINDOW_Z + 1.7, 180.0F).as("admiral"));
+		list.add(Crew.at(OFFICER, STAND, CX - 7.3, deck, WINDOW_Z + 2.3, 150.0F).as("watch"));
+		list.add(Crew.at(OFFICER, TALK, CX + 7.2, deck, WINDOW_Z + 3.4, 100.0F).as("bridge"));
+		list.add(Crew.at(Crew.OFFICER_BLACK, TALK, CX + 5.9, deck, WINDOW_Z + 3.6, 280.0F).as("security"));
+		list.add(Crew.patrol(OFFICER, 0.9, 0.0, new Vec3(CX + 0.5, deck, PLATFORM_Z1 + 2.5), new Vec3(CX + 0.5, deck, BRIDGE_BACK - 3.5)).as("bridge"));
+		list.add(Crew.at(TROOPER, STAND, CX - 2.5, deck, BRIDGE_BACK + 1.6, 0.0F).as("bridge_guard"));
+		list.add(Crew.at(TROOPER, STAND, CX + 3.5, deck, BRIDGE_BACK + 1.6, 0.0F).as("bridge_guard"));
+		int pit = 0;
 
 		for (BlockPos chair : CREW_CHAIRS) {
 			if (chair.getY() == PIT + 1) {
-				list.add(Crew.at(TECH, SIT, chair.getX() + 0.5, chair.getY(), chair.getZ() + 0.5, 180.0F));
+				list.add(Crew.at(pit++ % 2 == 0 ? TECH : OFFICER, SIT, chair.getX() + 0.5, chair.getY(), chair.getZ() + 0.5, 180.0F).as("pit"));
 			}
 		}
 
 		// Standing at the consoles of the pits, between the chairs.
-		list.add(Crew.at(TECH, WORK, 31.5, PIT + 1, 81.35, 180.0F));
-		list.add(Crew.at(OFFICER, WORK, 49.5, PIT + 1, 87.35, 180.0F));
+		list.add(Crew.at(TECH, WORK, 31.5, PIT + 1, 81.35, 180.0F).as("pit"));
+		list.add(Crew.at(OFFICER, WORK, 49.5, PIT + 1, 87.35, 180.0F).as("pit"));
 
-		// The command deck: a patrol along the corridor, the sensor room's crew, two in conference.
-		list.add(Crew.patrol(TROOPER, 1.1, 0.0, new Vec3(CX - 1.5, deck, BRIDGE_BACK + 2.5), new Vec3(CX - 1.5, deck, COMMAND_BACK - 4.5)));
+		// The command deck: a patrol along the corridor, honour guards by the lift, the sensor
+		// room's crew, the army and the security bureau in conference.
+		list.add(Crew.patrol(TROOPER, 1.1, 0.0, new Vec3(CX - 1.5, deck, BRIDGE_BACK + 2.5), new Vec3(CX - 1.5, deck, COMMAND_BACK - 4.5)).as("patrol"));
+		list.add(Crew.at(Crew.GUARD, STAND, CX - 2.45, deck, COMMAND_BACK - 3.6, 270.0F).as("guard"));
+		list.add(Crew.at(Crew.GUARD, STAND, CX + 3.45, deck, COMMAND_BACK - 3.6, 90.0F).as("guard"));
 		int sx = (CX + 4 + SIDE_EAST) / 2 + 4;
-		list.add(Crew.at(TECH, WORK, sx + 0.5, deck, 104.3, 0.0F));
-		list.add(Crew.at(OFFICER, WORK, sx - 3.3, deck, 107.5, 270.0F));
-		list.add(Crew.at(TECH, WORK, CX + 6.35, deck, SIDE_Z0 + 3.5, 90.0F));
+		list.add(Crew.at(TECH, WORK, sx + 0.5, deck, 104.3, 0.0F).as("sensor"));
+		list.add(Crew.at(OFFICER, WORK, sx - 3.3, deck, 107.5, 270.0F).as("sensor"));
+		list.add(Crew.at(TECH, WORK, CX + 6.35, deck, SIDE_Z0 + 3.5, 90.0F).as("sensor"));
 		int tx = (SIDE_WEST + CX - 4) / 2;
-		list.add(Crew.at(OFFICER, SIT, tx - 2.5, deck, 105.5, 0.0F));
-		list.add(Crew.at(OFFICER, SIT, tx + 3.5, deck, 109.5, 180.0F));
+		list.add(Crew.at(Crew.OFFICER_OLIVE, SIT, tx - 2.5, deck, 105.5, 0.0F).as("army"));
+		list.add(Crew.at(Crew.OFFICER_BLACK, SIT, tx + 3.5, deck, 109.5, 180.0F).as("conference"));
 
 		// The hangar: guards at the door, a squad of two walking round the force field, a
-		// technician at the crates, an officer by the landing circle.
-		list.add(Crew.at(TROOPER, STAND, CX - 3.5, hangar, HANGAR_Z1 - 1.4, 180.0F));
-		list.add(Crew.at(TROOPER, STAND, CX + 4.5, hangar, HANGAR_Z1 - 1.4, 180.0F));
+		// technician at the crates, an officer by the landing circle with two pilots.
+		list.add(Crew.at(TROOPER, STAND, CX - 3.5, hangar, HANGAR_Z1 - 1.4, 180.0F).as("hangar"));
+		list.add(Crew.at(TROOPER, STAND, CX + 4.5, hangar, HANGAR_Z1 - 1.4, 180.0F).as("hangar"));
 		Vec3[] loop = {new Vec3(27.5, hangar, -59.5), new Vec3(53.5, hangar, -59.5), new Vec3(53.5, hangar, -21.5), new Vec3(27.5, hangar, -21.5)};
-		list.add(Crew.patrol(TROOPER, 1.2, 0.0, loop));
-		list.add(Crew.patrol(TROOPER, 1.2, 1.4, loop));
-		list.add(Crew.at(TECH, WORK, HANGAR_X1 - 4.4, hangar, -30.5, 270.0F));
-		list.add(Crew.at(OFFICER, STAND, CX + 4.0, hangar, -27.0, 160.0F));
+		list.add(Crew.patrol(TROOPER, 1.2, 0.0, loop).as("patrol"));
+		list.add(Crew.patrol(TROOPER, 1.2, 1.4, loop).as("patrol"));
+		list.add(Crew.at(TECH, WORK, HANGAR_X1 - 4.4, hangar, -30.5, 270.0F).as("maintenance"));
+		list.add(Crew.at(OFFICER, STAND, CX + 4.0, hangar, -27.0, 160.0F).as("hangar"));
+		list.add(Crew.at(Crew.PILOT, TALK, CX + 5.4, hangar, -25.0, 240.0F).as("pilot"));
+		list.add(Crew.at(Crew.PILOT, STAND, CX + 6.9, hangar, -25.9, 60.0F).as("pilot"));
 
 		// Flight control: two at the consoles, one standing behind them.
 		for (BlockPos chair : CREW_CHAIRS) {
 			if (chair.getY() == HANGAR + 1) {
-				list.add(Crew.at(TECH, SIT, chair.getX() + 0.5, chair.getY(), chair.getZ() + 0.5, 270.0F));
+				list.add(Crew.at(TECH, SIT, chair.getX() + 0.5, chair.getY(), chair.getZ() + 0.5, 270.0F).as("flight_control"));
 			}
 		}
 
-		list.add(Crew.at(OFFICER, STAND, CONTROL_X0 + 6.5, hangar, -44.5, 270.0F));
+		list.add(Crew.at(Crew.OFFICER_OLIVE, STAND, CONTROL_X0 + 6.5, hangar, -44.5, 270.0F).as("flight_control"));
 
 		// The corridor to the lift: a patrol; a guard at the reactor gallery; a technician on the catwalk.
-		list.add(Crew.patrol(TROOPER, 1.0, 0.0, new Vec3(CX - 1.5, hangar, HANGAR_Z1 + 2.5), new Vec3(CX - 1.5, hangar, LOBBY_Z1 - 4.5)));
-		list.add(Crew.at(TROOPER, STAND, CX + 2.6, hangar, LOBBY_Z0 + 1.5, 90.0F));
-		list.add(Crew.at(TECH, WORK, REACTOR_X - 0.5, hangar, REACTOR_Z - 9.3, 0.0F));
+		list.add(Crew.patrol(TROOPER, 1.0, 0.0, new Vec3(CX - 1.5, hangar, HANGAR_Z1 + 2.5), new Vec3(CX - 1.5, hangar, LOBBY_Z1 - 4.5)).as("patrol"));
+		list.add(Crew.at(TROOPER, STAND, CX + 2.6, hangar, LOBBY_Z0 + 1.5, 90.0F).as("reactor"));
+		list.add(Crew.at(TECH, WORK, REACTOR_X - 0.5, hangar, REACTOR_Z - 9.3, 0.0F).as("reactor"));
+
+		// Phase 18: the reactor's lower level: technicians at the consoles, a guard by the lift.
+		list.add(Crew.at(TECH, WORK, 51.05, REACTOR_BOTTOM, 24.5, 270.0F).as("reactor"));
+		list.add(Crew.at(Crew.OFFICER_OLIVE, WORK, 40.5, REACTOR_BOTTOM, 35.05, 0.0F).as("reactor"));
+		list.add(Crew.at(TROOPER, STAND, 29.0, REACTOR_BOTTOM, 27.6, 225.0F).as("reactor"));
+
+		// Phase 18: in the hidden room off the crawl way, someone who should not be aboard.
+		list.add(Crew.at(Crew.REBEL, SIT, 15.0, hangar, -5.5, 0.0F).as("spy"));
 		return List.copyOf(list);
 	}
 
@@ -279,6 +393,11 @@ public final class DestroyerInterior extends InteriorPlan {
 			}
 		}
 
+		// Phase 18: the hangar's cargo containers open the store under them.
+		for (BlockPos store : STORES) {
+			list.add(new Console(store.above(), Console.STORAGE));
+		}
+
 		return list;
 	}
 
@@ -290,8 +409,10 @@ public final class DestroyerInterior extends InteriorPlan {
 	@Override
 	public int version() {
 		// 3 (Phase 16): the reactor shaft's round wall is shaped barriers where the drawn wall runs.
-		// 5 (Phase 17): maintenance ways, the crew's places.
-		return 5;
+		// 5 (Phase 17): maintenance ways, the crew's places. 6 (Phase 18): drawn steps, crates and
+		// throttle instead of vanilla blocks, the crawl vents and the hidden room, the reactor's
+		// lower level, more crew.
+		return 6;
 	}
 
 	@Override
@@ -329,7 +450,55 @@ public final class DestroyerInterior extends InteriorPlan {
 	public List<Lift> lifts() {
 		return List.of(
 				new Lift(new AABB(CX - 2, HANGAR + 1, LOBBY_Z1 - 2, CX + 3, HANGAR + 4, LOBBY_Z1 + 1), new Vec3(CX + 0.5, DECK + 1, COMMAND_BACK - 3.5), 180.0F),
-				new Lift(new AABB(CX - 2, DECK + 1, COMMAND_BACK - 2, CX + 3, DECK + 4, COMMAND_BACK), new Vec3(CX + 0.5, HANGAR + 1, LOBBY_Z1 - 4.5), 0.0F));
+				new Lift(new AABB(CX - 2, DECK + 1, COMMAND_BACK - 2, CX + 3, DECK + 4, COMMAND_BACK), new Vec3(CX + 0.5, HANGAR + 1, LOBBY_Z1 - 4.5), 0.0F),
+				// Phase 18: the reactor's maintenance lift, from the catwalk down to the shaft floor and back.
+				new Lift(REACTOR_LIFT.move(0, HANGAR + 1 - REACTOR_BOTTOM, 0), new Vec3(REACTOR_LIFT.minX - 1.2, REACTOR_BOTTOM, REACTOR_LIFT.getCenter().z), 0.0F),
+				new Lift(REACTOR_LIFT, new Vec3(REACTOR_LIFT.minX - 1.2, HANGAR + 1, REACTOR_LIFT.getCenter().z), 180.0F));
+	}
+
+	/**
+	 * Phase 18: the reactor's lower level, on the shaft floor round the core's base: four energy
+	 * converters (tall machines), control consoles along the wall, a lift pad (here at the bottom;
+	 * its twin is on the catwalk right above). Angles from east, clockwise seen from above.
+	 */
+	public static final AABB REACTOR_LIFT = new AABB(30, REACTOR_BOTTOM, 24, 32, REACTOR_BOTTOM + 2, 26);
+	public static final double CONVERTER_R = 10.2;
+	public static final double CONVERTER_SIZE = 1.3;
+	public static final double[] CONVERTER_ANGLES = {45.0, 135.0, 225.0, 315.0};
+	/** The consoles of the lower level: cells (at the wall, facing the core). */
+	public static final List<BlockPos> REACTOR_CONSOLES = List.of(new BlockPos(52, REACTOR_BOTTOM, 24), new BlockPos(40, REACTOR_BOTTOM, 36),
+			new BlockPos(40, REACTOR_BOTTOM, 12));
+
+	/** The radius of the core's housing at the shaft floor, up the cone (row y). */
+	public static double coreBase(int y) {
+		return y >= REACTOR_BOTTOM + 5 ? 2.8 : 5.5 - (y - REACTOR_BOTTOM) * (5.5 - 2.8) / 5.0;
+	}
+
+	/** Phase 18: the cone at the core's foot as drawn: its radius at the floor and at its top, its height. */
+	static final double CORE_BASE_R = 5.5;
+	static final double CORE_TOP_R = 2.8;
+	static final double CORE_CONE = 5.0;
+	/** Phase 18: the railing round the core's foot on the lower level: its radius, half its thickness. */
+	public static final double CORE_RAIL_R = 6.3;
+	public static final double CORE_RAIL_HALF = 0.08;
+	/** Phase 18: half the thickness of the lift's posts (one at each corner of {@link #REACTOR_LIFT}). */
+	public static final double LIFT_POST = 0.0625;
+	/** Phase 18: the ribs up the shaft wall (they collide as drawn): their angles, where they stand, how thick. */
+	public static final float[] RIB_ANGLES = {15, 45, 75, 105, 135, 165, 195, 225, 255, 285, 345};
+	public static final double RIB_R = REACTOR_WALL - 0.25;
+	public static final double RIB_SIZE = 0.21;
+
+	/** Phase 18: whether a point (plot space) is in one of the lift's posts. */
+	public static boolean liftPostAt(double x, double z) {
+		for (double cx : new double[] {REACTOR_LIFT.minX, REACTOR_LIFT.maxX}) {
+			for (double cz : new double[] {REACTOR_LIFT.minZ, REACTOR_LIFT.maxZ}) {
+				if (Math.abs(x - cx) < LIFT_POST && Math.abs(z - cz) < LIFT_POST) {
+					return true;
+				}
+			}
+		}
+
+		return false;
 	}
 
 	@Override
@@ -358,6 +527,8 @@ public final class DestroyerInterior extends InteriorPlan {
 				new Room("vent", VENTS.get(0)),
 				new Room("vent", VENTS.get(1)),
 				new Room("vent", VENTS.get(2)),
+				new Room("vent", VENTS.get(3)),
+				new Room("hidden_room", HIDDEN),
 				new Room("bridge", new AABB(BRIDGE_X0 + 1, PIT + 1, WINDOW_Z + 1, BRIDGE_X1, BRIDGE_TOP, BRIDGE_BACK)));
 	}
 
@@ -379,53 +550,98 @@ public final class DestroyerInterior extends InteriorPlan {
 	 * desk on its east wall (proxies, drawn by the client).
 	 */
 	private static void furnish(InteriorBuilder b) {
-		b.box(CX - 3, HANGAR + 1, -7, CX - 3, HANGAR + 2, -6, PROXY);
-		b.box(CX + 3, HANGAR + 1, -10, CX + 3, HANGAR + 1, -9, PROXY);
+		// Phase 18: both collide as drawn: the rack 0.55 deep against the wall (a full block of
+		// invisible rack stood in the corridor), the desk where it is drawn (its blocks were half a
+		// block off, one stood in its end).
+		for (int z = -7; z <= -6; z++) {
+			b.shaped(CX - 3, HANGAR + 1, z, net.minecraft.world.phys.shapes.Shapes.box(0.0, 0.0, 0.0, 0.55, 1.0, 1.0), false);
+			b.shaped(CX - 3, HANGAR + 2, z, net.minecraft.world.phys.shapes.Shapes.box(0.0, 0.0, 0.0, 0.55, 0.85, 1.0), false);
+		}
+
+		for (int z = -10; z <= -8; z++) {
+			double z0 = Math.max(0.0, -9.45 - z);
+			double z1 = Math.min(1.0, -7.55 - z);
+			b.shaped(CX + 3, HANGAR + 1, z, net.minecraft.world.phys.shapes.Shapes.box(0.12, 0.0, z0, 0.95, 1.0, z1), false);
+		}
 	}
 
-	/** Phase 17: the maintenance ways: two blocks high, one wide, grating all round, a dim lamp now and then. */
+	/**
+	 * Phase 17: the maintenance ways. Phase 18: crawl ways, one block high, grating all round, a
+	 * dim lamp now and then; one gets in through a small hatch low in a wall (crouching in front of
+	 * it, one goes down on all fours). A side way leads to a hidden room.
+	 */
 	public static final List<AABB> VENTS = List.of(
 			// From the hangar corridor west, then north into the flight control room.
-			new AABB(10, HANGAR + 1, -10, 37, HANGAR + 3, -9),
-			new AABB(10, HANGAR + 1, -35, 11, HANGAR + 3, -9),
+			new AABB(10, HANGAR + 1, -10, 37, HANGAR + 2, -9),
+			new AABB(10, HANGAR + 1, -35, 11, HANGAR + 2, -9),
 			// Under the bridge's walkway, from one crew pit to the other.
-			new AABB(WALK_X0, PIT + 1, 84, WALK_X1 + 1, PIT + 3, 85));
+			new AABB(WALK_X0, PIT + 1, 84, WALK_X1 + 1, PIT + 2, 85),
+			// Phase 18: the side way south to the hidden room.
+			new AABB(18, HANGAR + 1, -9, 19, HANGAR + 2, -7));
+
+	/** Phase 18: the hidden room off the crawl way (inside, walls included: x 13..23, z -8..-1). */
+	public static final AABB HIDDEN = new AABB(14, HANGAR + 1, -7, 23, HANGAR + 4, -1);
+
+	public static final List<Hatch> HATCHES = List.of(
+			new Hatch(new BlockPos(CX - 4, HANGAR + 1, -10), net.minecraft.core.Direction.EAST),
+			new Hatch(new BlockPos(10, HANGAR + 1, -35), net.minecraft.core.Direction.NORTH),
+			new Hatch(new BlockPos(WALK_X0, PIT + 1, 84), net.minecraft.core.Direction.WEST),
+			new Hatch(new BlockPos(WALK_X1, PIT + 1, 84), net.minecraft.core.Direction.EAST));
+
+	/** The hidden room's opening (no hatch: from inside, nobody needs to hide it). */
+	public static final BlockPos HIDDEN_MOUTH = new BlockPos(18, HANGAR + 1, -8);
+
+	@Override
+	public List<Hatch> hatches() {
+		return HATCHES;
+	}
+
+	@Override
+	public List<BlockPos> crawlMouths() {
+		return List.of(HATCHES.get(0).cell(), HATCHES.get(1).cell(), HATCHES.get(2).cell(), HATCHES.get(3).cell(), HIDDEN_MOUTH);
+	}
 
 	private static void vents(InteriorBuilder b) {
-		// The hangar deck's way: a shell round it first, then hollowed out.
-		b.box(9, HANGAR, -11, CX - 4, HANGAR + 3, -9, DARK);
-		b.box(9, HANGAR, -35, 11, HANGAR + 3, -9, DARK);
+		// The hangar deck's way: a shell round it first (one block of floor, way, ceiling), then hollowed out.
+		b.box(9, HANGAR, -11, CX - 4, HANGAR + 2, -9, DARK);
+		b.box(9, HANGAR, -35, 11, HANGAR + 2, -9, DARK);
+		// Under the walkway: the way's upper row closed.
+		b.box(WALK_X0, PIT + 2, 84, WALK_X1, PIT + 2, 84, BLACK);
+		// The hidden room: a store room nobody remembers, three blocks high.
+		b.room(13, HANGAR, -8, 23, HANGAR + 4, -1, DARK);
+		b.box(14, HANGAR, -7, 22, HANGAR, -2, FLOOR);
 
 		for (AABB vent : VENTS) {
 			b.clear((int) vent.minX, (int) vent.minY, (int) vent.minZ, (int) vent.maxX - 1, (int) vent.maxY - 1, (int) vent.maxZ - 1);
 		}
 
-		b.light(22, HANGAR + 2, -10, 7);
-		b.light(10, HANGAR + 2, -22, 7);
-		b.light(CX, PIT + 2, 84, 6);
+		// The hatches start closed.
+		for (Hatch hatch : HATCHES) {
+			b.set(hatch.cell().getX(), hatch.cell().getY(), hatch.cell().getZ(), PROXY);
+		}
+
+		// In the hidden room: a cot, crates, a desk with a small terminal (proxies, drawn by the client).
+		// (The cot's head end with the rolled-up jacket on it: one stood in the jacket.)
+		b.shaped(14, HANGAR + 1, -6, net.minecraft.world.phys.shapes.Shapes.or(net.minecraft.world.phys.shapes.Shapes.box(0.0, 0.0, 0.05, 1.0, 0.45, 0.95),
+				net.minecraft.world.phys.shapes.Shapes.box(0.12, 0.45, 0.2, 0.5, 0.58, 0.8)), false);
+		b.shaped(15, HANGAR + 1, -6, net.minecraft.world.phys.shapes.Shapes.box(0.0, 0.0, 0.05, 1.0, 0.45, 0.95), false);
+		b.box(21, HANGAR + 1, -7, 22, HANGAR + 2, -6, PROXY);
+		b.set(22, HANGAR + 1, -5, PROXY);
+		b.shaped(17, HANGAR + 1, -2, net.minecraft.world.phys.shapes.Shapes.box(0.0, 0.0, 0.3, 1.0, 0.82, 1.0), false);
+		b.shaped(18, HANGAR + 1, -2, net.minecraft.world.phys.shapes.Shapes.box(0.0, 0.0, 0.3, 1.0, 0.82, 1.0), false);
+		// Nobody climbs onto the desk (one stood in the terminal's screen).
+		b.ghost(17, HANGAR + 2, -2, net.minecraft.world.phys.shapes.Shapes.box(0.0, 0.0, 0.3, 1.0, 0.5, 1.0));
+		b.ghost(18, HANGAR + 2, -2, net.minecraft.world.phys.shapes.Shapes.box(0.0, 0.0, 0.3, 1.0, 0.5, 1.0));
+
+		b.light(22, HANGAR + 1, -10, 6);
+		b.light(10, HANGAR + 1, -22, 6);
+		b.light(CX, PIT + 1, 84, 5);
+		b.light(18, HANGAR + 3, -4, 7);
 	}
 
 	/** Phase 17: those of the crew who stay in their place collide there (a slim column, two rows). */
 	private static void crew(InteriorBuilder b) {
-		for (Crew crew : CREW) {
-			if (!crew.still()) {
-				continue;
-			}
-
-			int x = (int) Math.floor(crew.x());
-			int y = (int) Math.floor(crew.y());
-			int z = (int) Math.floor(crew.z());
-			double lx = crew.x() - x;
-			double lz = crew.z() - z;
-			double r = 0.26;
-
-			for (int row = 0; row < 2; row++) {
-				if (b.get(x, y + row, z).isAir()) {
-					b.shaped(x, y + row, z, net.minecraft.world.phys.shapes.Shapes.box(Math.max(0.0, lx - r), 0.0, Math.max(0.0, lz - r), Math.min(1.0, lx + r),
-							row == 0 ? 1.0 : 0.8, Math.min(1.0, lz + r)), false);
-				}
-			}
-		}
+		Crew.collide(b, CREW);
 	}
 
 	// --- Hangar deck ---------------------------------------------------------------------------
@@ -441,6 +657,12 @@ public final class DestroyerInterior extends InteriorPlan {
 		b.box(FIELD_X0 - 1, HANGAR, FIELD_Z1 + 1, FIELD_X1 + 1, HANGAR, FIELD_Z1 + 1, "yellow_concrete");
 		b.box(FIELD_X0 - 1, HANGAR, FIELD_Z0, FIELD_X0 - 1, HANGAR, FIELD_Z1, "yellow_concrete");
 		b.box(FIELD_X1 + 1, HANGAR, FIELD_Z0, FIELD_X1 + 1, HANGAR, FIELD_Z1, "yellow_concrete");
+
+		// Phase 18: the field's emitters along both edges collide as drawn (one walked through them).
+		for (int x = FIELD_X0; x <= FIELD_X1; x += 3) {
+			b.shaped(x, HANGAR + 1, FIELD_Z0 - 1, net.minecraft.world.phys.shapes.Shapes.box(0.25, 0.0, 0.1, 0.75, 0.25, 0.5), false);
+			b.shaped(x, HANGAR + 1, FIELD_Z1 + 1, net.minecraft.world.phys.shapes.Shapes.box(0.25, 0.0, 0.1, 0.75, 0.25, 0.5), false);
+		}
 		// The shaft below the field, down through the hull.
 		b.box(FIELD_X0 - 1, HANGAR - 6, FIELD_Z0 - 1, FIELD_X1 + 1, HANGAR - 1, FIELD_Z1 + 1, DARK);
 		b.clear(FIELD_X0, HANGAR - 6, FIELD_Z0, FIELD_X1, HANGAR - 1, FIELD_Z1);
@@ -451,25 +673,23 @@ public final class DestroyerInterior extends InteriorPlan {
 
 		// TIE fighter racks along both sides: a rail under the ceiling, the TIEs hang from it
 		// (drawn by the client); each rack has a gantry walkway below.
-		for (int z = HANGAR_Z0 + 8; z <= HANGAR_Z1 - 8; z += 12) {
-			for (int x : new int[] {HANGAR_X0 + 7, HANGAR_X1 - 7}) {
-				for (int y = HANGAR_TOP - 3; y <= HANGAR_TOP; y++) {
-					b.set(x, y, z, "iron_chain[axis=y]");
-				}
-			}
-		}
+		// (Phase 18: the hangers are drawn by the client, no chains any more.)
 
-		// Crates, stacked against the walls (the lower ones are real storage).
+		// Crates, stacked against the walls. Phase 18: imperial cargo containers (proxies for the
+		// client's models) instead of barrels, chests and iron blocks.
 		for (int z = HANGAR_Z0 + 3; z <= HANGAR_Z0 + 9; z += 3) {
-			b.set(HANGAR_X1 - 2, HANGAR + 1, z, "barrel[facing=west]");
-			b.set(HANGAR_X1 - 2, HANGAR + 1, z + 1, "chest[facing=west]");
-			b.set(HANGAR_X1 - 3, HANGAR + 1, z, "barrel[facing=west]");
-			b.set(HANGAR_X1 - 2, HANGAR + 2, z, "iron_block");
+			b.box(HANGAR_X1 - 3, HANGAR + 1, z, HANGAR_X1 - 2, HANGAR + 1, z + 1, PROXY);
+			b.set(HANGAR_X1 - 2, HANGAR + 2, z, PROXY);
 		}
 
 		for (int x = HANGAR_X0 + 3; x <= HANGAR_X0 + 9; x += 3) {
-			b.set(x, HANGAR + 1, HANGAR_Z0 + 2, "barrel[facing=south]");
-			b.set(x + 1, HANGAR + 1, HANGAR_Z0 + 2, "chest[facing=south]");
+			b.box(x, HANGAR + 1, HANGAR_Z0 + 2, x + 1, HANGAR + 1, HANGAR_Z0 + 2, PROXY);
+		}
+
+		// The store under them (chests in the floor, hidden by the containers; a click on a
+		// container opens the one under it).
+		for (BlockPos store : STORES) {
+			b.set(store.getX(), store.getY(), store.getZ(), "chest[facing=north]");
 		}
 
 		// Stacks of cargo crates (proxies for the client's models).
@@ -592,6 +812,7 @@ public final class DestroyerInterior extends InteriorPlan {
 		b.roundShell(REACTOR_X, REACTOR_Z, new double[] {REACTOR_WALL}, (int) (REACTOR_X - r - 2), REACTOR_BOTTOM, (int) (REACTOR_Z - r - 2),
 				(int) (REACTOR_X + r + 2), REACTOR_TOP - 1, (int) (REACTOR_Z + r + 2), java.util.Set.of(InteriorBuilder.state(DARK).getBlock()),
 				DestroyerInterior::openReactor, (x, z, y) -> y == HANGAR || GALLERY.contains((int) Math.floor(x), y, (int) Math.floor(z)));
+		reactorFloor(b);
 		// The core gives off light.
 		b.light((int) REACTOR_X, REACTOR_BOTTOM + 4, (int) REACTOR_Z, 15);
 		b.light((int) REACTOR_X, HANGAR + 3, (int) (REACTOR_Z - 11), 13);
@@ -630,13 +851,25 @@ public final class DestroyerInterior extends InteriorPlan {
 			}
 		}
 
+		// Phase 18: like a fence, half a block more over each railing (only colliding): one jumped
+		// onto them and walked along on the invisible blocks.
+		for (int z = PLATFORM_Z1; z <= BRIDGE_BACK - 1; z++) {
+			for (int x = BRIDGE_X0 + 1; x <= BRIDGE_X1 - 1; x++) {
+				if (b.get(x, DECK + 1, z).is(net.minecraft.world.level.block.Blocks.BARRIER) && b.isAir(x, DECK + 2, z)
+						&& (x == WALK_X0 || x == WALK_X1 || z == PLATFORM_Z1)) {
+					b.ghost(x, DECK + 2, z, net.minecraft.world.phys.shapes.Shapes.box(0.0, 0.0, 0.0, 1.0, 0.5, 1.0));
+				}
+			}
+		}
+
 		// Steps down into the pits.
 		for (int z : new int[] {77, 89}) {
 			for (int i = 0; i < 4; i++) {
-				b.set(WALK_X0 - 1 - i, DECK - i, z, "polished_blackstone_stairs[facing=east]");
-				b.set(WALK_X0 - 1 - i, DECK - i, z + 1, "polished_blackstone_stairs[facing=east]");
-				b.set(WALK_X1 + 1 + i, DECK - i, z, "polished_blackstone_stairs[facing=west]");
-				b.set(WALK_X1 + 1 + i, DECK - i, z + 1, "polished_blackstone_stairs[facing=west]");
+				// Phase 18: drawn steps (no blackstone stairs), each cell shaped like a stair.
+				for (int dz = 0; dz <= 1; dz++) {
+					b.shaped(WALK_X0 - 1 - i, DECK - i, z + dz, STEP_EAST, false);
+					b.shaped(WALK_X1 + 1 + i, DECK - i, z + dz, STEP_WEST, false);
+				}
 			}
 		}
 
@@ -649,7 +882,13 @@ public final class DestroyerInterior extends InteriorPlan {
 
 				b.set(x, PIT + 1, z, PROXY);
 				// Phase 17: a cap: nobody climbs onto the console (and stands in its screens).
-				b.shaped(x, PIT + 2, z, net.minecraft.world.phys.shapes.Shapes.box(0.0, 0.0, 0.0, 1.0, 0.5, 1.0), false);
+				// Phase 18: a block and a half (from a chair one jumped onto the half block and stood
+				// over the console in the air), colliding only (no outline over the console).
+				b.ghost(x, PIT + 2, z, net.minecraft.world.phys.shapes.Shapes.block());
+
+				if (b.isAir(x, PIT + 3, z)) {
+					b.ghost(x, PIT + 3, z, net.minecraft.world.phys.shapes.Shapes.box(0.0, 0.0, 0.0, 1.0, 0.5, 1.0));
+				}
 
 				// A seat behind every other console.
 				if ((x & 1) == 0) {
@@ -661,10 +900,21 @@ public final class DestroyerInterior extends InteriorPlan {
 		// The helm at the front of the walkway: the lever on a console.
 		b.box(CX - 2, DECK + 1, WINDOW_Z + 2, CX + 2, DECK + 1, WINDOW_Z + 2, PROXY);
 		b.set(CX, DECK + 1, WINDOW_Z + 2, BLACK);
-		b.set(CX, DECK + 2, WINDOW_Z + 2, "lever[face=floor,facing=south]");
+		// Phase 18: the helm's throttle is drawn (no vanilla lever); a slim shape to click, over a
+		// cap like the rest of the helm's (from the helm's middle one stepped onto the caps).
+		b.shaped(CX, DECK + 2, WINDOW_Z + 2, net.minecraft.world.phys.shapes.Shapes.or(net.minecraft.world.phys.shapes.Shapes.box(0.0, 0.0, 0.0, 1.0, 0.5, 1.0),
+				net.minecraft.world.phys.shapes.Shapes.box(0.3, 0.0, 0.3, 0.7, 0.6, 0.7)), false);
 		// The officers' stations at the ends of the platform.
 		for (int x : new int[] {BRIDGE_X0 + 4, BRIDGE_X1 - 4}) {
 			b.set(x, DECK + 1, WINDOW_Z + 2, PROXY);
+		}
+
+		// Phase 18: nobody climbs onto the helm or the officers' stations (one stood over them in the
+		// air): half a block more that only collides (the throttle keeps its own shape).
+		for (int x = BRIDGE_X0 + 1; x <= BRIDGE_X1 - 1; x++) {
+			if (x != CX && b.get(x, DECK + 1, WINDOW_Z + 2).is(net.minecraft.world.level.block.Blocks.BARRIER) && b.isAir(x, DECK + 2, WINDOW_Z + 2)) {
+				b.ghost(x, DECK + 2, WINDOW_Z + 2, net.minecraft.world.phys.shapes.Shapes.box(0.0, 0.0, 0.0, 1.0, 0.5, 1.0));
+			}
 		}
 
 		// The door to the command deck.
@@ -716,11 +966,16 @@ public final class DestroyerInterior extends InteriorPlan {
 		// The sensor room's consoles along its inner wall and the tactical table.
 		for (int z = SIDE_Z0 + 2; z <= SIDE_Z1 - 2; z += 2) {
 			b.set(CX + 5, DECK + 1, z, z >= 105 && z <= 109 ? "air" : PROXY);
+
+			// Phase 18: nobody climbs onto them (one stood over the drawn console, and from there
+			// on the head of the technician at work beside it).
+			if (z < 105 || z > 109) {
+				b.ghost(CX + 5, DECK + 2, z, net.minecraft.world.phys.shapes.Shapes.box(0.0, 0.0, 0.0, 1.0, 0.5, 1.0));
+			}
 		}
 
 		int sx = (CX + 4 + SIDE_EAST) / 2 + 4;
 		b.box(sx - 2, DECK + 1, 105, sx + 2, DECK + 1, 109, PROXY);
-		b.set(SIDE_EAST - 2, DECK + 1, SIDE_Z0 + 2, "chest[facing=west]");
 
 		for (int z = SIDE_Z0 + 3; z <= SIDE_Z1 - 3; z += 5) {
 			b.light(tx - 5, COMMAND_TOP - 2, z, 12);

@@ -23,6 +23,14 @@ abstract class MinecraftMixin {
 		}
 	}
 
+	/** Phase 18: the use key on someone of a ship's crew speaks to them. */
+	@Inject(method = "startUseItem", at = @At("HEAD"), cancellable = true)
+	private void sabercraft$talkToCrew(CallbackInfo info) {
+		if (com.phiro.sabercraft.client.interior.InteriorClient.talk((Minecraft) (Object) this)) {
+			info.cancel();
+		}
+	}
+
 	@Inject(method = "continueAttack", at = @At("HEAD"), cancellable = true)
 	private void sabercraft$keepFiring(boolean down, CallbackInfo info) {
 		Minecraft client = (Minecraft) (Object) this;

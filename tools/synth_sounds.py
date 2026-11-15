@@ -1250,6 +1250,37 @@ def phase16():
     write_ogg("door", door_hiss(rng), SHIP_OUT)
 
 
+def comm_click(rng, seconds=0.42):
+    """Phase 18: a helmet radio keyed: a click, a short burst of filtered static, a click (no voice)."""
+    t = t_axis(seconds)
+    static = bandpass_noise(seconds, 900, 3200, rng) * 0.22
+    gate = ((t > 0.03) & (t < seconds - 0.06)).astype(float)
+    gate = np.convolve(gate, np.ones(80) / 80, mode="same")
+    flutter = 0.75 + 0.25 * np.sin(2 * np.pi * 23 * t)
+    out = static * gate * flutter
+    for at, f in ((0.0, 2600), (seconds - 0.07, 1900)):
+        ct = np.clip(t - at, 0, None)
+        out += np.sin(2 * np.pi * f * ct) * np.exp(-ct * 260) * (t >= at) * 0.5
+    fade = np.minimum(1.0, (seconds - t) / 0.02)
+    return normalize(out * fade, 0.45)
+
+
+def comm_chirp(rng, seconds=0.28):
+    """Phase 18: a console's acknowledging chirp (two soft rising tones)."""
+    t = t_axis(seconds)
+    f = np.where(t < seconds / 2, 880 + 300 * t / seconds, 1320 + 400 * t / seconds)
+    tone = np.sin(2 * np.pi * np.cumsum(f) / RATE) * np.exp(-((t % (seconds / 2)) * 9))
+    fade = np.minimum(1.0, (seconds - t) / 0.02) * np.minimum(1.0, t / 0.005)
+    return normalize(tone * fade, 0.3)
+
+
+def phase18():
+    """Phase 18: the crew answering (radio click for helmets, a chirp otherwise). Own random stream."""
+    rng = np.random.default_rng(1977_18)
+    write_ogg("crew_comm", comm_click(rng), SHIP_OUT)
+    write_ogg("crew_chirp", comm_chirp(rng), SHIP_OUT)
+
+
 # Planet ambiences (Phase 10) ---------------------------------------------------------------------
 # Loops of AMBIENT_SECONDS. Every slow modulation runs a whole number of times per loop, and every
 # event (a gust, a bird, a crackle) that runs over the end wraps to the start, so they loop
@@ -1445,6 +1476,10 @@ def main():
 
     if "--phase15" in sys.argv:
         phase15()
+
+    if "--phase18" in sys.argv:
+        phase18()
+        return
 
     if "--phase16" in sys.argv:
         phase16()
