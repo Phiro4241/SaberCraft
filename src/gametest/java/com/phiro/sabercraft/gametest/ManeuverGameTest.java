@@ -270,6 +270,9 @@ public class ManeuverGameTest implements FabricClientGameTest {
 		}
 
 		server.runCommand("gamemode survival @a");
+		// The world closes right after this test. Without a pause the game mode chat message races
+		// the closing connection, and on CI the world then never finished closing.
+		context.waitTicks(10);
 	}
 
 	private static void start(TestServerContext server) {
