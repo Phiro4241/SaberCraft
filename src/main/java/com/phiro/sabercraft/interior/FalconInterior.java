@@ -8,6 +8,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.shapes.Shapes;
+import net.minecraft.world.level.block.Block;
 
 /**
  * Phase 14: the walkable interior of the Millennium Falcon, at about real size (one block a
@@ -86,8 +87,10 @@ public final class FalconInterior extends InteriorPlan {
 	@Override
 	public int version() {
 		// 3 (Phase 16): the curved walls are barriers shaped like the drawn walls, no stepped blocks
-		// poking through them any more. 4: the new cockpit, slim seats.
-		return 4;
+		// poking through them any more. 4: the new cockpit, slim seats. 5 (Phase 17): collision
+		// shaped like everything drawn (machines, hyperdrive, couch, domes, ramp), the engine
+		// room's outer wall round, furniture that cannot be climbed.
+		return 5;
 	}
 
 	@Override
@@ -128,7 +131,7 @@ public final class FalconInterior extends InteriorPlan {
 	@Override
 	public List<Room> rooms() {
 		return List.of(
-				new Room("cockpit", new AABB(41, 7, 20, 47, 10, 29)),
+				new Room("cockpit", new AABB(41, 7, 16, 47, 10, 29)),
 				new Room("cockpit_tube", new AABB(30, 7, 23, 39, 9, 25)),
 				new Room("top_turret", new AABB(18, 12, 28, 24, 15, 34)),
 				new Room("bottom_turret", new AABB(18, 1, 28, 24, 4, 34)),
@@ -162,6 +165,86 @@ public final class FalconInterior extends InteriorPlan {
 	public static final double RING_IN_WALL = RING_IN + 0.05;
 	public static final double RING_OUT_WALL = RING_OUT - 0.05;
 	public static final double ENGINE_WALL = ENGINE_R0 + 0.05;
+	/** Phase 17: the engine room's outer wall (above the machines) is round too, drawn here. */
+	public static final double ENGINE_OUTER_WALL = ENGINE_R1 + 0.45;
+	/** Phase 17: the front of the machines along that wall, and how high they are. */
+	public static final double MACHINE_R = ENGINE_R1 - 1.5;
+	public static final double MACHINE_HEIGHT = 2.0;
+	/** Phase 17: the hyperdrive's housing, as drawn (its collars are the widest part). */
+	public static final double DRIVE_HOUSING = 2.12;
+	/** Phase 17: the window round the hyperdrive's core, between its collars (drawn, and where one stops). */
+	public static final double DRIVE_WINDOW = 1.95;
+	/** Phase 17: the couch round the game table: inner and outer radius (as drawn). */
+	public static final double COUCH_IN = 2.4;
+	public static final double COUCH_OUT = 3.25;
+
+	/**
+	 * Phase 17: whether the couch is drawn at an angle round the game table (degrees, 0 = east,
+	 * 90 = south): in pieces of 10 degrees from 60 on, on the table's far side, clear of the
+	 * hold's wall. The model and the collision both ask this.
+	 */
+	public static boolean couchAt(double angle) {
+		double a = net.minecraft.util.Mth.positiveModulo(angle - 60.0, 360.0);
+		int k = (int) Math.floor(a / 10.0);
+
+		if (k < 0 || k >= 24) {
+			return false;
+		}
+
+		double mid = Math.toRadians(60.0 + k * 10.0 + 5.0);
+		double mx = TABLE_X + Math.cos(mid) * 2.85;
+		double mz = TABLE_Z + Math.sin(mid) * 2.85;
+		return Math.cos(mid) * 2.85 < 1.2 && Math.hypot(mx - CX, mz - CZ) < HOLD_R - MARGIN - 0.1;
+	}
+
+	/** Phase 17: whether a point (plot space) is in the couch, seen from above. */
+	public static boolean inCouch(double x, double z) {
+		double d = Math.hypot(x - TABLE_X, z - TABLE_Z);
+		return d >= COUCH_IN && d <= COUCH_OUT && couchAt(Math.toDegrees(Math.atan2(z - TABLE_Z, x - TABLE_X)));
+	}
+
+	/**
+	 * Phase 17: whether a point (plot space, row y) lies in one of the passages of the doorways
+	 * through the curved walls: between the doorway's sides, a little beyond its cells along the
+	 * way through. The curved wall is drawn open there (between the sides), so it is open to walk
+	 * through too; it used to collide in the slivers where the curve passes just outside the
+	 * doorway's cells.
+	 */
+	public static boolean inPassage(double x, double z, int y) {
+		for (Doorway door : DOORWAYS) {
+			if (y < door.y0() || y > door.y1()) {
+				continue;
+			}
+
+			boolean in = door.alongX() ? z >= door.z0() && z <= door.z1() + 1 && x >= door.x0() - 1.5 && x <= door.x1() + 2.5
+					: x >= door.x0() && x <= door.x1() + 1 && z >= door.z0() - 1.5 && z <= door.z1() + 2.5;
+
+			if (in && !beyondUncrossed(door, x, z)) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	/**
+	 * Phase 17: whether a point lies beyond one of the full round walls that a doorway does not
+	 * go through (the hold's doorways reach out 1.5 blocks, into the ring corridor's outer wall,
+	 * which is drawn closed there).
+	 */
+	public static boolean beyondUncrossed(Doorway door, double x, double z) {
+		double near = Math.hypot(Math.max(0.0, Math.max(door.x0() - CX, CX - door.x1() - 1)), Math.max(0.0, Math.max(door.z0() - CZ, CZ - door.z1() - 1)));
+		double far = Math.hypot(Math.max(Math.abs(door.x0() - CX), Math.abs(door.x1() + 1 - CX)), Math.max(Math.abs(door.z0() - CZ), Math.abs(door.z1() + 1 - CZ)));
+		double d = Math.hypot(x - CX, z - CZ);
+
+		for (double r : new double[] {HOLD_WALL, RING_IN_WALL, RING_OUT_WALL}) {
+			if (far <= r && d >= r || near >= r && d <= r) {
+				return true;
+			}
+		}
+
+		return false;
+	}
 
 	/**
 	 * Phase 16: whether a point (plot space) at row y is inside one of the round rooms, up to their
@@ -185,7 +268,7 @@ public final class FalconInterior extends InteriorPlan {
 			return true;
 		}
 
-		if (y >= air0 && y <= air0 + 3 && d > ENGINE_WALL && d < ENGINE_R1) {
+		if (y >= air0 && y <= air0 + 3 && d > ENGINE_WALL && d < ENGINE_OUTER_WALL) {
 			// The ends of the engine room are walls of whole blocks: by the cell's middle.
 			double angle = Math.toDegrees(Math.atan2(Math.floor(z) + 0.5 - CZ, Math.floor(x) + 0.5 - CX));
 			return angle >= ENGINE_A0 && angle <= ENGINE_A1;
@@ -202,6 +285,105 @@ public final class FalconInterior extends InteriorPlan {
 
 		double dy = Math.max(Math.abs(y - COCKPIT_AXIS), Math.abs(y + 1 - COCKPIT_AXIS));
 		return Math.sqrt(COCKPIT_R * COCKPIT_R - dy * dy);
+	}
+
+	/**
+	 * Phase 17: the solid part of the cockpit's row y at a distance from its axis (x): below the
+	 * round wall's lower half and above its upper half (shares of the row), or {@code null}.
+	 */
+	public static double @Nullable [] podSpan(double x, int y) {
+		double w = Math.abs(x - COCKPIT_X);
+
+		if (w >= COCKPIT_R) {
+			return new double[] {0.0, 1.0};
+		}
+
+		double h = Math.sqrt(COCKPIT_R * COCKPIT_R - w * w);
+		double low = COCKPIT_AXIS - h - y;
+		double high = COCKPIT_AXIS + h - y;
+		boolean below = low > 0.0;
+		boolean above = high < 1.0;
+
+		if (below && above) {
+			return new double[] {0.0, 1.0};
+		}
+
+		return below ? new double[] {0.0, Math.min(1.0, low)} : above ? new double[] {Math.max(0.0, high), 1.0} : null;
+	}
+
+	/** Phase 17: where the window cone ends in front (plot z) and its radius there; its radius where it begins (z = COCKPIT_FRONT). */
+	public static final double WINDOW_TIP = 15.8;
+	public static final double WINDOW_TIP_R = 1.3;
+	public static final double WINDOW_R0 = COCKPIT_R + 0.28 - 0.05;
+
+	/** Phase 17: the inner radius of the window cone at z (in front of the pod), a little inside the glass. */
+	public static double coneRadius(double z) {
+		double t = (COCKPIT_FRONT - z) / (COCKPIT_FRONT - WINDOW_TIP);
+		return WINDOW_R0 + (WINDOW_TIP_R - WINDOW_R0) * t - 0.08;
+	}
+
+	/**
+	 * Phase 17: as {@link #podSpan}, at any z: in the pod its round wall, in front of it the window
+	 * cone (whose floor is level with the pod's: drawn as a ledge under the glass) up to the
+	 * ceiling's height.
+	 */
+	public static double @Nullable [] noseSpan(double x, double z, int y) {
+		double[] span = noseSpan0(x, z, y);
+
+		// In the bottom row, wherever the wall is at all the column is solid to the top: one does
+		// not climb onto the round wall's lower lip (and stand with the body in the wall above).
+		if (y == FLOOR + 1) {
+			return span != null && span[0] <= 0.0 ? new double[] {0.0, 1.0} : span;
+		}
+
+		// In the pod the lip is two rows high: on the bottom row's lip one stood with the shoulder in
+		// the arches on the wall above (one cannot jump two rows; walking along the wall, the
+		// bottom row stops one at the same place).
+		if (y == FLOOR + 2 && z >= COCKPIT_FRONT) {
+			double[] below = noseSpan0(x, z, FLOOR + 1);
+
+			if (below != null && below[0] <= 0.0) {
+				return new double[] {0.0, 1.0};
+			}
+		}
+
+		return span;
+	}
+
+	private static double @Nullable [] noseSpan0(double x, double z, int y) {
+		if (z >= COCKPIT_FRONT) {
+			return podSpan(x, y);
+		}
+
+		if (z < WINDOW_TIP) {
+			return new double[] {0.0, 1.0};
+		}
+
+		double r = coneRadius(z);
+		double w = Math.abs(x - COCKPIT_X);
+
+		if (w >= r) {
+			return new double[] {0.0, 1.0};
+		}
+
+		double h = Math.sqrt(r * r - w * w);
+		double lowY = Math.max(FLOOR + 1, COCKPIT_AXIS - h);
+		double highY = Math.min(COCKPIT_CEILING, COCKPIT_AXIS + h);
+
+		if (highY - lowY < 0.1) {
+			return new double[] {0.0, 1.0};
+		}
+
+		double low = lowY - y;
+		double high = highY - y;
+		boolean below = low > 0.0;
+		boolean above = high < 1.0;
+
+		if (below && above) {
+			return new double[] {0.0, 1.0};
+		}
+
+		return below ? new double[] {0.0, Math.min(1.0, low)} : above ? new double[] {Math.max(0.0, high), 1.0} : null;
 	}
 
 	/** Phase 16: whether a point (plot space, row y) is inside the round cockpit, up to its drawn wall. */
@@ -255,6 +437,12 @@ public final class FalconInterior extends InteriorPlan {
 	public static final List<Console> CONSOLES = List.of(
 			new Console(new BlockPos(44, FLOOR + 1, COCKPIT_FRONT + 1), Console.HYPERSPACE),
 			new Console(new BlockPos(45, FLOOR + 1, COCKPIT_FRONT + 1), Console.HYPERSPACE),
+			// Phase 17: the caps over the dashboard and the engineering desk (one cannot climb onto them).
+			new Console(new BlockPos(44, FLOOR + 2, COCKPIT_FRONT + 1), Console.HYPERSPACE),
+			new Console(new BlockPos(45, FLOOR + 2, COCKPIT_FRONT + 1), Console.HYPERSPACE),
+			new Console(new BlockPos(26, FLOOR + 2, 30), Console.STATUS),
+			new Console(new BlockPos(26, FLOOR + 2, 31), Console.STATUS),
+			new Console(new BlockPos(26, FLOOR + 2, 32), Console.STATUS),
 			new Console(new BlockPos(26, FLOOR + 1, 29), Console.STATUS),
 			new Console(new BlockPos(26, FLOOR + 1, 30), Console.STATUS),
 			new Console(new BlockPos(26, FLOOR + 1, 31), Console.STATUS),
@@ -272,7 +460,7 @@ public final class FalconInterior extends InteriorPlan {
 	public @Nullable Seat seatFor(BlockPos cell, Vec3 hit) {
 		Seat exact = super.seatFor(cell, hit);
 
-		if (exact != null || cell.getY() != FLOOR + 1) {
+		if (exact != null || cell.getY() != FLOOR + 1 && cell.getY() != FLOOR + 2) {
 			return exact;
 		}
 
@@ -321,9 +509,177 @@ public final class FalconInterior extends InteriorPlan {
 		java.util.Set<net.minecraft.world.level.block.Block> shell = java.util.Set.of(InteriorBuilder.state(HULL).getBlock(),
 				InteriorBuilder.state(SHELL).getBlock(), InteriorBuilder.state(PANEL).getBlock(), InteriorBuilder.state(DECK).getBlock(),
 				InteriorBuilder.state(DARK).getBlock(), InteriorBuilder.state(TRIM).getBlock());
-		b.roundShell(CX, CZ, new double[] {HOLD_WALL, RING_IN_WALL, RING_OUT_WALL, ENGINE_WALL}, 0, air0, 0, 47, air0 + 3, 51, shell, FalconInterior::open,
+		b.roundShell(CX, CZ, new double[] {HOLD_WALL, RING_IN_WALL, RING_OUT_WALL, ENGINE_WALL, ENGINE_OUTER_WALL}, 0, air0, 0, 47, air0 + 3, 51, shell,
+				// The tube to the cockpit is cleared air; the engine room's outer radius passes through it.
+				(x, z, y) -> open(x, z, y) || inPassage(x, z, y) || x >= 30 && x < 39 && z >= 23 && z < 25 && y >= air0 && y <= air0 + 1,
 				(x, z, y) -> doorAt((int) Math.floor(x), y, (int) Math.floor(z)));
+		solids(b, shell);
 	}
+
+	/**
+	 * Phase 17: collision shaped like what is drawn, for everything that is not a whole block:
+	 * the machines along the engine room's outer wall and the hyperdrive, the couch and the game
+	 * table, the glass domes of the gun turrets, the ramp; caps over furniture one should not
+	 * climb onto (seats, desks, bunks, the counter, the bed), so nobody stands with their head in
+	 * the ceiling's fittings.
+	 */
+	private static void solids(InteriorBuilder b, java.util.Set<net.minecraft.world.level.block.Block> shell) {
+		int y0 = FLOOR + 1;
+		java.util.Set<net.minecraft.world.level.block.Block> proxies = java.util.Set.of(net.minecraft.world.level.block.Blocks.BARRIER);
+		// The machines: from their front to the wall behind, two high; the hyperdrive.
+		ProxyShapes.Solid machines = (x, z) -> {
+			double d = Math.hypot(x - CX, z - CZ);
+			double angle = Math.toDegrees(Math.atan2(Math.floor(z) + 0.5 - CZ, Math.floor(x) + 0.5 - CX));
+			return d > MACHINE_R && angle >= ENGINE_A0 && angle <= ENGINE_A1;
+		};
+
+		for (int y = y0; y < y0 + MACHINE_HEIGHT; y++) {
+			b.solid(4, 38, 37, 51, y, machines, 1.0, proxies);
+		}
+
+		// The hyperdrive: the window round its core, the wider collars at its foot and head.
+		for (int y = y0; y <= y0 + 3; y++) {
+			int row = y - y0;
+			b.spans((int) DRIVE_X - 3, (int) DRIVE_Z - 3, (int) DRIVE_X + 3, (int) DRIVE_Z + 3, y, (x, z) -> {
+				double d = Math.hypot(x - DRIVE_X, z - DRIVE_Z);
+
+				if (d < DRIVE_WINDOW) {
+					return new double[] {0.0, 1.0};
+				}
+
+				if (d < DRIVE_HOUSING) {
+					return row == 0 ? new double[] {0.0, 0.6} : row == 3 ? new double[] {0.4, 1.0} : null;
+				}
+
+				return null;
+			}, java.util.Set.of());
+		}
+
+		// The game table and the couch (the couch with a cap: one sits on it with a click).
+		b.solid(12, 22, 22, 33, y0, (x, z) -> Math.hypot(x - TABLE_X, z - TABLE_Z) < TABLE_R + 0.08 || inCouch(x, z), 1.0, java.util.Set.of());
+		b.solid(12, 22, 22, 33, y0 + 1, FalconInterior::inCouch, 0.5, java.util.Set.of());
+
+		// The glass domes: one walks up to the glass, not into an invisible ring a block before it.
+		// The lower one is a bowl: its glass rises from under the feet, so one can step a little
+		// way up it; the upper one closes over the head.
+		java.util.Set<net.minecraft.world.level.block.Block> pane = java.util.Set.of(net.minecraft.world.level.block.Blocks.BARRIER);
+
+		for (int y : new int[] {1, 2, 3, FLOOR + 6, FLOOR + 7, FLOOR + 8}) {
+			// The old ring of plain barriers goes (not the gunner's seat and controls).
+			for (int x = 15; x <= 26; x++) {
+				for (int z = 25; z <= 36; z++) {
+					if (b.get(x, y, z).is(net.minecraft.world.level.block.Blocks.BARRIER) && Math.hypot(x + 0.5 - CX, z + 0.5 - CZ) > 2.4
+							&& !(x == 20 && (z == 27 || z == 28))) {
+						b.set(x, y, z, "air");
+					}
+				}
+			}
+		}
+
+		for (int y = 1; y <= 3; y++) {
+			int row = y;
+			b.spans(15, 25, 26, 36, y, (x, z) -> domeSpan(Math.hypot(x - CX, z - CZ), row, false), pane);
+		}
+
+		for (int y = FLOOR + 6; y <= FLOOR + 8; y++) {
+			int row = y;
+			b.spans(15, 25, 26, 36, y, (x, z) -> domeSpan(Math.hypot(x - CX, z - CZ), row, true), pane);
+		}
+
+		// Caps over furniture.
+		for (int x = 43; x <= 45; x++) {
+			cap(b, x, y0 + 1, COCKPIT_FRONT + 1, (px, pz) -> true);
+		}
+
+		for (int z = 29; z <= 33; z++) {
+			cap(b, 26, y0 + 1, z, (px, pz) -> true);
+		}
+
+		for (int z = 33; z <= 35; z++) {
+			cap(b, 5, y0 + 1, z, (px, pz) -> true);
+		}
+
+		cap(b, 7, y0 + 1, 38, (px, pz) -> true);
+		cap(b, 8, y0 + 1, 38, (px, pz) -> true);
+
+		for (int z : new int[] {22, 25, 28}) {
+			for (int x = 4; x <= 6; x++) {
+				// The upper bunk: the space between the bunks is closed, nobody lies in the lower one standing up.
+				if (b.isAir(x, y0 + 1, z)) {
+					b.set(x, y0 + 1, z, PROXY);
+				}
+			}
+		}
+
+		// The gun controls in the turrets.
+		cap(b, 20, FLOOR + 7, 27, (px, pz) -> true);
+		cap(b, 20, 2, 27, (px, pz) -> true);
+
+		for (Seat seat : SEATS) {
+			if (!seat.role().equals(Seat.COUCH)) {
+				double sx = seat.at().x;
+				double sz = seat.at().z;
+				cap(b, seat.cell().getX(), seat.cell().getY() + 1, seat.cell().getZ(), (px, pz) -> Math.abs(px - sx) < 0.32 && Math.abs(pz - sz) < 0.32);
+			}
+		}
+	}
+
+	/** Phase 17: the turrets' glass domes as drawn: centre height, radius, and the collar round each (from, to, radius). */
+	public static final double TOP_DOME_Y = FLOOR + 6.0;
+	public static final double TOP_DOME_R = 4.0;
+	public static final double BOTTOM_DOME_Y = 4.0;
+	public static final double BOTTOM_DOME_R = 4.2;
+	public static final double COLLAR_R = 4.05;
+
+	/**
+	 * Phase 17: the solid part of a turret's row at a distance from the middle: outside the glass
+	 * (above the upper dome, below the lower one), and the collar round the dome's rim; only out
+	 * to the glass's outer edge, nothing in the open space round the hull.
+	 */
+	static double @Nullable [] domeSpan(double r, int y, boolean upper) {
+		if (r > 4.6) {
+			return null;
+		}
+
+		if (upper) {
+			// Below 15 degrees up the dome stands the collar.
+			double rim = TOP_DOME_Y + TOP_DOME_R * Math.sin(Math.toRadians(15.0));
+
+			if (y + 1 <= rim) {
+				return r > COLLAR_R ? new double[] {0.0, 1.0} : null;
+			}
+
+			if (r >= TOP_DOME_R) {
+				return new double[] {0.0, 1.0};
+			}
+
+			double surface = TOP_DOME_Y + Math.sqrt(TOP_DOME_R * TOP_DOME_R - r * r);
+			double from = Math.max(surface, r > COLLAR_R ? y : rim) - y;
+			return from < 1.0 ? new double[] {Math.max(0.0, from), 1.0} : null;
+		}
+
+		double rim = BOTTOM_DOME_Y - BOTTOM_DOME_R * Math.sin(Math.toRadians(15.0));
+
+		if (y >= rim) {
+			return r > COLLAR_R ? new double[] {0.0, 1.0} : null;
+		}
+
+		if (r >= BOTTOM_DOME_R) {
+			return new double[] {0.0, 1.0};
+		}
+
+		double surface = BOTTOM_DOME_Y - Math.sqrt(BOTTOM_DOME_R * BOTTOM_DOME_R - r * r);
+		double to = surface - y;
+		return to > 0.0 ? new double[] {0.0, Math.min(1.0, to)} : null;
+	}
+
+	/** Phase 17: a barrier half a block high over a piece of furniture (where {@code solid}), if nothing else is there. */
+	private static void cap(InteriorBuilder b, int x, int y, int z, ProxyShapes.Solid solid) {
+		if (b.isAir(x, y, z)) {
+			b.shaped(x, y, z, ProxyShapes.columns(x, z, 16, solid, 0.5), false);
+		}
+	}
+
 
 	/** Whether a cell is in one of the doorways. */
 	public static boolean doorAt(int x, int y, int z) {
@@ -392,7 +748,7 @@ public final class FalconInterior extends InteriorPlan {
 		int air0 = FLOOR + 1;
 		b.clear(4, air0, 22, 8, air0 + 2, 28);        // quarters (Phase 16: x to 8, clear of the corridor's curve)
 		b.clear(5, air0, 33, 8, air0 + 2, 39);        // galley
-		sector(b, air0, air0 + 3, ENGINE_R0, ENGINE_R1, 0.0, "air"); // engine room
+		sector(b, air0, air0 + 3, ENGINE_R0, ENGINE_R1, 0.0, "air"); // engine room (Phase 17: its outer wall's cells shaped, see roundShell)
 		b.clear(9, air0, 2, 15, air0 + 3, 17);        // cargo hold
 		b.clear(26, air0, 2, 32, air0 + 3, 17);       // storage
 		b.clear(30, air0, 23, 38, air0 + 1, 24);      // tube
@@ -464,20 +820,7 @@ public final class FalconInterior extends InteriorPlan {
 			}
 		}
 
-		// The game table and the curved couch around it (proxies for the client's models).
-		b.disc(TABLE_X, FLOOR + 1, TABLE_Z, TABLE_R, PROXY);
-
-		for (int x = 12; x <= 21; x++) {
-			for (int z = 22; z <= 33; z++) {
-				double dx = x + 0.5 - TABLE_X;
-				double dz = z + 0.5 - TABLE_Z;
-				double d = Math.hypot(dx, dz);
-
-				if (d > 2.4 && d <= 3.3 && dx < 1.2 && Math.hypot(x + 0.5 - CX, z + 0.5 - CZ) < HOLD_R - MARGIN) {
-					b.set(x, FLOOR + 1, z, PROXY);
-				}
-			}
-		}
+		// The game table and the curved couch around it collide as drawn (Phase 17: see solids()).
 
 		// The gun well: the ladder up to the upper turret and down to the lower one, on a post.
 		for (int y = 1; y <= FLOOR + 6; y++) {
@@ -520,7 +863,7 @@ public final class FalconInterior extends InteriorPlan {
 		int y0 = FLOOR + 1;
 
 		for (int x = 39; x <= 48; x++) {
-			for (int z = COCKPIT_FRONT; z <= COCKPIT_BACK; z++) {
+			for (int z = COCKPIT_FRONT - 4; z <= COCKPIT_BACK; z++) {
 				double half = cockpitHalfWidth(y0);
 				boolean under = Math.abs(x + 0.5 - COCKPIT_X) < half + 0.5;
 
@@ -529,7 +872,9 @@ public final class FalconInterior extends InteriorPlan {
 						continue;
 					}
 
-					boolean room = y > FLOOR && y < COCKPIT_CEILING && z > COCKPIT_FRONT && z < COCKPIT_BACK;
+					// Phase 17: the room goes on into the window cone (one walks up to the glass, not
+					// into an invisible wall where the pod ends and the window begins).
+					boolean room = y > FLOOR && y < COCKPIT_CEILING && z >= COCKPIT_FRONT - 4 && z < COCKPIT_BACK;
 
 					if (!room) {
 						// Floor, ceiling, window and back wall, as far as the pod reaches.
@@ -540,15 +885,21 @@ public final class FalconInterior extends InteriorPlan {
 						continue;
 					}
 
+					// Phase 17: the round wall leans, so each column collides from the floor up to
+					// where the wall is at its distance from the axis (and down from the wall above
+					// the axis): one walks up to the wall at every height, not into an invisible
+					// step at the narrowest place of the row.
 					int row = y;
-					ProxyShapes.Solid solid = (px, pz) -> !cockpitOpen(px, pz, row);
+					net.minecraft.world.phys.shapes.VoxelShape shape = ProxyShapes.spans(x, z, 16, (px, pz) -> noseSpan(px, pz, row));
 
-					if (ProxyShapes.mixed(x, z, 8, solid)) {
-						b.shaped(x, y, z, ProxyShapes.columns(x, z, 8, solid), false);
-					} else if (!solid.at(x + 0.5, z + 0.5)) {
+					if (shape.isEmpty()) {
 						b.set(x, y, z, "air");
-					} else if (Math.abs(x + 0.5 - COCKPIT_X) < COCKPIT_R + 1.0) {
-						b.set(x, y, z, PANE);
+					} else if (Block.isShapeFullBlock(shape)) {
+						if (Math.abs(x + 0.5 - COCKPIT_X) < COCKPIT_R + 1.0) {
+							b.set(x, y, z, PANE);
+						}
+					} else {
+						b.shaped(x, y, z, shape, false);
 					}
 				}
 			}
@@ -557,6 +908,17 @@ public final class FalconInterior extends InteriorPlan {
 		// The dashboard across the front (proxies), the helm lever on the pilot's side, the
 		// hyperdrive lever on the co-pilot's.
 		b.box(42, y0, COCKPIT_FRONT + 1, 45, y0, COCKPIT_FRONT + 1, PROXY);
+		// Phase 17: the dashboard is drawn a little wider than its four cells.
+		for (int side = 0; side < 2; side++) {
+			int x = side == 0 ? 41 : 46;
+			int z = COCKPIT_FRONT + 1;
+			net.minecraft.world.phys.shapes.VoxelShape pod = ProxyShapes.spans(x, z, 16, (px, pz) -> noseSpan(px, pz, y0));
+			b.shaped(x, y0, z, Shapes.or(pod, side == 0 ? Shapes.box(0.66, 0.0, 0.0, 1.0, 1.0, 0.95) : Shapes.box(0.0, 0.0, 0.0, 0.34, 1.0, 0.95)), false);
+			// A cap over it, as over the dashboard (one does not climb onto it and on from there).
+			net.minecraft.world.phys.shapes.VoxelShape above = ProxyShapes.spans(x, z, 16, (px, pz) -> noseSpan(px, pz, y0 + 1));
+			b.shaped(x, y0 + 1, z, Shapes.or(above, side == 0 ? Shapes.box(0.66, 0.0, 0.0, 1.0, 0.5, 0.95) : Shapes.box(0.0, 0.0, 0.0, 0.34, 0.5, 0.95)), false);
+		}
+
 		b.set(42, y0, COCKPIT_FRONT + 1, DARK);
 		b.set(42, y0 + 1, COCKPIT_FRONT + 1, "lever[face=floor,facing=south]");
 
@@ -607,12 +969,7 @@ public final class FalconInterior extends InteriorPlan {
 	private static void engineRoom(InteriorBuilder b) {
 		sector(b, FLOOR, FLOOR, ENGINE_R0 - 0.5, ENGINE_R1 + 0.5, 1.0, DECK);
 		sector(b, FLOOR + 5, FLOOR + 5, ENGINE_R0 - 0.5, ENGINE_R1 + 0.5, 1.0, TRIM);
-		// Machines along the outer wall, two high, gaps for the hatches to the engines.
-		sector(b, FLOOR + 1, FLOOR + 2, ENGINE_R1 - 1.2, ENGINE_R1, 0.0, PROXY);
-		// The hyperdrive.
-		for (int y = FLOOR + 1; y <= FLOOR + 4; y++) {
-			b.disc(DRIVE_X, y, DRIVE_Z, DRIVE_R, PROXY);
-		}
+		// The machines along the outer wall and the hyperdrive collide as drawn (Phase 17: see solids()).
 
 		b.light(15, FLOOR + 4, 45, 13);
 		b.light(26, FLOOR + 4, 45, 13);
@@ -651,14 +1008,45 @@ public final class FalconInterior extends InteriorPlan {
 		b.light(29, FLOOR + 4, 9, 11);
 	}
 
+	/** Phase 17: where the ramp starts at the top (z), and its height (the walking surface) along z. */
+	public static final int RAMP_TOP_Z = 34;
+
+	public static double rampHeight(double z) {
+		return FLOOR + 1.0 - Math.max(0.0, Math.min(4.0, z - RAMP_TOP_Z));
+	}
+
 	/** The boarding ramp: a landing, the ramp down, the pad at the open hatch (the way out). */
 	private static void ramp(InteriorBuilder b) {
 		b.box(33, FLOOR, 30, 37, FLOOR, 33, DECK);
 
-		for (int i = 0; i < 4; i++) {
-			int z = 34 + i;
-			b.box(33, 1, z, 37, FLOOR - 1 - i, z, TRIM);
-			b.box(33, FLOOR - i, z, 37, FLOOR - i, z, "polished_andesite_stairs[facing=north]");
+		// Phase 17: a smooth ramp, collision exactly under the plated ramp that is drawn (it was
+		// stairs under a ramp drawn above them: one walked with the feet in the plates).
+		for (int z = RAMP_TOP_Z; z < RAMP_TOP_Z + 4; z++) {
+			for (int y = 1; y <= FLOOR; y++) {
+				double low = rampHeight(z + 1.0);
+
+				if (y + 1 <= low) {
+					b.box(33, y, z, 37, y, z, TRIM);
+				} else if (y < rampHeight(z)) {
+					net.minecraft.world.phys.shapes.VoxelShape shape = net.minecraft.world.phys.shapes.Shapes.empty();
+					int res = 16;
+
+					for (int j = 0; j < res; j++) {
+						double top = Math.min(1.0, rampHeight(z + (j + 1.0) / res) - y);
+
+						if (top > 0.0) {
+							shape = net.minecraft.world.phys.shapes.Shapes.or(shape,
+									net.minecraft.world.phys.shapes.Shapes.box(0.0, 0.0, (double) j / res, 1.0, top, (j + 1.0) / res));
+						}
+					}
+
+					for (int x = 33; x <= 37; x++) {
+						b.shaped(x, y, z, shape.optimize(), false);
+					}
+				} else {
+					b.box(33, y, z, 37, y, z, "air");
+				}
+			}
 		}
 
 		b.box(33, 1, 38, 37, 2, 41, TRIM);

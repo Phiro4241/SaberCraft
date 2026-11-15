@@ -77,6 +77,21 @@ final class DestroyerRooms {
 
 		b.layer(Layer.SOLID).worldLight().white().anim(0).twoSided(false);
 
+		// Phase 17: the maintenance ways: grating all round, a dim lamp in the ceiling now and then.
+		if (s.in("vent")) {
+			boolean lamp = s.kind() == Kind.CEILING && plot.is(s.x(), s.y(), s.z(), Blocks.LIGHT);
+			b.fit(s.kind() == Kind.WALL ? InteriorAtlas.IMP_WALL_VENT : lamp ? InteriorAtlas.IMP_CEILING_LIGHT : InteriorAtlas.IMP_FLOOR_GRATE);
+			Skin.face(b, s, Skin.EPS);
+
+			if (lamp) {
+				b.layer(Layer.GLOW).fullBright().colour(0xFF8090B0).fit(InteriorAtlas.IMP_CEILING_LIGHT_GLOW);
+				Skin.face(b, s, Skin.EPS * 2);
+				b.layer(Layer.SOLID).worldLight().white();
+			}
+
+			return;
+		}
+
 		switch (s.kind()) {
 			case FLOOR -> floor(b, s, block);
 			case CEILING -> ceiling(b, s, plot);
@@ -724,6 +739,50 @@ final class DestroyerRooms {
 
 		doorFrame(b, Direction.Axis.X, CX + 4, LOBBY_Z0, LOBBY_Z0 + 2, HANGAR + 1, HANGAR + 3, true);
 		liftFrame(b, CX - 2, CX + 3, HANGAR + 1, LOBBY_Z1 + 1);
+
+		// Phase 17: a rack of rifles on the west wall (in its two proxy cells).
+		float rx = CX - 3;
+		b.layer(Layer.SOLID).worldLight().white().anim(0).tile(InteriorAtlas.IMP_METAL, 1.0F);
+		b.box(rx, HANGAR + 1, -7.0F, rx + 0.55F, HANGAR + 1.12F, -5.0F, MeshBuilder.ALL & ~MeshBuilder.WEST & ~MeshBuilder.DOWN);
+		b.box(rx, HANGAR + 2.75F, -7.0F, rx + 0.55F, HANGAR + 2.85F, -5.0F, MeshBuilder.ALL & ~MeshBuilder.WEST);
+		b.box(rx, HANGAR + 1.12F, -7.0F, rx + 0.5F, HANGAR + 2.75F, -6.9F, MeshBuilder.ALL & ~MeshBuilder.WEST & ~MeshBuilder.DOWN & ~MeshBuilder.UP);
+		b.box(rx, HANGAR + 1.12F, -5.1F, rx + 0.5F, HANGAR + 2.75F, -5.0F, MeshBuilder.ALL & ~MeshBuilder.WEST & ~MeshBuilder.DOWN & ~MeshBuilder.UP);
+		b.fit(InteriorAtlas.IMP_BLACK);
+
+		for (int i = 0; i < 6; i++) {
+			float z = -6.65F + i * 0.3F;
+			b.box(rx + 0.12F, HANGAR + 1.14F, z - 0.05F, rx + 0.3F, HANGAR + 2.25F, z + 0.05F, MeshBuilder.ALL & ~MeshBuilder.DOWN);
+			b.box(rx + 0.16F, HANGAR + 2.25F, z - 0.025F, rx + 0.24F, HANGAR + 2.6F, z + 0.025F, MeshBuilder.ALL & ~MeshBuilder.DOWN);
+		}
+
+		// The security desk on the east wall, facing the corridor.
+		Props.at(b, CX + 3.5, HANGAR + 1, -8.5, Props.west());
+		Props.desk(b, 1.9F, 0.82F, InteriorAtlas.IMP_CONSOLE, InteriorAtlas.IMP_CONSOLE_TOP, InteriorAtlas.IMP_CONSOLE_TOP_GLOW,
+				InteriorAtlas.IMP_SCREEN_RADAR_GLOW, true, 5);
+		b.pop();
+
+		// Screens along the command corridor's walls.
+		for (int side = 0; side < 2; side++) {
+			float x = side == 0 ? CX - 3 + 0.04F : CX + 4 - 0.04F;
+
+			for (int z0 : new int[] {101, 110}) {
+				b.layer(Layer.SOLID).worldLight().white().anim(0).tile(InteriorAtlas.IMP_METAL, 1.0F);
+				float d = side == 0 ? 0.06F : -0.06F;
+				b.box(Math.min(x, x + d), DECK + 2.0F, z0, Math.max(x, x + d), DECK + 3.3F, z0 + 2.0F,
+						MeshBuilder.ALL & ~(side == 0 ? MeshBuilder.WEST : MeshBuilder.EAST));
+				b.layer(Layer.GLOW).fullBright().anim(InteriorScene.ANIM_SCREEN)
+						.fit(side == 0 ? InteriorAtlas.IMP_SCREEN_TACTICAL_GLOW : InteriorAtlas.IMP_SCREEN_TEXT_GLOW);
+				float fx = x + d + (side == 0 ? 0.004F : -0.004F);
+
+				if (side == 1) {
+					b.rect(fx, DECK + 3.2F, z0 + 0.1F, 0, 0, 1.8F, 0, -1.1F, 0);
+				} else {
+					b.rect(fx, DECK + 3.2F, z0 + 1.9F, 0, 0, -1.8F, 0, -1.1F, 0);
+				}
+			}
+		}
+
+		b.layer(Layer.SOLID).worldLight().white().anim(0);
 	}
 
 	/** A frame round the inside of a corridor at z: posts on both walls and a beam under the ceiling. */

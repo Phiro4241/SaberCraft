@@ -37,8 +37,26 @@ final class FalconJump {
 	/** The tunnel of light round that line. */
 	static final float TUNNEL_R = 22.0F;
 
+	/** Phase 17: the shell round the whole ship in hyperspace: its middle (plot x, z) and radius. */
+	static final float SHIP_X = 24.0F;
+	static final float SHIP_Z = 25.0F;
+	static final float SHELL_R = 95.0F;
+	/** Phase 17: the streaks along the ship's sides: round its middle, clear of the hull. */
+	private static final int SIDE = 260;
+	private static final float SIDE_FRONT = -90.0F;
+	private static final float SIDE_BACK = 120.0F;
+	private static final float[] SIDE_ANGLE = new float[SIDE];
+	private static final float[] SIDE_RADIUS = new float[SIDE];
+	private static final float[] SIDE_ALONG = new float[SIDE];
+
 	static {
 		java.util.Random random = new java.util.Random(1977L);
+
+		for (int i = 0; i < SIDE; i++) {
+			SIDE_ANGLE[i] = random.nextFloat() * Mth.TWO_PI;
+			SIDE_RADIUS[i] = 40.0F + random.nextFloat() * 50.0F;
+			SIDE_ALONG[i] = random.nextFloat() * (SIDE_BACK - SIDE_FRONT);
+		}
 
 		for (int i = 0; i < STARS; i++) {
 			ANGLE[i] = random.nextFloat() * Mth.TWO_PI;
@@ -47,15 +65,44 @@ final class FalconJump {
 		}
 	}
 
+	/** Phase 17: how opaque the shell was when last drawn (0 = not drawn), for tests. */
+	static float shellDrawn;
+
 	private FalconJump() {
 	}
 
 	static void draw(MeshBuilder b, InteriorClient.@Nullable Jump jump, float p, float seconds) {
 		byte stage = jump != null ? jump.stage() : -1;
+		shellDrawn = 0.0F;
 		lamp(b, stage, seconds);
 
 		if (jump == null) {
 			return;
+		}
+
+		// Phase 17: in hyperspace nothing of the space outside shows anywhere one looks (through the
+		// cockpit's window to the sides, the turrets' domes): the whole ship inside a deep blue
+		// shell, lines of light rushing past it on every side. Once it is closed it is drawn solid
+		// (drawn first and hiding what is behind it, so the glowing lines and the rings in front of
+		// it show); only while it fades in or out it is translucent, drawn with the glowing lines
+		// (that pass comes before the window's glass; the translucent pass after it would be hidden
+		// behind the glass).
+		boolean shell = stage == InteriorJumpPayload.TUNNEL || stage == InteriorJumpPayload.ARRIVE && p < 0.25F;
+		float cover = 0.0F;
+
+		if (shell) {
+			cover = stage == InteriorJumpPayload.TUNNEL ? Math.min(1.0F, p * 8.0F) : 1.0F - p * 4.0F;
+			cover = Mth.clamp(cover, 0.0F, 1.0F);
+			int alpha = (int) (255 * cover);
+			shellDrawn = cover;
+
+			if (cover >= 0.999F) {
+				b.layer(Layer.SOLID).fullBright().anim(0).twoSided(true).colour(0xFF0A1438).fit(InteriorAtlas.WHITE);
+			} else {
+				b.layer(Layer.GLOW).fullBright().anim(0).twoSided(true).colourAlpha(alpha << 24 | 0x0A1438).fit(InteriorAtlas.WHITE);
+			}
+
+			b.sphere(new Vector3f(SHIP_X, AXIS_Y, SHIP_Z), SHELL_R, 32, 16);
 		}
 
 		float length;
@@ -103,11 +150,31 @@ final class FalconJump {
 		if (stage == InteriorJumpPayload.TUNNEL) {
 			float fade = Math.min(1.0F, Math.min(p * 6.0F, (1.0F - p) * 6.0F));
 			int alpha = (int) (150 * fade);
-			b.layer(Layer.HOLO).fullBright().twoSided(true).colourAlpha(alpha << 24 | 0x5080FF).fit(InteriorAtlas.FAL_HOLO_GLOW);
+			// Phase 17: with the glowing lines (drawn before the window's glass, so they show through it).
+			b.layer(Layer.GLOW).fullBright().twoSided(true).colourAlpha(alpha << 24 | 0x5080FF).fit(InteriorAtlas.FAL_HOLO_GLOW);
 			// In rings along the way, so that the rushing shows on the walls too.
 			for (int ring = 0; ring < 16; ring++) {
 				float z = FRONT - (((ring * 20.0F - travel * 0.5F) % SPAN + SPAN) % SPAN);
 				b.cylinder(new Vector3f(AXIS_X, AXIS_Y, z), new Vector3f(0, 0, -10.0F), TUNNEL_R, TUNNEL_R, 24, 6.0F, false, false);
+			}
+		}
+
+		// Phase 17: the streaks along the sides, over and under the ship.
+		if (shell) {
+			int line = (int) (255 * cover);
+			b.layer(Layer.GLOW).fullBright().anim(0).twoSided(true).colour(0xFF000000 | (int) (line * 0.7F) << 16 | (int) (line * 0.82F) << 8 | line)
+					.fit(InteriorAtlas.WHITE);
+			float rush = stage == InteriorJumpPayload.TUNNEL ? seconds * 340.0F : seconds * 60.0F;
+
+			for (int i = 0; i < SIDE; i++) {
+				float span = SIDE_BACK - SIDE_FRONT;
+				float z = SIDE_FRONT + ((SIDE_ALONG[i] - rush) % span + span) % span;
+				float x = SHIP_X + Mth.cos(SIDE_ANGLE[i]) * SIDE_RADIUS[i];
+				float y = AXIS_Y + Mth.sin(SIDE_ANGLE[i]) * SIDE_RADIUS[i];
+				float w = 0.08F + SIDE_RADIUS[i] * 0.003F;
+				float l = Math.min(26.0F, SIDE_BACK - z);
+				b.rect(x - w, y, z, 2.0F * w, 0, 0, 0, 0, l);
+				b.rect(x, y - w, z, 0, 2.0F * w, 0, 0, 0, l);
 			}
 		}
 

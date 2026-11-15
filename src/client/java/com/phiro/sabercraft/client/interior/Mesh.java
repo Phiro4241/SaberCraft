@@ -29,6 +29,8 @@ final class Mesh {
 	static final int LIGHT_WORLD = 0;
 	static final int LIGHT_FULL = 1;
 	static final int LIGHT_FIXED = 2;
+	/** Phase 17: a bit of the animation int: the quad is part of the rooms (dimmed with the ship's lights). */
+	static final int INSIDE = 1 << 16;
 
 	float[] floats = new float[FLOATS * 64];
 	int[] ints = new int[INTS * 64];
@@ -97,14 +99,24 @@ final class Mesh {
 	 * of the brightness (additive glow).
 	 */
 	void emit(PoseStack.Pose pose, VertexConsumer buffer, Animator animator, boolean alphaAnim) {
+		this.emit(pose, buffer, animator, alphaAnim, 1.0F, 1.0F);
+	}
+
+	/**
+	 * Phase 17: as above; the quads of the rooms ({@link #INSIDE}) darker by the ship's lights:
+	 * {@code lit} those lit by the world, {@code glow} the glowing ones (lamps, screens).
+	 */
+	void emit(PoseStack.Pose pose, VertexConsumer buffer, Animator animator, boolean alphaAnim, float lit, float glow) {
 		Matrix4f matrix = pose.pose();
 		Matrix3f normals = pose.normal();
 
 		for (int q = 0; q < this.count; q++) {
 			int f = q * FLOATS;
 			int i = q * INTS;
-			int anim = this.ints[i + 9];
+			int raw = this.ints[i + 9];
+			int anim = raw & 0xFFFF;
 			float factor = anim == 0 ? 1.0F : animator.factor(anim, q);
+			float dim = (raw & INSIDE) == 0 ? 1.0F : this.ints[i + 8] == LIGHT_WORLD ? lit : glow;
 
 			if (factor <= 0.004F) {
 				continue;
@@ -119,6 +131,10 @@ final class Mesh {
 
 				if (factor != 1.0F) {
 					colour = scale(colour, factor, alphaAnim);
+				}
+
+				if (dim != 1.0F) {
+					colour = scale(colour, dim, false);
 				}
 
 				buffer.addVertex(this.point.x, this.point.y, this.point.z, colour, this.floats[o + 3], this.floats[o + 4], OverlayTexture.NO_OVERLAY,

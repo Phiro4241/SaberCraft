@@ -148,12 +148,38 @@ final class RoundWalls {
 	 * where the wall is (not out in the rooms on either side).
 	 */
 	static void linings(MeshBuilder b, List<Doorway> doors, InteriorBuilder.OpenTest open, Runnable sideTile, Runnable topTile) {
+		linings(b, doors, open, (x, y, z) -> false, (door, x, z) -> true, sideTile, topTile);
+	}
+
+	/** A test on a cell (plot space): whether it is one of a curved wall's cells. */
+	interface CellTest {
+		boolean test(int x, int y, int z);
+	}
+
+	/** Whether a doorway's passage reaches a point beyond its cells (plot space). */
+	interface Reach {
+		boolean reaches(Doorway door, double x, double z);
+	}
+
+	/**
+	 * Phase 17: as above; the sides go on beyond the doorway's cells (up to 1.5 blocks along the
+	 * way through) inside the curved wall's cells ({@code wallCell}): where the curve passes just
+	 * outside a doorway's cells, the passage is open up to it, so its side must be closed there.
+	 * Only as far as the passage {@code reach}es (not on through another wall, where the next
+	 * doorway's own lining is).
+	 */
+	static void linings(MeshBuilder b, List<Doorway> doors, InteriorBuilder.OpenTest open, CellTest wallCell, Reach reach, Runnable sideTile,
+			Runnable topTile) {
 		int res = 16;
 
 		for (Doorway door : doors) {
 			boolean ax = door.alongX();
-			float s0 = ax ? door.x0() : door.z0();
-			float s1 = ax ? door.x1() + 1 : door.z1() + 1;
+			// Phase 17: a little beyond the doorway's cells along the way through: the curve can pass
+			// just outside them, and the passage is open up to it (see FalconInterior.inPassage).
+			float d0 = ax ? door.x0() : door.z0();
+			float d1 = ax ? door.x1() + 1 : door.z1() + 1;
+			float s0 = d0 - 1.5F;
+			float s1 = d1 + 1.5F;
 			int steps = Math.round((s1 - s0) * res);
 			sideTile.run();
 
@@ -172,6 +198,17 @@ final class RoundWalls {
 						if (k < steps) {
 							float t = s0 + (k + 0.5F) / res;
 							closed = ax ? !open.open(t, plane + out, y) : !open.open(plane + out, t, y);
+
+							if (closed && (t < d0 || t > d1)) {
+								int cx = (int) Math.floor(ax ? t : plane + out);
+								int cz = (int) Math.floor(ax ? plane + out : t);
+								// The passage reaches the whole step (a step half beyond it was a sliver in
+								// the next doorway's own lining).
+								float ra = s0 + (float) k / res;
+								float rb = s0 + (k + 1.0F) / res;
+								closed = wallCell.test(cx, y, cz) && (ax ? reach.reaches(door, ra, plane) && reach.reaches(door, rb, plane)
+										: reach.reaches(door, plane, ra) && reach.reaches(door, plane, rb));
+							}
 						}
 
 						if (closed && from < 0) {
@@ -191,6 +228,8 @@ final class RoundWalls {
 			// The top: where the wall (or the corridor's ceiling) is above the doorway, in strips
 			// across the doorway so its edge follows the curve.
 			int top = door.y1() + 1;
+			s0 = d0;
+			steps = Math.round((d1 - d0) * res);
 			float w0 = ax ? door.z0() : door.x0();
 			float w1 = ax ? door.z1() + 1 : door.x1() + 1;
 			int strips = Math.round((w1 - w0) * 4);

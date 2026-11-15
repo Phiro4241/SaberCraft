@@ -71,7 +71,9 @@ public final class FalconVisuals implements InteriorVisuals {
 		b.sun(null, 0.0F).white().worldLight();
 
 		if (ImmersionConfig.get().shipInteriorDetail) {
+			b.inside(true);
 			FalconRooms.build(b);
+			b.inside(false);
 		}
 	}
 
@@ -88,7 +90,9 @@ public final class FalconVisuals implements InteriorVisuals {
 		float partial = net.minecraft.client.Minecraft.getInstance().getDeltaTracker().getGameTimeDeltaPartialTick(false);
 
 		if (ImmersionConfig.get().shipInteriorDetail) {
+			b.inside(true);
 			DoorModels.draw(b, plot, com.phiro.sabercraft.interior.InteriorPlan.of("falcon"), InteriorAtlas.FAL_HATCH, InteriorAtlas.FAL_CEILING_LIGHT_GLOW);
+			b.inside(false);
 		}
 
 		b.sun(SUN, 0.55F).fullBright().colour(HULL_TINT).layer(Layer.SOLID);
@@ -132,7 +136,9 @@ public final class FalconVisuals implements InteriorVisuals {
 	@Override
 	public void animate(MeshBuilder b, float seconds) {
 		if (ImmersionConfig.get().shipInteriorDetail) {
+			b.inside(true);
 			FalconRooms.animate(b, seconds);
+			b.inside(false);
 		}
 
 		// The dish turns slowly.
@@ -184,19 +190,30 @@ public final class FalconVisuals implements InteriorVisuals {
 				b.tiles(3.0F, 30 + k, InteriorAtlas.FAL_HULL_A, InteriorAtlas.FAL_HULL_B, InteriorAtlas.FAL_HULL_A, InteriorAtlas.FAL_HULL_GREEBLE);
 				b.polyFacing(List.of(at(a0, r0, top(r0)), at(a1, r0, top(r0)), at(a1, r1, top(r1)), at(a0, r1, top(r1))), new Vector3f(0, 1, 0));
 				b.tiles(3.0F, 40 + k, InteriorAtlas.FAL_HULL_B, InteriorAtlas.FAL_HULL_A, InteriorAtlas.FAL_HULL_GREEBLE);
-				b.polyFacing(List.of(at(a0, r0, bottom(r0)), at(a1, r0, bottom(r0)), at(a1, r1, bottom(r1)), at(a0, r1, bottom(r1))),
-						new Vector3f(0, -1, 0));
+				bottomPlate(b, a0, a1, r0, r1);
 			}
 
 			// The rim: chamfers and the band (vents all round, the engine grille at the back is drawn over it).
+			// Phase 17: not inside the two forward pods (the rim ran right through their holds).
 			Vector3f out = at((a0 + a1) / 2, 1.0F, 0.0F).sub(CXF, 0, CZF);
-			b.tile(InteriorAtlas.FAL_HULL_B, 2.0F);
-			b.polyFacing(List.of(at(a0, RIM_IN, TOP_RIM), at(a1, RIM_IN, TOP_RIM), at(a1, R, BAND_TOP), at(a0, R, BAND_TOP)),
-					new Vector3f(out).add(0, 1, 0));
-			b.polyFacing(List.of(at(a0, RIM_IN, BOTTOM_RIM), at(a1, RIM_IN, BOTTOM_RIM), at(a1, R, BAND_BOTTOM), at(a0, R, BAND_BOTTOM)),
-					new Vector3f(out).add(0, -1, 0));
-			b.tiles(2.0F, 50, InteriorAtlas.FAL_HULL_GREEBLE, InteriorAtlas.FAL_HULL_VENTS, InteriorAtlas.FAL_HULL_B);
-			band(b, a0, a1, out);
+			int strips = podStrips(a0, a1);
+
+			for (int k = 0; k < strips; k++) {
+				float s0 = Mth.lerp((float) k / strips, a0, a1);
+				float s1 = Mth.lerp((float) (k + 1) / strips, a0, a1);
+
+				if (strips > 1 && inPod(at((s0 + s1) / 2, R, 0))) {
+					continue;
+				}
+
+				b.tile(InteriorAtlas.FAL_HULL_B, 2.0F);
+				b.polyFacing(List.of(at(s0, RIM_IN, TOP_RIM), at(s1, RIM_IN, TOP_RIM), at(s1, R, BAND_TOP), at(s0, R, BAND_TOP)),
+						new Vector3f(out).add(0, 1, 0));
+				b.polyFacing(List.of(at(s0, RIM_IN, BOTTOM_RIM), at(s1, RIM_IN, BOTTOM_RIM), at(s1, R, BAND_BOTTOM), at(s0, R, BAND_BOTTOM)),
+						new Vector3f(out).add(0, -1, 0));
+				b.tiles(2.0F, 50, InteriorAtlas.FAL_HULL_GREEBLE, InteriorAtlas.FAL_HULL_VENTS, InteriorAtlas.FAL_HULL_B);
+				band(b, s0, s1, out);
+			}
 		}
 
 		// Trenches: two dark rings in the upper surface, and radial seams.
@@ -218,6 +235,82 @@ public final class FalconVisuals implements InteriorVisuals {
 			Vector3f side = new Vector3f(-Mth.sin(a * Mth.DEG_TO_RAD), 0, Mth.cos(a * Mth.DEG_TO_RAD)).mul(0.18F);
 			b.polyFacing(List.of(new Vector3f(p0).add(side), new Vector3f(p1).add(side), new Vector3f(p1).sub(side), new Vector3f(p0).sub(side)),
 					new Vector3f(0, 1, 0));
+		}
+	}
+
+	/** Phase 17: the forward pods (mandibles) seen from above, where the saucer's rim is not drawn. */
+	static boolean inPod(Vector3f p) {
+		return p.z < 22.0F && (p.x > 7.8F && p.x < 17.2F || p.x > 24.8F && p.x < 34.2F);
+	}
+
+	/** In how many strips a piece of the rim is drawn: many where it meets a pod, else one. */
+	private static int podStrips(float a0, float a1) {
+		boolean any = false;
+
+		for (int k = 0; k <= 8; k++) {
+			any |= inPod(at(Mth.lerp(k / 8.0F, a0, a1), RIM_IN, 0)) || inPod(at(Mth.lerp(k / 8.0F, a0, a1), R, 0));
+		}
+
+		return any ? 16 : 1;
+	}
+
+	/** The ramp housing seen from above (the saucer's underside is open over it: it ran through the ramp at head height). */
+	static final float[] RAMP_OUTLINE = {31.6F, 29.8F, 32.8F, 28.6F, 37.2F, 28.6F, 38.4F, 29.8F, 38.4F, 42.2F, 37.2F, 43.4F, 32.8F, 43.4F, 31.6F, 42.2F};
+
+	static boolean inRampHousing(float x, float z) {
+		// The outline is convex: inside every edge.
+		int n = RAMP_OUTLINE.length / 2;
+
+		for (int i = 0; i < n; i++) {
+			float ax = RAMP_OUTLINE[i * 2];
+			float az = RAMP_OUTLINE[i * 2 + 1];
+			float bx = RAMP_OUTLINE[(i + 1) % n * 2];
+			float bz = RAMP_OUTLINE[(i + 1) % n * 2 + 1];
+
+			if ((bx - ax) * (z - az) - (bz - az) * (x - ax) < 0.0F) {
+				return false;
+			}
+		}
+
+		return true;
+	}
+
+	/** One plate of the saucer's underside; cut into small pieces round the ramp housing, none inside it. */
+	private static void bottomPlate(MeshBuilder b, float a0, float a1, float r0, float r1) {
+		boolean near = false;
+
+		for (int i = 0; i <= 4 && !near; i++) {
+			for (int j = 0; j <= 4 && !near; j++) {
+				Vector3f p = at(Mth.lerp(i / 4.0F, a0, a1), Mth.lerp(j / 4.0F, r0, r1), 0);
+				near = p.x > 30.0F && p.x < 40.0F && p.z > 27.0F && p.z < 45.0F;
+			}
+		}
+
+		if (!near) {
+			b.polyFacing(List.of(at(a0, r0, bottom(r0)), at(a1, r0, bottom(r0)), at(a1, r1, bottom(r1)), at(a0, r1, bottom(r1))), new Vector3f(0, -1, 0));
+			return;
+		}
+
+		int n = 12;
+
+		for (int i = 0; i < n; i++) {
+			float s0 = Mth.lerp((float) i / n, a0, a1);
+			float s1 = Mth.lerp((float) (i + 1) / n, a0, a1);
+
+			for (int j = 0; j < n; j++) {
+				float q0 = Mth.lerp((float) j / n, r0, r1);
+				float q1 = Mth.lerp((float) (j + 1) / n, r0, r1);
+				Vector3f[] corners = {at(s0, q0, bottom(q0)), at(s1, q0, bottom(q0)), at(s1, q1, bottom(q1)), at(s0, q1, bottom(q1))};
+				boolean inside = true;
+
+				for (Vector3f c : corners) {
+					inside &= inRampHousing(c.x, c.z);
+				}
+
+				if (!inside) {
+					b.polyFacing(List.of(corners), new Vector3f(0, -1, 0));
+				}
+			}
 		}
 	}
 
@@ -295,8 +388,11 @@ public final class FalconVisuals implements InteriorVisuals {
 				boolean inner = port ? side == x1 : side == x0;
 				b.tiles(2.0F, inner ? 63 : 64, inner ? InteriorAtlas.FAL_HULL_GREEBLE : InteriorAtlas.FAL_HULL_A,
 						inner ? InteriorAtlas.FAL_HULL_VENTS : InteriorAtlas.FAL_HULL_B);
-				b.polyFacing(List.of(new Vector3f(side, topTip, TIP), new Vector3f(side, TOP_RIM, zFull), new Vector3f(side, TOP_RIM, z1),
-						new Vector3f(side, BOTTOM_RIM, z1), new Vector3f(side, BOTTOM_RIM, zFull), new Vector3f(side, bottomTip, TIP)),
+				// Phase 17: only up to where the side meets the saucer's rim (it went on to z 22, through
+				// the ring corridor).
+				float zEnd = Math.min(z1, CZF - Mth.sqrt(R * R - (side - CXF) * (side - CXF)) + 0.3F);
+				b.polyFacing(List.of(new Vector3f(side, topTip, TIP), new Vector3f(side, TOP_RIM, zFull), new Vector3f(side, TOP_RIM, zEnd),
+						new Vector3f(side, BOTTOM_RIM, zEnd), new Vector3f(side, BOTTOM_RIM, zFull), new Vector3f(side, bottomTip, TIP)),
 						new Vector3f(side == x0 ? -1 : 1, 0, 0));
 			}
 
@@ -371,7 +467,22 @@ public final class FalconVisuals implements InteriorVisuals {
 		b.polyFacing(cap, new Vector3f(0, 0, 1));
 		// The tube from the saucer, under the pod's side, up to the pod's wall.
 		b.tile(InteriorAtlas.FAL_HULL_B, 2.0F);
-		b.cylinder(new Vector3f(36.0F, TUBE_Y, TUBE_Z), new Vector3f(COCKPIT_X - COCKPIT_R + 0.6F - 36.0F, 0, 0), TUBE_R, TUBE_R, 14, 2.0F, false, false);
+		// Phase 17: it ends inside the pod's wall at every height (its end stood 0.3 into the cockpit
+		// above the doorway, where one's head was in it).
+		int tubeSides = 14;
+
+		for (int i = 0; i < tubeSides; i++) {
+			float a0 = Mth.TWO_PI * i / tubeSides;
+			float a1 = Mth.TWO_PI * (i + 1) / tubeSides;
+			float y0 = TUBE_Y + Mth.sin(a0) * TUBE_R;
+			float y1 = TUBE_Y + Mth.sin(a1) * TUBE_R;
+			float z0 = TUBE_Z + Mth.cos(a0) * TUBE_R;
+			float z1 = TUBE_Z + Mth.cos(a1) * TUBE_R;
+			float e0 = tubeEnd(y0);
+			float e1 = tubeEnd(y1);
+			Vector3f out = new Vector3f(0, (y0 + y1) / 2.0F - TUBE_Y, (z0 + z1) / 2.0F - TUBE_Z);
+			b.polyFacing(List.of(new Vector3f(36.0F, y0, z0), new Vector3f(36.0F, y1, z1), new Vector3f(e1, y1, z1), new Vector3f(e0, y0, z0)), out);
+		}
 		// Bands round the pod.
 		b.tile(InteriorAtlas.FAL_METAL_DARK, 1.0F);
 
@@ -435,6 +546,14 @@ public final class FalconVisuals implements InteriorVisuals {
 		}
 	}
 
+	/** Where the tube to the cockpit ends at height y: just inside the pod's inner wall. */
+	private static float tubeEnd(float y) {
+		float inner = (float) com.phiro.sabercraft.interior.FalconInterior.COCKPIT_R;
+		float dy = y - COCKPIT_Y;
+		float end = COCKPIT_X - COCKPIT_R + 0.6F;
+		return Math.abs(dy) < inner ? Math.min(end, COCKPIT_X - (float) Math.sqrt(inner * inner - dy * dy) - 0.03F) : end;
+	}
+
 	// --- The ramp housing ----------------------------------------------------------------------
 
 	private static void rampHousing(MeshBuilder b) {
@@ -447,16 +566,20 @@ public final class FalconVisuals implements InteriorVisuals {
 		float c = 1.2F;
 		// An eight-sided outline seen from above, extruded.
 		float[] outline = {x0, z0 + c, x0 + c, z0, x1 - c, z0, x1, z0 + c, x1, z1 - c, x1 - c, z1, x0 + c, z1, x0, z1 - c};
+		assert java.util.Arrays.equals(outline, RAMP_OUTLINE);
 		b.tiles(2.0F, 80, InteriorAtlas.FAL_HULL_A, InteriorAtlas.FAL_HULL_B, InteriorAtlas.FAL_HULL_GREEBLE);
-		b.prism(outline, y0, y1, true, true);
+		// Phase 17: only under the saucer (it stood up to the top of the rim, its walls in the ring
+		// corridor and across the doorway to the ramp); open at the top, the ramp hall is inside.
+		b.prism(outline, y0, Math.min(y1, BOTTOM_RIM + 0.1F), false, true);
 		// The hatch at the back end, lit from inside.
 		b.layer(Layer.GLOW).fullBright().colour(0xFFFFF0D0).fit(InteriorAtlas.FAL_CEILING_LIGHT_GLOW);
 		b.rect(34.0F, 6.0F, z1 + 0.02F, 3.0F, 0, 0, 0, -3.0F, 0);
 		// Seen from the ramp: the closed outer hatch, with a lamp strip over it.
 		b.layer(Layer.SOLID).worldLight().sun(null, 1.0F).white().fit(InteriorAtlas.FAL_HATCH);
-		b.rect(37.0F, 5.8F, z1 - 0.1F, -3.0F, 0, 0, 0, -2.8F, 0);
+		// Phase 17: right on the barriers that close the hatch (it stood more than a block behind them).
+		b.rect(37.0F, 5.8F, 42.02F, -3.0F, 0, 0, 0, -2.8F, 0);
 		b.layer(Layer.GLOW).fullBright().colour(0xFFFFD9A0).fit(InteriorAtlas.FAL_CEILING_LIGHT_GLOW);
-		b.rect(36.6F, 6.0F, z1 - 0.12F, -2.2F, 0, 0, 0, -0.12F, 0);
+		b.rect(36.6F, 6.0F, 42.0F, -2.2F, 0, 0, 0, -0.12F, 0);
 		b.fullBright().sun(SUN, 0.55F);
 		b.layer(Layer.SOLID).colour(HULL_TINT).tile(InteriorAtlas.FAL_METAL_DARK, 1.0F);
 		b.box(33.7F, 2.7F, z1, 37.3F, 6.3F, z1 + 0.15F, MeshBuilder.ALL & ~MeshBuilder.NORTH);
@@ -582,6 +705,12 @@ public final class FalconVisuals implements InteriorVisuals {
 			}
 
 			boolean below = i % 3 == 0;
+
+			// Phase 17: none under the saucer where the ramp hall goes down through it (one stood in them).
+			if (below && p.x > 31.0F && p.x < 39.0F && p.z > 28.0F && p.z < 44.0F) {
+				continue;
+			}
+
 			float y = below ? bottom(r) : top(r);
 			float w = 0.4F + random.nextFloat() * 1.4F;
 			float d = 0.4F + random.nextFloat() * 1.0F;

@@ -747,6 +747,7 @@
   "sabercraft.seat.gunner": "Aim with the mouse, attack to fire. Sneak to stand up.",
   "sabercraft.seat.sit": "Sneak to stand up.",
   "sabercraft.interior.lights_dim": "Lights dimmed.",
+  "sabercraft.interior.lights_level": "Lights: %s %% (sneak to brighten)",
   "sabercraft.interior.lights_on": "Lights on.",
   "sabercraft.interior.status_none": "%s: no contact with the ship's systems.",
   "sabercraft.interior.status_full": "full",

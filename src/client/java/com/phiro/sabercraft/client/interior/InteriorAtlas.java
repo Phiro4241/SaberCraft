@@ -155,6 +155,26 @@ public final class InteriorAtlas {
 	public static final int FAL_BUNK = 71;
 	/** plain white (tinted by vertex colour) */
 	public static final int WHITE = 72;
+	/** crew: trooper helmet, front (eyes, breathing grille) */
+	public static final int CREW_TROOPER_HELMET = 73;
+	/** crew: trooper helmet, sides and back */
+	public static final int CREW_TROOPER_HELMET_SIDE = 74;
+	/** crew: trooper chest and back (plates, black under-suit, belt) */
+	public static final int CREW_TROOPER_TORSO = 75;
+	/** crew: trooper arm or leg (white plates, black joints) */
+	public static final int CREW_TROOPER_LIMB = 76;
+	/** crew: officer's face under the cap */
+	public static final int CREW_OFFICER_FACE = 77;
+	/** crew: officer's head, sides and back (cap, short hair) */
+	public static final int CREW_OFFICER_HEAD = 78;
+	/** crew: officer's tunic (grey, belt, rank plaque) */
+	public static final int CREW_OFFICER_TUNIC = 79;
+	/** crew: officer's sleeve or trouser leg (black boot below) */
+	public static final int CREW_OFFICER_LIMB = 80;
+	/** crew: technician's black helmet, front (visor) */
+	public static final int CREW_TECH_HELMET = 81;
+	/** crew: technician's black suit (chest box, belt) */
+	public static final int CREW_TECH_BODY = 82;
 
 	private InteriorAtlas() {
 	}

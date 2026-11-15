@@ -68,47 +68,65 @@ public final class ProxyShapes {
 	 * that are solid where {@code solid} says so at their middle. Empty if nothing is solid.
 	 */
 	public static VoxelShape columns(int x, int z, int res, Solid solid) {
-		boolean[][] columns = new boolean[res][res];
+		return columns(x, z, res, solid, 1.0);
+	}
+
+	/**
+	 * Phase 17: like {@link #columns(int, int, int, Solid)}, the columns {@code height} high (a
+	 * share of the block, from its bottom; above 1 nothing is gained, it is cut at the block).
+	 */
+	public static VoxelShape columns(int x, int z, int res, Solid solid, double height) {
+		double top = Math.min(1.0, height);
+		return grid(res, (i, j) -> solid.at(x + (i + 0.5) / res, z + (j + 0.5) / res) ? new double[] {0.0, top} : null);
+	}
+
+	/** A column of a cell's grid: the part of it that is solid ({@code [0]} to {@code [1]}, shares of the block), or {@code null}. */
+	private interface Column {
+		double @Nullable [] at(int i, int j);
+	}
+
+	/**
+	 * Phase 17: a cell's shape as a grid of res x 16 x res voxels (heights to 1/16 of a block).
+	 * Built in one go: joining hundreds of little boxes one by one took a minute for the Falcon,
+	 * and a dedicated server's watchdog stopped it.
+	 */
+	private static VoxelShape grid(int res, Column column) {
+		net.minecraft.world.phys.shapes.BitSetDiscreteVoxelShape voxels = new net.minecraft.world.phys.shapes.BitSetDiscreteVoxelShape(res, 16, res);
+		boolean any = false;
 
 		for (int i = 0; i < res; i++) {
 			for (int j = 0; j < res; j++) {
-				columns[i][j] = solid.at(x + (i + 0.5) / res, z + (j + 0.5) / res);
-			}
-		}
+				double[] span = column.at(i, j);
 
-		VoxelShape shape = Shapes.empty();
-		int i = 0;
-
-		while (i < res) {
-			// Columns that are the same as their neighbours are joined into one box.
-			int i1 = i;
-
-			while (i1 + 1 < res && java.util.Arrays.equals(columns[i], columns[i1 + 1])) {
-				i1++;
-			}
-
-			int j = 0;
-
-			while (j < res) {
-				if (!columns[i][j]) {
-					j++;
+				if (span == null) {
 					continue;
 				}
 
-				int j1 = j;
+				int lo = (int) Math.round(Math.max(0.0, span[0]) * 16.0);
+				int hi = (int) Math.round(Math.min(1.0, span[1]) * 16.0);
 
-				while (j1 + 1 < res && columns[i][j1 + 1]) {
-					j1++;
+				for (int k = lo; k < hi; k++) {
+					voxels.fill(i, k, j);
+					any = true;
 				}
-
-				shape = Shapes.or(shape, Shapes.box((double) i / res, 0.0, (double) j / res, (i1 + 1.0) / res, 1.0, (j1 + 1.0) / res));
-				j = j1 + 1;
 			}
-
-			i = i1 + 1;
 		}
 
-		return shape.optimize();
+		return any ? new net.minecraft.world.phys.shapes.CubeVoxelShape(voxels) : Shapes.empty();
+	}
+
+	/**
+	 * Phase 17: for each column of a cell (plot space x, z of its middle) the part of the block
+	 * that is solid, from {@code [0]} to {@code [1]} (shares of the block), or {@code null} for
+	 * none: walls that lean (the inside of a dome, a pod lying on its side).
+	 */
+	public interface Span {
+		double @Nullable [] at(double x, double z);
+	}
+
+	/** Phase 17: the shape of a cell made of columns 1/{@code res} wide, each solid over its span. */
+	public static VoxelShape spans(int x, int z, int res, Span span) {
+		return grid(res, (i, j) -> span.at(x + (i + 0.5) / res, z + (j + 0.5) / res));
 	}
 
 	/** Whether the cell is solid at some sample and open at another (it straddles a curved wall). */

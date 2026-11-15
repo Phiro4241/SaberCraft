@@ -112,6 +112,106 @@ public final class DestroyerInterior extends InteriorPlan {
 	/** Phase 16: a chair collides only with its seat (people walk past its back and arms). */
 	static final net.minecraft.world.phys.shapes.VoxelShape CHAIR = net.minecraft.world.phys.shapes.Shapes.box(0.22, 0.0, 0.22, 0.78, 0.5, 0.78);
 
+	// --- Phase 17: the crew ------------------------------------------------------------------------
+
+	/**
+	 * Phase 17: someone of the ship's crew, drawn by the client (no entity: nothing for the server
+	 * to tick, the same for every player). {@code kind}: {@link #TROOPER}, {@link #OFFICER},
+	 * {@link #TECH}; {@code pose}: {@link #STAND} (on guard), {@link #WORK} (at a console),
+	 * {@link #SIT}, {@link #TALK}, {@link #PATROL} (walks round {@code path}, a closed loop, at
+	 * {@code speed} blocks a second, starting {@code phase} blocks along it). (x, y, z) are the
+	 * feet (plot space), {@code yaw} Minecraft's (0 = facing south, 90 west, 180 north).
+	 */
+	public record Crew(String kind, String pose, double x, double y, double z, float yaw, List<Vec3> path, double speed, double phase) {
+		static Crew at(String kind, String pose, double x, double y, double z, float yaw) {
+			return new Crew(kind, pose, x, y, z, yaw, List.of(), 0.0, 0.0);
+		}
+
+		static Crew patrol(String kind, double speed, double phase, Vec3... path) {
+			return new Crew(kind, PATROL, path[0].x, path[0].y, path[0].z, 0.0F, List.of(path), speed, phase);
+		}
+
+		/** Whether this one stays in its place (and collides there). */
+		public boolean still() {
+			return this.path.isEmpty() && !SIT.equals(this.pose);
+		}
+	}
+
+	public static final String TROOPER = "trooper";
+	public static final String OFFICER = "officer";
+	public static final String TECH = "tech";
+	public static final String STAND = "stand";
+	public static final String WORK = "work";
+	public static final String SIT = "sit";
+	public static final String TALK = "talk";
+	public static final String PATROL = "patrol";
+
+	/** Phase 17: the chairs the crew sits on (not free for players). */
+	static final List<BlockPos> CREW_CHAIRS = List.of(new BlockPos(24, PIT + 1, 87), new BlockPos(28, PIT + 1, 75), new BlockPos(52, PIT + 1, 81),
+			new BlockPos(58, PIT + 1, 93), new BlockPos(56, PIT + 1, 75), new BlockPos(HANGAR_X0 - 2, HANGAR + 1, -56), new BlockPos(HANGAR_X0 - 2, HANGAR + 1, -50));
+
+	public static final List<Crew> CREW = buildCrew();
+
+	private static List<Crew> buildCrew() {
+		List<Crew> list = new java.util.ArrayList<>();
+		int deck = DECK + 1;
+		int hangar = HANGAR + 1;
+
+		// The bridge: the officer of the watch at the window, a pair talking on the platform, one
+		// walking the walkway, guards at the door, the crew at the consoles in the pits.
+		list.add(Crew.at(OFFICER, STAND, CX - 5.5, deck, WINDOW_Z + 1.7, 180.0F));
+		list.add(Crew.at(OFFICER, TALK, CX + 7.2, deck, WINDOW_Z + 3.4, 100.0F));
+		list.add(Crew.at(OFFICER, TALK, CX + 5.9, deck, WINDOW_Z + 3.6, 280.0F));
+		list.add(Crew.patrol(OFFICER, 0.9, 0.0, new Vec3(CX + 0.5, deck, PLATFORM_Z1 + 2.5), new Vec3(CX + 0.5, deck, BRIDGE_BACK - 3.5)));
+		list.add(Crew.at(TROOPER, STAND, CX - 2.5, deck, BRIDGE_BACK + 1.6, 0.0F));
+		list.add(Crew.at(TROOPER, STAND, CX + 3.5, deck, BRIDGE_BACK + 1.6, 0.0F));
+
+		for (BlockPos chair : CREW_CHAIRS) {
+			if (chair.getY() == PIT + 1) {
+				list.add(Crew.at(TECH, SIT, chair.getX() + 0.5, chair.getY(), chair.getZ() + 0.5, 180.0F));
+			}
+		}
+
+		// Standing at the consoles of the pits, between the chairs.
+		list.add(Crew.at(TECH, WORK, 31.5, PIT + 1, 81.35, 180.0F));
+		list.add(Crew.at(OFFICER, WORK, 49.5, PIT + 1, 87.35, 180.0F));
+
+		// The command deck: a patrol along the corridor, the sensor room's crew, two in conference.
+		list.add(Crew.patrol(TROOPER, 1.1, 0.0, new Vec3(CX - 1.5, deck, BRIDGE_BACK + 2.5), new Vec3(CX - 1.5, deck, COMMAND_BACK - 4.5)));
+		int sx = (CX + 4 + SIDE_EAST) / 2 + 4;
+		list.add(Crew.at(TECH, WORK, sx + 0.5, deck, 104.3, 0.0F));
+		list.add(Crew.at(OFFICER, WORK, sx - 3.3, deck, 107.5, 270.0F));
+		list.add(Crew.at(TECH, WORK, CX + 6.35, deck, SIDE_Z0 + 3.5, 90.0F));
+		int tx = (SIDE_WEST + CX - 4) / 2;
+		list.add(Crew.at(OFFICER, SIT, tx - 2.5, deck, 105.5, 0.0F));
+		list.add(Crew.at(OFFICER, SIT, tx + 3.5, deck, 109.5, 180.0F));
+
+		// The hangar: guards at the door, a squad of two walking round the force field, a
+		// technician at the crates, an officer by the landing circle.
+		list.add(Crew.at(TROOPER, STAND, CX - 3.5, hangar, HANGAR_Z1 - 1.4, 180.0F));
+		list.add(Crew.at(TROOPER, STAND, CX + 4.5, hangar, HANGAR_Z1 - 1.4, 180.0F));
+		Vec3[] loop = {new Vec3(27.5, hangar, -59.5), new Vec3(53.5, hangar, -59.5), new Vec3(53.5, hangar, -21.5), new Vec3(27.5, hangar, -21.5)};
+		list.add(Crew.patrol(TROOPER, 1.2, 0.0, loop));
+		list.add(Crew.patrol(TROOPER, 1.2, 1.4, loop));
+		list.add(Crew.at(TECH, WORK, HANGAR_X1 - 4.4, hangar, -30.5, 270.0F));
+		list.add(Crew.at(OFFICER, STAND, CX + 4.0, hangar, -27.0, 160.0F));
+
+		// Flight control: two at the consoles, one standing behind them.
+		for (BlockPos chair : CREW_CHAIRS) {
+			if (chair.getY() == HANGAR + 1) {
+				list.add(Crew.at(TECH, SIT, chair.getX() + 0.5, chair.getY(), chair.getZ() + 0.5, 270.0F));
+			}
+		}
+
+		list.add(Crew.at(OFFICER, STAND, CONTROL_X0 + 6.5, hangar, -44.5, 270.0F));
+
+		// The corridor to the lift: a patrol; a guard at the reactor gallery; a technician on the catwalk.
+		list.add(Crew.patrol(TROOPER, 1.0, 0.0, new Vec3(CX - 1.5, hangar, HANGAR_Z1 + 2.5), new Vec3(CX - 1.5, hangar, LOBBY_Z1 - 4.5)));
+		list.add(Crew.at(TROOPER, STAND, CX + 2.6, hangar, LOBBY_Z0 + 1.5, 90.0F));
+		list.add(Crew.at(TECH, WORK, REACTOR_X - 0.5, hangar, REACTOR_Z - 9.3, 0.0F));
+		return List.copyOf(list);
+	}
+
 	/** Phase 16: the chairs: in the bridge pits, round the conference table, in flight control. */
 	public static final List<Seat> SEATS = buildSeats();
 
@@ -137,6 +237,9 @@ public final class DestroyerInterior extends InteriorPlan {
 			list.add(Seat.chair(HANGAR_X0 - 2, HANGAR + 1, z, 0.5, -90.0F, Seat.CHAIR));
 		}
 
+		// Phase 17: not the chairs the crew sits on.
+		list.removeIf(seat -> CREW_CHAIRS.contains(seat.cell()) || seat.cell().equals(new BlockPos((SIDE_WEST + CX - 4) / 2 - 3, DECK + 1, 105))
+				|| seat.cell().equals(new BlockPos((SIDE_WEST + CX - 4) / 2 + 3, DECK + 1, 109)));
 		return List.copyOf(list);
 	}
 
@@ -187,7 +290,8 @@ public final class DestroyerInterior extends InteriorPlan {
 	@Override
 	public int version() {
 		// 3 (Phase 16): the reactor shaft's round wall is shaped barriers where the drawn wall runs.
-		return 4;
+		// 5 (Phase 17): maintenance ways, the crew's places.
+		return 5;
 	}
 
 	@Override
@@ -251,6 +355,9 @@ public final class DestroyerInterior extends InteriorPlan {
 				new Room("conference", new AABB(SIDE_WEST + 1, DECK + 1, SIDE_Z0 + 1, CX - 4, COMMAND_TOP, SIDE_Z1)),
 				new Room("sensor_room", new AABB(CX + 5, DECK + 1, SIDE_Z0 + 1, SIDE_EAST, COMMAND_TOP, SIDE_Z1)),
 				new Room("command_corridor", new AABB(CX - 3, DECK + 1, BRIDGE_BACK, CX + 4, COMMAND_TOP, COMMAND_BACK)),
+				new Room("vent", VENTS.get(0)),
+				new Room("vent", VENTS.get(1)),
+				new Room("vent", VENTS.get(2)),
 				new Room("bridge", new AABB(BRIDGE_X0 + 1, PIT + 1, WINDOW_Z + 1, BRIDGE_X1, BRIDGE_TOP, BRIDGE_BACK)));
 	}
 
@@ -262,6 +369,63 @@ public final class DestroyerInterior extends InteriorPlan {
 		reactor(b);
 		bridge(b);
 		commandDeck(b);
+		vents(b);
+		furnish(b);
+		crew(b);
+	}
+
+	/**
+	 * Phase 17: the corridor to the lift was bare: a rack of rifles on its west wall, a security
+	 * desk on its east wall (proxies, drawn by the client).
+	 */
+	private static void furnish(InteriorBuilder b) {
+		b.box(CX - 3, HANGAR + 1, -7, CX - 3, HANGAR + 2, -6, PROXY);
+		b.box(CX + 3, HANGAR + 1, -10, CX + 3, HANGAR + 1, -9, PROXY);
+	}
+
+	/** Phase 17: the maintenance ways: two blocks high, one wide, grating all round, a dim lamp now and then. */
+	public static final List<AABB> VENTS = List.of(
+			// From the hangar corridor west, then north into the flight control room.
+			new AABB(10, HANGAR + 1, -10, 37, HANGAR + 3, -9),
+			new AABB(10, HANGAR + 1, -35, 11, HANGAR + 3, -9),
+			// Under the bridge's walkway, from one crew pit to the other.
+			new AABB(WALK_X0, PIT + 1, 84, WALK_X1 + 1, PIT + 3, 85));
+
+	private static void vents(InteriorBuilder b) {
+		// The hangar deck's way: a shell round it first, then hollowed out.
+		b.box(9, HANGAR, -11, CX - 4, HANGAR + 3, -9, DARK);
+		b.box(9, HANGAR, -35, 11, HANGAR + 3, -9, DARK);
+
+		for (AABB vent : VENTS) {
+			b.clear((int) vent.minX, (int) vent.minY, (int) vent.minZ, (int) vent.maxX - 1, (int) vent.maxY - 1, (int) vent.maxZ - 1);
+		}
+
+		b.light(22, HANGAR + 2, -10, 7);
+		b.light(10, HANGAR + 2, -22, 7);
+		b.light(CX, PIT + 2, 84, 6);
+	}
+
+	/** Phase 17: those of the crew who stay in their place collide there (a slim column, two rows). */
+	private static void crew(InteriorBuilder b) {
+		for (Crew crew : CREW) {
+			if (!crew.still()) {
+				continue;
+			}
+
+			int x = (int) Math.floor(crew.x());
+			int y = (int) Math.floor(crew.y());
+			int z = (int) Math.floor(crew.z());
+			double lx = crew.x() - x;
+			double lz = crew.z() - z;
+			double r = 0.26;
+
+			for (int row = 0; row < 2; row++) {
+				if (b.get(x, y + row, z).isAir()) {
+					b.shaped(x, y + row, z, net.minecraft.world.phys.shapes.Shapes.box(Math.max(0.0, lx - r), 0.0, Math.max(0.0, lz - r), Math.min(1.0, lx + r),
+							row == 0 ? 1.0 : 0.8, Math.min(1.0, lz + r)), false);
+				}
+			}
+		}
 	}
 
 	// --- Hangar deck ---------------------------------------------------------------------------
@@ -337,6 +501,7 @@ public final class DestroyerInterior extends InteriorPlan {
 		// Consoles under the window (proxies for the client's models), seats behind them.
 		for (int z = -57; z <= -42; z++) {
 			b.set(HANGAR_X0 - 1, HANGAR + 1, z, PROXY);
+			b.shaped(HANGAR_X0 - 1, HANGAR + 2, z, net.minecraft.world.phys.shapes.Shapes.box(0.0, 0.0, 0.0, 1.0, 0.5, 1.0), false);
 		}
 
 		for (int z = -56; z <= -46; z += 2) {
@@ -483,6 +648,8 @@ public final class DestroyerInterior extends InteriorPlan {
 				}
 
 				b.set(x, PIT + 1, z, PROXY);
+				// Phase 17: a cap: nobody climbs onto the console (and stands in its screens).
+				b.shaped(x, PIT + 2, z, net.minecraft.world.phys.shapes.Shapes.box(0.0, 0.0, 0.0, 1.0, 0.5, 1.0), false);
 
 				// A seat behind every other console.
 				if ((x & 1) == 0) {
