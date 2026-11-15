@@ -62,10 +62,14 @@ public class GraphicsMenuScreen extends SaberMenuScreen {
 			immersion.menuTransitions = v;
 			ImmersionConfig.save();
 		});
-		this.toggle(1, 4, "sabercraft.option.ship_third_person", immersion.shipThirdPerson, v -> {
-			immersion.shipThirdPerson = v;
-			ImmersionConfig.save();
-		});
+		// Phase 14: the cockpit view, the view behind the ship, or no change.
+		this.cycle(1, 4, "sabercraft.option.ship_camera",
+				List.of(ImmersionConfig.CAMERA_COCKPIT, ImmersionConfig.CAMERA_CHASE, ImmersionConfig.CAMERA_KEEP), immersion.shipCamera,
+				v -> Component.translatable("sabercraft.option.ship_camera." + v), v -> {
+					immersion.shipCamera = v;
+					immersion.shipThirdPerson = !ImmersionConfig.CAMERA_KEEP.equals(v);
+					ImmersionConfig.save();
+				});
 		this.toggle(0, 5, "sabercraft.option.ship_hud", immersion.shipHud, v -> {
 			immersion.shipHud = v;
 			ImmersionConfig.save();

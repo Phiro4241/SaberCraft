@@ -470,6 +470,145 @@ def defeat_lament():
     return tr.finish_once(4.5, 0.45, 18, 4.0)
 
 
+# Phase 14: flight music -------------------------------------------------------------------------
+# Four original pieces for flying a starship. They loop seamlessly (whole bars, reverb folded
+# back) and are long, so the game can let them run for the whole flight and crossfade between
+# them. Cruising and soaring are for the light ships, the dark march for the Imperial ships, the
+# pursuit for space battles. Melodies again come from the seeded random walk over the scale.
+
+MIXOLYDIAN = [0, 2, 4, 5, 7, 9, 10]
+MAJOR = [0, 2, 4, 5, 7, 9, 11]
+
+
+def snare(seconds, seed, level=1.0):
+    rng = np.random.default_rng(seed)
+    n = int(seconds * RATE)
+    t = np.arange(n) / RATE
+    noise = rng.standard_normal(n)
+    noise = noise - np.convolve(noise, np.ones(3) / 3, mode="same")
+    body = np.sin(2 * np.pi * 190 * t) * np.exp(-t * 30) * 0.5
+    return (noise * np.exp(-t * 22) * 0.6 + body) * level
+
+
+def flight_cruise():
+    """Cruising: a pulsing string ostinato, wide pads, harp sparkles and a hopeful horn tune that
+    comes in after eight bars, G mixolydian, 100 bpm, 32 bars."""
+    rng = np.random.default_rng(1401)
+    prog = ["G", "F", "C", "G", "Em", "C", "D", "D", "G", "F", "C", "G", "Em", "C", "Am", "D"] * 2
+    tr = Track(100, len(prog))
+    for b, name in enumerate(prog):
+        ch = chord(name, 3)
+        for k, note in enumerate(ch):
+            tr.add(tr.at(b), pad(hz(note), tr.bar + 1.2, 140 * b + k), -0.6 + 0.6 * k, 0.11)
+        # The pulse: eighth notes on the root and fifth, accented on the beat.
+        for s in range(8):
+            note = (ch[0] if s % 4 != 2 else ch[2]) - 12
+            tr.add(tr.at(b, s * 0.5), low_staccato(hz(note), 0.24, 1400 + 8 * b + s), 0.1, 0.12 if s % 2 == 0 else 0.07)
+        tr.add(tr.at(b), strings(hz(ch[0] - 12), tr.bar + 0.6, 1480 + b, 0.5), 0.0, 0.14)
+        if b % 2 == 1:
+            arp = [ch[0] + 24, ch[1] + 24, ch[2] + 24, ch[1] + 36]
+            for s, note in enumerate(arp):
+                tr.add(tr.at(b, 2 + s * 0.5), harp(hz(note), 1.4, 1500 + 4 * b + s), 0.4, 0.06)
+        if b % 4 == 0:
+            tr.add(tr.at(b), drum(1.6, 55, 1560 + b, 0.2, 0.6, 2.5), 0.0, 0.18)
+    chords = [chord(p, 4) for p in prog]
+    tune = melody(rng, MIXOLYDIAN, 67, chords, 2, rest=0.2, span=(-3, 12))
+    for i in range(16):
+        tune[i] = None
+    lay_melody(tr, tune, 2, lambda f, sec, sd: brass(f, sec, sd, 0.8), -12, 1600, 0.13, -0.2)
+    lay_melody(tr, tune[32:] + [None] * 32, 2, lambda f, sec, sd: strings(f, sec, sd, 1.2), 0, 1700, 0.07, 0.3, 0.9)
+    return tr.finish(3.0, 0.34, 140)
+
+
+def flight_soar():
+    """Soaring over the land: slow and wide, a brass and choir chorale over rolling timpani that
+    swells and settles, D lydian, 80 bpm, 24 bars."""
+    rng = np.random.default_rng(1402)
+    prog = ["D", "E", "Bm", "G", "D", "E", "G", "A", "Bm", "G", "D", "A", "G", "E", "Asus", "A"] + ["D", "E", "Bm", "G", "D", "E", "G", "A"]
+    tr = Track(80, len(prog))
+    for b, name in enumerate(prog):
+        ch = chord(name, 3)
+        grow = 0.55 + 0.45 * np.sin(np.pi * (b % 16) / 16)
+        for k, note in enumerate(ch):
+            tr.add(tr.at(b), strings(hz(note + 12), tr.bar + 0.9, 150 * b + k, 1.0), -0.5 + 0.5 * k, 0.11 * grow)
+        tr.add(tr.at(b), strings(hz(ch[0] - 12), tr.bar + 0.9, 1800 + b, 0.5), 0.0, 0.17)
+        if b >= 4:
+            tr.add(tr.at(b), choir(hz(ch[1] + 12), tr.bar + 0.6, 1850 + b), 0.1, 0.05 * grow)
+        if b % 4 == 3:
+            for s in range(8):
+                tr.add(tr.at(b, 2 + s * 0.25), drum(0.6, 73.4, 1900 + 8 * b + s, 0.2, 0.4, 6.0), 0.0, 0.04 + 0.018 * s)
+        tr.add(tr.at(b), drum(1.5, 73.4, 1990 + b, 0.3, 0.6, 3.0), 0.0, 0.2)
+        for s in range(2):
+            note = chord(name, 5)[(b + s) % 3]
+            tr.add(tr.at(b, 1 + 2 * s), bell(hz(note), 2.5, 2050 + 2 * b + s), 0.5 - s, 0.035)
+    chords = [chord(p, 4) for p in prog]
+    tune = melody(rng, LYDIAN, 62, chords, 2, rest=0.15, span=(0, 14))
+    for i in range(8):
+        tune[i] = None
+    lay_melody(tr, tune, 2, lambda f, sec, sd: brass(f, sec, sd, 1.1), 0, 2100, 0.12, 0.1)
+    return tr.finish(3.8, 0.4, 141)
+
+
+def flight_imperial():
+    """The Imperial ships: a heavy, measured march for low brass and strings over a steady
+    timpani and snare beat, G minor with a lowered second, 96 bpm, 24 bars. Its tune is its own
+    random walk; it is not modelled on any film theme."""
+    rng = np.random.default_rng(1403)
+    prog = ["Gm", "Gm", "Eb", "D5", "Gm", "Cm", "Ab", "D5"] * 3
+    tr = Track(96, len(prog))
+    for b, name in enumerate(prog):
+        ch = chord(name, 2)
+        for s in range(4):
+            tr.add(tr.at(b, s), low_staccato(hz(ch[0]), 0.35, 2200 + 4 * b + s), 0.0, 0.2 if s == 0 else 0.13)
+        tr.add(tr.at(b), drum(1.0, 49, 2300 + b, 0.3, 1.5, 4.0), 0.0, 0.3)
+        tr.add(tr.at(b, 2), drum(1.0, 49, 2350 + b, 0.3, 1.5, 4.0), 0.0, 0.22)
+        for beat in (1, 3):
+            tr.add(tr.at(b, beat), snare(0.25, 2400 + 4 * b + beat), 0.15, 0.09)
+        tr.add(tr.at(b, 3.75), snare(0.15, 2450 + b), 0.15, 0.05)
+        for k, note in enumerate(chord(name, 3)):
+            tr.add(tr.at(b), strings(hz(note), tr.bar + 0.5, 2500 + 3 * b + k, 0.8), -0.4 + 0.4 * k, 0.08)
+        if b >= 8:
+            tr.add(tr.at(b), choir(hz(chord(name, 3)[0]), tr.bar + 0.4, 2600 + b), -0.2, 0.05)
+    chords = [chord(p, 3) for p in prog]
+    tune = melody(rng, PHRYGIAN, 55, chords, 2, rest=0.25, span=(-2, 10))
+    for i in range(16):
+        tune[i] = None
+    lay_melody(tr, tune, 2, lambda f, sec, sd: brass(f, sec, sd, 0.7), 0, 2700, 0.18, -0.1)
+    return tr.finish(2.4, 0.3, 142)
+
+
+def flight_pursuit():
+    """A space battle: a racing sixteenth ostinato, pounding drums, snare rolls, brass stabs and a
+    fast string line, E dorian, 150 bpm, 32 bars."""
+    rng = np.random.default_rng(1404)
+    prog = ["Em", "Em", "C", "D", "Em", "Em", "Am", "B5"] * 4
+    tr = Track(150, len(prog))
+    for b, name in enumerate(prog):
+        ch = chord(name, 2)
+        pattern = [0, 0, 2, 0, 1, 0, 2, 0, 0, 2, 0, 1, 2, 0, 1, 2]
+        for s, p in enumerate(pattern):
+            tr.add(tr.at(b, s * 0.25), low_staccato(hz(ch[p]), 0.16, 2800 + 16 * b + s), -0.1, 0.15 if s % 4 == 0 else 0.09)
+        for beat in (0, 1.5, 2.5, 3.0):
+            tr.add(tr.at(b, beat), drum(0.8, 58, 3100 + 4 * b + int(beat * 2), 0.35, 2.2, 5.5), 0.0, 0.28)
+        for beat in (1, 3):
+            tr.add(tr.at(b, beat), snare(0.25, 3200 + 2 * b + beat), 0.2, 0.12)
+        if b % 8 == 7:
+            for s in range(8):
+                tr.add(tr.at(b, 2 + s * 0.25), snare(0.12, 3300 + 8 * b + s), 0.2, 0.04 + 0.012 * s)
+        if b % 2 == 0 or b >= 16:
+            for k, note in enumerate(chord(name, 4)):
+                tr.add(tr.at(b), brass(hz(note), tr.beat * 0.7, 3400 + 3 * b + k, 1.1), -0.3 + 0.3 * k, 0.1)
+                tr.add(tr.at(b, 2.5), brass(hz(note), tr.beat * 0.45, 3450 + 3 * b + k, 1.1), -0.3 + 0.3 * k, 0.07)
+        for s in range(8):
+            tr.add(tr.at(b, s * 0.5 + 0.25), shaker(0.1, 3500 + 8 * b + s), 0.4, 0.05)
+    chords = [chord(p, 5) for p in prog]
+    tune = melody(rng, DORIAN, 76, chords, 4, rest=0.12, span=(-2, 12))
+    for i in range(32):
+        tune[i] = None
+    lay_melody(tr, tune, 4, lambda f, sec, sd: strings(f, sec, sd, 1.3), 0, 3600, 0.11, 0.2, 0.9)
+    return tr.finish(1.8, 0.24, 143)
+
+
 PIECES = {
     "exploration_horizon": exploration_horizon,
     "exploration_wander": exploration_wander,
@@ -479,6 +618,10 @@ PIECES = {
     "event_rise": event_rise,
     "victory_fanfare": victory_fanfare,
     "defeat_lament": defeat_lament,
+    "flight_cruise": flight_cruise,
+    "flight_soar": flight_soar,
+    "flight_imperial": flight_imperial,
+    "flight_pursuit": flight_pursuit,
 }
 
 

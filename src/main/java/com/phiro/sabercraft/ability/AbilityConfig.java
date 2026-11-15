@@ -338,6 +338,47 @@ public final class AbilityConfig {
 	/** Phase 13: after running empty, the share of energy needed before the engines start again, 0..1. */
 	@SerializedName("ship_restart_share")
 	public float shipRestartShare = 0.25F;
+	/**
+	 * Phase 14: seconds after the last damage (a hit or a hard landing) before the hull starts to
+	 * mend by itself. Before Phase 14 it was 10 seconds and crash damage did not count.
+	 */
+	@SerializedName("ship_repair_delay_seconds")
+	public int shipRepairDelaySeconds = 45;
+	/** Phase 14: share of the hull that mends per minute once it mends (0.1 = 10 % a minute, 0 = never). */
+	@SerializedName("ship_repair_per_minute")
+	public float shipRepairPerMinute = 0.1F;
+	/** Phase 14: whether the hull also mends while the ship flies (otherwise only landed or parked). */
+	@SerializedName("ship_repair_in_flight")
+	public boolean shipRepairInFlight = false;
+	/**
+	 * Phase 14: damage of each kind of weapon against ships, as a multiplier: {@code saber} (a
+	 * lightsaber in the attacker's hand), {@code blaster} (hand blasters), {@code ship_laser} (the
+	 * cannons of ships), {@code explosion}, {@code other} (arrows, plain swords, fists, mobs). The
+	 * size of the ship counts on top (big ships take less from hand weapons).
+	 */
+	@SerializedName("ship_weapon_damage")
+	public Map<String, Float> shipWeaponDamage = weaponDefaults();
+	/** Phase 14: the most one single hit may take off a ship, as a share of its full hull (no one-shot kills). */
+	@SerializedName("ship_max_hit_share")
+	public float shipMaxHitShare = 0.25F;
+	/** Phase 14: ships can jump to hyperspace (key X while flying). */
+	@SerializedName("hyperspace_enabled")
+	public boolean hyperspaceEnabled = true;
+	/** Phase 14: the longest hyperspace jump in blocks (the Star Destroyer and the TIEs jump a little shorter). */
+	@SerializedName("hyperspace_distance")
+	public int hyperspaceDistance = 160;
+	/** Phase 14: seconds between two jumps of the same ship. */
+	@SerializedName("hyperspace_cooldown_seconds")
+	public int hyperspaceCooldownSeconds = 60;
+	/** Phase 14: share of the flight energy a jump uses; with less the jump does not start. */
+	@SerializedName("hyperspace_energy_share")
+	public float hyperspaceEnergyShare = 0.2F;
+	/** Phase 14: the Millennium Falcon and the Star Destroyer have interiors that players can walk into. */
+	@SerializedName("ship_interiors")
+	public boolean shipInteriors = true;
+	/** Phase 14: other players than the owner may board a ship's interior. */
+	@SerializedName("ship_interior_guests")
+	public boolean shipInteriorGuests = true;
 
 	/**
 	 * Phase 12: which swords may be chosen as lightsabers (menu button, {@code /sabercraft convert}).
@@ -361,7 +402,26 @@ public final class AbilityConfig {
 	public int configVersion = 0;
 
 	/** The config_version this build writes. */
-	public static final int CONFIG_VERSION = 13;
+	public static final int CONFIG_VERSION = 14;
+
+	/** Phase 14: the weapon kinds against ships and their default multipliers. */
+	public static final List<String> WEAPONS = List.of("saber", "blaster", "ship_laser", "explosion", "other");
+
+	private static Map<String, Float> weaponDefaults() {
+		Map<String, Float> map = new LinkedHashMap<>();
+		map.put("saber", 1.0F);
+		map.put("blaster", 1.0F);
+		map.put("ship_laser", 1.0F);
+		map.put("explosion", 1.0F);
+		map.put("other", 0.5F);
+		return map;
+	}
+
+	/** Phase 14: the multiplier of a weapon kind against ships. */
+	public float weaponDamage(String weapon) {
+		Float value = this.shipWeaponDamage == null ? null : this.shipWeaponDamage.get(weapon);
+		return value == null ? weaponDefaults().getOrDefault(weapon, 1.0F) : Mth.clamp(value, 0.0F, 10.0F);
+	}
 
 	private static Map<String, Integer> defaults(java.util.function.ToIntFunction<ShipType.Handling> value) {
 		Map<String, Integer> map = new LinkedHashMap<>();
@@ -475,6 +535,21 @@ public final class AbilityConfig {
 		config.shipRespawnSeconds = Mth.clamp(config.shipRespawnSeconds, 0, 3600);
 		config.shipCrashDamage = Mth.clamp(config.shipCrashDamage, 0.0F, 10.0F);
 		config.shipRestartShare = Mth.clamp(config.shipRestartShare, 0.0F, 1.0F);
+		config.shipRepairDelaySeconds = Mth.clamp(config.shipRepairDelaySeconds, 0, 3600);
+		config.shipRepairPerMinute = Mth.clamp(config.shipRepairPerMinute, 0.0F, 60.0F);
+		config.shipMaxHitShare = Mth.clamp(config.shipMaxHitShare, 0.01F, 1.0F);
+		config.hyperspaceDistance = Mth.clamp(config.hyperspaceDistance, 16, 512);
+		config.hyperspaceCooldownSeconds = Mth.clamp(config.hyperspaceCooldownSeconds, 0, 3600);
+		config.hyperspaceEnergyShare = Mth.clamp(config.hyperspaceEnergyShare, 0.0F, 1.0F);
+		Map<String, Float> weapons = weaponDefaults();
+		if (config.shipWeaponDamage != null) {
+			config.shipWeaponDamage.forEach((id, value) -> {
+				if (id != null && value != null) {
+					weapons.put(id, value);
+				}
+			});
+		}
+		config.shipWeaponDamage = weapons;
 		// Ships missing in the file (a newer version added them) get their built-in values.
 		config.shipFlightSeconds = merged(config.shipFlightSeconds, ShipType.Handling::energy);
 		config.shipRechargeSeconds = merged(config.shipRechargeSeconds, ShipType.Handling::recharge);

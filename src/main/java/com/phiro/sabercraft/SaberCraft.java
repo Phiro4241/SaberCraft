@@ -46,6 +46,10 @@ public class SaberCraft implements ModInitializer {
 		SaberAdvancements.init();
 		Droids.init();
 		Starships.init();
+		com.phiro.sabercraft.interior.ShipInteriors.init();
+		// Phase 16: seats, doors, consoles, the hyperdrive and the guns aboard.
+		com.phiro.sabercraft.interior.Seats.init();
+		com.phiro.sabercraft.interior.InteriorSystems.init();
 		SaberSwords.init();
 		LOGGER.info("SaberCraft initialized");
 	}

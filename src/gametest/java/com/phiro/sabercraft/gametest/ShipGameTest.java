@@ -56,6 +56,8 @@ public class ShipGameTest implements FabricClientGameTest {
 	@Override
 	public void runTest(ClientGameTestContext context) {
 		context.runOnClient(client -> client.options.renderDistance().set(6));
+		// Phase 14: the cockpit view is the default now; this test checks the view behind the ship (Phase 11).
+		context.runOnClient(client -> com.phiro.sabercraft.client.ImmersionConfig.get().shipCamera = com.phiro.sabercraft.client.ImmersionConfig.CAMERA_CHASE);
 		TestWorldSave save;
 		UUID self;
 

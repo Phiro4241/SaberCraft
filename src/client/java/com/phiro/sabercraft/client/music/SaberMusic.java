@@ -1,5 +1,7 @@
 package com.phiro.sabercraft.client.music;
 
+import com.phiro.sabercraft.client.ship.ShipClient;
+
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.List;
@@ -57,7 +59,14 @@ public final class SaberMusic {
 		/** Phase 10: once after a won fight. */
 		VICTORY("victory", false, "victory_fanfare"),
 		/** Phase 10: once when you fall. */
-		DEFEAT("defeat", false, "defeat_lament");
+		DEFEAT("defeat", false, "defeat_lament"),
+		/**
+		 * Phase 14: while flying a starship. Rebel ships get the warm, wide pieces, Imperial ships
+		 * the dark march (see {@link #flightPieces}); one piece follows the other with a short breath.
+		 */
+		FLIGHT("flight", false, "flight_cruise", "flight_soar", "flight_imperial"),
+		/** Phase 14: a fight in the air (the own lasers fired or the ship hit recently). */
+		SPACE_BATTLE("space_battle", true, "flight_pursuit");
 
 		private final String folder;
 		private final boolean loops;
@@ -81,6 +90,16 @@ public final class SaberMusic {
 		public boolean stinger() {
 			return this == VICTORY || this == DEFEAT;
 		}
+
+		/** Phase 14: music that belongs to flying; it starts at once on boarding and leaves at once on climbing out. */
+		public boolean flight() {
+			return this == FLIGHT || this == SPACE_BATTLE;
+		}
+	}
+
+	/** Phase 14: the built-in flight pieces that fit the ship: Imperial ships sound darker. */
+	static List<Identifier> flightPieces(List<Identifier> builtIn, boolean imperial) {
+		return builtIn.stream().filter(id -> imperial ? !id.getPath().endsWith("flight_cruise") : !id.getPath().endsWith("flight_imperial")).toList();
 	}
 
 	private static final RandomSource RANDOM = RandomSource.create();
@@ -138,7 +157,9 @@ public final class SaberMusic {
 				candidate = wanted;
 
 				// Fights, bosses, victory and defeat start at once, calm music waits until the mood has settled.
-				if (mood == null || wanted == Mood.COMBAT || wanted == Mood.EVENT || wanted.stinger() || candidateTicks >= MOOD_SETTLE) {
+				// Phase 14: flying starts its music on boarding and lets it go on climbing out, at once.
+				boolean flightChange = wanted.flight() || mood != null && mood.flight();
+				if (mood == null || wanted == Mood.COMBAT || wanted == Mood.EVENT || wanted.stinger() || flightChange || candidateTicks >= MOOD_SETTLE) {
 					switchTo(wanted, crossfade);
 				}
 			} else {
@@ -154,8 +175,8 @@ public final class SaberMusic {
 					mood = null;
 					silence = 40;
 				} else {
-					// After a calm piece a pause of 30 to 90 seconds, like the vanilla music.
-					silence = mood != null && mood.loops() ? 20 : 600 + RANDOM.nextInt(1200);
+					// After a calm piece a pause of 30 to 90 seconds, like the vanilla music; in flight only a breath.
+					silence = mood != null && mood.loops() ? 20 : mood == Mood.FLIGHT ? 60 : 600 + RANDOM.nextInt(1200);
 				}
 			}
 
@@ -176,19 +197,23 @@ public final class SaberMusic {
 
 	private static void switchTo(Mood wanted, float crossfade) {
 		if (current != null) {
+			// Phase 14: quick changes (boarding, a space battle, climbing out) never stack up: a piece
+			// still fading out from an earlier change stops now, so only the old and the new piece are heard.
+			stopFading();
 			current.fadeOut(crossfade);
 			FADING.add(current);
 			current = null;
 		}
 
-		// Calm music comes back after a short breath; combat, events, victory and defeat start right away.
-		silence = mood == Mood.COMBAT && !wanted.loops() && !wanted.stinger() ? CALM_DELAY : 1;
+		// Calm music comes back after a short breath; combat, events, victory, defeat and flight start right away.
+		// Phase 14: after climbing out of a ship the calm music waits a little, the flight piece fades meanwhile.
+		silence = (mood == Mood.COMBAT || mood != null && mood.flight()) && !wanted.loops() && !wanted.stinger() && !wanted.flight() ? CALM_DELAY : 1;
 		mood = wanted;
 		candidate = null;
 	}
 
 	private static void start(Minecraft client, Mood wanted, float crossfade) {
-		List<Identifier> choices = new ArrayList<>(wanted.builtIn);
+		List<Identifier> choices = new ArrayList<>(wanted == Mood.FLIGHT ? flightPieces(wanted.builtIn, ShipClient.imperialFlight(client)) : wanted.builtIn);
 		if (ImmersionConfig.get().musicUserFiles) {
 			choices.addAll(UserMusic.pieces(wanted));
 		}
@@ -212,6 +237,12 @@ public final class SaberMusic {
 		current = piece;
 		client.getSoundManager().play(piece);
 		SaberCraft.LOGGER.debug("SaberCraft music: {} ({})", pick, wanted.folder());
+	}
+
+	private static void stopFading() {
+		Minecraft client = Minecraft.getInstance();
+		FADING.forEach(client.getSoundManager()::stop);
+		FADING.clear();
 	}
 
 	private static void fadeOutAll(float ticksToSilence) {
@@ -250,8 +281,12 @@ public final class SaberMusic {
 			return Mood.DEFEAT;
 		} else if (bossNow(client)) {
 			return Mood.EVENT;
+		} else if (flightNow(client) && ShipClient.spaceBattle(client)) {
+			return Mood.SPACE_BATTLE;
 		} else if (fightNow(client) && client.player.isAlive()) {
 			return Mood.COMBAT;
+		} else if (flightNow(client)) {
+			return Mood.FLIGHT;
 		} else if (stinger == Mood.VICTORY) {
 			return Mood.VICTORY;
 		} else if (darkNow(client)) {
@@ -266,6 +301,11 @@ public final class SaberMusic {
 		if (ticks % 10 == 0) {
 			scan(client, client.player);
 		}
+	}
+
+	/** Phase 14: the local player flies a starship and wants flight music. */
+	static boolean flightNow(Minecraft client) {
+		return ImmersionConfig.get().musicFlight && client.player.isAlive() && ShipClient.piloting(client) != null;
 	}
 
 	/** A boss is near or a boss bar asks for music. */

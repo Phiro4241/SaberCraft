@@ -79,6 +79,11 @@ public class MusicMenuScreen extends SaberMenuScreen {
 			config.musicStingers = v;
 			ImmersionConfig.save();
 		});
+		// Phase 14: music while flying a starship.
+		this.toggle(1, 3, "sabercraft.option.music_flight", config.musicFlight, v -> {
+			config.musicFlight = v;
+			ImmersionConfig.save();
+		});
 	}
 
 	private void initStarWars(ImmersionConfig config) {
@@ -100,6 +105,11 @@ public class MusicMenuScreen extends SaberMenuScreen {
 		});
 		this.toggle(0, 3, "sabercraft.option.starwars_character_themes", config.starWarsCharacterThemes, v -> {
 			config.starWarsCharacterThemes = v;
+			ImmersionConfig.save();
+		});
+		// Phase 14: your files in flight/ and space_battle/ while flying.
+		this.toggle(0, 4, "sabercraft.option.music_flight", config.musicFlight, v -> {
+			config.musicFlight = v;
 			ImmersionConfig.save();
 		});
 		int half = (COLUMN_WIDTH - 4) / 2;

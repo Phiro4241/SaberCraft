@@ -334,20 +334,28 @@ def vader():
             else (gray if y == 8 and f in ("front", "right", "left") and x % 2 == 0 else black if 8 <= y <= 9 else None))
     # Outer layer, legs: tall boots with a shine down the front.
     o.paint(LEGS, True, lambda f, x, y, w, h: None if f in ("top", "bottom") else ((shine if f == "front" and x == 1 else black) if y >= 7 else None))
-    # Helmet: the base layer is the mask, the outer layer the dome and its flared rim.
+    # Helmet (Phase 14, redrawn): the base layer is the mask, the outer layer the dome and its flared rim.
+    # The mask: wide, slanted eye lenses with a bridge between them, the triangular nose, the cheek
+    # tubes and the pointed silver mouth grille. The dome has a ridge down the middle and a brow
+    # that overhangs the eyes; its rim flares out at the sides and the back like a bell.
+    lens_shine = "#6a2a32"
+    highlight = "#5c5f68"
     head_from(o, False, {
-        "_": {"k": black, "d": dark, "g": gray, "m": metal, "l": lens},
-        "front": ["kkkkkkkk", "kddddddk", "kddkkddk", "kllkkllk", "kdkggkdk", "kdgmmgdk", "kgmgmgmk", "kkgmmgkk"],
+        "_": {"k": black, "d": dark, "g": gray, "m": metal, "l": lens, "L": lens_shine},
+        "front": ["kkkkkkkk", "kkddddkk", "kLlddlLk", "kdlddldk", "kddggddk", "kgdmmdgk", "kdmggmdk", "kkdmmdkk"],
         "top": ["kkkkkkkk"] * 8, "bottom": ["kkkkkkkk"] * 8,
-        "left": ["kkkkkkkk"] * 8, "right": ["kkkkkkkk"] * 8, "back": ["kkkkkkkk"] * 8,
+        "left": ["kkkkkkkk", "kkkkkkkk", "kkkkkkkk", "kkkkkkkk", "dddddddd", "kkkkkkkk", "kkkkkkkk", "kkkkkkkk"],
+        "right": ["kkkkkkkk", "kkkkkkkk", "kkkkkkkk", "kkkkkkkk", "dddddddd", "kkkkkkkk", "kkkkkkkk", "kkkkkkkk"],
+        "back": ["kkkkkkkk"] * 8,
     })
     head_from(o, True, {
-        "_": {"k": black, "d": dark, "s": shine},
-        "front": ["kkkkkkkk", "ksddddsk", "........", "........", "........", "........", "........", "........"],
-        "top": ["kdkkkkdk", "kkkkkkkk", "kkkdkkkk", "kkskkkkk", "kkkkkkkk", "kkkkdkkk", "kkkkkkkk", "kdkkkkdk"],
-        "left": ["kkkkkkkk", "kkskkkkk", "kkkkkkkk", "kkkkkkkk", "kkkkkkkk", "kkkkkkkk", "kkkkkkkk", "kkkkkk.."],
-        "right": ["kkkkkkkk", "kkkkkskk", "kkkkkkkk", "kkkkkkkk", "kkkkkkkk", "kkkkkkkk", "kkkkkkkk", "..kkkkkk"],
-        "back": ["kkkkkkkk", "kkskkskk", "kkkkkkkk", "kkkkkkkk", "kkkkkkkk", "kkkkkkkk", "kkkkkkkk", "kkkkkkkk"],
+        "_": {"k": black, "d": dark, "s": shine, "h": highlight},
+        "front": ["kkkkkkkk", "kshsshsk", "k......k", "k......k", "k......k", "k......k", "k......k", "kk....kk"],
+        "top": ["kkkkkkkk", "kkkhskkk", "kkkhskkk", "kkshskkk", "kkkhskkk", "kkkhskkk", "kkkdkkkk", "kkkkkkkk"],
+        "left": ["kkkkkkkk", "kkhskkkk", "kkkkkkkk", "kkkkkkkk", "kkkkkkkk", "kkkkkkkk", "kdkkkkdk", "kkkkkkkk"],
+        "right": ["kkkkkkkk", "kkkkshkk", "kkkkkkkk", "kkkkkkkk", "kkkkkkkk", "kkkkkkkk", "kdkkkkdk", "kkkkkkkk"],
+        "back": ["kkkkkkkk", "kkhsshkk", "kkkkkkkk", "kkkkkkkk", "kkkkkkkk", "kkkkkkkk", "kdkkkkdk", "kkkkkkkk"],
+        "bottom": ["kkkkkkkk", "k......k", "k......k", "k......k", "k......k", "k......k", "k......k", "kkkkkkkk"],
     })
     o.save("vader")
 
