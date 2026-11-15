@@ -45,6 +45,9 @@ public final class InteriorBuilder {
 
 	private final Target target;
 	private int placed;
+	/** Phase 17: the shapes given to barriers in this build (so that later pieces can add to them). */
+	private final it.unimi.dsi.fastutil.longs.Long2ObjectMap<net.minecraft.world.phys.shapes.VoxelShape> shapes = new it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap<>();
+	private final it.unimi.dsi.fastutil.longs.LongSet wallCells = new it.unimi.dsi.fastutil.longs.LongOpenHashSet();
 
 	InteriorBuilder(ServerLevel level, BlockPos origin) {
 		this(new Target() {
@@ -85,6 +88,9 @@ public final class InteriorBuilder {
 	}
 
 	public void set(int x, int y, int z, BlockState state) {
+		long key = net.minecraft.core.BlockPos.asLong(x, y, z);
+		this.shapes.remove(key);
+		this.wallCells.remove(key);
 		this.target.set(x, y, z, state);
 		this.placed++;
 	}
@@ -96,6 +102,32 @@ public final class InteriorBuilder {
 	public void shaped(int x, int y, int z, net.minecraft.world.phys.shapes.VoxelShape shape, boolean wall) {
 		this.set(x, y, z, Blocks.BARRIER.defaultBlockState());
 		this.target.shape(x, y, z, shape, wall);
+		long key = net.minecraft.core.BlockPos.asLong(x, y, z);
+		this.shapes.put(key, shape);
+
+		if (wall) {
+			this.wallCells.add(key);
+		}
+	}
+
+	/**
+	 * Phase 17: gives a cell a shape; where a shaped barrier is already (a curved wall running
+	 * through the cell), both shapes together.
+	 */
+	private void addShape(int x, int y, int z, net.minecraft.world.phys.shapes.VoxelShape shape) {
+		long key = net.minecraft.core.BlockPos.asLong(x, y, z);
+		net.minecraft.world.phys.shapes.VoxelShape old = this.get(x, y, z).is(Blocks.BARRIER) ? this.shapes.get(key) : null;
+
+		if (old != null) {
+			this.shaped(x, y, z, net.minecraft.world.phys.shapes.Shapes.joinUnoptimized(old, shape, net.minecraft.world.phys.shapes.BooleanOp.OR), this.wallCells.contains(key));
+		} else {
+			this.shaped(x, y, z, shape, false);
+		}
+	}
+
+	/** Whether the cell holds a shaped barrier (see {@link #shaped}). */
+	private boolean isShaped(int x, int y, int z) {
+		return this.get(x, y, z).is(Blocks.BARRIER) && this.shapes.containsKey(net.minecraft.core.BlockPos.asLong(x, y, z));
 	}
 
 	/** Phase 16: where a room with curved walls is open (plot space, a point at row y). */
@@ -138,10 +170,79 @@ public final class InteriorBuilder {
 
 					ProxyShapes.Solid solid = (px, pz) -> !open.open(px, pz, row);
 
-					if (ProxyShapes.mixed(x, z, 8, solid)) {
-						this.shaped(x, y, z, ProxyShapes.columns(x, z, 8, solid), true);
+					if (ProxyShapes.mixed(x, z, 16, solid)) {
+						this.shaped(x, y, z, ProxyShapes.columns(x, z, 16, solid), true);
 					}
 				}
+			}
+		}
+	}
+
+	/**
+	 * Phase 17: something solid that is not a whole number of blocks (a round machine, a curved
+	 * couch, the edge of a dome): every cell from (x0, z0) to (x1, z1) in row y that it reaches
+	 * collides with exactly its shape there, {@code height} of the row high (columns of 1/16
+	 * block; a cell it fills wholly and to the top is a plain barrier). Only cells that are air
+	 * or one of the {@code over} blocks are touched.
+	 */
+	public void solid(int x0, int z0, int x1, int z1, int y, ProxyShapes.Solid solid, double height, java.util.Set<Block> over) {
+		int res = 16;
+
+		for (int x = Math.min(x0, x1); x <= Math.max(x0, x1); x++) {
+			for (int z = Math.min(z0, z1); z <= Math.max(z0, z1); z++) {
+				BlockState here = this.get(x, y, z);
+				boolean shaped = this.isShaped(x, y, z);
+
+				if (!here.isAir() && !over.contains(here.getBlock()) && !shaped) {
+					continue;
+				}
+
+				boolean any = false;
+				boolean all = true;
+
+				for (int i = 0; i < res; i++) {
+					for (int j = 0; j < res; j++) {
+						boolean s = solid.at(x + (i + 0.5) / res, z + (j + 0.5) / res);
+						any |= s;
+						all &= s;
+					}
+				}
+
+				if (!any) {
+					continue;
+				}
+
+				if (all && height >= 1.0) {
+					this.set(x, y, z, Blocks.BARRIER.defaultBlockState());
+				} else {
+					this.addShape(x, y, z, ProxyShapes.columns(x, z, res, solid, height));
+				}
+			}
+		}
+	}
+
+	/**
+	 * Phase 17: like {@link #solid}, with a solid span per column (see {@link ProxyShapes.Span},
+	 * shares of row y): cells where no column has a span are left alone.
+	 */
+	public void spans(int x0, int z0, int x1, int z1, int y, ProxyShapes.Span span, java.util.Set<Block> over) {
+		int res = 16;
+
+		for (int x = Math.min(x0, x1); x <= Math.max(x0, x1); x++) {
+			for (int z = Math.min(z0, z1); z <= Math.max(z0, z1); z++) {
+				BlockState here = this.get(x, y, z);
+
+				if (!here.isAir() && !over.contains(here.getBlock()) && !this.isShaped(x, y, z)) {
+					continue;
+				}
+
+				net.minecraft.world.phys.shapes.VoxelShape shape = ProxyShapes.spans(x, z, res, span);
+
+				if (shape.isEmpty()) {
+					continue;
+				}
+
+				this.addShape(x, y, z, shape);
 			}
 		}
 	}

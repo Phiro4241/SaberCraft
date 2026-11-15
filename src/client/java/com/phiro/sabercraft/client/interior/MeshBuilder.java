@@ -168,6 +168,14 @@ public final class MeshBuilder {
 		return this;
 	}
 
+	private boolean inside;
+
+	/** Phase 17: whether the next shapes belong to the rooms (they dim with the ship's lights). */
+	public MeshBuilder inside(boolean inside) {
+		this.inside = inside;
+		return this;
+	}
+
 	public MeshBuilder twoSided(boolean twoSided) {
 		this.twoSided = twoSided;
 		return this;
@@ -780,7 +788,7 @@ public final class MeshBuilder {
 		this.samples[12] = Mth.floor(centre.x + n.x * 0.55F);
 		this.samples[13] = Mth.floor(centre.y + n.y * 0.55F);
 		this.samples[14] = Mth.floor(centre.z + n.z * 0.55F);
-		this.sink.quad(this.layer, this.xyzuv, n.x, n.y, n.z, this.colours, this.lightMode, this.fixedLight, this.anim, this.samples);
+		this.sink.quad(this.layer, this.xyzuv, n.x, n.y, n.z, this.colours, this.lightMode, this.fixedLight, this.inside ? this.anim | Mesh.INSIDE : this.anim, this.samples);
 		this.quads++;
 	}
 }

@@ -1088,6 +1088,168 @@ def _():
     return solid((255, 255, 255))
 
 
+# --- Phase 17: the crew of the Star Destroyer (drawn figures) ----------------------------------
+# Faces of blocky figures (a tile per face of a box, stretched to it): troopers in white armour,
+# officers in grey uniforms, technicians in black. Inspired by the look, not copied.
+
+
+def armour_white(seed):
+    img = solid((226, 228, 232))
+    grain(img, seed, 0.035)
+    return img
+
+
+@tile("crew_trooper_helmet", "crew: trooper helmet, front (eyes, breathing grille)")
+def _():
+    img = armour_white(1701)
+    # The brow and the cheeks are bevelled plates.
+    bevel(img, 4, 6, 60, 30, 1.06, 0.86, 2)
+    # Eye lenses: dark, slanting down to the outside.
+    for side in (0, 1):
+        for i in range(10):
+            x0 = 12 + i if side == 0 else 52 - i - 12
+            y0 = 22 + (i // 3 if side == 0 else (9 - i) // 3)
+            rect(img, (14 + i) if side == 0 else (40 + i), 22 + (i // 4 if side == 0 else (9 - i) // 4), (15 + i) if side == 0 else (41 + i), 31 - (i // 3 if side == 0 else (9 - i) // 3), (24, 26, 30))
+    # The tube-like breathing grille and the "frown".
+    rect(img, 24, 40, 40, 48, (70, 74, 82))
+    for x in range(25, 40, 3):
+        line_v(img, x, 0.5, 41, 47)
+    rect(img, 18, 50, 46, 52, factor=0.55)
+    rect(img, 16, 46, 22, 52, factor=0.6)
+    rect(img, 42, 46, 48, 52, factor=0.6)
+    # Side vents (dark), the chin.
+    rect(img, 6, 38, 12, 54, factor=0.55)
+    rect(img, 52, 38, 58, 54, factor=0.55)
+    rect(img, 0, 58, 64, 64, factor=0.75)
+    return img
+
+
+@tile("crew_trooper_helmet_side", "crew: trooper helmet, sides and back")
+def _():
+    img = armour_white(1702)
+    bevel(img, 3, 4, 61, 60, 1.06, 0.86, 2)
+    # The ear piece and a dark band low down.
+    for y in range(64):
+        for x in range(64):
+            if (x - 32) ** 2 + (y - 34) ** 2 < 90:
+                img[y, x, :3] *= 0.82
+    rect(img, 26, 28, 38, 40, factor=0.75)
+    rect(img, 0, 50, 64, 54, (60, 64, 70))
+    return img
+
+
+@tile("crew_trooper_torso", "crew: trooper chest and back (plates, black under-suit, belt)")
+def _():
+    img = solid((32, 34, 38))
+    grain(img, 1703, 0.05)
+    # Chest plate, shoulders, the plates of the belly.
+    rect(img, 6, 2, 58, 26, (228, 230, 234))
+    bevel(img, 6, 2, 58, 26, 1.05, 0.82, 2)
+    rect(img, 14, 30, 50, 36, (220, 222, 226))
+    rect(img, 16, 38, 48, 44, (220, 222, 226))
+    # The belt with its pouches.
+    rect(img, 0, 48, 64, 56, (214, 216, 220))
+    for x in (6, 18, 40, 52):
+        rect(img, x, 47, x + 7, 57, (236, 238, 240))
+        bevel(img, x, 47, x + 7, 57, 1.05, 0.8, 1)
+    rect(img, 28, 49, 36, 55, (120, 124, 130))
+    # Little controls on the chest.
+    rect(img, 24, 12, 30, 16, (60, 64, 70))
+    rect(img, 34, 12, 40, 16, (150, 60, 50))
+    return img
+
+
+@tile("crew_trooper_limb", "crew: trooper arm or leg (white plates, black joints)")
+def _():
+    img = solid((30, 32, 36))
+    grain(img, 1704, 0.05)
+    rect(img, 4, 2, 60, 26, (228, 230, 234))
+    bevel(img, 4, 2, 60, 26, 1.05, 0.82, 2)
+    rect(img, 4, 34, 60, 60, (228, 230, 234))
+    bevel(img, 4, 34, 60, 60, 1.05, 0.82, 2)
+    rect(img, 0, 60, 64, 64, (210, 212, 216))
+    return img
+
+
+@tile("crew_officer_face", "crew: officer's face under the cap")
+def _():
+    img = solid((214, 172, 140))
+    grain(img, 1705, 0.04)
+    # The cap: grey with a black visor.
+    rect(img, 0, 0, 64, 16, (96, 102, 92))
+    rect(img, 0, 14, 64, 19, (22, 22, 24))
+    # Eyes, brows, nose and mouth.
+    for x in (18, 40):
+        rect(img, x, 28, x + 7, 32, (250, 250, 248))
+        rect(img, x + 2, 28, x + 5, 32, (60, 44, 34))
+        rect(img, x - 1, 24, x + 8, 26, (90, 66, 50))
+    rect(img, 30, 32, 34, 42, factor=0.9)
+    rect(img, 24, 47, 40, 50, (150, 90, 80))
+    rect(img, 0, 19, 6, 40, (70, 52, 40))
+    rect(img, 58, 19, 64, 40, (70, 52, 40))
+    return img
+
+
+@tile("crew_officer_head", "crew: officer's head, sides and back (cap, short hair)")
+def _():
+    img = solid((70, 52, 40))
+    grain(img, 1706, 0.06)
+    rect(img, 0, 0, 64, 18, (96, 102, 92))
+    rect(img, 0, 16, 64, 19, (60, 64, 58))
+    rect(img, 0, 52, 64, 64, (214, 172, 140))
+    return img
+
+
+@tile("crew_officer_tunic", "crew: officer's tunic (grey, belt, rank plaque)")
+def _():
+    img = solid((104, 110, 100))
+    grain(img, 1707, 0.05)
+    line_v(img, 32, 0.8, 0, 46)
+    rect(img, 0, 46, 64, 52, (24, 24, 26))
+    rect(img, 28, 46, 36, 52, (170, 170, 176))
+    # The rank plaque: rows of small red and blue squares.
+    rect(img, 8, 10, 26, 18, (40, 40, 44))
+    for i, col in enumerate(((200, 50, 40), (200, 50, 40), (60, 90, 200), (220, 200, 60))):
+        rect(img, 9 + i * 4, 11, 12 + i * 4, 14, col)
+        rect(img, 9 + i * 4, 15, 12 + i * 4, 17, (200, 50, 40) if i % 2 else (60, 90, 200))
+    rect(img, 0, 52, 64, 64, (92, 98, 88))
+    return img
+
+
+@tile("crew_officer_limb", "crew: officer's sleeve or trouser leg (black boot below)")
+def _():
+    img = solid((96, 102, 92))
+    grain(img, 1708, 0.05)
+    line_v(img, 32, 0.85)
+    rect(img, 0, 40, 64, 64, (20, 20, 22))
+    rect(img, 0, 40, 64, 42, (60, 60, 64))
+    return img
+
+
+@tile("crew_tech_helmet", "crew: technician's black helmet, front (visor)")
+def _():
+    img = solid((26, 27, 30))
+    grain(img, 1709, 0.06)
+    bevel(img, 2, 2, 62, 62, 1.25, 0.7, 2)
+    rect(img, 8, 22, 56, 36, (10, 10, 12))
+    rect(img, 8, 22, 56, 24, (90, 96, 110))
+    rect(img, 22, 44, 42, 50, (60, 62, 68))
+    return img
+
+
+@tile("crew_tech_body", "crew: technician's black suit (chest box, belt)")
+def _():
+    img = solid((30, 31, 34))
+    grain(img, 1710, 0.06)
+    rect(img, 14, 10, 34, 24, (54, 56, 62))
+    bevel(img, 14, 10, 34, 24, 1.3, 0.7, 1)
+    for i, col in enumerate(((200, 60, 50), (60, 180, 90), (60, 110, 220))):
+        rect(img, 17 + i * 5, 14, 20 + i * 5, 17, col)
+    rect(img, 0, 46, 64, 52, (16, 16, 18))
+    rect(img, 28, 46, 36, 52, (120, 122, 128))
+    return img
+
+
 # --- Writing ---------------------------------------------------------------------------------
 
 

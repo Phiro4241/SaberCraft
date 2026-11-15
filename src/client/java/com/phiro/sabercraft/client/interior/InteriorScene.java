@@ -145,8 +145,13 @@ public final class InteriorScene {
 		final EnumMap<Layer, Mesh> moving = new EnumMap<>(Layer.class);
 		final AABB bounds;
 		int quads;
-		/** Phase 16: whether the plot's lights are dimmed (from its light blocks, looked at now and then). */
-		boolean dimmed;
+		/** Phase 17: the step of the plot's dimmer (from its light blocks, looked at now and then). */
+		int lightStep;
+		/** Phase 17: how bright the rooms are drawn now (fades smoothly to the step's brightness). */
+		float brightness = 1.0F;
+		float brightnessAt = Float.NaN;
+		/** Phase 17: the cells need their light looked up again (the lights came back on). */
+		boolean relightAll;
 
 		Model(String key, int version, BlockPos origin, InteriorVisuals visuals) {
 			this.key = key;
@@ -255,6 +260,10 @@ public final class InteriorScene {
 		float seconds = (Util.getMillis() % 3_600_000L) / 1000.0F;
 		int quads = 0;
 		int cells = 0;
+		// Phase 17: from inside a plot only its own ship is drawn: the plots lie a long way apart,
+		// but the ships are drawn from far off, and one saw the Falcon (or another player's ship)
+		// out in the distance through the Star Destroyer's bridge windows.
+		BlockPos inside = ShipInteriors.originAt(camera.x, camera.z);
 
 		for (Map.Entry<String, Integer> entry : PLOTS.entrySet()) {
 			String[] parts = entry.getKey().split("/", 2);
@@ -273,6 +282,11 @@ public final class InteriorScene {
 			}
 
 			BlockPos origin = ShipInteriors.origin(plan, index);
+
+			if (inside != null && !inside.equals(origin)) {
+				continue;
+			}
+
 			InteriorVisuals visuals = visuals(parts[0]);
 
 			// Quick range check before building anything.
@@ -286,13 +300,46 @@ public final class InteriorScene {
 				continue;
 			}
 
-			relight(level, model);
+			if (level.getGameTime() % 5 == 0 || Float.isNaN(model.brightnessAt)) {
+				int step = InteriorClient.lightStep(level, model.origin, plan);
 
-			if (level.getGameTime() % 10 == 0) {
-				model.dimmed = InteriorClient.dimmed(level, model.origin, plan);
+				if (step == 0 && model.lightStep != 0) {
+					model.relightAll = true;
+				}
+
+				model.lightStep = step;
 			}
 
-			boolean dim = model.dimmed;
+			// The models keep the light they had with the lamps on (the dimming is drawn as a
+			// smooth fade instead of the light blocks' steps), so they are relit only at full light.
+			if (model.lightStep == 0) {
+				if (model.relightAll) {
+					model.relightAll = false;
+
+					for (Cell cell : model.cells) {
+						lightCell(level, model, cell);
+					}
+				}
+
+				relight(level, model);
+			}
+
+			float target = com.phiro.sabercraft.interior.ShipLights.surfaces(model.lightStep);
+
+			if (Float.isNaN(model.brightnessAt)) {
+				model.brightness = target;
+			} else {
+				float dt = Mth.clamp(seconds - model.brightnessAt, 0.0F, 0.25F);
+				// About a second from one step to the next, eased.
+				model.brightness += (target - model.brightness) * Math.min(1.0F, dt * 3.0F);
+
+				if (Math.abs(target - model.brightness) < 0.002F) {
+					model.brightness = target;
+				}
+			}
+
+			model.brightnessAt = seconds;
+			float dim = model.brightness;
 			poseStack.pushPose();
 			poseStack.translate(origin.getX() - camera.x, origin.getY() - camera.y, origin.getZ() - camera.z);
 
@@ -332,17 +379,25 @@ public final class InteriorScene {
 		lastCells = cells;
 	}
 
-	private static void submitMesh(SubmitNodeCollector collector, PoseStack poseStack, Layer layer, Mesh mesh, float seconds, boolean dim) {
+	private static void submitMesh(SubmitNodeCollector collector, PoseStack poseStack, Layer layer, Mesh mesh, float seconds, float brightness) {
 		boolean alpha = layer == Layer.GLASS || layer == Layer.HOLO;
+		float glow = com.phiro.sabercraft.interior.ShipLights.glow(brightness);
+		// A lamp is dimmed by the glow's share already: the rest makes it as dark as a lamp gets.
+		float lamp = com.phiro.sabercraft.interior.ShipLights.lamps(brightness) / glow;
 		collector.submitCustomGeometry(poseStack, renderType(layer), (pose, buffer) -> mesh.emit(pose, buffer,
-				(anim, quad) -> anim == ANIM_LAMP ? (dim ? 0.22F : 1.0F) : factor(anim, quad, seconds), alpha));
+				(anim, quad) -> anim == ANIM_LAMP ? lamp : factor(anim, quad, seconds), alpha, brightness, glow));
 	}
 
 	private static RenderType renderType(Layer layer) {
 		return switch (layer) {
 			case SOLID -> RenderTypes.entityCutoutCull(ATLAS);
 			case GLOW -> RenderTypes.eyes(ATLAS);
-			case GLASS -> RenderTypes.entityTranslucent(ATLAS);
+			// Phase 17: translucent like the banner patterns, without writing depth. The translucent
+			// passes come in an order that changes from one game to the next (batched by render
+			// type in a hash map): the glass, writing depth, hid the glowing and holographic parts
+			// behind it whenever it came first (the hyperspace lines and rings seen through the
+			// cockpit window were there in one game and gone in the next).
+			case GLASS -> RenderTypes.bannerPattern(ATLAS);
 			case HOLO -> RenderTypes.entityTranslucentEmissive(ATLAS);
 		};
 	}
@@ -433,6 +488,28 @@ public final class InteriorScene {
 	}
 
 	// --- For tests -----------------------------------------------------------------------------
+
+	/** Phase 17: whether the model of the plot at that corner would be drawn from a camera there (for tests). */
+	public static boolean drawnFrom(BlockPos origin, Vec3 camera) {
+		BlockPos inside = ShipInteriors.originAt(camera.x, camera.z);
+		return inside == null || inside.equals(origin);
+	}
+
+	/** Phase 17: how bright the rooms of the (first) plot of that plan are drawn now, for tests. */
+	public static float brightnessForTest(String plan) {
+		for (Model model : MODELS.values()) {
+			if (model.key.startsWith(plan + "/")) {
+				return model.brightness;
+			}
+		}
+
+		return -1.0F;
+	}
+
+	/** Phase 17: how opaque the hyperspace shell round the Falcon was in the last frame it was built (0 = none), for tests. */
+	public static float hyperspaceShellForTest() {
+		return FalconJump.shellDrawn;
+	}
 
 	/** How many quads were drawn in the last frame. */
 	public static int lastQuads() {

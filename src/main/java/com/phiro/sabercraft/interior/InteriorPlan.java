@@ -71,7 +71,8 @@ public abstract class InteriorPlan {
 	 */
 	public @Nullable Seat seatFor(BlockPos cell, Vec3 hit) {
 		for (Seat seat : this.seats()) {
-			if (seat.cell().equals(cell)) {
+			// Phase 17: or the cap over it (seats cannot be climbed onto; a click on the back hits the cap).
+			if (seat.cell().equals(cell) || seat.cell().above().equals(cell)) {
 				return seat;
 			}
 		}

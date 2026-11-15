@@ -144,7 +144,8 @@ final class FalconRooms {
 
 				if (s.top() && s.roomHeight() >= 3) {
 					b.tile(InteriorAtlas.FAL_METAL, 1.0F);
-					Skin.ceilingChamfer(b, s, 0.45F);
+					// Phase 17: small in rooms three high (standing on a crate or barrel, one had the head in it).
+					Skin.ceilingChamfer(b, s, s.roomHeight() == 3 ? 0.25F : 0.45F);
 				}
 			}
 		}
@@ -163,7 +164,10 @@ final class FalconRooms {
 		RoundWalls.wall(b, CXF, CZF, (float) RING_IN_WALL, Y0, Y0 + 3, false, 0.0F, 360.0F, 80, DOORWAYS, tiles);
 		RoundWalls.wall(b, CXF, CZF, (float) RING_OUT_WALL, Y0, Y0 + 3, true, 0.0F, 360.0F, 96, DOORWAYS, tiles);
 		RoundWalls.wall(b, CXF, CZF, (float) ENGINE_WALL, Y0, Y0 + 4, false, (float) ENGINE_A0, (float) ENGINE_A1, 32, DOORWAYS, tiles);
-		RoundWalls.linings(b, DOORWAYS, com.phiro.sabercraft.interior.FalconInterior::open, () -> b.tile(InteriorAtlas.FAL_METAL_DARK, 1.0F),
+		RoundWalls.wall(b, CXF, CZF, (float) ENGINE_OUTER_WALL, Y0 + 2, Y0 + 4, true, (float) ENGINE_A0, (float) ENGINE_A1, 32, DOORWAYS, tiles);
+		// The sides run on beyond a doorway only inside the saucer's curved walls (not at the cockpit).
+		RoundWalls.linings(b, DOORWAYS, com.phiro.sabercraft.interior.FalconInterior::open, (x, y, z) -> x < 38 && plot.wall(x, y, z),
+				(door, x, z) -> !com.phiro.sabercraft.interior.FalconInterior.beyondUncrossed(door, x, z), () -> b.tile(InteriorAtlas.FAL_METAL_DARK, 1.0F),
 				() -> b.fit(InteriorAtlas.FAL_CEILING));
 	}
 
@@ -176,14 +180,20 @@ final class FalconRooms {
 		// Ribs across the corridor every 30 degrees: posts on both walls, a beam under the ceiling.
 		for (int i = 0; i < 12; i++) {
 			float a = i * 30.0F;
+
+			// Phase 17: no rib in a doorway (four of them stood in the doorways of the hold).
+			if (ribInDoorway(a)) {
+				continue;
+			}
+
 			b.push().translate(CXF, 0, CZF).rotateY(-a);
 			// In this frame +x points along the radius.
 			b.tile(InteriorAtlas.FAL_METAL_DARK, 1.0F);
 			float r0 = (float) RING_IN + 0.05F;
 			float r1 = (float) RING_OUT - 0.05F;
 			// The posts end under the beam: overlapping, their sides would lie in the beam's.
-			b.box(r0, Y0, -0.18F, r0 + 0.22F, y1 - 0.25F, 0.18F, MeshBuilder.ALL & ~MeshBuilder.WEST & ~MeshBuilder.DOWN & ~MeshBuilder.UP);
-			b.box(r1 - 0.22F, Y0, -0.18F, r1, y1 - 0.25F, 0.18F, MeshBuilder.ALL & ~MeshBuilder.EAST & ~MeshBuilder.DOWN & ~MeshBuilder.UP);
+			b.box(r0, Y0, -0.18F, r0 + 0.08F, y1 - 0.25F, 0.18F, MeshBuilder.ALL & ~MeshBuilder.WEST & ~MeshBuilder.DOWN & ~MeshBuilder.UP);
+			b.box(r1 - 0.08F, Y0, -0.18F, r1, y1 - 0.25F, 0.18F, MeshBuilder.ALL & ~MeshBuilder.EAST & ~MeshBuilder.DOWN & ~MeshBuilder.UP);
 			b.box(r0, y1 - 0.25F, -0.18F, r1, y1, 0.18F, MeshBuilder.ALL & ~MeshBuilder.UP);
 			// A little lamp under the beam.
 			b.layer(Layer.GLOW).fullBright().colour(0xFFE8D8B0).fit(InteriorAtlas.FAL_CEILING_LIGHT_GLOW);
@@ -213,10 +223,30 @@ final class FalconRooms {
 		b.tile(InteriorAtlas.FAL_METAL_DARK, 1.0F);
 
 		for (int x = 31; x <= 38; x += 2) {
-			b.box(x, Y0, 23.0F, x + 0.25F, Y0 + 1.8F, 23.2F, MeshBuilder.ALL & ~MeshBuilder.NORTH & ~MeshBuilder.DOWN & ~MeshBuilder.UP);
-			b.box(x, Y0, 24.8F, x + 0.25F, Y0 + 1.8F, 25.0F, MeshBuilder.ALL & ~MeshBuilder.SOUTH & ~MeshBuilder.DOWN & ~MeshBuilder.UP);
+			// Phase 17: flat, so that one does not walk into them along the tube's walls.
+			b.box(x, Y0, 23.0F, x + 0.25F, Y0 + 1.8F, 23.08F, MeshBuilder.ALL & ~MeshBuilder.NORTH & ~MeshBuilder.DOWN & ~MeshBuilder.UP);
+			b.box(x, Y0, 24.92F, x + 0.25F, Y0 + 1.8F, 25.0F, MeshBuilder.ALL & ~MeshBuilder.SOUTH & ~MeshBuilder.DOWN & ~MeshBuilder.UP);
 			b.box(x, Y0 + 1.8F, 23.0F, x + 0.25F, Y0 + 2, 25.0F, MeshBuilder.ALL & ~MeshBuilder.UP);
 		}
+	}
+
+	/** Whether one of the corridor's ribs at that angle would stand in a doorway. */
+	static boolean ribInDoorway(float angle) {
+		float c = Mth.cos(angle * Mth.DEG_TO_RAD);
+		float sn = Mth.sin(angle * Mth.DEG_TO_RAD);
+
+		for (float r = (float) RING_IN - 0.2F; r <= RING_OUT + 0.2F; r += 0.1F) {
+			for (float side = -0.25F; side <= 0.25F; side += 0.25F) {
+				float x = CXF + c * r - sn * side;
+				float z = CZF + sn * r + c * side;
+
+				if (doorAt(Mth.floor(x), Y0, Mth.floor(z)) || inPassage(x, z, Y0)) {
+					return true;
+				}
+			}
+		}
+
+		return false;
 	}
 
 	// --- The main hold -------------------------------------------------------------------------
@@ -384,6 +414,25 @@ final class FalconRooms {
 		b.tile(InteriorAtlas.FAL_FLOOR_PLATE, 2.0F);
 		b.polyFacing(java.util.List.of(new Vector3f(cx - floorHalf, Y0, z0), new Vector3f(cx + floorHalf, Y0, z0), new Vector3f(cx + floorHalf, Y0, z1),
 				new Vector3f(cx - floorHalf, Y0, z1)), new Vector3f(0, 1, 0));
+		// Phase 17: the floor goes on into the window cone as a ledge under the glass (one can step
+		// up to the window; it collides there too, see FalconInterior.noseSpan).
+		for (float z = z0; z > (float) com.phiro.sabercraft.interior.FalconInterior.WINDOW_TIP; z -= 0.25F) {
+			float za = z - 0.25F;
+			double dy = COCKPIT_AXIS - Y0;
+			double ra = com.phiro.sabercraft.interior.FalconInterior.coneRadius(za) + 0.08;
+			double rb = com.phiro.sabercraft.interior.FalconInterior.coneRadius(z) + 0.08;
+
+			if (rb <= dy) {
+				break;
+			}
+
+			float ha = ra > dy ? (float) Math.sqrt(ra * ra - dy * dy) : 0.0F;
+			float hb = (float) Math.sqrt(rb * rb - dy * dy);
+			b.polyFacing(ha < 0.01F ? java.util.List.of(new Vector3f(cx, Y0, za), new Vector3f(cx + hb, Y0, z), new Vector3f(cx - hb, Y0, z))
+					: java.util.List.of(new Vector3f(cx - ha, Y0, za), new Vector3f(cx + ha, Y0, za), new Vector3f(cx + hb, Y0, z), new Vector3f(cx - hb, Y0, z)),
+					new Vector3f(0, 1, 0));
+		}
+
 		b.tile(InteriorAtlas.FAL_CEILING, 1.0F);
 		b.polyFacing(java.util.List.of(new Vector3f(cx - ceilingHalf, ceiling, z0), new Vector3f(cx + ceilingHalf, ceiling, z0),
 				new Vector3f(cx + ceilingHalf, ceiling, z1), new Vector3f(cx - ceilingHalf, ceiling, z1)), new Vector3f(0, -1, 0));
@@ -446,7 +495,7 @@ final class FalconRooms {
 				float[] arch = new float[3 * (n + 1)];
 
 				for (int i = 0; i <= n; i++) {
-					float a = Mth.lerp((float) i / n, low + 2.0F, top);
+					float a = Mth.lerp((float) i / n, low + 10.0F, top);
 					Vector3f p = pod(side == 0 ? a : 180.0F - a, r - 0.06F, z);
 					arch[i * 3] = p.x;
 					arch[i * 3 + 1] = p.y;
@@ -499,11 +548,12 @@ final class FalconRooms {
 
 		// The overhead switch panel above the front seats.
 		b.tile(InteriorAtlas.FAL_METAL_DARK, 1.0F);
-		b.box(cx - 1.9F, ceiling - 0.4F, z0 + 1.6F, cx + 1.9F, ceiling - 0.02F, z0 + 4.2F, MeshBuilder.ALL & ~MeshBuilder.UP & ~MeshBuilder.DOWN);
+		// Phase 17: flatter, so that it stays over the head of someone standing on the helm's pedestal.
+		b.box(cx - 1.9F, ceiling - 0.17F, z0 + 1.6F, cx + 1.9F, ceiling - 0.02F, z0 + 4.2F, MeshBuilder.ALL & ~MeshBuilder.UP & ~MeshBuilder.DOWN);
 		b.fit(InteriorAtlas.FAL_CONSOLE);
-		b.rect(cx - 1.9F, ceiling - 0.402F, z0 + 4.2F, 3.8F, 0, 0, 0, 0, -2.6F);
+		b.rect(cx - 1.9F, ceiling - 0.172F, z0 + 4.2F, 3.8F, 0, 0, 0, 0, -2.6F);
 		b.layer(Layer.GLOW).fullBright().anim(InteriorScene.ANIM_BLINK).fit(InteriorAtlas.FAL_CONSOLE_GLOW);
-		b.rect(cx - 1.9F, ceiling - 0.405F, z0 + 4.2F, 3.8F, 0, 0, 0, 0, -2.6F);
+		b.rect(cx - 1.9F, ceiling - 0.182F, z0 + 4.2F, 3.8F, 0, 0, 0, 0, -2.6F);
 		// A lamp strip down the middle of the ceiling behind it.
 		b.anim(InteriorScene.ANIM_LAMP).colour(0xFFE8DCC0).fit(InteriorAtlas.FAL_CEILING_LIGHT_GLOW);
 		b.rect(cx - 0.35F, ceiling - 0.01F, z1 - 0.6F, 0.7F, 0, 0, 0, 0, -(z1 - z0 - 5.0F));
@@ -611,7 +661,10 @@ final class FalconRooms {
 
 		b.layer(Layer.GLOW).fullBright().anim(InteriorScene.ANIM_PULSE).tile(InteriorAtlas.FAL_HYPERDRIVE_GLOW, 1.5F);
 		b.cylinder(new Vector3f(dx, Y0 + 0.6F, dz), new Vector3f(0, y1 - Y0 - 1.2F, 0), 1.45F, 1.45F, 16, 2.0F, false, false);
-		b.anim(0).layer(Layer.SOLID).worldLight();
+		// Phase 17: the window round the core, where one stops (it collides there).
+		b.layer(Layer.GLASS).worldLight().anim(0).colourAlpha(0x38A0C8F0).fit(InteriorAtlas.FAL_COCKPIT_GLASS);
+		b.cylinder(new Vector3f(dx, Y0 + 0.6F, dz), new Vector3f(0, y1 - Y0 - 1.2F, 0), (float) DRIVE_WINDOW, (float) DRIVE_WINDOW, 24, 2.0F, false, false);
+		b.white().anim(0).layer(Layer.SOLID).worldLight();
 		// Pipes from the drive to the ceiling and round to the machines.
 		b.tile(InteriorAtlas.FAL_PIPE, 1.0F);
 
@@ -624,7 +677,7 @@ final class FalconRooms {
 		// Machines along the outer wall, in segments.
 		float a0 = (float) ENGINE_A0;
 		float a1 = (float) ENGINE_A1;
-		float rIn = (float) ENGINE_R1 - 1.5F;
+		float rIn = (float) MACHINE_R;
 		float rOut = (float) ENGINE_R1 + 0.4F;
 		int segments = 16;
 
@@ -653,9 +706,7 @@ final class FalconRooms {
 			b.cylinder(new Vector3f(p.x, Y0 + 2.0F, p.z), new Vector3f(0, 2.0F, 0), 0.16F, 0.16F, 6, 1.0F, false, false);
 		}
 
-		// The outer wall above the machines: ribbed, round.
-		b.fit(InteriorAtlas.FAL_WALL_RIB);
-		b.arcWall(CXF, CZF, (float) ENGINE_R1 + 0.45F, a0, a1, Y0 + 2.0F, y1, 16, true);
+		// The outer wall above the machines: round (Phase 17: drawn with the other round walls).
 	}
 
 	private static Vector3f at(float angle, float r, float y) {
@@ -668,12 +719,16 @@ final class FalconRooms {
 		b.layer(Layer.SOLID).worldLight().white();
 		// A plated ramp over the steps, with side rails.
 		b.tile(InteriorAtlas.FAL_FLOOR_PLATE, 1.0F);
-		b.polyFacing(java.util.List.of(new Vector3f(33, FLOOR + 1.25F, 34.0F), new Vector3f(38, FLOOR + 1.25F, 34.0F), new Vector3f(38, 3.25F, 38.0F),
-				new Vector3f(33, 3.25F, 38.0F)), new Vector3f(0, 1, -1));
+		// Phase 17: right on the ramp one walks on (it was a quarter block over the stairs).
+		float top = (float) rampHeight(RAMP_TOP_Z) + Skin.EPS;
+		float bottom = (float) rampHeight(RAMP_TOP_Z + 4) + Skin.EPS;
+		b.polyFacing(java.util.List.of(new Vector3f(33, top, RAMP_TOP_Z), new Vector3f(38, top, RAMP_TOP_Z), new Vector3f(38, bottom, RAMP_TOP_Z + 4),
+				new Vector3f(33, bottom, RAMP_TOP_Z + 4)), new Vector3f(0, 1, 1));
 		b.tile(InteriorAtlas.FAL_METAL, 1.0F);
 
-		for (float x : new float[] {33.1F, 37.9F}) {
-			b.pipe(0.06F, 5, x, FLOOR + 2.0F, 34.0F, x, 4.0F, 38.0F, x, 4.0F, 41.5F);
+		// The rails close along the walls (one walked into them).
+		for (float x : new float[] {33.05F, 37.95F}) {
+			b.pipe(0.04F, 5, x, top + 1.0F, RAMP_TOP_Z, x, bottom + 1.0F, RAMP_TOP_Z + 4, x, bottom + 1.0F, 41.5F);
 		}
 	}
 

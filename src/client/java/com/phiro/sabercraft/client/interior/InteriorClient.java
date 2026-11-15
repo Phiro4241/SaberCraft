@@ -196,33 +196,34 @@ public final class InteriorClient {
 
 	// --- Lights ------------------------------------------------------------------------------------
 
-	/** Whether a plot's lights are dimmed (one of its lamps is lower than built). */
+	/** Whether a plot's lights are dimmed (any step of the dimmer below full). */
 	public static boolean dimmed(ClientLevel level, BlockPos origin, InteriorPlan plan) {
+		return lightStep(level, origin, plan) > 0;
+	}
+
+	/** Phase 17: the step of a plot's dimmer (0 = full light), from its brightest lamp. */
+	public static int lightStep(ClientLevel level, BlockPos origin, InteriorPlan plan) {
 		List<long[]> lights = LIGHTS.computeIfAbsent(plan.id(), unused -> {
-			List<long[]> list = new ArrayList<>();
+			long[] best = null;
 
 			for (Long2ObjectMap.Entry<BlockState> entry : ProxyShapes.blocks(plan).long2ObjectEntrySet()) {
-				if (entry.getValue().is(Blocks.LIGHT) && entry.getValue().getValue(LightBlock.LEVEL) > 2) {
-					list.add(new long[] {entry.getLongKey(), entry.getValue().getValue(LightBlock.LEVEL)});
-
-					if (list.size() >= 3) {
-						break;
-					}
+				if (entry.getValue().is(Blocks.LIGHT) && (best == null || entry.getValue().getValue(LightBlock.LEVEL) > best[1])) {
+					best = new long[] {entry.getLongKey(), entry.getValue().getValue(LightBlock.LEVEL)};
 				}
 			}
 
-			return list;
+			return best == null ? List.of() : List.of(best);
 		});
 
 		for (long[] light : lights) {
 			BlockState state = level.getBlockState(origin.offset(BlockPos.of(light[0])));
 
 			if (state.is(Blocks.LIGHT)) {
-				return state.getValue(LightBlock.LEVEL) < light[1];
+				return com.phiro.sabercraft.interior.ShipLights.stepOf((int) light[1], state.getValue(LightBlock.LEVEL));
 			}
 		}
 
-		return false;
+		return 0;
 	}
 
 	/** Only for tests: how many shots this client asked for. */

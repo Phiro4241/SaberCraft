@@ -71,7 +71,9 @@ public final class DestroyerVisuals implements InteriorVisuals {
 		turrets(b);
 
 		if (com.phiro.sabercraft.client.ImmersionConfig.get().shipInteriorDetail) {
+			b.inside(true);
 			DestroyerRooms.build(b);
+			b.inside(false);
 		}
 	}
 
@@ -89,7 +91,9 @@ public final class DestroyerVisuals implements InteriorVisuals {
 	@Override
 	public void animate(MeshBuilder b, float seconds) {
 		if (com.phiro.sabercraft.client.ImmersionConfig.get().shipInteriorDetail) {
+			b.inside(true);
 			DestroyerRooms.animate(b, seconds);
+			b.inside(false);
 		}
 	}
 
@@ -98,8 +102,13 @@ public final class DestroyerVisuals implements InteriorVisuals {
 		this.animate(b, seconds);
 
 		if (com.phiro.sabercraft.client.ImmersionConfig.get().shipInteriorDetail) {
+			b.inside(true);
 			DoorModels.draw(b, plot, com.phiro.sabercraft.interior.InteriorPlan.of("star_destroyer"), InteriorAtlas.IMP_DOOR,
 					InteriorAtlas.IMP_WALL_STRIP_GLOW);
+			// Phase 17: the crew.
+			float partial = net.minecraft.client.Minecraft.getInstance().getDeltaTracker().getGameTimeDeltaPartialTick(false);
+			CrewModels.draw(b, plot.level().getGameTime() + partial);
+			b.inside(false);
 		}
 	}
 

@@ -87,6 +87,14 @@ public final class Skin {
 					continue;
 				}
 
+				// Phase 17: a curved wall's cell is panelled only towards a square room. Towards the
+				// round room itself the smooth wall is drawn; a flat panel on the cell's face stood
+				// in front of it (up to most of a block into the corridor: one walked into it, saw
+				// through it from behind and it flickered against the curve).
+				if (wallCell && plan.openRound(x + 0.5, z + 0.5, y)) {
+					continue;
+				}
+
 				Direction toward = direction.getOpposite();
 				Kind kind = toward == Direction.DOWN ? Kind.FLOOR : toward == Direction.UP ? Kind.CEILING : Kind.WALL;
 				int height = 0;

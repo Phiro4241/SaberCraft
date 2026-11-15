@@ -228,6 +228,24 @@ public final class Seats {
 		Seat seat = sitting.seat;
 		BlockPos cell = sitting.origin.offset(seat.cell());
 		Vec3 forward = Vec3.directionFromRotation(0.0F, seat.yaw());
+
+		// Phase 17: first close round the seat itself, in front first (the furniture round a seat
+		// collides as drawn now, so the middle of the next cell is often in the couch or the table).
+		Vec3 at = seat.at().add(sitting.origin.getX(), sitting.origin.getY(), sitting.origin.getZ());
+
+		for (float turn : new float[] {0.0F, 45.0F, -45.0F, 90.0F, -90.0F, 135.0F, -135.0F, 180.0F}) {
+			Vec3 way = Vec3.directionFromRotation(0.0F, seat.yaw() + turn);
+
+			for (double distance : new double[] {0.8, 1.05, 1.3, 1.55}) {
+				Vec3 feet = new Vec3(at.x + way.x * distance, cell.getY(), at.z + way.z * distance);
+
+				if (canStand(player, feet)) {
+					player.teleportTo(feet.x, feet.y, feet.z);
+					return;
+				}
+			}
+		}
+
 		List<BlockPos> spots = new ArrayList<>();
 
 		for (int dx = -1; dx <= 1; dx++) {
@@ -244,9 +262,8 @@ public final class Seats {
 
 		for (BlockPos spot : spots) {
 			Vec3 feet = new Vec3(spot.getX() + 0.5, spot.getY(), spot.getZ() + 0.5);
-			AABB box = player.getDimensions(Pose.STANDING).makeBoundingBox(feet);
 
-			if (player.level().noCollision(player, box) && !player.level().noCollision(player, box.move(0.0, -0.6, 0.0))) {
+			if (canStand(player, feet)) {
 				player.teleportTo(feet.x, feet.y, feet.z);
 				return;
 			}
@@ -254,6 +271,12 @@ public final class Seats {
 
 		// No room anywhere: on the seat itself.
 		player.teleportTo(cell.getX() + 0.5, cell.getY() + 0.6, cell.getZ() + 0.5);
+	}
+
+	/** Whether a player standing with the feet there is in nothing and stands on something. */
+	private static boolean canStand(ServerPlayer player, Vec3 feet) {
+		AABB box = player.getDimensions(Pose.STANDING).makeBoundingBox(feet);
+		return player.level().noCollision(player, box) && !player.level().noCollision(player, box.move(0.0, -0.6, 0.0));
 	}
 
 	/** Only for tests: how many times someone sat down since the server started. */

@@ -46,8 +46,6 @@ import com.phiro.sabercraft.ship.Starships;
 public final class InteriorSystems {
 	/** How near (blocks, along the way through) someone opens a door. */
 	static final double DOOR_REACH = 2.6;
-	/** Dimmed lights: this share of their level (at least 1). */
-	static final double DIM = 0.35;
 
 	private InteriorSystems() {
 	}
@@ -76,6 +74,10 @@ public final class InteriorSystems {
 
 	// --- Doors -------------------------------------------------------------------------------------
 
+	/** Phase 17: how loud a door is opening and closing. */
+	public static final float DOOR_OPEN_VOLUME = 0.55F;
+	public static final float DOOR_CLOSE_VOLUME = 0.32F;
+
 	/** Opens the doors someone is near, closes the others (or opens all of them, for tests). */
 	static void doors(ServerLevel level, BlockPos origin, InteriorPlan plan, boolean allOpen) {
 		for (Door door : plan.doors()) {
@@ -101,7 +103,8 @@ public final class InteriorSystems {
 
 			if (changed && !allOpen) {
 				Vec3 middle = middle(origin, door);
-				level.playSound(null, middle.x, middle.y, middle.z, ShipInteriors.sound("ship.door"), SoundSource.BLOCKS, 0.55F,
+				// Phase 17: closing a little quieter than opening.
+				level.playSound(null, middle.x, middle.y, middle.z, ShipInteriors.sound("ship.door"), SoundSource.BLOCKS, open ? DOOR_OPEN_VOLUME : DOOR_CLOSE_VOLUME,
 						open ? 1.0F : 0.85F);
 			}
 		}
@@ -207,36 +210,60 @@ public final class InteriorSystems {
 		});
 	}
 
-	/** Whether a plot's lights are dimmed now (from its blocks). */
-	public static boolean dimmed(ServerLevel level, BlockPos origin, InteriorPlan plan) {
-		for (long[] light : lightsOf(plan)) {
-			BlockState state = level.getBlockState(origin.offset(BlockPos.of(light[0])));
+	/** The brightest light block of a plan as built (it tells the dimmer's step), or {@code null}. */
+	private static long @org.jspecify.annotations.Nullable [] marker(InteriorPlan plan) {
+		long[] best = null;
 
-			if (state.is(Blocks.LIGHT) && light[1] > 2) {
-				return state.getValue(LightBlock.LEVEL) < light[1];
+		for (long[] light : lightsOf(plan)) {
+			if (best == null || light[1] > best[1]) {
+				best = light;
 			}
 		}
 
-		return false;
+		return best;
 	}
 
-	/** Switches a plot's lights between normal and dimmed. */
-	static Component lights(ServerPlayer player, ServerLevel level, BlockPos origin, InteriorPlan plan) {
-		boolean dim = !dimmed(level, origin, plan);
+	/** Phase 17: the step of a plot's dimmer now (0 = full light), from its blocks. */
+	public static int lightStep(ServerLevel level, BlockPos origin, InteriorPlan plan) {
+		long[] marker = marker(plan);
 
+		if (marker == null) {
+			return 0;
+		}
+
+		BlockState state = level.getBlockState(origin.offset(BlockPos.of(marker[0])));
+		return state.is(Blocks.LIGHT) ? ShipLights.stepOf((int) marker[1], state.getValue(LightBlock.LEVEL)) : 0;
+	}
+
+	/** Whether a plot's lights are dimmed now (any step below full). */
+	public static boolean dimmed(ServerLevel level, BlockPos origin, InteriorPlan plan) {
+		return lightStep(level, origin, plan) > 0;
+	}
+
+	/** Phase 17: sets a plot's dimmer to a step (0 = full light). */
+	public static void setLightStep(ServerLevel level, BlockPos origin, InteriorPlan plan, int step) {
 		for (long[] light : lightsOf(plan)) {
 			BlockPos pos = origin.offset(BlockPos.of(light[0]));
 
 			if (level.getBlockState(pos).is(Blocks.LIGHT)) {
-				int value = dim ? Math.max(1, (int) Math.round(light[1] * DIM)) : (int) light[1];
-				level.setBlock(pos, Blocks.LIGHT.defaultBlockState().setValue(LightBlock.LEVEL, value), 2);
+				level.setBlock(pos, Blocks.LIGHT.defaultBlockState().setValue(LightBlock.LEVEL, ShipLights.level((int) light[1], step)), 2);
 			}
 		}
+	}
 
-		level.playSound(null, player.getX(), player.getY(), player.getZ(), ShipInteriors.sound(dim ? "ship.power_down" : "ship.power_up"), SoundSource.BLOCKS,
-				0.5F, 1.2F);
-		return dim ? Component.translatableWithFallback("sabercraft.interior.lights_dim", "Lights dimmed.")
-				: Component.translatableWithFallback("sabercraft.interior.lights_on", "Lights on.");
+	/**
+	 * The light switch (Phase 17: a dimmer): each use one step darker, from the darkest back to
+	 * full light; sneaking, one step brighter.
+	 */
+	static Component lights(ServerPlayer player, ServerLevel level, BlockPos origin, InteriorPlan plan) {
+		int step = lightStep(level, origin, plan);
+		int next = player.isShiftKeyDown() ? Math.max(0, step - 1) : (step + 1) % ShipLights.steps();
+		setLightStep(level, origin, plan, next);
+		level.playSound(null, player.getX(), player.getY(), player.getZ(), ShipInteriors.sound(next > step ? "ship.power_down" : "ship.power_up"),
+				SoundSource.BLOCKS, 0.5F, 1.2F);
+		int percent = Math.round(ShipLights.surfaces(next) * 100.0F);
+		return next == 0 ? Component.translatableWithFallback("sabercraft.interior.lights_on", "Lights on.")
+				: Component.translatableWithFallback("sabercraft.interior.lights_level", "Lights: %s %%", percent);
 	}
 
 	// --- The ship's state --------------------------------------------------------------------------

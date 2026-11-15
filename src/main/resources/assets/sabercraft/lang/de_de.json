@@ -747,6 +747,7 @@
   "sabercraft.seat.gunner": "Mit der Maus zielen, Angriffstaste zum Feuern. Schleichen zum Aufstehen.",
   "sabercraft.seat.sit": "Schleichen zum Aufstehen.",
   "sabercraft.interior.lights_dim": "Licht gedimmt.",
+  "sabercraft.interior.lights_level": "Licht: %s %% (Schleichen: heller)",
   "sabercraft.interior.lights_on": "Licht an.",
   "sabercraft.interior.status_none": "%s: keine Verbindung zu den Schiffssystemen.",
   "sabercraft.interior.status_full": "voll",

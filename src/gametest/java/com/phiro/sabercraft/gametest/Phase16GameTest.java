@@ -239,8 +239,12 @@ public class Phase16GameTest implements FabricClientGameTest {
 		check(server.computeOnServer(s -> InteriorSystems.dimmed(s.getLevel(ShipInteriors.DIMENSION), falcon, plan)), "the light switch dims the lights");
 		look(context, server, falcon, new Vec3(26.0, 7, 36.0), 140, 10, "phase16_falcon_hold_dimmed");
 		check(context.computeOnClient(client -> InteriorClient.dimmed(client.level, falcon, plan)), "the client sees the lights dimmed");
-		server.runOnServer(s -> InteriorSystems.useForTest(me(s, self), falcon.offset(27, FalconInterior.FLOOR + 2, 31)));
-		context.waitTicks(10);
+		// Phase 17: a dimmer in steps; from the darkest the next use brings full light back.
+		for (int i = 1; i < com.phiro.sabercraft.interior.ShipLights.steps(); i++) {
+			server.runOnServer(s -> InteriorSystems.useForTest(me(s, self), falcon.offset(27, FalconInterior.FLOOR + 2, 31)));
+			context.waitTicks(5);
+		}
+
 		check(server.computeOnServer(s -> !InteriorSystems.dimmed(s.getLevel(ShipInteriors.DIMENSION), falcon, plan)), "and switches them on again");
 		String status = server.computeOnServer(s -> key(InteriorSystems.statusForTest(me(s, self), plan)));
 		check(status.startsWith("sabercraft.interior.status"), "the engineering station reports the ship's state (" + status + ")");
@@ -341,14 +345,14 @@ public class Phase16GameTest implements FabricClientGameTest {
 		}
 	}
 
-	private static void tp(ClientGameTestContext context, TestServerContext server, BlockPos origin, Vec3 local, float yaw, float pitch) {
+	static void tp(ClientGameTestContext context, TestServerContext server, BlockPos origin, Vec3 local, float yaw, float pitch) {
 		server.runCommand(String.format(Locale.ROOT, "execute in sabercraft:ship_interiors run tp @a %.2f %.2f %.2f %.1f %.1f", origin.getX() + local.x,
 				origin.getY() + local.y, origin.getZ() + local.z, yaw, pitch));
 		context.waitTicks(10);
 	}
 
 	/** Puts the player at a spot of the plot, looking a way, and takes a picture (if named). */
-	private static void look(ClientGameTestContext context, TestServerContext server, BlockPos origin, Vec3 local, float yaw, float pitch, String name) {
+	static void look(ClientGameTestContext context, TestServerContext server, BlockPos origin, Vec3 local, float yaw, float pitch, String name) {
 		server.runCommand(String.format(Locale.ROOT, "execute in sabercraft:ship_interiors run tp @a %.2f %.2f %.2f %.1f %.1f", origin.getX() + local.x,
 				origin.getY() + local.y, origin.getZ() + local.z, yaw, pitch));
 		context.waitTicks(40);
