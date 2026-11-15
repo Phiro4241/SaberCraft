@@ -84,7 +84,7 @@ Everything north of the Star Destroyer's plot corner (the whole hangar deck, fli
 ## 5. Tests
 
 - New client game test `Phase18GameTest` (registered in `fabric.mod.json`):
-  - the Falcon's walk audit (at most 40 places, see above) and, as a report, the Star Destroyer's;
+  - the Star Destroyer's walk audit as a report, with `SC_SD_WALK` (the Falcon's runs in `Phase17GameTest`, with the same starts and limit; `SC_FALCON_WALK` walks it here too);
   - all 10 seats of the Falcon in **survival**: a click sits one down, after 3 seconds full health and not in a wall, standing up leaves one free;
   - the crosshair reaches what one uses (from where one stands, looking at it): the hyperspace lever from both front seats, the pilot's and a rear seat, the couch from the front, the side and the other end, the engineer's seat, the status desk, the light switch, both gunners' seats;
   - pictures of the couch, both turrets, the cockpit door and floor, the dashboard and the collision debug view;
@@ -93,7 +93,8 @@ Everything north of the Star Destroyer's plot corner (the whole hangar deck, fli
   - the crawl way: a click opens the hatch, crouching in front of it one gets down and crawls in (pose and position checked), out of the side way into the hidden room one stands up again, the hatch closes by itself once nobody is near;
   - the reactor's lift takes one from the catwalk down to the lower level;
   - pictures of the crew (troopers, patrol, honour guards, admiral, pilots, pit), the drawn steps, the helm, the hangar's containers, the hatch, the crawl way, the hidden room, the reactor's lower level, and the chat.
-- `Phase17GameTest`: its Falcon walk audit uses the same limit as Phase 18 (the audit is stricter now).
+- `Phase17GameTest`: its Falcon walk audit uses the same limit as Phase 18 (the audit is stricter now). Its Star Destroyer walk (a report that failed at no number) is gone; `Phase18GameTest` walks that ship with `SC_SD_WALK`.
+- CI: the first run of the pull request stopped after 45 minutes, at the start of `Phase18GameTest`, with every class before it green. The Phase 17 run had already taken almost 43 of the 45 minutes, and Phase 18 adds about 8. The test step's limit is now 60 minutes and the job's 70 (`.github/workflows/build.yml`, [`docs/ci.md`](ci.md)), and the suite no longer walks the Falcon twice, no longer walks the Star Destroyer for a report and takes 5 pictures of the turret ladder instead of 30. **Run 4** (after that change, without switches, as in CI): `Phase17GameTest` and `Phase18GameTest` green (140 checks) in about 7 minutes instead of 14; the Falcon's walk still finds 0 places in a wall and 38 invisible stops.
 - Local runs (2026-11-15, cloud container, software rendering):
 
   - `./gradlew build gametestClasses`: green.

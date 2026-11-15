@@ -75,7 +75,10 @@ public class Phase18GameTest implements FabricClientGameTest {
 			UUID self = context.computeOnClient(client -> client.player.getUUID());
 			BlockPos falcon = server.computeOnServer(s -> ShipInteriors.plotForTest(s, self, "falcon"));
 
-			if (System.getenv("SC_SKIP_WALK") == null) {
+			// Phase17GameTest walks the Falcon with the same starts and the same limit, before this
+			// class: the suite does not walk it twice (about 1.5 minutes). SC_FALCON_WALK walks it
+			// here too, for running this class on its own.
+			if (System.getenv("SC_FALCON_WALK") != null && System.getenv("SC_SKIP_WALK") == null) {
 				Phase17GameTest.walk(context, server, self, falcon, "falcon", List.of(new Vec3(35.5, 7, 31.5),
 						new Vec3(20.5, FalconInterior.FLOOR + 6, 29.6), new Vec3(20.5, 1, 29.6)), FALCON_ALLOWED);
 			}
@@ -401,15 +404,17 @@ public class Phase18GameTest implements FabricClientGameTest {
 		// player stays where it is put).
 		fly(context, server, self, true);
 
-		for (double y : new double[] {y0 + 2.5, y0 + 3.0, y0 + 3.4, y0 + 3.8, y0 + 4.2, y0 + 4.6}) {
-			for (int yaw : new int[] {0, 90, 180, -90}) {
+		// (While looking for where the camera passed the ceiling there were 30 of these; the suite
+		// keeps the heights that showed it.)
+		for (double y : new double[] {y0 + 3.4, y0 + 4.6}) {
+			for (int yaw : new int[] {0, 180}) {
 				Phase16GameTest.look(context, server, falcon, new Vec3(20.5, y, 29.75), yaw, -10,
 						String.format(Locale.ROOT, "phase18_falcon_ladder_%.1f_%d", y - y0, yaw));
 			}
 		}
 
 		// Down into the lower turret.
-		for (double y : new double[] {1.6, 1.0, 0.4}) {
+		for (double y : new double[] {1.0}) {
 			for (int yaw : new int[] {0, 180}) {
 				Phase16GameTest.look(context, server, falcon, new Vec3(20.5, y0 - 5 + y, 29.75), yaw, -10,
 						String.format(Locale.ROOT, "phase18_falcon_ladder_down_%.1f_%d", y, yaw));

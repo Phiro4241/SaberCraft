@@ -89,9 +89,10 @@ public class Phase17GameTest implements FabricClientGameTest {
 			if (System.getenv("SC_SKIP_WALK") == null) {
 				walk(context, server, self, falcon, "falcon", List.of(new Vec3(35.5, 7, 31.5), new Vec3(20.5, FalconInterior.FLOOR + 6, 29.6),
 						new Vec3(20.5, 1, 29.6)), FALCON_ALLOWED);
-				walk(context, server, self, destroyer, "star_destroyer", List.of(new Vec3(40.5, DestroyerInterior.HANGAR + 1, -28.5),
-						new Vec3(40.5, DestroyerInterior.DECK + 1, 90.5)), Integer.MAX_VALUE);
 			}
+
+			// The Star Destroyer's walk was a report here (it failed at no number) and took over two
+			// minutes: Phase18GameTest walks it with SC_SD_WALK, from more starts.
 
 			pictures(context, server, falcon, destroyer);
 			lights(context, server, self, falcon, destroyer);
