@@ -210,6 +210,9 @@ Before Phase 13 the cooldowns were shorter (B1 5 s, Chopper 15 s, BB-8 20 s, pro
 | `droid_target_hud` | `true` | Phase 12: while you look at one of your droids, its name, ability and keys show under the crosshair. Menu: **Graphics**. |
 | `ship_hide_pilot` | `true` | Phase 13: a player flying a starship is not drawn (no figure sticking out of the cockpit, no hands in first person), for you and for every other player you see. Only drawing is skipped; they show again the moment they climb out, die, the ship is destroyed or they leave. Menu: **Graphics**. |
 | `character_hide_armor` | `true` | Phase 13: players with a character or outfit show it instead of their armor pieces (elytras stay). Only the picture: armor still protects and stays in the inventory. Each client decides for the players it sees, so it works in multiplayer without the server. Menu: **Graphics**. |
+| `language` | `"auto"` | Phase 19: the language of SaberCraft's own texts (story, dialogs, menus, hints): `auto` (the same as Minecraft), `de_de` (German) or `en_us` (English), independent of Minecraft's language. Minecraft's own texts stay as they are. Menu: **Story**. |
+| `story_marker` | `true` | Phase 19: the story's hints on screen: the marker over the next objective and the eye that fills when someone notices you. `false` for playing without help (the objective line stays). Menu: **Story**. |
+| `story_text_speed` | `1` | Phase 19: how fast the dialogs' texts appear: `0` at once, `1` normal, `2` slow. A key or click always shows the whole line. Menu: **Story**. |
 
 ## `character_client.json` (client)
 
