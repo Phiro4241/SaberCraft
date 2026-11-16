@@ -19,6 +19,7 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.animal.pig.Pig;
 import net.minecraft.world.entity.monster.zombie.Zombie;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.AABB;
@@ -231,14 +232,25 @@ public class SaberTypesGameTest implements FabricClientGameTest {
 		context.takeScreenshot("types_clash");
 		context.runOnClient(client -> client.options.setCameraType(CameraType.FIRST_PERSON));
 
-		// A blow without a saber is blocked, but it is no clash of blades.
+		// A blow without a saber is blocked, but it is no clash of blades. The pig has no AI, like
+		// the husk: one that wanders off to the side is outside the guard and its blow is not
+		// blocked at all, which made this check fail now and then.
 		server.runCommand("kill @e[type=minecraft:husk]");
-		server.runCommand("summon minecraft:pig 0 ~ -2");
+		server.runCommand("summon minecraft:pig 0 ~ -2 {NoAI:1b,PersistenceRequired:1b,Silent:1b}");
 		context.waitTicks(30);
+		String where = context.computeOnClient(client -> {
+			for (var entity : client.level.entitiesForRendering()) {
+				if (entity instanceof Pig pig) {
+					return "pig at " + pig.position() + ", player at " + client.player.position() + " looking " + client.player.getLookAngle();
+				}
+			}
+
+			return "no pig";
+		});
 		server.runCommand("damage @p 4 minecraft:mob_attack by @e[type=minecraft:pig,limit=1]");
 		context.waitTicks(1);
 		SaberEffects.Clash block = context.computeOnClient(client -> SaberEffects.lastClash());
-		check(block != clash && !block.blades(), "a pig's blow is blocked, but no clash of blades");
+		check(block != clash && !block.blades(), "a pig's blow is blocked, but no clash of blades (" + where + ")");
 		context.getInput().releaseKey(SaberAbilityClient.GUARD_KEY);
 		server.runCommand("kill @e[type=minecraft:pig]");
 		server.runCommand("effect clear @a");
