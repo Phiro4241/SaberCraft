@@ -81,6 +81,28 @@ public final class InteriorJump {
 		return Component.translatableWithFallback("sabercraft.interior.jump_charging", "Hyperdrive charging...");
 	}
 
+	/**
+	 * Phase 19: a jump the story makes (the Falcon arriving at the Star Destroyer, leaving it at the
+	 * end): no seat, no cooldown, no options asked. Returns whether it started.
+	 */
+	public static boolean story(ServerLevel level, BlockPos origin) {
+		InteriorPlan plan = ShipInteriors.planAt(origin.getX() + 1.0, origin.getZ() + 1.0);
+
+		if (plan == null || RUNNING.containsKey(origin)) {
+			return false;
+		}
+
+		RUNNING.put(origin, level.getGameTime());
+		send(level.getServer(), origin, InteriorJumpPayload.CHARGE, CHARGE);
+		sound(level, origin, plan, "ship.hyperspace_charge", 1.0F);
+		return true;
+	}
+
+	/** Phase 19: how long a jump takes from the first charge to the arrival (ticks). */
+	public static int length() {
+		return CHARGE + TUNNEL + ARRIVE;
+	}
+
 	static void tick(MinecraftServer server, ServerLevel interiors) {
 		long now = interiors.getGameTime();
 

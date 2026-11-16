@@ -67,6 +67,19 @@ public class BlasterBolt extends ThrowableItemProjectile {
 		this.setNoGravity(true);
 	}
 
+	/**
+	 * Phase 19: a bolt fired by someone of a story (drawn by the client, no entity of its own): from
+	 * a point, nobody's. A saber sends it back like any other bolt; then it is the player's.
+	 */
+	public BlasterBolt(ServerLevel level, Vec3 from, BlasterType type, float damage) {
+		super(EntityTypes.SNOWBALL, from.x, from.y, from.z, level, item(type));
+		this.type = type;
+		this.damage = damage;
+		this.fire = false;
+		this.knockback = 0.0F;
+		this.setNoGravity(true);
+	}
+
 	/** The item a bolt carries: a snowball marked as a bolt of that type. */
 	public static ItemStack item(BlasterType type) {
 		ItemStack stack = new ItemStack(Items.SNOWBALL);

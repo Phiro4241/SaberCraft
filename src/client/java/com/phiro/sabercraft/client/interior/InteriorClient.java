@@ -142,7 +142,8 @@ public final class InteriorClient {
 		InteriorPlan plan = ShipInteriors.planAt(client.player.getX(), client.player.getZ());
 		BlockPos origin = ShipInteriors.originAt(client.player.getX(), client.player.getZ());
 
-		if (plan == null || origin == null || plan.crew().isEmpty()) {
+		// Phase 19: in a story's ship its people are the story's (StoryInput speaks to them).
+		if (plan == null || origin == null || plan.crew().isEmpty() || com.phiro.sabercraft.client.story.StoryClient.storyPlot(origin)) {
 			return false;
 		}
 

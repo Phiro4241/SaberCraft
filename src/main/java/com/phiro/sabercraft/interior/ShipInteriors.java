@@ -725,6 +725,14 @@ public final class ShipInteriors {
 			aboard.zoneTicks++;
 
 			if (exit != null && aboard.zoneTicks >= EXIT_TICKS) {
+				// Phase 19: the story's ships lead where the story goes (the Falcon's ramp into the
+				// Star Destroyer's airlock), not out into the world.
+				if (com.phiro.sabercraft.story.Story.exit(player)) {
+					aboard.armed = false;
+					aboard.zoneTicks = 0;
+					return;
+				}
+
 				leave(player, aboard);
 				return;
 			}
@@ -975,6 +983,42 @@ public final class ShipInteriors {
 		return moved;
 	}
 
+	/**
+	 * Phase 19: the corner of a ship of the story (an owner of its own per player, so it is never
+	 * their real ship), built if it is new or from an older plan.
+	 */
+	public static BlockPos storyPlot(MinecraftServer server, UUID owner, String type) {
+		InteriorPlan plan = InteriorPlan.of(type);
+		ServerLevel interiors = server.getLevel(DIMENSION);
+
+		if (plan == null || interiors == null) {
+			throw new IllegalStateException("No interiors for the story: " + type);
+		}
+
+		return plot(interiors, owner, plan);
+	}
+
+	/** Phase 19: puts a player aboard a ship of the story at a place (plot space). */
+	public static void storyBoard(ServerPlayer player, UUID owner, String type, Vec3 local, float yaw) {
+		MinecraftServer server = player.level().getServer();
+		InteriorPlan plan = InteriorPlan.of(type);
+		ServerLevel interiors = server.getLevel(DIMENSION);
+
+		if (plan == null || interiors == null) {
+			return;
+		}
+
+		if (player.getVehicle() != null) {
+			player.stopRiding();
+		}
+
+		BlockPos origin = plot(interiors, owner, plan);
+		Aboard aboard = new Aboard(owner, type, plan, origin);
+		ABOARD.put(player.getUUID(), aboard);
+		teleport(player, interiors, aboard.world(local), yaw);
+		player.setDeltaMovement(Vec3.ZERO);
+	}
+
 	/** Phase 15: rebuilds a plot from the current plan now (only for tests). */
 	public static int rebuildForTest(MinecraftServer server, BlockPos origin, String plan) {
 		InteriorPlan p = InteriorPlan.of(plan);
@@ -1027,7 +1071,7 @@ public final class ShipInteriors {
 		}
 	}
 
-	static net.minecraft.core.Holder<net.minecraft.sounds.SoundEvent> sound(String name) {
+	public static net.minecraft.core.Holder<net.minecraft.sounds.SoundEvent> sound(String name) {
 		return net.minecraft.core.Holder.direct(net.minecraft.sounds.SoundEvent.createVariableRangeEvent(SaberCraft.id(name)));
 	}
 

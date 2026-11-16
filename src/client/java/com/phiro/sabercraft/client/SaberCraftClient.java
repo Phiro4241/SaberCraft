@@ -111,6 +111,8 @@ public class SaberCraftClient implements ClientModInitializer {
 		com.phiro.sabercraft.client.interior.InteriorScene.init();
 		com.phiro.sabercraft.client.interior.InteriorClient.init();
 		com.phiro.sabercraft.client.interior.CollisionDebug.init();
+		// Phase 19: the story mode (its HUD, dialogs, people and keys).
+		com.phiro.sabercraft.client.story.StoryClient.init();
 		ClientTickEvents.END_CLIENT_TICK.register(SaberCraftClient::handleKeys);
 
 		SaberCraft.LOGGER.info(

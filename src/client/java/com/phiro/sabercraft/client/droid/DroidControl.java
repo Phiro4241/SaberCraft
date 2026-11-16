@@ -106,6 +106,18 @@ public final class DroidControl {
 		long now = Util.getMillis();
 		Entity droid = target;
 
+		// Phase 19: in the story the ability key needs no look at a droid: the one that fits does it.
+		if (droid == null && "ability".equals(action) && com.phiro.sabercraft.client.story.StoryClient.active()) {
+			int id = storyDroid(player);
+
+			if (id >= 0 && now - lastSent >= DEBOUNCE_MILLIS && ClientPlayNetworking.canSend(DroidTargetPayload.TYPE)) {
+				lastSent = now;
+				sent++;
+				ClientPlayNetworking.send(new DroidTargetPayload(id, action));
+				return true;
+			}
+		}
+
 		if (droid == null || !isOwn(droid)) {
 			if (now - lastHint > HINT_MILLIS && DroidClient.count() > 0) {
 				lastHint = now;
@@ -154,6 +166,36 @@ public final class DroidControl {
 		EntityHitResult hit = ProjectileUtil.getEntityHitResult(camera, eye, eye.add(look.scale(limit)), box,
 				entity -> DroidMarker.of(entity) != null && entity.isAlive(), limit * limit);
 		return hit != null ? hit.getEntity() : null;
+	}
+
+	/**
+	 * Phase 19: which of the story's droids the ability key means when one looks at none: the
+	 * astromech before a lock it can open, otherwise the mouse droid (a noise where one looks),
+	 * otherwise the astromech (a scan). Returns its entity id, or -1.
+	 */
+	static int storyDroid(LocalPlayer player) {
+		DroidStatusPayload status = DroidClient.status();
+
+		if (status == null) {
+			return -1;
+		}
+
+		int mouse = -1;
+		int astromech = -1;
+
+		for (DroidStatusPayload.Entry entry : status.droids()) {
+			if (entry.droid().equals("mouse")) {
+				mouse = entry.entityId();
+			} else if (entry.droid().equals("r2d2")) {
+				astromech = entry.entityId();
+			}
+		}
+
+		if (astromech >= 0 && com.phiro.sabercraft.client.story.StoryClient.lockNear(player.position(), 6.0)) {
+			return astromech;
+		}
+
+		return mouse >= 0 ? mouse : astromech;
 	}
 
 	/** Whether the droid is one of this player's, as the server last said. */

@@ -64,6 +64,12 @@ public final class SaberNetworking {
 		// Phase 12: choosing sabers in the menu, and droid commands for the droid looked at.
 		PayloadTypeRegistry.serverboundPlay().register(ConvertSaberPayload.TYPE, ConvertSaberPayload.CODEC);
 		PayloadTypeRegistry.serverboundPlay().register(DroidTargetPayload.TYPE, DroidTargetPayload.CODEC);
+		// Phase 19: the story mode (the menu and what one does in it; what the client is to show).
+		PayloadTypeRegistry.serverboundPlay().register(StoryActionPayload.TYPE, StoryActionPayload.CODEC);
+		PayloadTypeRegistry.clientboundPlay().register(StoryStatePayload.TYPE, StoryStatePayload.CODEC);
+		PayloadTypeRegistry.clientboundPlay().register(StoryFiguresPayload.TYPE, StoryFiguresPayload.CODEC);
+		PayloadTypeRegistry.clientboundPlay().register(StoryDialogPayload.TYPE, StoryDialogPayload.CODEC);
+		PayloadTypeRegistry.clientboundPlay().register(StoryCuePayload.TYPE, StoryCuePayload.CODEC);
 	}
 
 	/**

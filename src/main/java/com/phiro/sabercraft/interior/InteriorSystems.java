@@ -82,7 +82,8 @@ public final class InteriorSystems {
 	/** Opens the doors someone is near, closes the others (or opens all of them, for tests). */
 	static void doors(ServerLevel level, BlockPos origin, InteriorPlan plan, boolean allOpen) {
 		for (Door door : plan.doors()) {
-			boolean open = allOpen || near(level, origin, door);
+			// Phase 19: a story can keep a door shut (until a card, a console, a droid opens it).
+			boolean open = allOpen || near(level, origin, door) && !com.phiro.sabercraft.story.Story.locked(origin, door.x0(), door.y0(), door.z0());
 			boolean changed = false;
 
 			for (int x = door.x0(); x <= door.x1(); x++) {
@@ -182,6 +183,12 @@ public final class InteriorSystems {
 		InteriorPlan.Hatch hatch = Vents.hatch(plan, local);
 
 		if (hatch != null) {
+			// Phase 19: a story can keep a hatch shut (bolted from the other side).
+			if (com.phiro.sabercraft.story.Story.locked(origin, hatch.cell().getX(), hatch.cell().getY(), hatch.cell().getZ())) {
+				com.phiro.sabercraft.story.Story.lockedHatch(player);
+				return;
+			}
+
 			Vents.open(player, origin, hatch);
 			return;
 		}

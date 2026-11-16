@@ -102,8 +102,23 @@ public record Outfit(Identifier id, SaberVariant suggested, boolean character, S
 	/** Everything a player can wear; the server only accepts these. */
 	public static final List<Outfit> ALL = java.util.stream.Stream.concat(OUTFITS.stream(), CHARACTERS.stream()).toList();
 
+	/**
+	 * Phase 19: the story's disguise, a trooper's white armour. Not in the menus: the server puts
+	 * it on (and takes it off) in the story.
+	 */
+	public static final Outfit STORMTROOPER = new Outfit(SaberCraft.id("stormtrooper"),
+			new SaberVariant(SaberVariant.STANDARD, SaberVariant.BLUE, SaberVariant.AGILE));
+	/** Phase 19: outfits only the server gives (the story's). */
+	public static final List<Outfit> STORY = List.of(STORMTROOPER);
+
 	public static Optional<Outfit> byId(Identifier id) {
 		return ALL.stream().filter(outfit -> outfit.id().equals(id)).findFirst();
+	}
+
+	/** Phase 19: any outfit a player can be seen in: those to choose and the story's. */
+	public static Optional<Outfit> byAnyId(Identifier id) {
+		Optional<Outfit> chosen = byId(id);
+		return chosen.isPresent() ? chosen : STORY.stream().filter(outfit -> outfit.id().equals(id)).findFirst();
 	}
 
 	/** The translation key of the name, {@code sabercraft.outfit.<path>} or {@code sabercraft.character.<path>}. */

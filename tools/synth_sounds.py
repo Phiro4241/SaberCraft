@@ -18,7 +18,8 @@ starship engine, laser cannon, crash and S-foil sounds of Phase 11 (.../sounds/s
 Fighter and TIE Interceptor engines and cannons, hull hits and the explosion of Phase 12, `--phase13-ships` the calmer engines and
 cannons of every ship, the Falcon and the Star Destroyer, impacts, landings and the energy sounds of Phase 13 (it rewrites the
 engine and laser files of the two options before), `--phase14` the Falcon's own drive, thrust layers, boost and brake,
-hyperspace, the big explosion, alarm, ramp, turbolift and interior sounds of Phase 14 (it rewrites falcon_engine). Minecraft only attenuates mono
+hyperspace, the big explosion, alarm, ramp, turbolift and interior sounds of Phase 14 (it rewrites falcon_engine), `--phase19` the story
+sounds of Phase 19 (.../sounds/story/: comlink, scan, dialog letters, noticed, detected, caught, objective, mission, force field, alarm). Minecraft only attenuates mono
 sounds by distance, so all files are mono.
 """
 import os
@@ -1281,6 +1282,133 @@ def phase18():
     write_ogg("crew_chirp", comm_chirp(rng), SHIP_OUT)
 
 
+# Phase 19: the story mode ------------------------------------------------------------------------
+STORY_OUT = os.path.join(os.path.dirname(OUT), "story")
+
+
+def story_radio(rng, seconds=0.5):
+    """A comlink line coming in: a click, a breath of filtered static and two soft rising tones."""
+    t = t_axis(seconds)
+    static = bandpass_noise(seconds, 1100, 3400, rng) * 0.18
+    gate = np.convolve(((t > 0.02) & (t < 0.22)).astype(float), np.ones(120) / 120, mode="same")
+    out = static * gate * (0.7 + 0.3 * np.sin(2 * np.pi * 31 * t))
+    out += np.sin(2 * np.pi * 2400 * t) * np.exp(-t * 300) * 0.5
+    for at, f in ((0.2, 1046.5), (0.3, 1568.0)):
+        ct = np.clip(t - at, 0, None)
+        out += np.sin(2 * np.pi * f * ct) * np.exp(-ct * 14) * np.minimum(1.0, ct / 0.006) * (t >= at) * 0.3
+    return normalize(out * np.minimum(1.0, (seconds - t) / 0.03), 0.42)
+
+
+def story_scan(rng, seconds=1.3):
+    """The astromech's scan: a sweep rising and falling once, with three pings on top."""
+    t = t_axis(seconds)
+    f = 500 + 900 * np.sin(np.pi * t / seconds)
+    sweep = np.sin(2 * np.pi * np.cumsum(f) / RATE) * np.sin(np.pi * t / seconds) ** 2 * 0.35
+    out = lowpass(sweep, 3000)
+    for k in range(3):
+        at = 0.18 + k * 0.33
+        ct = np.clip(t - at, 0, None)
+        out += np.sin(2 * np.pi * 1760 * ct) * np.exp(-ct * 18) * (t >= at) * 0.3
+    return normalize(out * np.minimum(1.0, (seconds - t) / 0.05), 0.38)
+
+
+def story_blip(rng, seconds=0.05):
+    """One letter of a dialog: a very short, soft tone (the game varies its pitch per speaker)."""
+    t = t_axis(seconds)
+    tone = np.sin(2 * np.pi * 1180 * t) + 0.25 * np.sin(2 * np.pi * 2360 * t)
+    return normalize(tone * np.minimum(1.0, t / 0.004) * np.exp(-t * 70), 0.3)
+
+
+def story_suspicious(rng, seconds=0.9):
+    """Someone noticed something: two low notes a tritone apart, soft strings, rising."""
+    t = t_axis(seconds)
+    out = np.zeros_like(t)
+    for at, f in ((0.0, 146.8), (0.28, 207.7)):
+        ct = np.clip(t - at, 0, None)
+        partials = sum(np.sin(2 * np.pi * f * k * ct) / k ** 1.3 for k in range(1, 7))
+        out += partials * np.minimum(1.0, ct / 0.08) * np.exp(-ct * 3.0) * (t >= at)
+    return normalize(lowpass(out, 1800) * np.minimum(1.0, (seconds - t) / 0.1), 0.38)
+
+
+def story_detected(rng, seconds=1.1):
+    """Detected: a short, hard stab of low brass and a cymbal-like hiss, a minor second on top."""
+    t = t_axis(seconds)
+    out = np.zeros_like(t)
+    for f, level in ((73.4, 1.0), (110.0, 0.7), (155.6, 0.5), (164.8, 0.35)):
+        swell = np.minimum(1, t / 0.03)
+        out += sum(level / k * swell ** (0.3 * k) * np.sin(2 * np.pi * f * k * t) for k in range(1, 10))
+    out *= np.exp(-t * 3.2)
+    hiss = bandpass_noise(seconds, 3000, 9000, rng) * np.exp(-t * 5) * 0.25
+    return normalize(lowpass(out, 2600) + hiss, 0.5)
+
+
+def story_caught(rng, seconds=1.6):
+    """Captured: a heavy thud, a falling tone and a field humming shut."""
+    t = t_axis(seconds)
+    thud = (np.sin(2 * np.pi * 55 * t) + bandpass_noise(seconds, 60, 400, rng) * 0.6) * np.exp(-t * 9)
+    f = 440 * np.exp(-t * 1.2)
+    fall = np.sin(2 * np.pi * np.cumsum(f) / RATE) * np.minimum(1.0, t / 0.05) * np.exp(-t * 1.6) * 0.35
+    hum = np.sin(2 * np.pi * 120 * t) * 0.2 * np.clip((t - 0.4) / 0.3, 0, 1) * np.clip((seconds - t) / 0.4, 0, 1)
+    return normalize(thud + lowpass(fall, 2000) + hum, 0.5)
+
+
+def story_objective(rng, seconds=0.9):
+    """An objective done: two soft bell notes, a fifth apart."""
+    t = t_axis(seconds)
+    out = np.zeros_like(t)
+    for at, f in ((0.0, 784.0), (0.14, 1174.7)):
+        ct = np.clip(t - at, 0, None)
+        out += (np.sin(2 * np.pi * f * ct) + 0.3 * np.sin(2 * np.pi * f * 2.76 * ct) * np.exp(-ct * 6)) * np.exp(-ct * 4.5) * (t >= at)
+    return normalize(out * np.minimum(1.0, t / 0.003), 0.36)
+
+
+def story_mission_done(rng, seconds=2.2):
+    """A mission done: a rising three-note figure over a warm chord that rings out."""
+    t = t_axis(seconds)
+    out = np.zeros_like(t)
+    for f in (196.0, 293.7, 392.0):
+        out += sum(np.sin(2 * np.pi * f * k * t) / k ** 1.5 for k in range(1, 6)) * np.minimum(1.0, t / 0.3) * np.exp(-t * 0.9) * 0.25
+    for at, f in ((0.0, 587.3), (0.18, 784.0), (0.36, 1174.7)):
+        ct = np.clip(t - at, 0, None)
+        out += np.sin(2 * np.pi * f * ct) * np.exp(-ct * 2.2) * np.minimum(1.0, ct / 0.004) * (t >= at) * 0.5
+    return normalize(lowpass(out, 5000) * np.minimum(1.0, (seconds - t) / 0.3), 0.4)
+
+
+def story_field_off(rng, seconds=1.0):
+    """A force field switching off: its hum drops in pitch, crackles and dies."""
+    t = t_axis(seconds)
+    f = 180 * np.exp(-t * 2.2) + 30
+    hum = sum(np.sin(2 * k * np.pi * np.cumsum(f) / RATE) / k for k in range(1, 6)) * np.exp(-t * 2.5)
+    crackle = bandpass_noise(seconds, 2000, 7000, rng) * (rng.random(len(t)) < 0.004) * 4.0
+    crackle = np.convolve(crackle, np.ones(30) / 30, mode="same") * np.exp(-t * 4)
+    return normalize(lowpass(hum, 1500) * 0.8 + crackle, 0.45)
+
+
+def story_alarm(rng, seconds=2.4):
+    """The ship's alarm: a deep two-tone whoop, three times, with a metallic edge (not shrill)."""
+    t = t_axis(seconds)
+    phase = (t % 0.8) / 0.8
+    f = np.where(phase < 0.5, 300 + 200 * phase * 2, 500 - 120 * (phase - 0.5) * 2)
+    tone = np.sin(2 * np.pi * np.cumsum(f) / RATE) + 0.45 * np.sin(4 * np.pi * np.cumsum(f) / RATE) + 0.2 * np.sin(6 * np.pi * np.cumsum(f) / RATE)
+    gate = np.clip(np.sin(np.pi * phase) * 2.0, 0, 1)
+    return normalize(lowpass(tone * gate, 2400) * np.minimum(1.0, (seconds - t) / 0.05), 0.4)
+
+
+def phase19():
+    """Phase 19: the story's sounds (comlink, scan, dialog letters, being noticed, caught, done). Own random stream."""
+    rng = np.random.default_rng(1977_19)
+    write_ogg("radio", story_radio(rng), STORY_OUT)
+    write_ogg("scan", story_scan(rng), STORY_OUT)
+    write_ogg("blip", story_blip(rng), STORY_OUT)
+    write_ogg("suspicious", story_suspicious(rng), STORY_OUT)
+    write_ogg("detected", story_detected(rng), STORY_OUT)
+    write_ogg("caught", story_caught(rng), STORY_OUT)
+    write_ogg("objective", story_objective(rng), STORY_OUT)
+    write_ogg("mission_done", story_mission_done(rng), STORY_OUT)
+    write_ogg("field_off", story_field_off(rng), STORY_OUT)
+    write_ogg("alarm", story_alarm(rng), STORY_OUT)
+
+
 # Planet ambiences (Phase 10) ---------------------------------------------------------------------
 # Loops of AMBIENT_SECONDS. Every slow modulation runs a whole number of times per loop, and every
 # event (a gust, a bird, a crackle) that runs over the end wraps to the start, so they loop
@@ -1476,6 +1604,10 @@ def main():
 
     if "--phase15" in sys.argv:
         phase15()
+
+    if "--phase19" in sys.argv:
+        phase19()
+        return
 
     if "--phase18" in sys.argv:
         phase18()

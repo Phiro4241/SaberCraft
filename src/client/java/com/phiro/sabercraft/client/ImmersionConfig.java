@@ -191,6 +191,17 @@ public final class ImmersionConfig {
 	/** Phase 12: the hint under the crosshair while looking at one of your droids (name, ability, keys). */
 	@SerializedName("droid_target_hud")
 	public boolean droidTargetHud = true;
+	/**
+	 * Phase 19: the language of SaberCraft's texts (story, menus, hints): {@code auto} (as
+	 * Minecraft), {@code de_de} or {@code en_us}, independent of Minecraft's language.
+	 */
+	public String language = "auto";
+	/** Phase 19: the story mode's hints: the objectives' marker, the eye that fills when someone notices you. */
+	@SerializedName("story_marker")
+	public boolean storyMarker = true;
+	/** Phase 19: how fast the story's texts appear (0 at once, 1 normal, 2 slow). */
+	@SerializedName("story_text_speed")
+	public int storyTextSpeed = 1;
 
 	public static final String CAMERA_COCKPIT = "cockpit";
 	public static final String CAMERA_CHASE = "chase";
@@ -224,6 +235,10 @@ public final class ImmersionConfig {
 			this.shipCamera = this.shipThirdPerson ? CAMERA_COCKPIT : CAMERA_KEEP;
 		}
 		this.spaceSkyQuality = Mth.clamp(this.spaceSkyQuality, 0, 3);
+		if (!"auto".equals(this.language) && !"de_de".equals(this.language) && !"en_us".equals(this.language)) {
+			this.language = "auto";
+		}
+		this.storyTextSpeed = Mth.clamp(this.storyTextSpeed, 0, 2);
 		if (this.planet == null) {
 			this.planet = "";
 		}

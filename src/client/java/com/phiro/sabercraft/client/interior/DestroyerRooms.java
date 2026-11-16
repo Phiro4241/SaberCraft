@@ -45,6 +45,8 @@ final class DestroyerRooms {
 		corridors(b);
 		reactor(b);
 		hiddenRoom(b);
+		// Phase 19: the story's rooms.
+		StoryRooms.build(b);
 		b.layer(Layer.SOLID).worldLight().white().anim(0).twoSided(false);
 	}
 

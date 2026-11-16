@@ -1329,5 +1329,117 @@
       }
     ],
     "subtitle": "subtitles.sabercraft.ship.crew_chirp"
+  },
+  "music.story_stealth": {
+    "sounds": [
+      {
+        "name": "sabercraft:music/story_stealth",
+        "stream": true
+      }
+    ]
+  },
+  "music.story_hideout": {
+    "sounds": [
+      {
+        "name": "sabercraft:music/story_hideout",
+        "stream": true
+      }
+    ]
+  },
+  "music.story_alarm": {
+    "sounds": [
+      {
+        "name": "sabercraft:music/story_alarm",
+        "stream": true
+      }
+    ]
+  },
+  "music.story_duel": {
+    "sounds": [
+      {
+        "name": "sabercraft:music/story_duel",
+        "stream": true
+      }
+    ]
+  },
+  "story.radio": {
+    "sounds": [
+      {
+        "name": "sabercraft:story/radio"
+      }
+    ],
+    "subtitle": "subtitles.sabercraft.story.radio"
+  },
+  "story.scan": {
+    "sounds": [
+      {
+        "name": "sabercraft:story/scan"
+      }
+    ],
+    "subtitle": "subtitles.sabercraft.story.scan"
+  },
+  "story.blip": {
+    "sounds": [
+      {
+        "name": "sabercraft:story/blip"
+      }
+    ]
+  },
+  "story.suspicious": {
+    "sounds": [
+      {
+        "name": "sabercraft:story/suspicious"
+      }
+    ],
+    "subtitle": "subtitles.sabercraft.story.suspicious"
+  },
+  "story.detected": {
+    "sounds": [
+      {
+        "name": "sabercraft:story/detected",
+        "attenuation_distance": 32
+      }
+    ],
+    "subtitle": "subtitles.sabercraft.story.detected"
+  },
+  "story.caught": {
+    "sounds": [
+      {
+        "name": "sabercraft:story/caught"
+      }
+    ],
+    "subtitle": "subtitles.sabercraft.story.caught"
+  },
+  "story.objective": {
+    "sounds": [
+      {
+        "name": "sabercraft:story/objective"
+      }
+    ],
+    "subtitle": "subtitles.sabercraft.story.objective"
+  },
+  "story.mission_done": {
+    "sounds": [
+      {
+        "name": "sabercraft:story/mission_done"
+      }
+    ],
+    "subtitle": "subtitles.sabercraft.story.mission_done"
+  },
+  "story.field_off": {
+    "sounds": [
+      {
+        "name": "sabercraft:story/field_off"
+      }
+    ],
+    "subtitle": "subtitles.sabercraft.story.field_off"
+  },
+  "story.alarm": {
+    "sounds": [
+      {
+        "name": "sabercraft:story/alarm"
+      }
+    ],
+    "subtitle": "subtitles.sabercraft.story.alarm"
   }
 }

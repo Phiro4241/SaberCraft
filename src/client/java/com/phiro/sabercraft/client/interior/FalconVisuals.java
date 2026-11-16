@@ -104,8 +104,12 @@ public final class FalconVisuals implements InteriorVisuals {
 		if (ImmersionConfig.get().shipInteriorDetail) {
 			b.inside(true);
 			DoorModels.draw(b, plot, com.phiro.sabercraft.interior.InteriorPlan.of("falcon"), InteriorAtlas.FAL_HATCH, InteriorAtlas.FAL_CEILING_LIGHT_GLOW);
-			// Phase 18: the Falcon's people.
-			CrewModels.draw(b, com.phiro.sabercraft.interior.FalconInterior.CREW, plot.level().getGameTime() + partial);
+			// Phase 18: the Falcon's people. Phase 19: in a story's Falcon the story's people.
+			if (StoryModels.drawsCrew(plot)) {
+				StoryModels.draw(b, plot, partial);
+			} else {
+				CrewModels.draw(b, com.phiro.sabercraft.interior.FalconInterior.CREW, plot.level().getGameTime() + partial);
+			}
 			b.inside(false);
 		}
 

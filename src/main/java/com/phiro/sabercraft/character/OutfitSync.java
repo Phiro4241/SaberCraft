@@ -39,13 +39,17 @@ public final class OutfitSync {
 		ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> {
 			if (ServerPlayNetworking.canSend(handler.getPlayer(), OutfitSyncPayload.TYPE)) {
 				List<OutfitSyncPayload.Entry> entries = new ArrayList<>();
-				OUTFITS.forEach((player, outfit) -> entries.add(new OutfitSyncPayload.Entry(player, Optional.of(outfit))));
+				java.util.Set<UUID> players = new java.util.HashSet<>(OUTFITS.keySet());
+				players.addAll(OVERRIDES.keySet());
+				players.forEach(player -> entries.add(new OutfitSyncPayload.Entry(player, Optional.ofNullable(shown(player)))));
 				ServerPlayNetworking.send(handler.getPlayer(), new OutfitSyncPayload(true, entries));
 			}
 		});
 		ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> {
 			UUID id = handler.getPlayer().getUUID();
 			LAST_CHANGE.remove(id);
+
+			OVERRIDES.remove(id);
 
 			if (OUTFITS.remove(id) != null) {
 				broadcast(server, new OutfitSyncPayload.Entry(id, Optional.empty()));
@@ -68,10 +72,18 @@ public final class OutfitSync {
 		}
 
 		LAST_CHANGE.put(player.getUUID(), now);
-		Identifier before = outfit.isPresent() ? OUTFITS.put(player.getUUID(), outfit.get().id()) : OUTFITS.remove(player.getUUID());
+		Identifier shownBefore = shown(player.getUUID());
 
-		if (!Objects.equals(before, outfit.map(Outfit::id).orElse(null))) {
-			broadcast(player.level().getServer(), new OutfitSyncPayload.Entry(player.getUUID(), outfit.map(Outfit::id)));
+		if (outfit.isPresent()) {
+			OUTFITS.put(player.getUUID(), outfit.get().id());
+		} else {
+			OUTFITS.remove(player.getUUID());
+		}
+
+		Identifier shownAfter = shown(player.getUUID());
+
+		if (!Objects.equals(shownBefore, shownAfter)) {
+			broadcast(player.level().getServer(), new OutfitSyncPayload.Entry(player.getUUID(), Optional.ofNullable(shownAfter)));
 		}
 	}
 
@@ -85,6 +97,35 @@ public final class OutfitSync {
 		}
 	}
 
+	/** Phase 19: outfits the server puts on players (the story's disguise), over what they chose. */
+	private static final Map<UUID, Identifier> OVERRIDES = new HashMap<>();
+
+	/**
+	 * Phase 19: puts an outfit on a player regardless of their choice (the trooper armour of the
+	 * story), or takes it off again ({@code null}): everyone sees the change.
+	 */
+	public static void override(ServerPlayer player, @org.jspecify.annotations.Nullable Identifier outfit) {
+		Identifier before = shown(player.getUUID());
+
+		if (outfit == null) {
+			OVERRIDES.remove(player.getUUID());
+		} else {
+			OVERRIDES.put(player.getUUID(), outfit);
+		}
+
+		Identifier after = shown(player.getUUID());
+
+		if (!Objects.equals(before, after)) {
+			broadcast(player.level().getServer(), new OutfitSyncPayload.Entry(player.getUUID(), Optional.ofNullable(after)));
+		}
+	}
+
+	/** What others see a player wearing: the server's outfit, else their own choice. */
+	private static @org.jspecify.annotations.Nullable Identifier shown(UUID player) {
+		Identifier forced = OVERRIDES.get(player);
+		return forced != null ? forced : OUTFITS.get(player);
+	}
+
 	/** The outfit a player chose, for tests. */
 	public static Optional<Identifier> outfitOf(UUID player) {
 		return Optional.ofNullable(OUTFITS.get(player));
@@ -93,6 +134,7 @@ public final class OutfitSync {
 	/** Forgets all choices, when the server stops. */
 	public static void clear() {
 		OUTFITS.clear();
+		OVERRIDES.clear();
 		LAST_CHANGE.clear();
 	}
 }

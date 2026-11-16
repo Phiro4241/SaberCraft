@@ -122,7 +122,8 @@ public final class OutfitClient {
 			}
 
 			for (OutfitSyncPayload.Entry entry : payload.entries()) {
-				if (entry.outfit().isPresent() && Outfit.byId(entry.outfit().get()).isPresent()) {
+				// Phase 19: also the story's outfits (the disguise), which nobody chooses.
+				if (entry.outfit().isPresent() && Outfit.byAnyId(entry.outfit().get()).isPresent()) {
 					OTHERS.put(entry.player(), entry.outfit().get());
 				} else {
 					OTHERS.remove(entry.player());
@@ -283,6 +284,13 @@ public final class OutfitClient {
 		Minecraft client = Minecraft.getInstance();
 
 		if (client.player != null && client.player.getUUID().equals(player)) {
+			// Phase 19: the story's disguise (put on by the server) over one's own choice.
+			Identifier forced = OTHERS.get(player);
+
+			if (forced != null && Outfit.STORY.stream().anyMatch(outfit -> outfit.id().equals(forced))) {
+				return Outfit.byAnyId(forced).map(OutfitClient::lookOf).orElse(null);
+			}
+
 			String choice = CharacterConfig.get().outfit;
 
 			if (choice.startsWith(FILE_PREFIX)) {
@@ -302,7 +310,7 @@ public final class OutfitClient {
 		}
 
 		Identifier other = OTHERS.get(player);
-		return other == null ? null : Outfit.byId(other).map(OutfitClient::lookOf).orElse(null);
+		return other == null ? null : Outfit.byAnyId(other).map(OutfitClient::lookOf).orElse(null);
 	}
 
 	public static Look lookOf(Outfit outfit) {

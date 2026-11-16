@@ -609,6 +609,116 @@ def flight_pursuit():
     return tr.finish(1.8, 0.24, 143)
 
 
+# Phase 19: the story mode ---------------------------------------------------------------------
+
+def story_stealth():
+    """Sneaking through the Star Destroyer: a quiet double pulse like a heartbeat on the tonic,
+    dark pads, a thin high string held over it and a few bell notes far apart, D phrygian, 84 bpm,
+    16 bars. Soft on purpose: it sits under footsteps and voices."""
+    rng = np.random.default_rng(1901)
+    prog = ["Dm", "Dm", "Eb", "Dm", "Bb", "Cm", "Eb", "D5"] * 2
+    tr = Track(84, len(prog))
+    for b, name in enumerate(prog):
+        ch = chord(name, 2)
+        for beat in (0, 2):
+            tr.add(tr.at(b, beat), low_staccato(hz(ch[0]), 0.28, 1900 + 4 * b + beat), 0.0, 0.16)
+            tr.add(tr.at(b, beat + 0.38), low_staccato(hz(ch[0]), 0.22, 1950 + 4 * b + beat), 0.0, 0.09)
+        tr.add(tr.at(b), drum(1.4, 41, 2000 + b, 0.08, 0.6, 2.8), 0.0, 0.12)
+        for k, note in enumerate(chord(name, 3)):
+            tr.add(tr.at(b), pad(hz(note), tr.bar + 1.2, 2100 + 3 * b + k), -0.5 + 0.5 * k, 0.09)
+        if b >= 4:
+            top = chord(name, 5)[1 if b % 2 else 2]
+            tr.add(tr.at(b), strings(hz(top), tr.bar + 0.8, 2200 + b, 0.5), 0.35, 0.035)
+        if rng.random() < 0.5:
+            note = int(rng.choice(chord(name, 5)))
+            tr.add(tr.at(b, 1.5 + rng.random()), bell(hz(note), 3.0, 2300 + b), float(rng.uniform(-0.7, 0.7)), 0.045)
+    return tr.finish(3.6, 0.42, 1902)
+
+
+def story_hideout():
+    """The hideout and the Falcon: warm pads, a slow harp and a flute that takes its time,
+    F major turning to D minor, 66 bpm, 16 bars."""
+    rng = np.random.default_rng(1903)
+    prog = ["F", "Dm", "Bb", "C", "F", "Am", "Bb", "Csus", "Dm", "Bb", "F", "C", "Dm", "Gm", "Bb", "C"]
+    tr = Track(66, len(prog))
+    for b, name in enumerate(prog):
+        ch = chord(name, 3)
+        for k, note in enumerate(ch):
+            tr.add(tr.at(b), pad(hz(note), tr.bar + 1.4, 2400 + 3 * b + k), -0.5 + 0.5 * k, 0.12)
+        tr.add(tr.at(b), strings(hz(ch[0] - 12), tr.bar + 0.8, 2450 + b, 0.4), 0.0, 0.12)
+        arp = [ch[0] + 12, ch[2] + 12, ch[1] + 24, ch[2] + 12]
+        for s, note in enumerate(arp):
+            tr.add(tr.at(b, s), harp(hz(note), 2.0, 2500 + 4 * b + s), 0.3, 0.1)
+    chords = [chord(p, 4) for p in prog]
+    tune = melody(rng, MINOR, 62, chords, 2, rest=0.35, span=(0, 12))
+    for i in range(8):
+        tune[i] = None
+    lay_melody(tr, tune, 2, flute, 12, 2600, 0.16, -0.2)
+    return tr.finish(4.0, 0.45, 1904)
+
+
+def story_alarm():
+    """The ship's alarm: a racing ostinato, snare and toms, brass stabs on the off beats and a
+    two-note figure high in the strings that sounds like a siren without being one, B minor, 156 bpm,
+    16 bars."""
+    rng = np.random.default_rng(1905)
+    prog = ["Bm", "Bm", "G", "F#5", "Bm", "Bm", "Em", "F#5"] * 2
+    tr = Track(156, len(prog))
+    for b, name in enumerate(prog):
+        ch = chord(name, 2)
+        pattern = [0, 0, 1, 0, 0, 2, 0, 1, 0, 0, 1, 0, 2, 0, 1, 2]
+        for s, p in enumerate(pattern):
+            tr.add(tr.at(b, s * 0.25), low_staccato(hz(ch[p]), 0.15, 2700 + 16 * b + s), -0.1, 0.14 if s % 4 == 0 else 0.08)
+        for beat in (0, 0.75, 2, 2.75):
+            tr.add(tr.at(b, beat), drum(0.7, 60, 2800 + 4 * b + int(beat * 4), 0.35, 2.0, 6.0), 0.0, 0.26)
+        for beat in (1, 3):
+            tr.add(tr.at(b, beat), snare(0.22, 2900 + 2 * b + beat), 0.2, 0.12)
+        for k, note in enumerate(chord(name, 4)):
+            tr.add(tr.at(b, 1.5), brass(hz(note), tr.beat * 0.4, 3000 + 3 * b + k, 1.2), -0.3 + 0.3 * k, 0.07)
+            tr.add(tr.at(b, 3.5), brass(hz(note), tr.beat * 0.4, 3050 + 3 * b + k, 1.2), -0.3 + 0.3 * k, 0.06)
+        top = chord(name, 5)
+        for half in range(2):
+            tr.add(tr.at(b, half * 2), strings(hz(top[2]), tr.beat * 1.0, 3100 + 2 * b + half, 1.2), 0.3, 0.04)
+            tr.add(tr.at(b, half * 2 + 1), strings(hz(top[1]), tr.beat * 1.0, 3150 + 2 * b + half, 1.2), 0.3, 0.04)
+        if b % 8 == 7:
+            for s in range(8):
+                tr.add(tr.at(b, 2 + s * 0.25), snare(0.1, 3200 + 8 * b + s), 0.2, 0.03 + 0.012 * s)
+    return tr.finish(1.6, 0.22, 1906)
+
+
+def story_duel():
+    """The duel with the Shadowblade: a slow, heavy beginning (choir and low strings) that turns
+    into a driving fight, timpani, brass and a dark string line, D minor with a lowered second,
+    132 bpm, 24 bars."""
+    rng = np.random.default_rng(1907)
+    prog = ["Dm", "Eb", "Dm", "C5"] * 2 + ["Dm", "Dm", "Bb", "A5", "Dm", "Dm", "Gm", "A5"] * 2
+    tr = Track(132, len(prog))
+    for b, name in enumerate(prog):
+        ch = chord(name, 2)
+        tr.add(tr.at(b), choir(hz(chord(name, 3)[0]), tr.bar + 0.5, 3300 + b), -0.3, 0.07)
+        tr.add(tr.at(b), choir(hz(chord(name, 3)[2]), tr.bar + 0.5, 3350 + b), 0.3, 0.06)
+        if b < 8:
+            tr.add(tr.at(b), strings(hz(ch[0]), tr.bar + 0.5, 3400 + b, 0.8), 0.0, 0.16)
+            tr.add(tr.at(b), drum(1.6, 40, 3450 + b, 0.3, 1.0, 2.6), 0.0, 0.3)
+            continue
+        pattern = [0, 0, 2, 0, 0, 1, 0, 2, 0, 0, 2, 0, 1, 2, 1, 0]
+        for s, p in enumerate(pattern):
+            tr.add(tr.at(b, s * 0.25), low_staccato(hz(ch[p]), 0.18, 3500 + 16 * b + s), -0.1, 0.16 if s % 4 == 0 else 0.1)
+        for beat in (0, 1.5, 2, 3.5):
+            tr.add(tr.at(b, beat), drum(1.0, 48, 3600 + 4 * b + int(beat * 2), 0.4, 2.4, 4.0), 0.0, 0.32)
+        tr.add(tr.at(b, 1), snare(0.25, 3650 + b), 0.15, 0.1)
+        tr.add(tr.at(b, 3), snare(0.25, 3660 + b), -0.15, 0.1)
+        if b % 2 == 0:
+            for k, note in enumerate(chord(name, 3)):
+                tr.add(tr.at(b), brass(hz(note), tr.beat * 1.4, 3700 + 3 * b + k, 0.9), -0.3 + 0.3 * k, 0.11)
+    chords = [chord(p, 4) for p in prog]
+    tune = melody(rng, PHRYGIAN, 62, chords, 4, rest=0.18, span=(-2, 12))
+    for i in range(40):
+        tune[i] = None
+    lay_melody(tr, tune, 4, lambda f, sec, sd: strings(f, sec, sd, 1.2), 0, 3800, 0.12, 0.2, 0.9)
+    return tr.finish(2.0, 0.28, 1908)
+
+
 PIECES = {
     "exploration_horizon": exploration_horizon,
     "exploration_wander": exploration_wander,
@@ -622,6 +732,10 @@ PIECES = {
     "flight_soar": flight_soar,
     "flight_imperial": flight_imperial,
     "flight_pursuit": flight_pursuit,
+    "story_stealth": story_stealth,
+    "story_hideout": story_hideout,
+    "story_alarm": story_alarm,
+    "story_duel": story_duel,
 }
 
 

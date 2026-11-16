@@ -42,7 +42,8 @@ public abstract class SaberMenuScreen extends Screen {
 
 	/** The areas of the menu. */
 	public enum Tab {
-		SABER, BLASTER, DROIDS, SHIPS, COMBAT, CHARACTER, SPACE, MUSIC, SOUND, GRAPHICS;
+		// Phase 19: the story first.
+		STORY, SABER, BLASTER, DROIDS, SHIPS, COMBAT, CHARACTER, SPACE, MUSIC, SOUND, GRAPHICS;
 
 		public Component label() {
 			return Component.translatable("sabercraft.menu.tab." + this.name().toLowerCase(java.util.Locale.ROOT));
@@ -85,7 +86,8 @@ public abstract class SaberMenuScreen extends Screen {
 			}
 
 			this.addRenderableWidget(button);
-			y += 22;
+			// Phase 19: eleven areas, a little closer together.
+			y += 21;
 		}
 
 		this.initPanel();
@@ -126,6 +128,7 @@ public abstract class SaberMenuScreen extends Screen {
 		}
 
 		return switch (tab) {
+			case STORY -> new StoryMenuScreen();
 			case SABER -> new SaberCustomizeScreen(hand, client.player.getItemInHand(hand));
 			case BLASTER -> new BlasterMenuScreen();
 			case DROIDS -> new DroidMenuScreen();

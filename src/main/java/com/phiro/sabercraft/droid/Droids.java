@@ -126,6 +126,31 @@ public final class Droids {
 		}
 	}
 
+	/**
+	 * Phase 19: replaces the droids a player has out (the story puts the player's own aside and
+	 * gives its own; leaving, the player's come back). Those no longer wanted go on the next tick.
+	 */
+	public static void replaceCrew(ServerPlayer player, List<DroidType> crew) {
+		setCrew(player, List.copyOf(crew));
+		EnumMap<DroidType, DroidEntity> live = LIVE.get(player.getUUID());
+
+		if (live != null) {
+			for (Iterator<Map.Entry<DroidType, DroidEntity>> it = live.entrySet().iterator(); it.hasNext();) {
+				Map.Entry<DroidType, DroidEntity> entry = it.next();
+
+				if (!crew.contains(entry.getKey())) {
+					entry.getValue().discard();
+					it.remove();
+				} else {
+					// Named in the story, plain again after it.
+					entry.getValue().setCustomName(null);
+				}
+			}
+		}
+
+		sendStatus(player);
+	}
+
 	/** The droid of that kind of the player, if it is in the world now. */
 	public static @Nullable DroidEntity droid(ServerPlayer player, DroidType type) {
 		EnumMap<DroidType, DroidEntity> live = LIVE.get(player.getUUID());
@@ -279,7 +304,9 @@ public final class Droids {
 		}
 
 		if (!(player.level().getEntity(entityId) instanceof DroidEntity droid) || droid.isRemoved()
-				|| droid.distanceToSqr(player.getEyePosition()) > (TARGET_RANGE + 2.0) * (TARGET_RANGE + 2.0) || !player.hasLineOfSight(droid)) {
+				|| droid.distanceToSqr(player.getEyePosition()) > (TARGET_RANGE + 2.0) * (TARGET_RANGE + 2.0)
+				// Phase 19: in the story the key means a droid without looking at it (it may be behind in a shaft).
+				|| !player.hasLineOfSight(droid) && !com.phiro.sabercraft.story.Story.playing(player)) {
 			return null;
 		}
 
@@ -426,6 +453,17 @@ public final class Droids {
 			return Component.translatableWithFallback("sabercraft.droid.combat_cooldown", "Your combat droids need %s more seconds.", (combatReady - now + 19) / 20);
 		}
 
+		// Phase 19: in the story the droids do what the story needs (distract, scout, hack, scan).
+		Component story = com.phiro.sabercraft.story.Story.droidAbility(player, type);
+
+		if (story != null) {
+			// A short wait of its own (a few seconds), so the droid is not used every tick.
+			READY_AT.get(player.getUUID()).put(type, now + STORY_COOLDOWN);
+			droid.playVoice("ability", 1.0F);
+			event(droid, EVENT_ABILITY);
+			return story;
+		}
+
 		DroidAbilities.Result result = DroidAbilities.use(player, droid);
 
 		if (result.used()) {
@@ -441,6 +479,9 @@ public final class Droids {
 
 		return result.message();
 	}
+
+	/** Phase 19: the wait after a droid's ability in the story (ticks). */
+	static final int STORY_COOLDOWN = 80;
 
 	/** The full cooldown of a droid's ability, in ticks: {@code droid_balance} times {@code droid_cooldown}. */
 	public static int cooldown(DroidType type) {

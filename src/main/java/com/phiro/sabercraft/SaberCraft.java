@@ -51,6 +51,8 @@ public class SaberCraft implements ModInitializer {
 		com.phiro.sabercraft.interior.Seats.init();
 		com.phiro.sabercraft.interior.InteriorSystems.init();
 		SaberSwords.init();
+		// Phase 19: the story mode.
+		com.phiro.sabercraft.story.Story.init();
 		LOGGER.info("SaberCraft initialized");
 	}
 

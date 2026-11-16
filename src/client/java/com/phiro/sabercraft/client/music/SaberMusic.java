@@ -134,11 +134,18 @@ public final class SaberMusic {
 		float crossfade = ImmersionConfig.get().musicCrossfadeSeconds * 20.0F;
 		// Phase 8: in the Star Wars mode the SaberCraft pieces step aside and StarWarsMusic plays.
 		boolean starWars = ImmersionConfig.get().starWarsMode();
-		StarWarsMusic.tick(client, starWars && replacesVanilla());
+		// Phase 19: in the story its own music plays; both modes step aside meanwhile.
+		boolean story = StoryMusic.tick(client, crossfade);
+		StarWarsMusic.tick(client, starWars && replacesVanilla() && !story);
 
-		if (!replacesVanilla() || starWars) {
+		if (story && !held) {
+			held = true;
+			client.getMusicManager().stopPlaying();
+		}
+
+		if (!replacesVanilla() || starWars || story) {
 			if (held) {
-				held = false;
+				held = story;
 				fadeOutAll(client.level == null ? 1.0F : crossfade * 0.5F);
 				mood = null;
 			}
@@ -414,5 +421,6 @@ public final class SaberMusic {
 		wasFighting = false;
 		wasAlive = true;
 		StarWarsMusic.reset();
+		StoryMusic.reset();
 	}
 }
