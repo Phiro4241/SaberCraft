@@ -58,7 +58,7 @@ public final class ArrivalFilm {
 
 	/** Where the Falcon's model stands (time, x, y, z): out of hyperspace, under the hull, round, docked. */
 	private static final float[][] FALCON = {
-			{0, 64, 0, -224}, {10, 55, 1, -200}, {40, 46, 2, -168}, {115, 38, 0, -110}, {175, 30, -2, -48}, {235, 37, -1, 0},
+			{0, 60, 4, -222}, {10, 54, 3.5F, -200}, {40, 47, 3, -168}, {115, 38, 0, -110}, {175, 30, -2, -48}, {235, 37, -1, 0},
 			{265, 48, 0.5F, 14}, {300, 57, 2.5F, 25}, {330, 53, 3.3F, 24.4F}, {350, 50.9F, 3.475F, 24.0F}, {460, 50.9F, 3.475F, 24.0F}};
 	/** Which way it points (degrees round y; 180 = nose to +z, 360 = nose to -z), and how it banks. */
 	private static final float[][] HEADING = {{0, 180}, {235, 182}, {255, 195}, {300, 350}, {320, 360}, {460, 360}};
@@ -66,11 +66,11 @@ public final class ArrivalFilm {
 
 	/** The camera of each shot: where it is, and what it looks at (null: follows the Falcon). */
 	private static final float[][][] CAMERA = {
-			{{0, 58, -6, -234}, {115, 53, -5, -222}},
+			{{0, 66, 20, -252}, {115, 56, 15, -196}},
 			{{115, 52, -9, -142}, {235, 44, -8, -40}},
 			{{235, 92, 1, 46}, {350, 86, 2.5F, 40}},
-			{{350, 47.0F, 0.8F, 13.0F}, {460, 46.6F, 1.2F, 15.5F}}};
-	private static final float[][] LOOK_FIRST = {{0, 62, -1, -222}, {45, 34, 4, -150}, {115, 16, 8, -105}};
+			{{350, 49.0F, -2.0F, 6.0F}, {460, 48.5F, -1.5F, 9.0F}}};
+	private static final float[][] LOOK_FIRST = {{0, 52, 2, -190}, {60, 30, 6, -140}, {115, 20, 8, -110}};
 	private static final float[][] LOOK_LAST = {{350, 45.2F, 4.4F, 24.75F}, {460, 45.1F, 4.6F, 24.75F}};
 
 	/** The airlock: the side of the hull's dark lower band there, its middle (scene space). */
@@ -86,6 +86,7 @@ public final class ArrivalFilm {
 	private static final Mesh STARS = new Mesh();
 	private static final Mesh HULL_LIGHTS = new Mesh();
 	private static final Mesh MOVING = new Mesh();
+	private static final Mesh ENGINES = new Mesh();
 	private static final Mesh MOVING_HOLO = new Mesh();
 	private static final Mesh MOVING_SOLID = new Mesh();
 	private static @Nullable List<ItemStackRenderState> destroyer;
@@ -271,18 +272,18 @@ public final class ArrivalFilm {
 		}
 
 		ShipModels.submit(poseStack, collector, freighter, ShipModels.Pose.FLYING, falcon, light, 0);
-		MOVING.clear();
-		MOVING_HOLO.clear();
-		MOVING_SOLID.clear();
-		MeshBuilder glow = builder(MOVING);
+		// (Each mesh is emitted later in the frame: one mesh per submission.)
+		ENGINES.clear();
+		MeshBuilder glow = builder(ENGINES);
 		glow.layer(Layer.GLOW).fullBright().twoSided(true);
 		engines(glow, t);
+		submit(collector, poseStack, Layer.GLOW, ENGINES);
 		poseStack.popPose();
-
-		submit(collector, poseStack, Layer.GLOW, MOVING);
 
 		// Scene-space things: the flash, the airlock, the collar, the vapour.
 		MOVING.clear();
+		MOVING_HOLO.clear();
+		MOVING_SOLID.clear();
 		MeshBuilder scenery = builder(MOVING);
 		scenery.layer(Layer.GLOW).fullBright().twoSided(true);
 		flash(scenery, at, t);
@@ -420,18 +421,14 @@ public final class ArrivalFilm {
 					new Vector3f(side).mul(size), new Vector3f(up).mul(size));
 		}
 
-		// A far sun behind the Tenebris, and its glow.
+		// A far, bright sun.
 		Vector3f sun = new Vector3f(-0.55F, 0.32F, 0.77F).normalize();
 		Vector3f side = new Vector3f(0.0F, 1.0F, 0.0F).cross(sun).normalize();
 		Vector3f up = new Vector3f(sun).cross(side).normalize();
 
-		for (float[] disc : new float[][] {{16.0F, 1.0F}, {44.0F, 0.32F}, {110.0F, 0.1F}}) {
-			Vector3f centre = new Vector3f(sun).mul(600.0F);
-			float size = disc[0];
-			stars.colour(argb(1.0F, disc[1], disc[1] * 0.86F, disc[1] * 0.62F)).rect(
-					new Vector3f(centre).sub(new Vector3f(side).mul(size / 2.0F)).sub(new Vector3f(up).mul(size / 2.0F)), new Vector3f(side).mul(size),
-					new Vector3f(up).mul(size));
-		}
+		Vector3f sunCentre = new Vector3f(sun).mul(600.0F);
+		stars.colour(argb(1.0F, 1.0F, 0.95F, 0.82F)).rect(new Vector3f(sunCentre).sub(new Vector3f(side).mul(4.0F)).sub(new Vector3f(up).mul(4.0F)),
+				new Vector3f(side).mul(8.0F), new Vector3f(up).mul(8.0F));
 
 		// The Tenebris' windows along its flanks (tiny: the ship is huge), its bridge and engines.
 		MeshBuilder lights = builder(HULL_LIGHTS);
@@ -515,6 +512,12 @@ public final class ArrivalFilm {
 	private static int argb(float a, float r, float g, float b) {
 		return Math.round(Mth.clamp(a, 0.0F, 1.0F) * 255.0F) << 24 | Math.round(Mth.clamp(r, 0.0F, 1.0F) * 255.0F) << 16
 				| Math.round(Mth.clamp(g, 0.0F, 1.0F) * 255.0F) << 8 | Math.round(Mth.clamp(b, 0.0F, 1.0F) * 255.0F);
+	}
+
+	/** Only for tests: where the camera and the Falcon are at that time. */
+	public static String describeForTest(float t) {
+		Shot shot = camera(t);
+		return "camera " + shot.position() + " yaw " + shot.yaw() + " pitch " + shot.pitch() + ", falcon " + falcon(t);
 	}
 
 	/** Only for tests: how many frames of the film were drawn. */

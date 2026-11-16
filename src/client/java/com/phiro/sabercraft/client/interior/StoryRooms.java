@@ -289,6 +289,7 @@ final class StoryRooms {
 	// --- The lab -------------------------------------------------------------------------------------
 
 	private static void lab(MeshBuilder b) {
+		labDoor(b);
 		float tx = (float) TRACKER_X;
 		float tz = (float) TRACKER_Z;
 		float r = (float) TRACKER_R;
@@ -430,9 +431,38 @@ final class StoryRooms {
 		lab(b, seconds, story);
 	}
 
+	/**
+	 * Phase 20: the lab's blast door, plain to see from the reactor floor: hazard stripes on the
+	 * threshold, a lit frame round the opening (it was a dark door at the end of a dark passage).
+	 * Its lamp (red while it is locked) is drawn with the moving parts.
+	 */
+	private static void labDoor(MeshBuilder b) {
+		float x0 = LAB_DOOR_X0;
+		float x1 = LAB_DOOR_X0 + 3;
+		float y0 = R;
+		float y1 = R + 3;
+		float z1 = LAB_WALL;
+		float z0 = z1 - 0.28F;
+		b.layer(Layer.SOLID).worldLight().white().anim(0).twoSided(false).tile(InteriorAtlas.IMP_HAZARD, 1.0F);
+		b.box(x0, y0, z1 - 1.25F, x1, y0 + 0.012F, z1, MeshBuilder.UP);
+		// The frame: a light strip up each side and across the top, a step before the door.
+		b.layer(Layer.GLOW).fullBright().colour(0xFFE8A040).fit(InteriorAtlas.IMP_WALL_STRIP_GLOW, 0.0F, 0.4F, 1.0F, 0.6F);
+		b.box(x0, y0, z0, x0 + 0.03F, y1, z1 - 0.06F, MeshBuilder.EAST);
+		b.box(x1 - 0.03F, y0, z0, x1, y1, z1 - 0.06F, MeshBuilder.WEST);
+		b.box(x0, y1 - 0.03F, z0, x1, y1, z1 - 0.06F, MeshBuilder.DOWN);
+		b.white().layer(Layer.SOLID).worldLight();
+	}
+
 	/** The tracker running (or failing once the saber is gone), the saber in its field, Ilyra's message. */
 	private static void lab(MeshBuilder b, float seconds, boolean story) {
 		boolean taken = story && StoryClient.has("saber.taken");
+		// Phase 20: the lab door's lamp over the threshold: red and pulsing while it is locked, green
+		// once it opens (in the story it opens only with the code; outside it is an ordinary door).
+		boolean open = !story || StoryClient.has("lab.open");
+		b.layer(Layer.GLOW).fullBright().anim(open ? 0 : InteriorScene.ANIM_PULSE).colour(open ? 0xFF58E078 : 0xFFE84030)
+				.fit(InteriorAtlas.IMP_CEILING_LIGHT_GLOW);
+		b.box(LAB_DOOR_X0 + 1.2F, R + 2.84F, LAB_WALL - 0.42F, LAB_DOOR_X0 + 1.8F, R + 2.995F, LAB_WALL - 0.1F, MeshBuilder.ALL & ~MeshBuilder.UP);
+		b.white().anim(0).layer(Layer.SOLID).worldLight();
 		float tx = (float) TRACKER_X;
 		float tz = (float) TRACKER_Z;
 		float r = (float) TRACKER_R;

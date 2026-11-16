@@ -228,6 +228,19 @@ public final class StoryCinema {
 		}
 
 		@Override
+		protected void init() {
+			// No mouse pointer over the film.
+			org.lwjgl.glfw.GLFW.glfwSetInputMode(Minecraft.getInstance().getWindow().handle(), org.lwjgl.glfw.GLFW.GLFW_CURSOR,
+					org.lwjgl.glfw.GLFW.GLFW_CURSOR_HIDDEN);
+		}
+
+		@Override
+		public void removed() {
+			org.lwjgl.glfw.GLFW.glfwSetInputMode(Minecraft.getInstance().getWindow().handle(), org.lwjgl.glfw.GLFW.GLFW_CURSOR,
+					org.lwjgl.glfw.GLFW.GLFW_CURSOR_NORMAL);
+		}
+
+		@Override
 		public boolean keyPressed(KeyEvent event) {
 			if (age >= SKIP_AFTER && (event.isSelection() || event.isEscape() || event.isConfirmation())) {
 				stop(Minecraft.getInstance(), true);
