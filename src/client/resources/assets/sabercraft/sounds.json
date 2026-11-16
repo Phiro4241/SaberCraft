@@ -1441,5 +1441,30 @@
       }
     ],
     "subtitle": "subtitles.sabercraft.story.alarm"
+  },
+  "story.door_lock": {
+    "sounds": [
+      {
+        "name": "sabercraft:story/door_lock"
+      }
+    ],
+    "subtitle": "subtitles.sabercraft.story.door_lock"
+  },
+  "story.crate_lid": {
+    "sounds": [
+      {
+        "name": "sabercraft:story/crate_lid"
+      }
+    ],
+    "subtitle": "subtitles.sabercraft.story.crate_lid"
+  },
+  "story.siren": {
+    "sounds": [
+      {
+        "name": "sabercraft:story/siren",
+        "volume": 0.55
+      }
+    ],
+    "subtitle": "subtitles.sabercraft.story.siren"
   }
 }

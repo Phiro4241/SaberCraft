@@ -57,4 +57,43 @@ public interface Chapter {
 	default boolean locked(StorySession session, String ship, int x, int y, int z) {
 		return false;
 	}
+
+	/** Phase 20: the step's safe place now (by default the step's own; a chapter may choose by what is known). */
+	default Mission.Place place(StorySession session, Mission.Step step) {
+		return new Mission.Place(step.ship(), step.spawn(), step.yaw());
+	}
+
+	/** Phase 20: whether the step makes a checkpoint as it begins (by default: as the step says). */
+	default boolean checkpoint(StorySession session, Mission.Step step) {
+		return step.checkpoint();
+	}
+
+	/** Phase 20: before a checkpoint: what is under way and should count as done (those walking off are gone). */
+	default void settle(StorySession session) {
+	}
+
+	/** Phase 20: after being put back at a checkpoint: where the droids are (by default with the player). */
+	default void droids(StorySession session) {
+		Story.gatherDroids(session);
+	}
+
+	/** Phase 20: why a hatch of a story's ship does not open now (a key of words), or null when it does. */
+	default @Nullable String hatchClosed(StorySession session, String ship, int x, int y, int z) {
+		return this.locked(session, ship, x, y, z) ? "sabercraft.story.hint.hatch_locked" : null;
+	}
+
+	/** Phase 20: the wall comms of a ship (plot space, where one stands to use them), to raise an alarm. */
+	default java.util.List<net.minecraft.world.phys.Vec3> comms(StorySession session, String ship) {
+		return java.util.List.of();
+	}
+
+	/** Phase 20: the doors (plot space) troopers come through after an alarm was called in. */
+	default java.util.List<net.minecraft.world.phys.Vec3> entries(StorySession session, String ship) {
+		return java.util.List.of();
+	}
+
+	/** Phase 20: whether the ship runs on its emergency lights now (dimmer: one is seen less far). */
+	default boolean emergency(StorySession session) {
+		return false;
+	}
 }

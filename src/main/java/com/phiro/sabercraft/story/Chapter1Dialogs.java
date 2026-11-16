@@ -130,6 +130,15 @@ final class Chapter1Dialogs {
 				})
 				.build());
 
+		// Phase 20: the wrong containers (the lid clatters: those near turn to look).
+		add(Dialog.of("m2_crate_c3")
+				.say("start", "funke").does(s -> Chapter1.wrongCrate(s, "c3"))
+				.build());
+
+		add(Dialog.of("m2_crate_f9")
+				.say("start", "funke").does(s -> Chapter1.wrongCrate(s, "f9"))
+				.build());
+
 		add(Dialog.of("m2_return")
 				.say("start", "kestrel").then("read")
 				.say("read", "kestrel")
@@ -155,11 +164,17 @@ final class Chapter1Dialogs {
 				.say("go", "kestrel").does(s -> Chapter1.done(s, "m3.plan"))
 				.build());
 
+		// Phase 20: the security desk opens the armory and can page the quartermaster away.
 		add(Dialog.of("m3_console")
-				.say("start", "funke").does(s -> {
+				.say("start", "terminal")
+				.ask("unlock", "unlocked", null, s -> !s.has("armory.open")).ask("page", "paged", null, s -> !s.has("qm.away")).ask("off", Dialog.END)
+				.say("unlocked", "terminal").does(s -> {
 					s.set("armory.open");
 					Chapter1.done(s, "m3.console");
 				})
+				.ask("page", "paged", null, s -> !s.has("qm.away")).ask("off", Dialog.END)
+				.say("paged", "terminal").does(Chapter1::pageQuartermaster)
+				.ask("unlock", "unlocked", null, s -> !s.has("armory.open")).ask("off", Dialog.END)
 				.build());
 
 		add(Dialog.of("m3_locker")
@@ -175,6 +190,12 @@ final class Chapter1Dialogs {
 					s.set("item.card");
 					Chapter1.done(s, "m3.card");
 				})
+				.build());
+
+		// Phase 20: Hale sends the quartermaster out before he talks.
+		add(Dialog.of("m3_hale_qm")
+				.say("start", "hale").then("yes")
+				.say("yes", "quartermaster").does(Chapter1::sendQuartermaster)
 				.build());
 
 		add(Dialog.of("m3_hale")
@@ -217,6 +238,18 @@ final class Chapter1Dialogs {
 					Chapter1.done(s, "m4.checkpoint");
 				})
 				.say("nope", "guard")
+				.build());
+
+		// Phase 20: an officer on the reactor floor calls the player in armour over and asks.
+		add(Dialog.of("m4_officer")
+				.say("start", "officer_reactor")
+				.ask("card", "who", null, s -> s.has("item.card")).ask("password", "fine", null, s -> s.has("know.password"))
+				.ask("hale", "isb", null, s -> s.has("trust.hale")).ask("patrol", "bad")
+				.say("who", "officer_reactor")
+				.ask("harlo", "fine", null, s -> s.has("m4.passed")).ask("hale", "isb", null, s -> s.has("trust.hale")).ask("patrol", "bad")
+				.say("fine", "officer_reactor").does(Chapter1::officerSatisfied)
+				.say("isb", "officer_reactor").does(Chapter1::officerSatisfied)
+				.say("bad", "officer_reactor").does(Chapter1::officerAlarm)
 				.build());
 
 		add(Dialog.of("checkpoint_closed")

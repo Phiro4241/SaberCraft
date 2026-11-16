@@ -11,9 +11,16 @@ import java.util.TreeSet;
  * whenever it changes. Everything is as of the last checkpoint: a step of a mission that was not
  * finished starts again from its beginning after a relog, a capture or a restart, so the world
  * is always clean.
+ *
+ * <p>Phase 20: the checkpoint is the whole state at one moment (mission, step, what is known, the
+ * journal) and the safe place the player is put back at. Checkpoints are made at the beginning of
+ * most steps, after milestones (the armour on, locked in the cell) and in safe places (the
+ * hideout, the crawl ways). A file of Phase 19 (format 1) has no place: one continues at the safe
+ * place of its step.
  */
 public final class StoryProgress {
-	/** The file's layout; raised when it changes. */
+	/** The file's layout; raised when it changes (2: Phase 20, with the step's id and a place). */
+	public static final int FORMAT = 2;
 	public int format = 1;
 	/** The chapter ({@code nightshade}). */
 	public String chapter = Chapter1.ID;
@@ -22,6 +29,17 @@ public final class StoryProgress {
 	/** The mission (0 = the first) and the step in it that is to be done. */
 	public int mission;
 	public int step;
+	/** Phase 20: the step's id (the index alone breaks when a mission gets a step more). */
+	public String stepId = "";
+	/**
+	 * Phase 20: where the checkpoint puts the player back: the ship ({@code ""}: the step's safe
+	 * place), the place in its plot and the look.
+	 */
+	public String placeShip = "";
+	public double placeX;
+	public double placeY;
+	public double placeZ;
+	public float placeYaw;
 	/** Missions finished at least once. */
 	public Set<Integer> completed = new TreeSet<>();
 	/**

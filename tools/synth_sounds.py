@@ -1409,6 +1409,54 @@ def phase19():
     write_ogg("alarm", story_alarm(rng), STORY_OUT)
 
 
+# Phase 20: the story's new sounds -----------------------------------------------------------------
+
+
+def story_door_lock(rng, seconds=0.7):
+    """A door being bolted: a servo whine, then a heavy bolt sliding home with a metallic clack."""
+    t = t_axis(seconds)
+    f = 420 + 380 * np.clip(t / 0.25, 0, 1)
+    whine = np.sin(2 * np.pi * np.cumsum(f) / RATE) * np.clip(t / 0.03, 0, 1) * np.clip((0.28 - t) / 0.04, 0, 1) * 0.25
+    at = 0.3
+    ct = np.clip(t - at, 0, None)
+    clack = (bandpass_noise(seconds, 900, 5200, rng) * np.exp(-ct * 38) + np.sin(2 * np.pi * 180 * ct) * np.exp(-ct * 22) * 0.8) * (t >= at)
+    ring = sum(np.sin(2 * np.pi * f0 * ct) * np.exp(-ct * d) for f0, d in ((1312.0, 9.0), (2071.0, 12.0))) * 0.12 * (t >= at)
+    return normalize(lowpass(whine, 3000) + clack + ring, 0.5)
+
+
+def story_crate_lid(rng, seconds=0.9):
+    """A container lid falling back: a hollow metal bang, a short rattle and a ring that dies away."""
+    t = t_axis(seconds)
+    bang = (bandpass_noise(seconds, 120, 2600, rng) * np.exp(-t * 26) + np.sin(2 * np.pi * 96 * t) * np.exp(-t * 14)) * np.minimum(1.0, t / 0.002)
+    rattle = np.zeros_like(t)
+    for k, at in enumerate((0.11, 0.19, 0.24)):
+        ct = np.clip(t - at, 0, None)
+        rattle += bandpass_noise(seconds, 700, 4000, rng) * np.exp(-ct * 45) * (t >= at) * (0.5 / (k + 1))
+    ring = sum(np.sin(2 * np.pi * f0 * t) * np.exp(-t * d) for f0, d in ((437.0, 5.0), (1093.0, 7.5), (1871.0, 10.0))) * 0.12
+    return normalize(lowpass(bang + rattle, 6000) + ring, 0.5)
+
+
+def story_siren(rng, seconds=2.6):
+    """The ship's siren during a chase: a deep, slowly rising and falling wail, twice, far down a corridor."""
+    t = t_axis(seconds)
+    phase = (t % 1.3) / 1.3
+    f = 220 + 160 * np.sin(np.pi * phase) ** 2
+    wail = np.sin(2 * np.pi * np.cumsum(f) / RATE) + 0.35 * np.sin(4 * np.pi * np.cumsum(f) / RATE) + 0.15 * np.sin(6 * np.pi * np.cumsum(f) / RATE)
+    env = np.minimum(1.0, t / 0.15) * np.minimum(1.0, (seconds - t) / 0.3)
+    echo = np.zeros_like(wail)
+    delay = int(0.11 * RATE)
+    echo[delay:] = wail[:-delay] * 0.35
+    return normalize(lowpass((wail + echo) * env, 1800), 0.38)
+
+
+def phase20():
+    """Phase 20: the story's new sounds (a bolted door, a container lid, the siren). Own random stream."""
+    rng = np.random.default_rng(1977_20)
+    write_ogg("door_lock", story_door_lock(rng), STORY_OUT)
+    write_ogg("crate_lid", story_crate_lid(rng), STORY_OUT)
+    write_ogg("siren", story_siren(rng), STORY_OUT)
+
+
 # Planet ambiences (Phase 10) ---------------------------------------------------------------------
 # Loops of AMBIENT_SECONDS. Every slow modulation runs a whole number of times per loop, and every
 # event (a gust, a bird, a crackle) that runs over the end wraps to the start, so they loop
@@ -1607,6 +1655,10 @@ def main():
 
     if "--phase19" in sys.argv:
         phase19()
+        return
+
+    if "--phase20" in sys.argv:
+        phase20()
         return
 
     if "--phase18" in sys.argv:

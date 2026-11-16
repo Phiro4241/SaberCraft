@@ -35,6 +35,8 @@ import com.phiro.sabercraft.client.menu.StoryMenuScreen;
 import com.phiro.sabercraft.client.music.StoryMusic;
 import com.phiro.sabercraft.client.story.DialogScreen;
 import com.phiro.sabercraft.client.story.StoryClient;
+import com.phiro.sabercraft.client.story.StoryCinema;
+import com.phiro.sabercraft.client.interior.ArrivalFilm;
 import com.phiro.sabercraft.client.story.StoryInput;
 import com.phiro.sabercraft.droid.DroidType;
 import com.phiro.sabercraft.droid.Droids;
@@ -207,7 +209,8 @@ public class StoryGameTest implements FabricClientGameTest {
 
 		this.talkTo("dax", true);
 		this.converse("joke", "go");
-		this.waitStep("m1.ramp", 900);
+		this.arrival();
+		this.waitStep("m1.ramp", 200);
 		this.converse();
 		this.exitShip("falcon", new Vec3(35.5, 4.0, 40.5));
 		this.waitStep("m1.droid", 80);
@@ -222,8 +225,10 @@ public class StoryGameTest implements FabricClientGameTest {
 		this.converse();
 		this.talkTo("m31", true);
 		this.converse("free");
-		this.waitStep("m1.hatch", 40);
+		this.waitStep("m1.distract", 40);
 		check(this.on(s -> Droids.crew(me(s)).contains(DroidType.MOUSE)), "M-31 does not come along");
+		this.lureGuard();
+		this.waitStep("m1.hatch", 40);
 		this.place(Story.DESTROYER, new Vec3(20.5, H, -4.5), 90.0F, 0.0F);
 		this.waitStep("m2.kestrel", 60);
 		context.waitTicks(30);
@@ -237,13 +242,25 @@ public class StoryGameTest implements FabricClientGameTest {
 		this.use("terminal", H);
 		this.converse("map", "off");
 		check(this.on(s -> session(s).journal.contains("terminal_map")), "the terminal's map is not in the journal");
+		// Phase 20: in the hideout (a safe place) what was learnt is kept within a second.
+		for (int i = 0; i < 12 && !this.on(s -> StoryTesting.atCheckpoint(session(s))); i++) {
+			context.waitTicks(5);
+		}
+
+		check(this.on(s -> StoryTesting.atCheckpoint(session(s))), "no checkpoint in the hideout after reading the map");
 		this.seenAndCaught();
 		this.use("terminal", H);
 		this.converse("drop", "off");
 		this.waitStep("m2.drop", 40);
+		this.restoreHere("m2.drop");
 		this.eavesdrop();
 		this.distraction();
-		this.use("drop", H);
+		// A wrong container first: its lid clatters, nothing inside; then Kestrel's (bound for the
+		// bird's nest).
+		this.use("crate_c3", H);
+		this.converse();
+		check(this.on(s -> session(s).has("m2.checked.c3") && !session(s).has("item.stick")), "the wrong container C-3 is not just a wrong one");
+		this.use("crate_k7", H);
 		this.converse();
 		this.waitStep("m2.return", 40);
 		this.leaveAndContinue(home);
@@ -258,7 +275,8 @@ public class StoryGameTest implements FabricClientGameTest {
 		BlockPos armory = new BlockPos(DestroyerInterior.CX + 4, H, -14);
 		check(this.on(s -> Story.locked(session(s).destroyer, armory.getX(), armory.getY(), armory.getZ())), "the armory is open before the console");
 		this.use("security", H);
-		this.converse();
+		this.converse("unlock", "page", "off");
+		check(this.lines.contains("m3_console.paged") && this.on(s -> session(s).has("qm.away")), "the security desk does not page the quartermaster away");
 		this.waitStep("m3.armour", 40);
 		check(!this.on(s -> Story.locked(session(s).destroyer, armory.getX(), armory.getY(), armory.getZ())), "the armory stays locked after the console");
 		this.doorOpens(armory, new Vec3(armory.getX() + 0.5, H, armory.getZ() + 2.5), "the armory");
@@ -273,6 +291,7 @@ public class StoryGameTest implements FabricClientGameTest {
 		this.converse();
 		this.waitStep("m3.hale", 40);
 		this.waitDialog(400, "Hale does not come to speak");
+		this.alone("Hale's talk (the quartermaster paged away)");
 		this.lookAt("hale");
 		this.finishTyping();
 		context.waitTicks(2);
@@ -280,6 +299,7 @@ public class StoryGameTest implements FabricClientGameTest {
 		this.converse("knows", "why", "trust");
 		this.waitStep("m3.return", 400);
 		check(this.on(s -> session(s).has("trust.hale") && session(s).has("know.cellcode")), "trusting Hale is not remembered");
+		check(!this.on(s -> Story.locked(session(s).destroyer, armory.getX(), armory.getY(), armory.getZ())), "the armory stays bolted after Hale left");
 		this.place(Story.DESTROYER, new Vec3(20.5, H, -4.5), 90.0F, 0.0F);
 		this.waitStep("m4.brief", 60);
 
@@ -299,10 +319,26 @@ public class StoryGameTest implements FabricClientGameTest {
 		this.use("coolant", R);
 		this.converse();
 		check(this.on(s -> session(s).has("opt.coolant")), "the coolant valve was not turned");
+		this.callAndReinforce();
 		this.place(Story.DESTROYER, new Vec3(50.6, R, 24.5), 270.0F, 20.0F);
 		this.useHere("console");
 		this.converse();
 		this.waitStep("m5.escape", 300);
+		check(this.on(s -> session(s).figure("tech") != null), "the technician vanished when the download was done");
+		check(this.on(s -> StoryTesting.emergency(session(s))), "no emergency lights after the download");
+		boolean dimmed = false;
+
+		for (int i = 0; i < 20 && !dimmed; i++) {
+			context.waitTicks(3);
+			dimmed = context.computeOnClient(client -> {
+				float[] light = StoryClient.shipLight(StoryClient.state().destroyer(), 0.0F);
+				return light != null && light[6] < 0.8F && light[4] < 0.5F;
+			});
+		}
+
+		check(dimmed, "the ship is not drawn on emergency lights after the download");
+		context.takeScreenshot("story_emergency_lights");
+		this.restoreHere("m5.escape");
 
 		// --- Mission 5 -----------------------------------------------------------------------------
 		context.waitTicks(30);
@@ -321,7 +357,7 @@ public class StoryGameTest implements FabricClientGameTest {
 		this.waitDialog(60, "Hale's trap does not spring");
 		this.converse();
 		context.waitTicks(10);
-		check(this.on(s -> session(s).has("tmp.trapped")), "the trap did not put the player in the cell");
+		check(this.on(s -> session(s).has("m5.trapped")), "the trap did not put the player in the cell");
 		check(this.on(s -> s.getLevel(ShipInteriors.DIMENSION).getBlockState(session(s).destroyer.offset(31, H, DestroyerInterior.CELL_FRONT)).is(Blocks.BARRIER)),
 				"cell 2 has no force field");
 		// After the fade: looking out through the force field (the cells' fronts face south).
@@ -331,6 +367,7 @@ public class StoryGameTest implements FabricClientGameTest {
 		});
 		context.waitTicks(90);
 		context.takeScreenshot("story_cell");
+		this.cellAgainAndAgain();
 		this.droid(DroidType.MOUSE, s -> session(s).has("cell2.open"), "M-31 does not switch the force field off");
 		check(this.on(s -> s.getLevel(ShipInteriors.DIMENSION).getBlockState(session(s).destroyer.offset(31, H, DestroyerInterior.CELL_FRONT)).isAir()),
 				"cell 2's force field is still there");
@@ -361,7 +398,8 @@ public class StoryGameTest implements FabricClientGameTest {
 		}
 
 		check(this.on(s -> session(s).figure("kestrel").mode == Figure.ROUTINE
-				&& DestroyerInterior.HIDDEN.contains(session(s).figure("kestrel").position().add(0.0, 0.5, 0.0))), "Kestrel does not come back into the hideout");
+				&& DestroyerInterior.HIDDEN.contains(session(s).figure("kestrel").position().add(0.0, 0.5, 0.0))), "Kestrel does not come back into the hideout ("
+				+ this.on(s -> session(s).figure("kestrel").position() + " mode " + session(s).figure("kestrel").mode) + ")");
 		this.talkTo("kestrel", true);
 		this.converse("go");
 		check(this.lines.contains("m6_plan.pickup") && this.lines.contains("m6_plan.escort"), "the pickup or escort line of the plan was skipped");
@@ -449,7 +487,8 @@ public class StoryGameTest implements FabricClientGameTest {
 		this.converse("go");
 		this.waitStep("m3.console", 40);
 		this.use("security", H);
-		this.converse();
+		this.converse("unlock", "off");
+		check(!this.on(s -> session(s).has("qm.away")), "the quartermaster went although nobody paged him");
 		this.use("locker", H);
 		this.converse();
 		this.waitStep("m3.card", 40);
@@ -457,6 +496,13 @@ public class StoryGameTest implements FabricClientGameTest {
 		this.converse();
 		this.waitStep("m3.hale", 40);
 		this.waitDialog(400, "Hale does not come to speak (again)");
+		check(this.line().equals("m3_hale_qm.start"), "Hale does not send the quartermaster out first (" + this.line() + ")");
+		this.converse();
+		this.waitDialog(600, "Hale does not speak once the quartermaster is out");
+		check(this.line().equals("m3_hale.start"), "after the quartermaster Hale's talk is " + this.line());
+		this.alone("Hale's talk (the quartermaster sent out)");
+		BlockPos armoryDoor = new BlockPos(DestroyerInterior.CX + 4, H, -14);
+		check(this.on(s -> Story.locked(session(s).destroyer, armoryDoor.getX(), armoryDoor.getY(), armoryDoor.getZ())), "Hale does not bolt the armory's door");
 		this.converse("want", "refuse");
 		this.waitStep("m3.return", 400);
 		check(this.on(s -> session(s).has("choice.refuse_hale") && !session(s).has("trust.hale")), "refusing Hale is not remembered");
@@ -510,7 +556,8 @@ public class StoryGameTest implements FabricClientGameTest {
 		check(!this.on(s -> Story.locked(session(s).destroyer, hatch.getX(), hatch.getY(), hatch.getZ())), "the hatch stays bolted");
 		this.place(Story.DESTROYER, new Vec3(24.5, H, 5.0), 90.0F, 0.0F);
 		this.waitStep("m5.r2", 80);
-		check(this.on(s -> !session(s).has("tmp.trapped")), "the crawl way still led into Hale's trap");
+		check(this.on(s -> !session(s).has("m5.trapped")), "the crawl way still led into Hale's trap");
+		this.restoreHere("m5.r2 (the crawl way)");
 		this.talkTo("r2v7", false);
 		this.converse();
 		this.waitStep("m5.cell1", 40);
@@ -523,6 +570,93 @@ public class StoryGameTest implements FabricClientGameTest {
 		context.runOnClient(client -> StoryClient.send(StoryActionPayload.LEAVE, "", 0));
 		context.waitTicks(40);
 		check(!this.on(s -> Story.playing(me(s))), "still in the story after leaving (second time)");
+
+		// Phase 20: files as Phase 19 wrote them (only numbers) continue at the step they meant: at
+		// Kestrel's hatch (the guard to lure away first), and on the way to Hale's trap.
+		this.oldSave(0, 4, "m1.distract");
+		this.oldSave(4, 3, "m5.route");
+
+		// Phase 20: the film of the arrival skipped (the story goes on at once).
+		this.skipArrival();
+	}
+
+	/**
+	 * Phase 20: out of hyperspace, the film of the arrival at the Tenebris: the camera far off in
+	 * the film's shots, the HUD hidden, its own music; frames of it for a look; afterwards all as
+	 * before, at the ramp.
+	 */
+	private void arrival() {
+		for (int i = 0; i < 80 && !this.context.computeOnClient(client -> StoryCinema.active()); i++) {
+			this.context.waitTicks(5);
+		}
+
+		if (!this.context.computeOnClient(client -> StoryCinema.active())) {
+			this.problem("the film of the arrival does not start after the jump");
+			return;
+		}
+
+		double away = this.context.computeOnClient(client -> client.gameRenderer.mainCamera().position().distanceTo(client.player.position()));
+		check(away > 300.0, "the film's camera is not out in its scene (" + Math.round(away) + " blocks from the player)");
+		check(this.context.computeOnClient(client -> client.gui.hud.isHidden()), "the HUD is shown during the film");
+		this.checkMusic("music.flight_imperial", "the film of the arrival");
+		this.film("arrival", 72, 6);
+		check(this.context.computeOnClient(client -> ArrivalFilm.drawnForTest()) > 60, "the film's scene is not drawn");
+
+		for (int i = 0; i < 60 && this.context.computeOnClient(client -> StoryCinema.active()); i++) {
+			this.context.waitTicks(5);
+		}
+
+		check(!this.context.computeOnClient(client -> StoryCinema.active()), "the film does not end");
+		check(!this.context.computeOnClient(client -> client.gui.hud.isHidden()), "the HUD stays hidden after the film");
+		double back = this.context.computeOnClient(client -> client.gameRenderer.mainCamera().position().distanceTo(client.player.getEyePosition()));
+		check(back < 1.0, "the camera does not come back to the player after the film (" + back + ")");
+		int frames = this.context.computeOnClient(client -> ArrivalFilm.drawnForTest());
+		SaberCraft.LOGGER.info("STORY: the film of the arrival played ({} frames drawn)", frames);
+	}
+
+	/** Phase 20: the story begun again, the film of the arrival skipped with Space. */
+	private void skipArrival() {
+		this.context.runOnClient(client -> StoryClient.send(StoryActionPayload.RESTART, "", 0));
+		this.context.waitTicks(40);
+		this.waitStep("m1.briefing", 100);
+		this.talkTo("mira", true);
+		this.converse("ready");
+		this.waitStep("m1.cockpit", 40);
+		this.talkTo("dax", true);
+		this.converse("go");
+
+		for (int i = 0; i < 80 && !this.context.computeOnClient(client -> StoryCinema.active()); i++) {
+			this.context.waitTicks(5);
+		}
+
+		check(this.context.computeOnClient(client -> StoryCinema.active()), "the film does not start the second time");
+		this.context.waitTicks(30);
+		int skipped = this.context.computeOnClient(client -> StoryCinema.skippedForTest());
+		this.context.getInput().pressKey(GLFW.GLFW_KEY_SPACE);
+		this.context.waitTicks(10);
+		check(this.context.computeOnClient(client -> StoryCinema.skippedForTest()) == skipped + 1, "Space does not skip the film");
+		this.waitStep("m1.ramp", 40);
+		check(!this.context.computeOnClient(client -> client.gui.hud.isHidden()), "the HUD stays hidden after skipping the film");
+		this.converse();
+		this.context.runOnClient(client -> StoryClient.send(StoryActionPayload.LEAVE, "", 0));
+		this.context.waitTicks(40);
+		check(!this.on(s -> Story.playing(me(s))), "still in the story after leaving (after the film)");
+		SaberCraft.LOGGER.info("STORY: the film of the arrival skipped");
+	}
+
+	/** Phase 20: a saved file of Phase 19 (mission and step by number) continued, then left again. */
+	private void oldSave(int mission, int step, String expected) {
+		this.server.runOnServer(s -> StoryTesting.phase19File(s, this.self, mission, step));
+		this.context.runOnClient(client -> StoryClient.send(StoryActionPayload.CONTINUE, "", 0));
+		this.context.waitTicks(40);
+		this.waitStep(expected, 60);
+		Vec3 at = this.on(s -> session(s).local(Story.DESTROYER));
+		check(at != null && this.on(s -> free(s, Story.DESTROYER, at)), "a Phase 19 file at " + expected + " puts the player into a wall: " + at);
+		check(this.on(s -> session(s).progress.format == com.phiro.sabercraft.story.StoryProgress.FORMAT || !StoryTesting.kept(session(s)).isEmpty()),
+				"a Phase 19 file at " + expected + " is not read");
+		this.context.runOnClient(client -> StoryClient.send(StoryActionPayload.LEAVE, "", 0));
+		this.context.waitTicks(40);
+		check(!this.on(s -> Story.playing(me(s))), "still in the story after leaving (" + expected + ")");
 	}
 
 	// --- Parts tested on the way ---------------------------------------------------------------------
@@ -609,6 +743,199 @@ public class StoryGameTest implements FabricClientGameTest {
 		check(heard, "listening to the pilots does not give the password");
 	}
 
+	/**
+	 * Phase 20, Mission 1: the guard stands in front of Kestrel's hatch (it does not open for the
+	 * player then); M-31's noise a few metres beside him, where the player looks, sends him to see:
+	 * a mark shows where, the message says who went, and the hatch is free.
+	 */
+	private void lureGuard() {
+		BlockPos hatch = DestroyerInterior.MAINTENANCE_HATCH;
+
+		for (int i = 0; i < 40 && this.on(s -> {
+			Figure guard = session(s).figure("maint");
+			return guard == null || guard.position().distanceTo(new Vec3(10.5, H, -7.35)) > 0.6;
+		}); i++) {
+			this.context.waitTicks(5);
+		}
+
+		boolean guarded = this.on(s -> Story.hatchClosed(me(s), session(s).destroyer, hatch));
+		check(guarded, "Kestrel's hatch opens although the guard stands in front of it");
+		this.restoreHere("m1.distract");
+		Vec3 stand = new Vec3(3.5, H, -5.5);
+		Vec3 spot = new Vec3(7.5, H + 0.05, -3.5);
+		this.place(Story.DESTROYER, stand, aimYaw(stand.add(0.0, 1.62, 0.0), spot), aimPitch(stand.add(0.0, 1.62, 0.0), spot));
+		int before = this.context.computeOnClient(client -> client.player.tickCount);
+		this.droid(DroidType.MOUSE, s -> {
+			Figure guard = session(s).figure("maint");
+			return guard != null && (guard.mode == Figure.INVESTIGATE || guard.mode == Figure.LOOK) && !StoryTesting.step(session(s)).equals("m1.distract");
+		}, "M-31's noise does not lure the guard away from the hatch");
+		check(this.context.computeOnClient(client -> StoryClient.noiseShownForTest()), "no mark shows where M-31's noise went");
+		this.context.takeScreenshot("story_m1_lure");
+
+		// He walks over to the noise: a few steps, and the hatch is free.
+		for (int i = 0; i < 20 && this.on(s -> {
+			Figure guard = session(s).figure("maint");
+			return guard != null && guard.position().distanceTo(new Vec3(10.5, H, -8.0)) < 2.5;
+		}); i++) {
+			this.context.waitTicks(3);
+		}
+
+		check(!this.on(s -> Story.hatchClosed(me(s), session(s).destroyer, hatch)), "the hatch stays guarded after the guard went to see");
+		SaberCraft.LOGGER.info("STORY: the guard lured away after {} ticks", this.context.computeOnClient(client -> client.player.tickCount) - before);
+	}
+
+	/**
+	 * Phase 20, Mission 4: an officer on the reactor floor sees the player: no soldier, he runs to
+	 * the wall comm by the lift and calls it in; two troopers come down the lift and run round the
+	 * core to where the player is (on the far side); once it is calm they go back up the lift.
+	 */
+	private void callAndReinforce() {
+		this.place(Story.DESTROYER, new Vec3(50.6, R, 24.5), 270.0F, 0.0F);
+		String officer = this.on(s -> {
+			for (Figure figure : session(s).figures) {
+				if (figure.key.startsWith("crew:") && figure.y < H - 1 && !Story.soldierForTest(figure) && figure.observer) {
+					return figure.key;
+				}
+			}
+
+			return null;
+		});
+
+		if (officer == null) {
+			this.problem("nobody but soldiers on the reactor floor to call the alarm in");
+			return;
+		}
+
+		this.server.runOnServer(s -> StoryTesting.detect(session(s), session(s).figure(officer)));
+		check(this.on(s -> session(s).figure(officer).mode == Figure.CALL), officer + " does not run for a wall comm");
+		boolean called = false;
+
+		for (int i = 0; i < 60 && !called; i++) {
+			this.context.waitTicks(5);
+			called = this.on(s -> session(s).alarm > 0 && session(s).figures.stream().anyMatch(f -> f.key.startsWith("reinf.")));
+		}
+
+		check(called, officer + " does not raise the alarm at the wall comm (no troopers come)");
+		this.context.takeScreenshot("story_alarm_called");
+		// Round the core to the player (they cannot catch while the test keeps one unseen).
+		double nearest = 99.0;
+
+		for (int i = 0; i < 50 && nearest > 3.0; i++) {
+			this.context.waitTicks(5);
+			nearest = this.on(s -> {
+				Vec3 me = session(s).local(Story.DESTROYER);
+				return session(s).figures.stream().filter(f -> f.key.startsWith("reinf.")).mapToDouble(f -> f.position().distanceTo(me)).min().orElse(99.0);
+			});
+		}
+
+		check(nearest <= 3.0, String.format(Locale.ROOT, "the troopers called in do not find their way round the core to the player (nearest %.1f)", nearest));
+		this.server.runOnServer(s -> StoryTesting.endAlarm(session(s)));
+		boolean gone = false;
+
+		for (int i = 0; i < 100 && !gone; i++) {
+			this.context.waitTicks(5);
+			gone = this.on(s -> session(s).figures.stream().noneMatch(f -> f.key.startsWith("reinf.")));
+		}
+
+		check(gone, "the troopers called in do not go back once it is calm");
+		check(this.on(s -> session(s).has("wary.m4")), "the crew is not wary after the alarm");
+	}
+
+	/** Phase 20: in Hale's talk nobody else is in the armory (the quartermaster sent away). */
+	private void alone(String what) {
+		List<String> others = this.on(s -> {
+			List<String> list = new ArrayList<>();
+
+			for (Figure figure : session(s).figures) {
+				if (!figure.key.equals("hale") && Story.DESTROYER.equals(figure.ship) && DestroyerInterior.ARMORY.contains(figure.position().add(0.0, 0.5, 0.0))) {
+					list.add(figure.key);
+				}
+			}
+
+			return list;
+		});
+		check(others.isEmpty(), what + ": others in the armory: " + others);
+	}
+
+	/**
+	 * Phase 20: caught here (at once, as if a trooper had reached one): back at the last checkpoint
+	 * with exactly what it kept, at its place (free to stand, the hatches shut, the droids along),
+	 * and nobody sees one there in the first seconds (without the grace after a capture).
+	 */
+	private void restoreHere(String where) {
+		String kept = this.on(s -> StoryTesting.kept(session(s)));
+		Vec3 place = this.on(s -> StoryTesting.checkpointPlace(session(s)));
+		String ship = this.on(s -> StoryTesting.checkpointShip(session(s)));
+		int restores = this.on(s -> StoryTesting.restores(session(s)));
+		this.server.runOnServer(s -> StoryTesting.capture(session(s)));
+		this.context.waitTicks(10);
+		check(this.on(s -> StoryTesting.restores(session(s))) == restores + 1, where + ": a capture does not go back to the checkpoint");
+		String known = this.on(s -> StoryTesting.known(session(s)));
+		check(known.equals(kept), where + ": after the capture what is known is not what the checkpoint kept: " + known + " / " + kept);
+
+		if (place != null) {
+			Vec3 at = this.on(s -> session(s).local(ship));
+			check(at != null && at.distanceTo(place) < 1.2, where + ": after the capture not at the checkpoint's place " + place + " but " + at);
+			check(at != null && this.on(s -> free(s, ship, at) || me(s).getPose() == net.minecraft.world.entity.Pose.SWIMMING), where + ": the checkpoint's place is in a wall: " + at);
+		}
+
+		boolean droids = this.on(s -> {
+			for (DroidType type : Droids.crew(me(s))) {
+				var droid = Droids.droid(me(s), type);
+
+				if (droid == null || droid.distanceTo(me(s)) > 6.0) {
+					return false;
+				}
+			}
+
+			return true;
+		});
+		check(droids, where + ": the droids are not with the player after the capture");
+		this.server.runOnServer(s -> StoryTesting.unseen(session(s), 0));
+		int captures = this.on(s -> Story.capturesForTest());
+		float most = 0.0F;
+
+		for (int i = 0; i < 8; i++) {
+			this.context.waitTicks(5);
+			most = Math.max(most, this.on(s -> StoryTesting.suspicion(session(s))));
+		}
+
+		check(most < 0.3F && this.on(s -> Story.capturesForTest()) == captures, where + ": the checkpoint's place is not safe (suspicion " + most + ")");
+		this.unseen();
+		SaberCraft.LOGGER.info("STORY: checkpoint of {} restored ({})", where, kept);
+	}
+
+	/**
+	 * Phase 20: caught again and again out of Hale's cell: each time back in the cell (its field on),
+	 * M-31 outside by the bench (never in the cell), and the way out works every time.
+	 */
+	private void cellAgainAndAgain() {
+		for (int i = 0; i < 40 && this.on(s -> !StoryTesting.atCheckpoint(session(s)) || session(s).figure("hale") != null); i++) {
+			this.context.waitTicks(5);
+		}
+
+		check(this.on(s -> StoryTesting.atCheckpoint(session(s)) && session(s).progress.flags.contains("m5.trapped")), "no checkpoint in Hale's cell");
+
+		for (int round = 1; round <= 3; round++) {
+			int number = round;
+			this.droid(DroidType.MOUSE, s -> session(s).has("cell2.open"), "M-31 does not switch the force field off (round " + number + ")");
+			this.place(Story.DESTROYER, new Vec3(31.5, H, 4.4), 180.0F, 0.0F);
+			this.server.runOnServer(s -> StoryTesting.capture(session(s)));
+			this.context.waitTicks(30);
+			check(this.step().equals("m5.cell"), "caught out of the cell (round " + number + "), the step is " + this.step());
+			check(this.on(s -> session(s).has("m5.trapped") && !session(s).has("cell2.open")), "caught out of the cell (round " + number + "), the trap is not as it was");
+			check(this.on(s -> session(s).local(Story.DESTROYER).z < DestroyerInterior.CELL_FRONT), "caught out of the cell (round " + number + "), not back in the cell");
+			check(this.on(s -> s.getLevel(ShipInteriors.DIMENSION).getBlockState(session(s).destroyer.offset(31, H, DestroyerInterior.CELL_FRONT)).is(Blocks.BARRIER)),
+					"caught out of the cell (round " + number + "), its force field is off");
+			check(this.on(s -> {
+				var mouse = Droids.droid(me(s), DroidType.MOUSE);
+				return mouse != null && mouse.getZ() - session(s).destroyer.getZ() > DestroyerInterior.CELL_FRONT + 0.3;
+			}), "caught out of the cell (round " + number + "), M-31 is not outside");
+			check(this.on(s -> session(s).figure("hale") == null && session(s).figure("trap1") == null), "Hale's trap runs again after a capture (round " + number + ")");
+			this.unseen();
+		}
+	}
+
 	/** M-31's noise: someone near where the player looks goes to see (Mission 2, the lobby). */
 	private void distraction() {
 		Figure near = this.on(s -> {
@@ -652,6 +979,7 @@ public class StoryGameTest implements FabricClientGameTest {
 	 */
 	private void seenAndCaught() {
 		int before = this.on(s -> Story.capturesForTest());
+		int cornered = this.on(s -> Story.corneringsForTest());
 		Object[] spot = this.on(s -> {
 			StorySession session = session(s);
 
@@ -692,10 +1020,16 @@ public class StoryGameTest implements FabricClientGameTest {
 			caught = this.on(s -> Story.capturesForTest()) > before;
 		}
 
+		boolean handsUp = this.on(s -> Story.corneringsForTest()) > cornered;
+
 		check(caught, "the trooper " + key + " does not catch the player standing in front of him (stage " + stage + ")");
+		check(handsUp, "the trooper does not call out before the capture (Hands up!)");
 		this.context.waitTicks(20);
 		check(this.step().equals("m2.terminal"), "after the capture the step is " + this.step());
-		check(!this.on(s -> session(s).journal.contains("terminal_map")), "what was learnt after the checkpoint was kept after the capture");
+		// Phase 20: what was learnt in the hideout was kept there (a safe place), so it is still known.
+		check(this.on(s -> StoryTesting.known(session(s)).equals(StoryTesting.kept(session(s)))),
+				"after the capture what is known is not what the checkpoint kept: " + this.on(s -> StoryTesting.known(session(s)) + " / " + StoryTesting.kept(session(s))));
+		check(this.on(s -> session(s).journal.contains("terminal_map")), "the map read in the hideout was forgotten after the capture");
 		check(this.on(s -> session(s).inside(Story.DESTROYER, DestroyerInterior.HIDDEN)), "after the capture the player is not back at the checkpoint");
 		check(this.on(s -> session(s).alarm == 0), "the alarm stays after the capture");
 		this.unseen();
@@ -775,6 +1109,7 @@ public class StoryGameTest implements FabricClientGameTest {
 		this.context.waitTicks(40);
 		this.waitStep("m2.return", 60);
 		check(this.on(s -> session(s).flags.containsAll(flags)), "what was known is lost after continuing");
+		check(this.on(s -> session(s).has("item.stick")), "the data stick is lost after leaving and continuing");
 		check(this.on(s -> Droids.crew(me(s)).contains(DroidType.MOUSE)), "M-31 is not back after continuing");
 		this.unseen();
 	}

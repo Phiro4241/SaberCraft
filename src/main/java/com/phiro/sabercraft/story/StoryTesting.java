@@ -137,4 +137,103 @@ public final class StoryTesting {
 	public static @Nullable Figure fighter(StorySession s, Vec3 at) {
 		return Finale.nearestFighter(s, at);
 	}
+
+	// --- Phase 20: checkpoints ------------------------------------------------------------------------
+
+	/** Caught now (whatever the grace after the last capture): back to the last checkpoint. */
+	public static void capture(StorySession s) {
+		s.grace = 0;
+		Story.capture(s, null);
+	}
+
+	/** Whether everything a checkpoint keeps (step, flags, journal) is as the last one kept it. */
+	public static boolean atCheckpoint(StorySession s) {
+		return !s.unsaved();
+	}
+
+	/** How many checkpoints this session made, and how often it went back to one. */
+	public static int checkpoints(StorySession s) {
+		return s.checkpoints;
+	}
+
+	public static int restores(StorySession s) {
+		return s.restores;
+	}
+
+	/** What the last checkpoint kept: the step's id, the flags, the journal. */
+	public static String kept(StorySession s) {
+		return s.progress.stepId + " " + new java.util.TreeSet<>(s.progress.flags) + " " + s.progress.journal;
+	}
+
+	/** What the session knows now, as {@link #kept} (temporary flags left out). */
+	public static String known(StorySession s) {
+		java.util.TreeSet<String> flags = new java.util.TreeSet<>();
+
+		for (String flag : s.flags) {
+			if (!flag.startsWith("tmp.")) {
+				flags.add(flag);
+			}
+		}
+
+		return s.step().id() + " " + flags + " " + s.journal;
+	}
+
+	/** The last checkpoint's place (plot space) and ship, or null when it has none. */
+	public static @Nullable Vec3 checkpointPlace(StorySession s) {
+		return s.progress.placeShip.isEmpty() ? null : new Vec3(s.progress.placeX, s.progress.placeY, s.progress.placeZ);
+	}
+
+	public static String checkpointShip(StorySession s) {
+		return s.progress.placeShip;
+	}
+
+	/** Phase 20: that one has seen enough of the player (as if the suspicion had filled): what they do then. */
+	public static void detect(StorySession s, Figure figure) {
+		figure.suspicion = 1.0F;
+		figure.stage = Figure.DETECTED;
+		figure.seenAt = s.local(figure.ship);
+		figure.lastSeen = s.time();
+		Story.detected(s, figure);
+	}
+
+	/** Phase 20: the alarm ends in a moment (as after the search). */
+	public static void endAlarm(StorySession s) {
+		if (s.alarm > 2) {
+			s.alarm = 2;
+		}
+	}
+
+	/** Phase 20: whether a chaser has reached the player now ("Hands up!", the capture a moment later). */
+	public static boolean cornered(StorySession s) {
+		return s.cornered > 0;
+	}
+
+	/** Phase 20: the way a figure follows now (plot space). */
+	public static List<Vec3> path(Figure figure) {
+		return List.copyOf(figure.path);
+	}
+
+	/** Phase 20: whether the ship is on its emergency lights now. */
+	public static boolean emergency(StorySession s) {
+		return s.chapter.emergency(s);
+	}
+
+	/** How suspicious the most suspicious one is now (0..1). */
+	public static float suspicion(StorySession s) {
+		return s.suspicion;
+	}
+
+	/**
+	 * Makes the player's saved file look as Phase 19 wrote it: only the numbers of the mission and
+	 * the step (no step id, no place), the old format. The player must be out of the story.
+	 */
+	public static void phase19File(net.minecraft.server.MinecraftServer server, java.util.UUID player, int mission, int step) {
+		StoryProgress progress = StoryStore.load(server, player);
+		progress.format = 1;
+		progress.mission = mission;
+		progress.step = step;
+		progress.stepId = "";
+		progress.placeShip = "";
+		StoryStore.save(server, player, progress);
+	}
 }

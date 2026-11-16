@@ -171,6 +171,29 @@ public final class InteriorClient {
 	}
 
 	private static int talked;
+	private static int hatches;
+
+	/**
+	 * Phase 20: the use key on an open hatch of a crawl way (nothing solid nearer): asks the server
+	 * to shut it. Returns whether it did (the key then does nothing else).
+	 */
+	public static boolean hatch(Minecraft client) {
+		if (client.player == null || client.level == null || client.gui.screen() != null || client.player.isSpectator()
+				|| !ShipInteriors.isInterior(client.level) || !ClientPlayNetworking.canSend(InteriorActionPayload.TYPE)
+				|| com.phiro.sabercraft.interior.Vents.looked(client.player) == null) {
+			return false;
+		}
+
+		ClientPlayNetworking.send(new InteriorActionPayload(InteriorActionPayload.HATCH));
+		client.player.swing(net.minecraft.world.InteractionHand.MAIN_HAND);
+		hatches++;
+		return true;
+	}
+
+	/** For tests: how often the use key shut a hatch. */
+	public static int hatchesForTest() {
+		return hatches;
+	}
 
 	/** For tests: how often the use key spoke to the crew. */
 	public static int talkedForTest() {

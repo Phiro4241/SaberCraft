@@ -6,6 +6,7 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 import org.spongepowered.asm.mixin.injection.ModifyVariable;
 
 import net.minecraft.server.level.ServerLevel;
@@ -16,6 +17,7 @@ import net.minecraft.world.entity.animal.pig.Pig;
 import net.minecraft.world.item.ItemStack;
 
 import com.phiro.sabercraft.ability.SaberAbilities;
+import com.phiro.sabercraft.droid.DroidMarker;
 
 /**
  * Lets the saber stance block hits like a shield. Vanilla already handles blocked damage in
@@ -26,6 +28,9 @@ import com.phiro.sabercraft.ability.SaberAbilities;
  * {@code HiltTraits}.
  *
  * <p>Phase 11: droids are pigs with a marked head item; when it arrives they take their size.
+ *
+ * <p>Phase 20: droids and players no longer push each other (on both sides): in a crawl way one
+ * crawls past a droid instead of shoving it ahead, and a droid never nudges its owner aside.
  */
 @Mixin(LivingEntity.class)
 abstract class LivingEntityMixin {
@@ -45,6 +50,22 @@ abstract class LivingEntityMixin {
 	private void sabercraft$droidResize(EquipmentSlot slot, ItemStack stack, CallbackInfo info) {
 		if (slot == EquipmentSlot.HEAD && (Object) this instanceof Pig pig) {
 			pig.refreshDimensions();
+		}
+	}
+
+	/** Phase 20: nobody pushes a droid. */
+	@Inject(method = "isPushable", at = @At("HEAD"), cancellable = true)
+	private void sabercraft$droidStays(CallbackInfoReturnable<Boolean> info) {
+		if ((Object) this instanceof Pig pig && DroidMarker.of(pig) != null) {
+			info.setReturnValue(false);
+		}
+	}
+
+	/** Phase 20: a droid pushes nobody. */
+	@Inject(method = "pushEntities", at = @At("HEAD"), cancellable = true)
+	private void sabercraft$droidPushesNobody(CallbackInfo info) {
+		if ((Object) this instanceof Pig pig && DroidMarker.of(pig) != null) {
+			info.cancel();
 		}
 	}
 }

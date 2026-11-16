@@ -47,6 +47,11 @@ public final class StoryClient {
 	static final byte CUE_SCAN = 5;
 	static final byte CUE_TITLE = 6;
 	static final byte CUE_END = 7;
+	// Phase 20: where a droid's noise went, a checkpoint saved, a scene played.
+	static final byte CUE_NOISE = 8;
+	static final byte CUE_CINEMA = 9;
+	static final byte CUE_CHECKPOINT = 10;
+	static final int CHECKPOINT_TICKS = 60;
 
 	/** How long a comlink line stays (ticks) per character, at least, at most. */
 	static final int RADIO_PER_CHAR = 1;
@@ -87,6 +92,13 @@ public final class StoryClient {
 	private static List<Vec3> scan = List.of();
 	private static int scanTicks;
 	private static int scanAge;
+	/** Phase 20: where M-31's noise went (a ring there for a moment), and the checkpoint's notice. */
+	private static List<Vec3> noise = List.of();
+	private static int noiseTicks;
+	private static int noiseAge;
+	private static int checkpointAge = -1;
+	/** Phase 20: how often M-31 made his noise in this game (the tip near guards goes after a few). */
+	private static int noisesMade;
 	private static @Nullable String music;
 	private static boolean ended;
 	private static int endAge;
@@ -101,6 +113,7 @@ public final class StoryClient {
 		ClientPlayNetworking.registerGlobalReceiver(StoryDialogPayload.TYPE, (payload, context) -> dialog(context.client(), payload));
 		ClientPlayNetworking.registerGlobalReceiver(StoryCuePayload.TYPE, (payload, context) -> cue(context.client(), payload));
 		ClientTickEvents.END_CLIENT_TICK.register(StoryClient::tick);
+		StoryCinema.init();
 		ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> reset());
 		HudElementRegistry.addLast(SaberCraft.id("story"), new StoryHud());
 	}
@@ -118,6 +131,9 @@ public final class StoryClient {
 		fadeTicks = 0;
 		title = null;
 		scan = List.of();
+		noise = List.of();
+		noiseTicks = 0;
+		checkpointAge = -1;
 		music = null;
 		ended = false;
 	}
@@ -210,6 +226,14 @@ public final class StoryClient {
 				title = payload.text();
 				titleAge = 0;
 			}
+			case CUE_NOISE -> {
+				noise = List.copyOf(payload.points());
+				noiseTicks = Math.max(20, payload.value());
+				noiseAge = 0;
+				noisesMade++;
+			}
+			case CUE_CHECKPOINT -> checkpointAge = 0;
+			case CUE_CINEMA -> StoryCinema.start(client, payload.who(), payload.value());
 			case CUE_END -> {
 				ended = true;
 				endAge = 0;
@@ -279,6 +303,15 @@ public final class StoryClient {
 			scan = List.of();
 		}
 
+		if (noiseTicks > 0 && ++noiseAge > noiseTicks) {
+			noiseTicks = 0;
+			noise = List.of();
+		}
+
+		if (checkpointAge >= 0 && ++checkpointAge > CHECKPOINT_TICKS) {
+			checkpointAge = -1;
+		}
+
 		if (ended) {
 			endAge++;
 		}
@@ -301,6 +334,59 @@ public final class StoryClient {
 	public static boolean storyPlot(BlockPos origin) {
 		StoryStatePayload s = state;
 		return s != null && s.active() && (origin.equals(s.falcon()) || origin.equals(s.destroyer()));
+	}
+
+	/** Phase 20: whether the crew of the mission now is wary (after an alarm, until the mission ends). */
+	static boolean wary() {
+		StoryStatePayload s = state;
+		return s != null && s.active() && s.known().contains("wary.m" + (s.mission() + 1));
+	}
+
+	/**
+	 * Phase 20: how a story's ship is lit now, for its rooms: null as always; else the factors for
+	 * the surfaces lit by the world (red, green, blue) and for the glowing ones (lamps, screens),
+	 * then how bright the surfaces are. The emergency lights (from the copy until the saber): dim
+	 * and warm, the lamps red. The alarm: the lamps pulse red while they are after the player
+	 * (slower and paler while they search).
+	 */
+	public static float @Nullable [] shipLight(BlockPos origin, float seconds) {
+		StoryStatePayload s = state;
+
+		if (s == null || !s.active() || !origin.equals(s.destroyer())) {
+			return null;
+		}
+
+		boolean emergency = s.mission() >= 4 && s.known().contains("know.download") && !s.known().contains("saber.taken");
+		int alarm = s.alarm();
+
+		if (!emergency && alarm < 2) {
+			return null;
+		}
+
+		float[] light = {1.0F, 1.0F, 1.0F, 1.0F, 1.0F, 1.0F, 1.0F};
+
+		if (emergency) {
+			light[0] = 1.0F;
+			light[1] = 0.66F;
+			light[2] = 0.5F;
+			light[3] = 1.0F;
+			light[4] = 0.34F;
+			light[5] = 0.28F;
+			light[6] = 0.5F;
+		}
+
+		if (alarm >= 2) {
+			float speed = alarm >= 3 ? 1.1F : 0.45F;
+			float pulse = 0.5F + 0.5F * Mth.sin(seconds * speed * Mth.TWO_PI);
+			float depth = alarm >= 3 ? 0.55F : 0.3F;
+			light[1] *= 1.0F - depth * pulse * 0.6F;
+			light[2] *= 1.0F - depth * pulse * 0.7F;
+			light[4] *= 1.0F - depth * pulse;
+			light[5] *= 1.0F - depth * pulse;
+			light[3] = Math.min(1.25F, light[3] * (1.0F + 0.25F * pulse));
+		}
+
+		return light;
 	}
 
 	/** Whether a flag (what is known, done, decided) is set. */
@@ -456,6 +542,33 @@ public final class StoryClient {
 
 	static float scanLeft() {
 		return scanTicks <= 0 ? 0.0F : 1.0F - scanAge / (float) scanTicks;
+	}
+
+	static List<Vec3> noise() {
+		return noise;
+	}
+
+	/** How far the noise's ring has gone (0 at the start, 1 at the end; 0 when there is none). */
+	static float noiseAge() {
+		return noiseTicks <= 0 ? 0.0F : noiseAge / (float) noiseTicks;
+	}
+
+	static int noisesMade() {
+		return noisesMade;
+	}
+
+	/** Ticks since a checkpoint was saved, or -1. */
+	static int checkpointAge() {
+		return checkpointAge;
+	}
+
+	/** For the tests: whether a noise mark or the checkpoint's notice shows now. */
+	public static boolean noiseShownForTest() {
+		return noiseTicks > 0 && !noise.isEmpty();
+	}
+
+	public static boolean checkpointShownForTest() {
+		return checkpointAge >= 0;
 	}
 
 	public static @Nullable String music() {

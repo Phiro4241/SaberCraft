@@ -151,6 +151,61 @@ public final class Droids {
 		sendStatus(player);
 	}
 
+	/**
+	 * Phase 20: the droid of that kind comes to the player at once and follows (a story's
+	 * checkpoint): next to them if there is room, otherwise right where they are (droids push
+	 * nobody, so in a crawl way it simply waits under the player).
+	 */
+	public static void bring(ServerPlayer player, DroidType type) {
+		DroidEntity droid = droid(player, type);
+
+		if (droid == null || droid.level() != player.level()) {
+			if (droid != null) {
+				droid.discard();
+			}
+
+			droid = spawn(player, type, true);
+
+			if (droid == null) {
+				return;
+			}
+		}
+
+		droid.setStaying(false);
+
+		if (!droid.teleportToOwner()) {
+			droid.snapTo(player.getX(), player.getY(), player.getZ(), player.getYRot() + 180.0F, 0.0F);
+			droid.getNavigation().stop();
+		}
+
+		droid.setDeltaMovement(net.minecraft.world.phys.Vec3.ZERO);
+		sendStatus(player);
+	}
+
+	/** Phase 20: puts the droid of that kind at a place (world space), waiting there or following. */
+	public static void place(ServerPlayer player, DroidType type, net.minecraft.world.phys.Vec3 at, float yaw, boolean stay) {
+		DroidEntity droid = droid(player, type);
+
+		if (droid == null || droid.level() != player.level()) {
+			if (droid != null) {
+				droid.discard();
+			}
+
+			droid = spawn(player, type, true);
+
+			if (droid == null) {
+				return;
+			}
+		}
+
+		droid.snapTo(at.x, at.y, at.z, yaw, 0.0F);
+		droid.setYHeadRot(yaw);
+		droid.setYBodyRot(yaw);
+		droid.setDeltaMovement(net.minecraft.world.phys.Vec3.ZERO);
+		droid.setStaying(stay);
+		sendStatus(player);
+	}
+
 	/** The droid of that kind of the player, if it is in the world now. */
 	public static @Nullable DroidEntity droid(ServerPlayer player, DroidType type) {
 		EnumMap<DroidType, DroidEntity> live = LIVE.get(player.getUUID());

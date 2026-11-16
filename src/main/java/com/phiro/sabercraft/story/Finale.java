@@ -278,7 +278,7 @@ final class Finale {
 		s.fighting = true;
 		s.set("tmp.duel");
 		s.timer("push", PUSH_EVERY);
-		Chapter1.music(s, s.progress.mission, s.step().id());
+		Chapter1.music(s, s.mission, s.step().id());
 		Story.cue(s, Story.CUE_SOUND, "", "saber.ignite", shadow.id);
 		s.dirty = true;
 	}

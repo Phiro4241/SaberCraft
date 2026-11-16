@@ -26,6 +26,8 @@ public record StoryActionPayload(byte action, String text, int value) implements
 	public static final byte STRIKE = 7;
 	/** Asks for the state (the menu opened). */
 	public static final byte STATE = 8;
+	/** Phase 20: the player skipped a film (its name in the text). */
+	public static final byte SKIP = 9;
 	public static final CustomPacketPayload.Type<StoryActionPayload> TYPE = new CustomPacketPayload.Type<>(SaberCraft.id("story_action"));
 	public static final StreamCodec<FriendlyByteBuf, StoryActionPayload> CODEC = CustomPacketPayload.codec(StoryActionPayload::write, StoryActionPayload::new);
 

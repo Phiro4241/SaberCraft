@@ -42,6 +42,7 @@
 			"com.phiro.sabercraft.gametest.Phase17GameTest",
 			"com.phiro.sabercraft.gametest.Phase18GameTest",
 			"com.phiro.sabercraft.gametest.Phase19GameTest",
+			"com.phiro.sabercraft.gametest.Phase20GameTest",
 			"com.phiro.sabercraft.gametest.StoryGameTest"
 		]
 	},
