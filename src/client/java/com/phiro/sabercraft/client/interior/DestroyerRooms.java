@@ -278,19 +278,21 @@ final class DestroyerRooms {
 		float wx1 = BRIDGE_X1;
 		float wy0 = PIT + 1;
 		float wy1 = BRIDGE_TOP - 1;
-		float wz = WINDOW_Z + 0.5F;
+		// Phase 19: the glass right where one is stopped (it was half a block behind the barrier
+		// that stops you: one stood before an invisible wall in front of the window).
+		float wz = WINDOW_Z + 0.97F;
 		// The glass, and the frames inside matching the mullions outside.
 		b.layer(Layer.GLASS).worldLight().colourAlpha(0x38C0D0FF).fit(InteriorAtlas.IMP_GLASS).twoSided(true);
 		b.rect(wx0, wy1, wz, wx1 - wx0, 0, 0, 0, wy0 - wy1, 0);
 		b.twoSided(false).white().layer(Layer.SOLID).tile(InteriorAtlas.IMP_METAL, 1.0F);
 
 		for (float x = wx0; x <= wx1 + 0.01F; x += (wx1 - wx0) / 9.0F) {
-			b.box(x - 0.22F, wy0, wz - 0.1F, x + 0.22F, wy1, WINDOW_Z + 1.0F + 0.15F, MeshBuilder.ALL & ~MeshBuilder.NORTH & ~MeshBuilder.DOWN & ~MeshBuilder.UP);
+			b.box(x - 0.22F, wy0, WINDOW_Z + 0.4F, x + 0.22F, wy1, WINDOW_Z + 1.0F + 0.05F, MeshBuilder.ALL & ~MeshBuilder.NORTH & ~MeshBuilder.DOWN & ~MeshBuilder.UP);
 		}
 
 		// The bars across sit a little behind the mullions' faces, so the two never share a plane.
 		for (float y : new float[] {wy0 + 4.0F, wy0 + 9.0F}) {
-			b.box(wx0, y - 0.15F, wz - 0.08F, wx1, y + 0.15F, WINDOW_Z + 1.0F + 0.12F, MeshBuilder.UP | MeshBuilder.DOWN | MeshBuilder.SOUTH);
+			b.box(wx0, y - 0.15F, WINDOW_Z + 0.42F, wx1, y + 0.15F, WINDOW_Z + 1.0F + 0.03F, MeshBuilder.UP | MeshBuilder.DOWN | MeshBuilder.SOUTH);
 		}
 
 		b.box(wx0, wy1 - 0.3F, wz - 0.1F, wx1, wy1, WINDOW_Z + 1.25F, MeshBuilder.DOWN | MeshBuilder.SOUTH);
@@ -448,12 +450,12 @@ final class DestroyerRooms {
 		int tx = (SIDE_WEST + CX - 4) / 2;
 		float x0 = tx - 6 + 0.05F;
 		float x1 = tx + 7 - 0.05F;
-		float z0 = 106.05F;
-		float z1 = 108.95F;
+		float z0 = (float) DestroyerInterior.TABLE_Z0;
+		float z1 = (float) DestroyerInterior.TABLE_Z1;
 		float r = (z1 - z0) / 2;
 		float[] outline = stadium(x0, z0, x1, z1, 8);
 		b.tile(InteriorAtlas.IMP_BLACK, 2.0F);
-		b.prism(outline, DECK + 1.72F, DECK + 1.92F, true, true);
+		b.prism(outline, DECK + 1.72F, DECK + 1.0F + (float) DestroyerInterior.TABLE_TOP, true, true);
 		b.tile(InteriorAtlas.IMP_METAL, 1.0F);
 		b.prism(stadium(x0 + 1.6F, z0 + 0.8F, x1 - 1.6F, z1 - 0.8F, 6), DECK + 1.0F, DECK + 1.72F, false, false);
 		b.layer(Layer.GLOW).fullBright().colour(0xFF5070A0);
@@ -953,6 +955,22 @@ final class DestroyerRooms {
 	// --- The reactor ---------------------------------------------------------------------------
 
 
+	/** Phase 19: whether a cell (plot space) is crossed by the reactor shaft's round wall. */
+	static boolean reactorWallCell(int x, int y, int z) {
+		double far = 0.0;
+		double near = Double.MAX_VALUE;
+
+		for (int i = 0; i < 2; i++) {
+			for (int j = 0; j < 2; j++) {
+				double d = Math.hypot(x + i - REACTOR_X, z + j - REACTOR_Z);
+				far = Math.max(far, d);
+				near = Math.min(near, d);
+			}
+		}
+
+		return y >= REACTOR_BOTTOM && y < REACTOR_TOP && far > REACTOR_WALL && near < REACTOR_WALL + 1.0;
+	}
+
 	private static void reactor(MeshBuilder b) {
 		float cx = (float) REACTOR_X;
 		float cz = (float) REACTOR_Z;
@@ -965,8 +983,10 @@ final class DestroyerRooms {
 		// Phase 16: open exactly between the gallery's sides, the gallery lined through the wall.
 		RoundWalls.wall(b, cx, cz, r, (int) bottom, (int) top, true, 0.0F, 360.0F, 48, List.of(DestroyerInterior.GALLERY),
 				(pen, row, index) -> pen.tile(InteriorAtlas.IMP_WALL_TALL, 2.0F));
-		RoundWalls.linings(b, List.of(DestroyerInterior.GALLERY), DestroyerInterior::openReactor, () -> b.tile(InteriorAtlas.IMP_METAL, 1.0F),
-				() -> b.tile(InteriorAtlas.IMP_METAL, 1.0F));
+		// Phase 19: the gallery's sides go on into the wall's cells, up to the curve (by its east side
+		// the curve passes just beyond the doorway's cells: one looked into the wall there).
+		RoundWalls.linings(b, List.of(DestroyerInterior.GALLERY), DestroyerInterior::openReactor, DestroyerRooms::reactorWallCell, (door, x, z) -> true,
+				() -> b.tile(InteriorAtlas.IMP_METAL, 1.0F), () -> b.tile(InteriorAtlas.IMP_METAL, 1.0F));
 		b.tile(InteriorAtlas.IMP_WALL_TALL, 2.0F);
 
 		// Ribs and conduits up the wall.

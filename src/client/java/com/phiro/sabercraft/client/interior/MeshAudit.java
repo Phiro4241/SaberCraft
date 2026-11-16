@@ -165,6 +165,137 @@ public final class MeshAudit {
 		return out;
 	}
 
+	/** Phase 19: a surface of the model near a point: which point, how far, which way it faces, its bounds, where it was made. */
+	public record Near(int point, Layer layer, float distance, Vector3f normal, Vector3f min, Vector3f max, boolean front, String from) {
+		/** Whether the surface lies flat (floor or ceiling) and right over or under the point. */
+		public boolean across(Vector3f eye) {
+			return Math.abs(this.normal.y) > 0.9F && eye.x > this.min.x && eye.x < this.max.x && eye.z > this.min.z && eye.z < this.max.z;
+		}
+
+		@Override
+		public String toString() {
+			return "point#" + this.point + " " + this.layer + (this.front ? "" : " (behind)") + String.format(java.util.Locale.ROOT, " d=%.3f", this.distance)
+					+ " n=" + fmt(this.normal) + " " + sizeOf(new Vector3f[] {this.min, this.max}) + " from" + this.from;
+		}
+	}
+
+	/**
+	 * Phase 19: what of the model lies closer than {@code radius} to any of the points (the eye on a
+	 * way through the ship: a surface right in front of the camera, or cut by its near plane, looks
+	 * as if one stood inside a model), nearest first per point; {@code behindToo} counts the side
+	 * behind a one-sided quad as well (that side is not drawn).
+	 */
+	public static List<Near> near(String plan, List<Vector3f> points, float radius, boolean behindToo) {
+		InteriorVisuals visuals = InteriorScene.visuals(plan);
+		List<Near> found = new ArrayList<>();
+		MeshBuilder builder = new MeshBuilder((layer, xyzuv, nx, ny, nz, colours, lightMode, fixedLight, anim, samples) -> {
+			Vector3f[] p = new Vector3f[4];
+			Vector3f min = new Vector3f(Float.MAX_VALUE);
+			Vector3f max = new Vector3f(-Float.MAX_VALUE);
+
+			for (int v = 0; v < 4; v++) {
+				p[v] = new Vector3f(xyzuv[v * 5], xyzuv[v * 5 + 1], xyzuv[v * 5 + 2]);
+				min.min(p[v]);
+				max.max(p[v]);
+			}
+
+			Vector3f n = new Vector3f(nx, ny, nz);
+
+			for (int i = 0; i < points.size(); i++) {
+				Vector3f eye = points.get(i);
+				float d1 = distance(eye, p[0], p[1], p[2]);
+				float d2 = distance(eye, p[0], p[2], p[3]);
+				// A degenerate half (a quad that is a triangle) has no distance.
+				float d = Math.min(Float.isNaN(d1) ? Float.MAX_VALUE : d1, Float.isNaN(d2) ? Float.MAX_VALUE : d2);
+
+				if (d >= radius) {
+					continue;
+				}
+
+				// Only the front of a one-sided quad is drawn: seen from behind it is not there.
+				boolean front = n.dot(new Vector3f(eye).sub(p[0])) > 0.0F;
+
+				if (!front && !behindToo) {
+					continue;
+				}
+
+				StringBuilder from = new StringBuilder();
+
+				for (StackTraceElement e : Thread.currentThread().getStackTrace()) {
+					String cls = e.getClassName();
+
+					if (cls.startsWith("com.phiro.sabercraft.client.interior.") && !cls.endsWith("MeshBuilder") && !cls.endsWith("MeshAudit")) {
+						from.append(' ').append(cls.substring(cls.lastIndexOf('.') + 1)).append(':').append(e.getLineNumber());
+
+						if (from.length() > 80) {
+							break;
+						}
+					}
+				}
+
+				found.add(new Near(i, layer, d, n, min, max, front, from.toString()));
+			}
+		});
+		visuals.build(builder);
+		found.sort(java.util.Comparator.comparingInt(Near::point).thenComparingDouble(Near::distance));
+		return found;
+	}
+
+	/** Distance from a point to a triangle (closest point on the triangle, after Ericson). */
+	static float distance(Vector3f p, Vector3f a, Vector3f b, Vector3f c) {
+		Vector3f ab = new Vector3f(b).sub(a);
+		Vector3f ac = new Vector3f(c).sub(a);
+		Vector3f ap = new Vector3f(p).sub(a);
+		float d1 = ab.dot(ap);
+		float d2 = ac.dot(ap);
+
+		if (d1 <= 0 && d2 <= 0) {
+			return p.distance(a);
+		}
+
+		Vector3f bp = new Vector3f(p).sub(b);
+		float d3 = ab.dot(bp);
+		float d4 = ac.dot(bp);
+
+		if (d3 >= 0 && d4 <= d3) {
+			return p.distance(b);
+		}
+
+		float vc = d1 * d4 - d3 * d2;
+
+		if (vc <= 0 && d1 >= 0 && d3 <= 0) {
+			float v = d1 / (d1 - d3);
+			return p.distance(new Vector3f(a).add(new Vector3f(ab).mul(v)));
+		}
+
+		Vector3f cp = new Vector3f(p).sub(c);
+		float d5 = ab.dot(cp);
+		float d6 = ac.dot(cp);
+
+		if (d6 >= 0 && d5 <= d6) {
+			return p.distance(c);
+		}
+
+		float vb = d5 * d2 - d1 * d6;
+
+		if (vb <= 0 && d2 >= 0 && d6 <= 0) {
+			float w = d2 / (d2 - d6);
+			return p.distance(new Vector3f(a).add(new Vector3f(ac).mul(w)));
+		}
+
+		float va = d3 * d6 - d5 * d4;
+
+		if (va <= 0 && d4 - d3 >= 0 && d5 - d6 >= 0) {
+			float w = (d4 - d3) / (d4 - d3 + (d5 - d6));
+			return p.distance(new Vector3f(b).add(new Vector3f(c).sub(b).mul(w)));
+		}
+
+		float denom = 1.0F / (va + vb + vc);
+		float v = vb * denom;
+		float w = vc * denom;
+		return p.distance(new Vector3f(a).add(new Vector3f(ab).mul(v)).add(new Vector3f(ac).mul(w)));
+	}
+
 	/**
 	 * Phase 16: finds block faces that can be seen from a room but are not covered by the model:
 	 * raw blocks showing through, missing panels, one-sided faces seen from behind. From a few

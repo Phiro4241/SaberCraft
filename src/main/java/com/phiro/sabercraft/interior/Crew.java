@@ -56,7 +56,7 @@ public record Crew(String kind, String pose, double x, double y, double z, float
 		return new Crew(this.kind, this.pose, this.x, this.y, this.z, this.yaw, this.path, this.speed, this.phase, role);
 	}
 
-	/** Whether this one stays in its place (and collides there). */
+	/** Whether this one stays in its place (Phase 19: nobody of the crew collides any more). */
 	public boolean still() {
 		return this.path.isEmpty() && !SIT.equals(this.pose);
 	}
@@ -131,47 +131,6 @@ public record Crew(String kind, String pose, double x, double y, double z, float
 		}
 
 		return new double[] {path.get(0).x, path.get(0).y, path.get(0).z, 0.0};
-	}
-
-	/**
-	 * Phase 17: those of a crew who stay in their place collide there (two rows; a third row for the
-	 * tall). Phase 18: as wide as they are drawn with their arms (one walked into their shoulders
-	 * before), across the cells it reaches, and only colliding: a click there is meant for them.
-	 */
-	public static void collide(InteriorBuilder b, List<Crew> crew) {
-		for (Crew one : crew) {
-			if (!one.still()) {
-				continue;
-			}
-
-			// The hands reach a little in front (at work) or further (talking with gestures).
-			double r = WOOKIEE.equals(one.kind()) ? 0.62 : TALK.equals(one.pose()) ? 0.55 : 0.46;
-			int y = (int) Math.floor(one.y());
-			// Phase 18: a little over the head (nobody can stand on someone's head: from a chair one
-			// jumped onto it and on from there to the tops of consoles).
-			double tall = one.height() + 0.6;
-			int rows = (int) Math.ceil(tall);
-
-			for (int x = (int) Math.floor(one.x() - r); x <= (int) Math.floor(one.x() + r); x++) {
-				for (int z = (int) Math.floor(one.z() - r); z <= (int) Math.floor(one.z() + r); z++) {
-					double x0 = Math.max(0.0, one.x() - r - x);
-					double x1 = Math.min(1.0, one.x() + r - x);
-					double z0 = Math.max(0.0, one.z() - r - z);
-					double z1 = Math.min(1.0, one.z() + r - z);
-
-					if (x1 - x0 < 0.01 || z1 - z0 < 0.01) {
-						continue;
-					}
-
-					for (int row = 0; row < rows; row++) {
-						if (b.get(x, y + row, z).isAir()) {
-							double top = row < rows - 1 ? 1.0 : tall - (rows - 1);
-							b.ghost(x, y + row, z, net.minecraft.world.phys.shapes.Shapes.box(x0, 0.0, z0, x1, Math.max(0.1, top), z1));
-						}
-					}
-				}
-			}
-		}
 	}
 
 	/** Minecraft's yaw for walking from a to c (0 = south, 90 = west). */

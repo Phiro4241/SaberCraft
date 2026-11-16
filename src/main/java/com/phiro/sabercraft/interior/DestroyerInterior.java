@@ -52,7 +52,10 @@ public final class DestroyerInterior extends InteriorPlan {
 		int z1 = (int) (REACTOR_Z + REACTOR_R);
 
 		for (int y = REACTOR_BOTTOM; y < HANGAR; y++) {
-			b.solid(x0, z0, x1, z1, y, DestroyerInterior::converterAt, 1.0, java.util.Set.of());
+			// Phase 19: the converters collide as drawn: the wide base and collar, the slimmer body
+			// (it collided a quarter block round the body before).
+			int level = y;
+			b.spans(x0, z0, x1, z1, y, (x, z) -> converterSpan(x, z, level), java.util.Set.of());
 			// The core's base collides as drawn, a cone (it stood in steps of a block before: one
 			// climbed them and stood in the air beside the drawn cone).
 			int row = y - REACTOR_BOTTOM;
@@ -70,7 +73,7 @@ public final class DestroyerInterior extends InteriorPlan {
 
 		for (BlockPos console : REACTOR_CONSOLES) {
 			b.shaped(console.getX(), console.getY(), console.getZ(), net.minecraft.world.phys.shapes.Shapes.box(0.0, 0.0, 0.0, 1.0, 1.0, 1.0), false);
-			// Nobody climbs onto a console (one stood in its screen).
+			// Nobody climbs onto a console (one stood in its screen): a cap right over it.
 			b.ghost(console.getX(), console.getY() + 1, console.getZ(), net.minecraft.world.phys.shapes.Shapes.box(0.0, 0.0, 0.0, 1.0, 0.5, 1.0));
 		}
 
@@ -119,6 +122,34 @@ public final class DestroyerInterior extends InteriorPlan {
 	}
 
 	/** Phase 18: whether a point (plot space) is inside one of the energy converters on the shaft floor. */
+	/** Phase 19: the solid part of a converter's column in a row (shares of the block), or {@code null}. */
+	static double @org.jspecify.annotations.Nullable [] converterSpan(double x, double z, int y) {
+		double d = Double.MAX_VALUE;
+
+		for (double angle : CONVERTER_ANGLES) {
+			double a = Math.toRadians(angle);
+			d = Math.min(d, Math.hypot(x - (REACTOR_X + Math.cos(a) * CONVERTER_R), z - (REACTOR_Z + Math.sin(a) * CONVERTER_R)));
+		}
+
+		double body = CONVERTER_SIZE - 0.25;
+		double row = y - REACTOR_BOTTOM;
+		double top = HANGAR - 0.1 - REACTOR_BOTTOM;
+
+		if (d < body) {
+			return new double[] {0.0, 1.0};
+		}
+
+		if (d >= CONVERTER_SIZE) {
+			return null;
+		}
+
+		// The base half a block high, the collar from 0.7 under the top.
+		double from = Math.max(0.0, top - 0.7 - row);
+		double lo = row < 0.5 ? 0.0 : from;
+		double hi = row < 0.5 ? 0.5 : Math.min(1.0, top - row);
+		return lo < 1.0 && hi > lo ? new double[] {lo, hi} : null;
+	}
+
 	public static boolean converterAt(double x, double z) {
 		for (double angle : CONVERTER_ANGLES) {
 			double a = Math.toRadians(angle);
@@ -411,8 +442,9 @@ public final class DestroyerInterior extends InteriorPlan {
 		// 3 (Phase 16): the reactor shaft's round wall is shaped barriers where the drawn wall runs.
 		// 5 (Phase 17): maintenance ways, the crew's places. 6 (Phase 18): drawn steps, crates and
 		// throttle instead of vanilla blocks, the crawl vents and the hidden room, the reactor's
-		// lower level, more crew.
-		return 6;
+		// lower level, more crew. 7 (Phase 19): nobody of the crew collides, railings and
+		// converters as drawn, lower caps over the pits' consoles.
+		return 7;
 	}
 
 	@Override
@@ -481,6 +513,13 @@ public final class DestroyerInterior extends InteriorPlan {
 	/** Phase 18: the railing round the core's foot on the lower level: its radius, half its thickness. */
 	public static final double CORE_RAIL_R = 6.3;
 	public static final double CORE_RAIL_HALF = 0.08;
+	/** Phase 19: the railing round the shaft on the catwalk (drawn at this radius), half its thickness. */
+	public static final double CATWALK_RAIL_R = 8.6;
+	public static final double RAIL_HALF = 0.08;
+	/** Phase 19: the conference table as drawn: its sides (z) and its top over the deck row. */
+	public static final double TABLE_Z0 = 106.05;
+	public static final double TABLE_Z1 = 108.95;
+	public static final double TABLE_TOP = 0.92;
 	/** Phase 18: half the thickness of the lift's posts (one at each corner of {@link #REACTOR_LIFT}). */
 	public static final double LIFT_POST = 0.0625;
 	/** Phase 18: the ribs up the shaft wall (they collide as drawn): their angles, where they stand, how thick. */
@@ -542,7 +581,8 @@ public final class DestroyerInterior extends InteriorPlan {
 		commandDeck(b);
 		vents(b);
 		furnish(b);
-		crew(b);
+		// Phase 19: the crew no longer collide (one walks partly through someone rather than into
+		// an invisible column round them).
 	}
 
 	/**
@@ -637,11 +677,6 @@ public final class DestroyerInterior extends InteriorPlan {
 		b.light(10, HANGAR + 1, -22, 6);
 		b.light(CX, PIT + 1, 84, 5);
 		b.light(18, HANGAR + 3, -4, 7);
-	}
-
-	/** Phase 17: those of the crew who stay in their place collide there (a slim column, two rows). */
-	private static void crew(InteriorBuilder b) {
-		Crew.collide(b, CREW);
 	}
 
 	// --- Hangar deck ---------------------------------------------------------------------------
@@ -768,6 +803,15 @@ public final class DestroyerInterior extends InteriorPlan {
 	/** Phase 16: the gallery's way through the shaft wall. */
 	public static final Doorway GALLERY = new Doorway(GALLERY_X0 + 1, HANGAR + 1, GALLERY_Z1, GALLERY_X1 - 1, HANGAR + 3, GALLERY_Z1 + 3, false);
 
+	/**
+	 * Phase 19: whether a point (plot space, row y) is in the gallery's way through the shaft wall,
+	 * up to the curve: by its east side the curve passes just beyond the doorway's cells, and the
+	 * wall collided there in the open passage.
+	 */
+	public static boolean inGallery(double x, double z, int y) {
+		return y >= GALLERY.y0() && y <= GALLERY.y1() && x >= GALLERY.x0() && x < GALLERY.x1() + 1 && z >= GALLERY.z0() && z < GALLERY.z1() + 2.5;
+	}
+
 	/** Phase 16: whether a point (plot space, row y) is in the reactor shaft, up to its drawn wall. */
 	public static boolean openReactor(double x, double z, int y) {
 		double dx = x - REACTOR_X;
@@ -802,16 +846,33 @@ public final class DestroyerInterior extends InteriorPlan {
 		b.box(GALLERY_X0 + 1, HANGAR, GALLERY_Z0, GALLERY_X1 - 1, HANGAR, GALLERY_Z1 + 3, FLOOR);
 		b.clear(GALLERY_X0 + 1, HANGAR + 1, GALLERY_Z0, GALLERY_X1 - 1, HANGAR + 3, GALLERY_Z1 + 3);
 		b.light(CX + 8, HANGAR + 3, 6, 11);
-		// Railings (invisible here, drawn by the client) keep people out of the shaft, and off the
-		// uneven outer edge of the catwalk where the round wall is.
-		b.ring(REACTOR_X, HANGAR + 1, REACTOR_Z, 8.0, 8.9, PROXY);
-		b.ring(REACTOR_X, HANGAR + 2, REACTOR_Z, 8.0, 8.9, PROXY);
+		// The railing round the shaft (drawn by the client). Phase 19: it collides as drawn, a slim
+		// ring a block high with half a block more over it like a fence (it was a ring of whole
+		// blocks two high: one stopped up to a block before the railing).
+		ProxyShapes.Span catwalkRail = (x, z) -> Math.abs(Math.hypot(x - REACTOR_X, z - REACTOR_Z) - CATWALK_RAIL_R) <= RAIL_HALF ? new double[] {0.0, 1.0}
+				: null;
+		ProxyShapes.Span catwalkCap = (x, z) -> catwalkRail.at(x, z) == null ? null : new double[] {0.0, 0.5};
+		int c0 = (int) Math.floor(REACTOR_X - CATWALK_RAIL_R - 1);
+		int c1 = (int) Math.ceil(REACTOR_X + CATWALK_RAIL_R + 1);
+		int d0 = (int) Math.floor(REACTOR_Z - CATWALK_RAIL_R - 1);
+		int d1 = (int) Math.ceil(REACTOR_Z + CATWALK_RAIL_R + 1);
+		b.spans(c0, d0, c1, d1, HANGAR + 1, catwalkRail, java.util.Set.of());
+
+		for (int x = c0; x <= c1; x++) {
+			for (int z = d0; z <= d1; z++) {
+				net.minecraft.world.phys.shapes.VoxelShape cap = ProxyShapes.spans(x, z, 16, catwalkCap);
+
+				if (!cap.isEmpty() && b.isAir(x, HANGAR + 2, z)) {
+					b.ghost(x, HANGAR + 2, z, cap);
+				}
+			}
+		}
 
 		b.clear(GALLERY_X0 + 1, HANGAR + 1, GALLERY_Z0, GALLERY_X1 - 1, HANGAR + 3, GALLERY_Z1 + 3);
 		// Phase 16: the wall collides where it is drawn (no more barriers a step in front of it).
 		b.roundShell(REACTOR_X, REACTOR_Z, new double[] {REACTOR_WALL}, (int) (REACTOR_X - r - 2), REACTOR_BOTTOM, (int) (REACTOR_Z - r - 2),
 				(int) (REACTOR_X + r + 2), REACTOR_TOP - 1, (int) (REACTOR_Z + r + 2), java.util.Set.of(InteriorBuilder.state(DARK).getBlock()),
-				DestroyerInterior::openReactor, (x, z, y) -> y == HANGAR || GALLERY.contains((int) Math.floor(x), y, (int) Math.floor(z)));
+				DestroyerInterior::openReactor, (x, z, y) -> y == HANGAR || inGallery(x, z, y));
 		reactorFloor(b);
 		// The core gives off light.
 		b.light((int) REACTOR_X, REACTOR_BOTTOM + 4, (int) REACTOR_Z, 15);
@@ -837,28 +898,24 @@ public final class DestroyerInterior extends InteriorPlan {
 		b.box(WALK_X0, PIT + 1, PLATFORM_Z1, WALK_X1, DECK, BRIDGE_BACK - 1, BLACK);
 		b.box(WALK_X0, DECK, PLATFORM_Z1, WALK_X1, DECK, BRIDGE_BACK - 1, FLOOR);
 
-		// Railings along the walkway and the platform edge (invisible blocks, drawn by the client).
+		// Railings along the walkway and the platform edge (drawn by the client). Phase 19: they
+		// collide as drawn, slim, with half a block more over them like a fence (whole blocks
+		// before: one stopped most of a block before the drawn rail, and the half block over them
+		// was as wide).
+		net.minecraft.world.phys.shapes.VoxelShape west = net.minecraft.world.phys.shapes.Shapes.box(0.85 - RAIL_HALF, 0.0, 0.0, 0.85 + RAIL_HALF, 1.0, 1.0);
+		net.minecraft.world.phys.shapes.VoxelShape east = net.minecraft.world.phys.shapes.Shapes.box(0.15 - RAIL_HALF, 0.0, 0.0, 0.15 + RAIL_HALF, 1.0, 1.0);
+		net.minecraft.world.phys.shapes.VoxelShape edge = net.minecraft.world.phys.shapes.Shapes.box(0.0, 0.0, 0.15 - RAIL_HALF, 1.0, 1.0, 0.15 + RAIL_HALF);
+
 		for (int z = PLATFORM_Z1 + 1; z <= BRIDGE_BACK - 1; z++) {
 			if (!isStep(z)) {
-				b.set(WALK_X0, DECK + 1, z, PROXY);
-				b.set(WALK_X1, DECK + 1, z, PROXY);
+				rail(b, WALK_X0, DECK + 1, z, west);
+				rail(b, WALK_X1, DECK + 1, z, east);
 			}
 		}
 
 		for (int x = BRIDGE_X0 + 1; x <= BRIDGE_X1 - 1; x++) {
 			if (x < WALK_X0 || x > WALK_X1) {
-				b.set(x, DECK + 1, PLATFORM_Z1, PROXY);
-			}
-		}
-
-		// Phase 18: like a fence, half a block more over each railing (only colliding): one jumped
-		// onto them and walked along on the invisible blocks.
-		for (int z = PLATFORM_Z1; z <= BRIDGE_BACK - 1; z++) {
-			for (int x = BRIDGE_X0 + 1; x <= BRIDGE_X1 - 1; x++) {
-				if (b.get(x, DECK + 1, z).is(net.minecraft.world.level.block.Blocks.BARRIER) && b.isAir(x, DECK + 2, z)
-						&& (x == WALK_X0 || x == WALK_X1 || z == PLATFORM_Z1)) {
-					b.ghost(x, DECK + 2, z, net.minecraft.world.phys.shapes.Shapes.box(0.0, 0.0, 0.0, 1.0, 0.5, 1.0));
-				}
+				rail(b, x, DECK + 1, PLATFORM_Z1, edge);
 			}
 		}
 
@@ -882,13 +939,9 @@ public final class DestroyerInterior extends InteriorPlan {
 
 				b.set(x, PIT + 1, z, PROXY);
 				// Phase 17: a cap: nobody climbs onto the console (and stands in its screens).
-				// Phase 18: a block and a half (from a chair one jumped onto the half block and stood
-				// over the console in the air), colliding only (no outline over the console).
+				// Phase 18: high enough that nobody jumps onto it from a chair, colliding only (no
+				// outline over the console). Phase 19: a block (it was a block and a half).
 				b.ghost(x, PIT + 2, z, net.minecraft.world.phys.shapes.Shapes.block());
-
-				if (b.isAir(x, PIT + 3, z)) {
-					b.ghost(x, PIT + 3, z, net.minecraft.world.phys.shapes.Shapes.box(0.0, 0.0, 0.0, 1.0, 0.5, 1.0));
-				}
 
 				// A seat behind every other console.
 				if ((x & 1) == 0) {
@@ -931,6 +984,21 @@ public final class DestroyerInterior extends InteriorPlan {
 		}
 	}
 
+	/**
+	 * Phase 19: a railing cell: the rail as drawn, and over it the same slim shape half a block
+	 * high that only collides (a fence: nobody jumps over or walks along on top of it).
+	 */
+	private static void rail(InteriorBuilder b, int x, int y, int z, net.minecraft.world.phys.shapes.VoxelShape shape) {
+		b.set(x, y, z, PROXY);
+		b.shaped(x, y, z, shape, false);
+
+		if (b.isAir(x, y + 1, z)) {
+			b.set(x, y + 1, z, PROXY);
+			net.minecraft.world.phys.AABB box = shape.bounds();
+			b.ghost(x, y + 1, z, net.minecraft.world.phys.shapes.Shapes.box(box.minX, 0.0, box.minZ, box.maxX, 0.5, box.maxZ));
+		}
+	}
+
 	/** Whether the walkway railing has an opening for the steps there. */
 	public static boolean isStep(int z) {
 		return z == 77 || z == 78 || z == 89 || z == 90;
@@ -955,9 +1023,15 @@ public final class DestroyerInterior extends InteriorPlan {
 		b.clear(CX - 4, DECK + 1, 106, CX - 4, DECK + 3, 108);
 		b.clear(CX + 4, DECK + 1, 106, CX + 4, DECK + 3, 108);
 
-		// The conference table (proxies) with the hologram projector in its middle.
+		// The conference table with the hologram projector in its middle. Phase 19: it collides as
+		// drawn, a long table with round ends (whole blocks before: one stopped at the drawn ends
+		// half a block early, round the corners).
 		int tx = (SIDE_WEST + CX - 4) / 2;
-		b.box(tx - 6, DECK + 1, 106, tx + 6, DECK + 1, 108, PROXY);
+		double ends = (TABLE_Z1 - TABLE_Z0) / 2;
+		b.spans(tx - 6, 106, tx + 6, 108, DECK + 1, (x, z) -> {
+			double nearest = Math.max(tx - 6 + 0.05 + ends, Math.min(tx + 7 - 0.05 - ends, x));
+			return Math.hypot(x - nearest, z - (TABLE_Z0 + TABLE_Z1) / 2) < ends ? new double[] {0.0, TABLE_TOP} : null;
+		}, java.util.Set.of());
 
 		for (int x = tx - 5; x <= tx + 5; x += 2) {
 			b.shaped(x, DECK + 1, 105, CHAIR, false);
@@ -967,8 +1041,7 @@ public final class DestroyerInterior extends InteriorPlan {
 		for (int z = SIDE_Z0 + 2; z <= SIDE_Z1 - 2; z += 2) {
 			b.set(CX + 5, DECK + 1, z, z >= 105 && z <= 109 ? "air" : PROXY);
 
-			// Phase 18: nobody climbs onto them (one stood over the drawn console, and from there
-			// on the head of the technician at work beside it).
+			// Phase 18: nobody climbs onto them (one stood over the drawn console).
 			if (z < 105 || z > 109) {
 				b.ghost(CX + 5, DECK + 2, z, net.minecraft.world.phys.shapes.Shapes.box(0.0, 0.0, 0.0, 1.0, 0.5, 1.0));
 			}

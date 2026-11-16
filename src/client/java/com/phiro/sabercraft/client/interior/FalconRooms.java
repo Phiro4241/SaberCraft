@@ -352,9 +352,19 @@ final class FalconRooms {
 		// lie on the block's own (that flickered).
 		b.box(19.985F, 1.0F, 30.985F, 21.015F, FLOOR + 7.015F, 32.015F, MeshBuilder.ALL & ~MeshBuilder.DOWN);
 		b.tile(InteriorAtlas.FAL_METAL_DARK, 1.0F);
-		// Openings in the floor and the ceiling round the ladder.
-		b.box(19.8F, FLOOR + 0.98F, 29.8F, 21.2F, FLOOR + 1.03F, 31.0F, MeshBuilder.UP);
-		b.box(19.8F, FLOOR + 4.97F, 29.8F, 21.2F, FLOOR + 5.02F, 31.0F, MeshBuilder.DOWN);
+		// Frames round the openings in the floor and the ceiling round the ladder. Phase 19: only
+		// round them (a dark plate lay over each opening: one climbed through it, right before the eyes).
+		for (float y : new float[] {FLOOR + 1.0F, FLOOR + 6.0F}) {
+			b.box(19.8F, y, 29.8F, 21.2F, y + 0.03F, 30.0F, MeshBuilder.ALL & ~MeshBuilder.DOWN);
+			b.box(19.8F, y, 30.0F, 20.0F, y + 0.03F, 31.0F, MeshBuilder.ALL & ~MeshBuilder.DOWN & ~MeshBuilder.EAST);
+			b.box(21.0F, y, 30.0F, 21.2F, y + 0.03F, 31.0F, MeshBuilder.ALL & ~MeshBuilder.DOWN & ~MeshBuilder.WEST);
+		}
+
+		for (float y : new float[] {FLOOR + 5.0F, 4.0F}) {
+			b.box(19.8F, y - 0.03F, 29.8F, 21.2F, y, 30.0F, MeshBuilder.ALL & ~MeshBuilder.UP);
+			b.box(19.8F, y - 0.03F, 30.0F, 20.0F, y, 31.0F, MeshBuilder.ALL & ~MeshBuilder.UP & ~MeshBuilder.EAST);
+			b.box(21.0F, y - 0.03F, 30.0F, 21.2F, y, 31.0F, MeshBuilder.ALL & ~MeshBuilder.UP & ~MeshBuilder.WEST);
+		}
 
 		// A ring of light in the ceiling.
 		b.layer(Layer.GLOW).fullBright().colour(0xFFE8D8B0).fit(InteriorAtlas.FAL_CEILING_LIGHT_GLOW);
@@ -775,6 +785,16 @@ final class FalconRooms {
 		b.tile(InteriorAtlas.FAL_METAL_DARK, 1.0F);
 		b.ring(CXF, 1.0F + Skin.EPS, CZF, 2.75F, 2.95F, 40, true);
 
+		// Phase 19: the inside of the collar round each dome, from the deck up to the glass and from
+		// the glass up to the hull (one looked out through the hull there, past the floor's edge).
+		b.tile(InteriorAtlas.FAL_METAL_DARK, 1.0F);
+		float sin15 = Mth.sin(15.0F * Mth.DEG_TO_RAD);
+		collar(b, FLOOR + 6.0F, (float) (TOP_DOME_Y + TOP_DOME_R * sin15) + 0.06F, 4.03F);
+		collar(b, (float) (BOTTOM_DOME_Y - BOTTOM_DOME_R * sin15) - 0.06F, 5.0F, 4.03F);
+		b.tile(InteriorAtlas.FAL_METAL, 1.0F);
+		// Under the deck round the opening (just in front of the blocks' faces: on them it flickered).
+		b.ring(CXF, 5.0F - Skin.EPS, CZF, 3.0F, 4.05F, 40, false);
+
 		for (int y : new int[] {FLOOR + 6, 1}) {
 			Props.at(b, 20.5, y, 28.5, Props.south());
 			Props.chair(b, InteriorAtlas.FAL_COUCH);
@@ -790,6 +810,20 @@ final class FalconRooms {
 			b.layer(Layer.GLOW).fullBright().anim(InteriorScene.ANIM_SCREEN).fit(InteriorAtlas.FAL_SCREEN_GLOW);
 			b.rect(20.2F, y + 0.85F, 27.19F, 0.6F, 0, 0, 0, -0.4F, 0);
 			b.layer(Layer.SOLID).worldLight().anim(0);
+		}
+	}
+
+	/** Phase 19: a round wall seen from inside, round the middle of the saucer, between two heights. */
+	private static void collar(MeshBuilder b, float y0, float y1, float r) {
+		int segments = 40;
+
+		for (int i = 0; i < segments; i++) {
+			float a0 = Mth.TWO_PI * i / segments;
+			float a1 = Mth.TWO_PI * (i + 1) / segments;
+			Vector3f p0 = new Vector3f(CXF + Mth.cos(a0) * r, 0, CZF + Mth.sin(a0) * r);
+			Vector3f p1 = new Vector3f(CXF + Mth.cos(a1) * r, 0, CZF + Mth.sin(a1) * r);
+			Vector3f in = new Vector3f(-Mth.cos((a0 + a1) / 2), 0, -Mth.sin((a0 + a1) / 2));
+			b.polyFacing(java.util.List.of(y(p0, y1), y(p1, y1), y(p1, y0), y(p0, y0)), in);
 		}
 	}
 

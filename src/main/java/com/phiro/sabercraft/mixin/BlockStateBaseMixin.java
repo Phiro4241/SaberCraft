@@ -8,6 +8,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.block.state.BlockState;
@@ -51,6 +52,28 @@ abstract class BlockStateBaseMixin {
 			at = @At("HEAD"), cancellable = true)
 	private void sabercraft$shapedOutlineNoContext(BlockGetter level, BlockPos pos, CallbackInfoReturnable<VoxelShape> info) {
 		this.sabercraft$shape(level, pos, info, true);
+	}
+
+	/**
+	 * Phase 19: a shaped barrier does not suffocate. Minecraft pushes a player out of every cell
+	 * that holds a suffocating block anywhere at their height (the client, each tick, from the
+	 * corners of the player): a barrier counted as a whole block there whatever its shape, so a
+	 * slim post or rail kept people out of its whole cell, an invisible wall up to most of a
+	 * block before what is drawn (the reactor's lift could not be walked onto from below). The
+	 * collision itself stays as shaped. Blocks are looked up through chunks here, so the level is
+	 * found from the chunk too.
+	 */
+	@Inject(method = "isSuffocating(Lnet/minecraft/world/level/BlockGetter;Lnet/minecraft/core/BlockPos;)Z", at = @At("HEAD"), cancellable = true)
+	private void sabercraft$shapedNotSuffocating(BlockGetter level, BlockPos pos, CallbackInfoReturnable<Boolean> info) {
+		if (!((BlockState) (Object) this).is(Blocks.BARRIER)) {
+			return;
+		}
+
+		Level world = level instanceof Level direct ? direct : level instanceof LevelChunk chunk ? chunk.getLevel() : null;
+
+		if (world != null && ShipInteriors.isInterior(world) && ProxyShapes.at(pos) != null) {
+			info.setReturnValue(false);
+		}
 	}
 
 	private void sabercraft$shape(BlockGetter level, BlockPos pos, CallbackInfoReturnable<VoxelShape> info) {
