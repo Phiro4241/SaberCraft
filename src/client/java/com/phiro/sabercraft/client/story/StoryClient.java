@@ -65,8 +65,8 @@ public final class StoryClient {
 	private static final Map<Integer, Float> STRIDES = new HashMap<>();
 	private static @Nullable StoryDialogPayload dialog;
 
-	/** A comlink line: who, the key, how long it shows, how long it has shown. */
-	public record Line(String who, String key, int ticks) {
+	/** A comlink line (or one overheard nearby): who, the key, how long it shows. */
+	public record Line(String who, String key, int ticks, boolean heard) {
 	}
 
 	private static final Deque<Line> RADIO = new ArrayDeque<>();
@@ -171,8 +171,15 @@ public final class StoryClient {
 		switch (payload.cue()) {
 			case CUE_RADIO -> {
 				int length = client.font != null ? net.minecraft.network.chat.Component.translatable(payload.text()).getString().length() : 60;
-				RADIO.add(new Line(payload.who(), payload.text(), Mth.clamp(length * RADIO_PER_CHAR + 40, RADIO_MIN, RADIO_MAX)));
-				sound(client, "story.radio", 0.55F, 1.0F, null);
+				boolean heard = payload.value() == 1;
+				RADIO.add(new Line(payload.who(), payload.text(), Mth.clamp(length * RADIO_PER_CHAR + 40, RADIO_MIN, RADIO_MAX), heard));
+
+				// Overheard in the room: no comlink click, only the soft voice.
+				if (heard) {
+					sound(client, "story.blip", 0.12F, 0.8F, null);
+				} else {
+					sound(client, "story.radio", 0.55F, 1.0F, null);
+				}
 			}
 			case CUE_HINT -> {
 				if ("progress".equals(payload.who())) {
@@ -188,6 +195,8 @@ public final class StoryClient {
 				fadeTicks = Math.max(10, payload.value()) * 2;
 				fadeAge = 0;
 				fadeText = payload.text();
+				// What was said before the black ("detected! hide!") is over after it.
+				hint = null;
 			}
 			case CUE_SOUND -> sound(client, payload.text(), 0.9F, 1.0F, figure(payload.value()));
 			case CUE_MUSIC -> music = payload.text().isEmpty() ? null : payload.text();

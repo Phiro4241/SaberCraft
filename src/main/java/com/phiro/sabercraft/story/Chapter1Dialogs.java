@@ -199,7 +199,7 @@ final class Chapter1Dialogs {
 
 		// --- Mission 4: the reactor -----------------------------------------------------------------
 		add(Dialog.of("m4_kestrel")
-				.say("start", "kestrel").does(s -> s.jump(s.has("trust.hale") ? "trusted" : "refused"))
+				.say("start", "kestrel").thenIf(s -> s.has("trust.hale"), "trusted", "refused")
 				.say("trusted", "kestrel").then("plan")
 				.say("refused", "kestrel").then("plan")
 				.say("plan", "kestrel")
@@ -265,7 +265,7 @@ final class Chapter1Dialogs {
 				.build());
 
 		add(Dialog.of("m5_kestrel")
-				.say("start", "kestrel").does(s -> s.jump(s.has("trust.hale") ? "trusted" : "refused"))
+				.say("start", "kestrel").thenIf(s -> s.has("trust.hale"), "trusted", "refused")
 				.say("trusted", "kestrel").then("go")
 				.say("refused", "kestrel").then("go")
 				.say("go", "kestrel").does(Chapter1::kestrelFree)
@@ -279,7 +279,7 @@ final class Chapter1Dialogs {
 		add(Dialog.of("m6_plan")
 				.say("start", "kestrel").then("artefact")
 				.say("artefact", "kestrel").then("pickup")
-				.say("pickup", "kestrel").does(s -> s.jump(s.has("opt.armour2") ? "escort" : "fire"))
+				.say("pickup", "kestrel").thenIf(s -> s.has("opt.armour2"), "escort", "fire")
 				.say("escort", "kestrel").then("ready")
 				.say("fire", "kestrel").then("ready")
 				.say("ready", "kestrel")
@@ -311,7 +311,7 @@ final class Chapter1Dialogs {
 				.say("signature", "kestrel").then("mira")
 				.say("mira", "mira").then("knows")
 				.say("knows", "kestrel").then("dax")
-				.say("dax", "dax").does(s -> s.jump(s.has("opt.prisoner") ? "tamsin" : "rorrak"))
+				.say("dax", "dax").thenIf(s -> s.has("opt.prisoner"), "tamsin", "rorrak")
 				.say("tamsin", "prisoner").then("rorrak")
 				.say("rorrak", "rorrak").does(s -> Chapter1.done(s, "m6.epilogue"))
 				.build());

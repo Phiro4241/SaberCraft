@@ -850,7 +850,10 @@ public final class DestroyerInterior extends InteriorPlan {
 		b.light(22, HANGAR + 1, -10, 6);
 		b.light(10, HANGAR + 1, -22, 6);
 		b.light(CX, PIT + 1, 84, 5);
-		b.light(18, HANGAR + 3, -4, 7);
+		// Phase 19: the hidden room is a refuge now: a warmer light, and the desk lamp's glow.
+		b.light(16, HANGAR + 3, -4, 12);
+		b.light(20, HANGAR + 3, -4, 12);
+		b.light(17, HANGAR + 2, -3, 9);
 	}
 
 	// --- Hangar deck ---------------------------------------------------------------------------

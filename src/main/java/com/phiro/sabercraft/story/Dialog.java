@@ -36,10 +36,19 @@ public final class Dialog {
 		return this.nodes.get(node);
 	}
 
-	/** A line: who says it, the answers, where it goes without answers, and what happens when it is said. */
-	public record Node(String id, String speaker, boolean radio, List<Answer> answers, String next, @Nullable Consumer<StorySession> effect) {
+	/**
+	 * A line: who says it, the answers, where it goes without answers (to {@code next}, or, when it
+	 * has a condition that does not hold then, to {@code otherwise}), and what happens when it is said.
+	 */
+	public record Node(String id, String speaker, boolean radio, List<Answer> answers, String next, @Nullable Predicate<StorySession> when, String otherwise,
+			@Nullable Consumer<StorySession> effect) {
 		public String key(Dialog dialog) {
 			return "sabercraft.story.d." + dialog.id + "." + this.id;
+		}
+
+		/** Where the line goes without answers, once it has been read (by what is known then). */
+		public String next(StorySession session) {
+			return this.when == null || this.when.test(session) ? this.next : this.otherwise;
 		}
 
 		/** The answers shown now. */
@@ -77,6 +86,8 @@ public final class Dialog {
 		private boolean radio;
 		private List<Answer> answers = new ArrayList<>();
 		private String next = END;
+		private @Nullable Predicate<StorySession> when;
+		private String otherwise = END;
 		private @Nullable Consumer<StorySession> effect;
 
 		private Builder(String id) {
@@ -110,6 +121,14 @@ public final class Dialog {
 			return this;
 		}
 
+		/** Without answers: goes on to {@code yes} if that holds once the line is read, else to {@code no}. */
+		public Builder thenIf(Predicate<StorySession> condition, String yes, String no) {
+			this.next = yes;
+			this.when = condition;
+			this.otherwise = no;
+			return this;
+		}
+
 		/** What happens when the line is said. */
 		public Builder does(Consumer<StorySession> effect) {
 			this.effect = effect;
@@ -138,6 +157,7 @@ public final class Dialog {
 
 			for (Node node : this.nodes.values()) {
 				check(node.next(), node);
+				check(node.otherwise(), node);
 
 				for (Answer answer : node.answers()) {
 					check(answer.next(), node);
@@ -155,12 +175,14 @@ public final class Dialog {
 
 		private void close() {
 			if (this.node != null) {
-				this.nodes.put(this.node, new Node(this.node, this.speaker, this.radio, List.copyOf(this.answers), this.next, this.effect));
+				this.nodes.put(this.node, new Node(this.node, this.speaker, this.radio, List.copyOf(this.answers), this.next, this.when, this.otherwise, this.effect));
 			}
 
 			this.node = null;
 			this.answers = new ArrayList<>();
 			this.next = END;
+			this.when = null;
+			this.otherwise = END;
 			this.effect = null;
 		}
 	}

@@ -28,6 +28,8 @@ public final class StoryInput {
 	static final double REACH = 4.5;
 	/** How much nearer a block in the way must be to hide what lies behind it. */
 	static final double SLACK = 0.35;
+	/** People: a desk, a console or crates up to a block in front of them do not hide them. */
+	static final double PERSON_SLACK = 1.1;
 
 	private static int used;
 	private static int struck;
@@ -95,15 +97,60 @@ public final class StoryInput {
 			return null;
 		}
 
-		// A wall (or anything else solid) nearer than it hides it, but not the block it is built into.
+		// A wall (or anything else solid) nearer than it hides it, but not the block it is built into,
+		// nor (for people) a desk or a crate right in front of them.
 		HitResult aimed = client.hitResult;
+		double slack = best.figure() > 0 ? PERSON_SLACK : SLACK;
 
-		if (aimed != null && aimed.getType() != HitResult.Type.MISS && aimed.getLocation().distanceTo(eye) < bestDistance - SLACK
+		if (aimed != null && aimed.getType() != HitResult.Type.MISS && aimed.getLocation().distanceTo(eye) < bestDistance - slack
 				&& !bestBox.inflate(0.6).contains(aimed.getLocation())) {
 			return null;
 		}
 
 		return best;
+	}
+
+	/** Why the crosshair finds what it finds (for tests): the nearest box along the view, and what the view hits first. */
+	public static String explainForTest(Minecraft client) {
+		StoryStatePayload state = StoryClient.state();
+
+		if (state == null || client.player == null) {
+			return "no state";
+		}
+
+		Vec3 eye = client.player.getEyePosition();
+		Vec3 to = eye.add(client.player.getViewVector(1.0F).scale(REACH));
+		StringBuilder out = new StringBuilder("eye " + eye + " view " + client.player.getViewVector(1.0F));
+
+		for (StoryStatePayload.Point point : state.points()) {
+			out.append("; point ").append(point.id()).append(" ").append(point.box()).append(" at ").append(hit(point.box(), eye, to));
+		}
+
+		BlockPos origin = StoryClient.figuresOrigin();
+
+		if (origin != null) {
+			for (StoryClient.Pose pose : StoryClient.figures(origin, 1.0F)) {
+				StoryFiguresPayload.Fig fig = pose.fig();
+				AABB box = box(fig.kind(), fig.pose(), pose.x() + origin.getX(), pose.y() + origin.getY(), pose.z() + origin.getZ());
+				double distance = hit(box, eye, to);
+
+				if (distance < REACH + 2.0 || box.getCenter().distanceTo(eye) < 5.0) {
+					out.append("; ").append(fig.speaker().isEmpty() ? fig.kind() : fig.speaker()).append(" flags ").append(fig.flags()).append(" ").append(box)
+							.append(" at ").append(distance);
+				}
+			}
+		}
+
+		HitResult aimed = client.hitResult;
+
+		if (aimed instanceof net.minecraft.world.phys.BlockHitResult block && aimed.getType() != HitResult.Type.MISS) {
+			out.append("; aimed block ").append(block.getBlockPos()).append(" ").append(client.level.getBlockState(block.getBlockPos())).append(" at ")
+					.append(aimed.getLocation().distanceTo(eye));
+		} else if (aimed != null) {
+			out.append("; aimed ").append(aimed.getType());
+		}
+
+		return out.toString();
 	}
 
 	/** Someone's box to aim at (world space): lower when sitting, small for droids. */

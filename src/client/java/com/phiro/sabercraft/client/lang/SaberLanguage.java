@@ -128,6 +128,11 @@ public final class SaberLanguage {
 		return missing;
 	}
 
+	/** Whether the mod's texts in that language ({@link #GERMAN}, {@link #ENGLISH}) have that key (for tests). */
+	public static boolean hasForTest(String code, String key) {
+		return tables.getOrDefault(code, Map.of()).containsKey(key);
+	}
+
 	/** Minecraft's language with the mod's texts answered in the chosen language. */
 	static final class Layer extends Language {
 		final Language base;

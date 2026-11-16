@@ -89,7 +89,7 @@ final class StoryHud implements HudElement {
 			lines += font.split(Component.translatable(opt.key()), PANEL_WIDTH - 22).size();
 		}
 
-		int h = 8 + lines * 10 + (state.optional().isEmpty() ? 0 : 3) + (state.disguise() > 0 ? 11 : 0);
+		int h = 8 + lines * 10 + (state.optional().isEmpty() ? 0 : 3) + (state.disguise() > 0 ? 11 : 0) + (state.alarm() > 0 ? 11 : 0);
 		graphics.fill(x - 4, y - 4, x + PANEL_WIDTH, y + h - 2, 0x78000000);
 		graphics.fill(x - 4, y - 4, x - 2, y + h - 2, 0xC0E8C46A);
 		graphics.text(font, Component.translatable("sabercraft.story.hud.mission", state.mission() + 1, Component.translatable(state.title())), x, y, GOLD);
@@ -105,7 +105,18 @@ final class StoryHud implements HudElement {
 		}
 
 		for (StoryStatePayload.Objective opt : state.optional()) {
-			graphics.text(font, opt.done() ? "✓" : "○", x + 1, y, opt.done() ? 0xFF70D890 : DIM);
+			// A small box, filled when done (drawn, not a glyph: every font has it then).
+			int bx = x + 1;
+			int by = y + 1;
+			int box = opt.done() ? 0xFF70D890 : DIM;
+			graphics.fill(bx, by, bx + 6, by + 1, box);
+			graphics.fill(bx, by + 5, bx + 6, by + 6, box);
+			graphics.fill(bx, by, bx + 1, by + 6, box);
+			graphics.fill(bx + 5, by, bx + 6, by + 6, box);
+
+			if (opt.done()) {
+				graphics.fill(bx + 2, by + 2, bx + 4, by + 4, box);
+			}
 
 			for (FormattedCharSequence line : font.split(Component.translatable(opt.key()), PANEL_WIDTH - 22)) {
 				graphics.text(font, line, x + 11, y, opt.done() ? 0xFF7A8A7E : DIM);
@@ -117,7 +128,19 @@ final class StoryHud implements HudElement {
 			boolean burned = state.disguise() == 2;
 			graphics.text(font, Component.translatable(burned ? "sabercraft.story.hud.disguise_burned" : "sabercraft.story.hud.disguise"), x, y + 1,
 					burned ? 0xFFE87060 : 0xFFB8D8F0);
+			y += 11;
 		}
+
+		if (state.alarm() > 0) {
+			boolean full = state.alarm() >= 2;
+			graphics.text(font, Component.translatable(full ? "sabercraft.story.hud.alarm" : "sabercraft.story.hud.search"), x, y + 1,
+					full ? 0xFFFF5040 : 0xFFF0A040);
+		}
+	}
+
+	/** How wide the objectives' panel is now (0 when none is shown), so nothing is drawn under it. */
+	private static int objectivesWidth(StoryStatePayload state) {
+		return state == null || !state.active() || state.objective().isEmpty() ? 0 : PANEL_WIDTH + 10;
 	}
 
 	// --- The marker towards the objective ------------------------------------------------------------
@@ -233,11 +256,7 @@ final class StoryHud implements HudElement {
 		int depth = height / 6;
 		graphics.fillGradient(0, 0, width, depth, edge, 0x00000000);
 		graphics.fillGradient(0, height - depth, width, height, 0x00000000, edge);
-		Component label = Component.translatable(full ? "sabercraft.story.hud.alarm" : "sabercraft.story.hud.search");
-		Font font = Minecraft.getInstance().font;
-		int w = font.width(label);
-		graphics.fill(width / 2 - w / 2 - 6, 4, width / 2 + w / 2 + 6, 17, 0x90000000);
-		graphics.text(font, label, width / 2 - w / 2, 7, full ? 0xFFFF5040 : 0xFFF0A040);
+		// The words (ALARM, searching) are in the objectives' panel.
 	}
 
 	// --- A droid's scan ----------------------------------------------------------------------------
@@ -308,13 +327,16 @@ final class StoryHud implements HudElement {
 		int x = 8;
 		int y = 8;
 		int size = 32;
-		int textWidth = 220;
+		// Left of the objectives' panel, never under it.
+		int room = graphics.guiWidth() - objectivesWidth(StoryClient.state()) - x - size - 18;
+		int textWidth = Mth.clamp(room, 100, 220);
 		List<FormattedCharSequence> lines = font.split(Component.translatable(line.key()), textWidth);
 		int h = Math.max(size + 4, 14 + lines.size() * 10);
 		graphics.fill(x - 4, y - 4, x + size + 10 + textWidth, y + h, (alpha * 3 / 5) << 24);
-		StoryPortraits.draw(graphics, line.who(), x, y, size, true, alpha);
+		// Over the comlink a blue hologram; overheard in the room, the face itself.
+		StoryPortraits.draw(graphics, line.who(), x, y, size, !line.heard(), alpha);
 		int tx = x + size + 8;
-		graphics.text(font, StoryPortraits.name(line.who()), tx, y, alpha << 24 | 0x8CC0FF);
+		graphics.text(font, StoryPortraits.name(line.who()), tx, y, alpha << 24 | (line.heard() ? 0xD8C8A0 : 0x8CC0FF));
 		int ty = y + 11;
 
 		for (FormattedCharSequence text : lines) {

@@ -200,7 +200,8 @@ public abstract class SaberMenuScreen extends Screen {
 	}
 
 	protected CycleButton<Boolean> toggle(int column, int row, String key, boolean value, Consumer<Boolean> change) {
-		return this.addRenderableWidget(CycleButton.onOffBuilder(value)
+		// On and off in SaberCraft's own language, like the rest of the menu.
+		return this.addRenderableWidget(CycleButton.booleanBuilder(Component.translatable("sabercraft.menu.on"), Component.translatable("sabercraft.menu.off"), value)
 				.withTooltip(v -> Tooltip.create(Component.translatable(key + ".description")))
 				.create(this.column(column), this.row(row), COLUMN_WIDTH, 20, Component.translatable(key), (button, v) -> change.accept(v)));
 	}

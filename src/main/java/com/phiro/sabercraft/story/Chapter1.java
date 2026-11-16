@@ -362,7 +362,10 @@ public final class Chapter1 implements Chapter {
 				}
 
 				if (("m4.tech".equals(step) || "m4.download".equals(step)) && !s.has("gone.tech")) {
-					Figure tech = guard("tech", Crew.at(Crew.TECH, Crew.WORK, 51.05, R, 24.5, 270.0F));
+					// At the main console; after a bluff he steps back from it and watches (so that the
+					// console is free, and he sees what one does there).
+					Figure tech = guard("tech", s.has("tech.watch") && "m4.download".equals(step) ? Crew.at(Crew.TECH, Crew.STAND, 50.0, R, 21.8, 317.0F)
+							: Crew.at(Crew.TECH, Crew.WORK, 51.05, R, 24.5, 270.0F));
 					tech.speaker = "tech";
 					tech.talks = true;
 					list.add(tech);
@@ -604,7 +607,8 @@ public final class Chapter1 implements Chapter {
 		ServerLevel level = interiors(s);
 		String ship = s.here;
 
-		if (level == null || ship == null) {
+		if (level == null || ship == null || s.grace > 0) {
+			// Just after a capture nobody looks yet (as in Stealth).
 			return false;
 		}
 
@@ -822,6 +826,12 @@ public final class Chapter1 implements Chapter {
 			s.burned = true;
 		}
 
+		if (id.equals("m6.jump") || id.equals("m6.epilogue")) {
+			// Back in the Falcon: out of the armour.
+			s.unset("wear.armour");
+			s.disguised = false;
+		}
+
 		ship(s);
 		kit(s);
 
@@ -843,6 +853,30 @@ public final class Chapter1 implements Chapter {
 			case "m1.ramp" -> {
 				if (!again) {
 					s.talk("m1_rorrak", null);
+				}
+			}
+			case "m4.download" -> {
+				// After a bluff the technician walks from the console to where he watches it.
+				Figure tech = s.figure("tech");
+
+				if (tech != null && s.has("tech.watch") && tech.mode == Figure.ROUTINE) {
+					tech.mode = Figure.RETURN;
+				}
+			}
+			case "m6.plan" -> {
+				// Kestrel waited at the crawl way's far hatch and came through behind the player: she
+				// climbs out of the hideout's hatch and goes to her cot (she was left standing by the
+				// detention block once, and the player had to go back for her).
+				Figure kestrel = s.figure("kestrel");
+
+				if (kestrel != null && !HIDDEN.contains(kestrel.position().add(0.0, 0.5, 0.0))) {
+					kestrel.x = 22.3;
+					kestrel.y = H;
+					kestrel.z = -3.5;
+					kestrel.mode = Figure.RETURN;
+					kestrel.target = null;
+					kestrel.way = List.of();
+					kestrel.wayIndex = 0;
 				}
 			}
 			case "m3.hale" -> {
@@ -1091,9 +1125,15 @@ public final class Chapter1 implements Chapter {
 				} else if (hale.mode == Figure.HELD && !s.has("tmp.hale_talked") && s.dialog == null) {
 					s.set("tmp.hale_talked");
 					s.talk("m3_hale", hale);
-				} else if (hale.mode == Figure.HELD && s.has("tmp.hale_gone") && s.dialog == null) {
-					s.figures.remove(hale);
-					s.complete();
+				} else if (s.has("tmp.hale_gone") && s.dialog == null) {
+					// He goes as he came, then the way is free.
+					if (!s.has("tmp.hale_walk")) {
+						s.set("tmp.hale_walk");
+						walk(hale, new Vec3(46.6, H, -11.2), new Vec3(45.2, H, -13.0));
+					} else if (hale.mode == Figure.HELD) {
+						s.figures.remove(hale);
+						s.complete();
+					}
 				}
 			}
 			case "m4.lift", "m6.reactor" -> {
@@ -1103,7 +1143,15 @@ public final class Chapter1 implements Chapter {
 					s.complete();
 				}
 			}
-			case "m4.download" -> copy(s);
+			case "m4.download" -> {
+				if (s.has("tmp.watch_hint") && s.dialog == null) {
+					// After the bluff: Kestrel on how to get the copy done under his eyes.
+					s.unset("tmp.watch_hint");
+					s.radio("kestrel", "sabercraft.story.radio.m4_watch");
+				}
+
+				copy(s);
+			}
 			case "m5.route" -> {
 				if (s.inside(D, DestroyerInterior.DETENTION)
 						|| !s.has("trust.hale") && s.inside(D, new AABB(24.0, H - 0.5, 3.0, 25.0, H + 2.0, 7.0))) {
@@ -1159,7 +1207,8 @@ public final class Chapter1 implements Chapter {
 			}
 		}
 
-		if (s.fighting && !s.completing()) {
+		// Nobody fights while someone speaks (the player cannot move then).
+		if (s.fighting && !s.completing() && s.dialog == null) {
 			Finale.tick(s, player, level);
 		}
 	}
@@ -1179,7 +1228,7 @@ public final class Chapter1 implements Chapter {
 
 		if (trooper.position().distanceTo(s.local(D)) < 6.0) {
 			s.set("tmp.overheard");
-			s.radio("trooper", "sabercraft.story.d.m1_trooper.start");
+			s.hear("trooper", "sabercraft.story.d.m1_trooper.start");
 		}
 	}
 
@@ -1203,7 +1252,7 @@ public final class Chapter1 implements Chapter {
 		int[] at = {1, 70, 140, 210};
 
 		if (line < at.length && heard >= at[line]) {
-			s.radio(line % 2 == 0 ? "pilot_a" : "pilot_b", "sabercraft.story.radio.eavesdrop." + (line + 1));
+			s.hear(line % 2 == 0 ? "pilot_a" : "pilot_b", "sabercraft.story.radio.eavesdrop." + (line + 1));
 			s.counters.put("listen_line", line + 1);
 		} else if (line == at.length && heard >= 240) {
 			s.set("opt.eavesdrop");
@@ -1229,9 +1278,12 @@ public final class Chapter1 implements Chapter {
 			progress++;
 			s.counters.put("download", progress);
 
-			// The technician who was lied to watches the console and grows suspicious.
-			if (tech != null && s.has("tech.watch") && tech.mode != Figure.SCRIPTED) {
-				tech.suspicion = Math.min(1.0F, tech.suspicion + 0.012F);
+			// The technician who was lied to watches the console and grows suspicious (not while a
+			// noise of M-31's took him away, not while one reads a dialog, not in the moment of grace
+			// after a checkpoint, and slowly enough that stepping back helps).
+			if (tech != null && s.has("tech.watch") && s.dialog == null && s.grace <= 0
+					&& (tech.mode == Figure.ROUTINE || tech.mode == Figure.LOOK || tech.mode == Figure.RETURN)) {
+				tech.suspicion = Math.min(1.0F, tech.suspicion + 0.008F);
 				tech.lastSeen = s.time();
 				tech.seenAt = s.local(D);
 			}
@@ -1312,14 +1364,9 @@ public final class Chapter1 implements Chapter {
 		done(s, "m3.armour");
 	}
 
-	/** Mission 3: Hale goes as he came. */
+	/** Mission 3: Hale will go as he came (once he has said his last word). */
 	static void haleLeaves(StorySession s) {
-		Figure hale = s.figure("hale");
 		s.set("tmp.hale_gone");
-
-		if (hale != null) {
-			walk(hale, new Vec3(46.6, H, -11.2), new Vec3(45.2, H, -13.0));
-		}
 	}
 
 	/** Mission 4: the technician did not like an answer. */
@@ -1341,6 +1388,7 @@ public final class Chapter1 implements Chapter {
 	static void techWatches(StorySession s) {
 		s.set("tech.watch");
 		techSuspects(s, 0.3F);
+		s.set("tmp.watch_hint");
 		done(s, "m4.tech");
 	}
 
@@ -1468,8 +1516,9 @@ public final class Chapter1 implements Chapter {
 				return s.local(D).y > H - 2 ? step.target() : null;
 			}
 			case "m6.duel" -> {
+				// Once the blades are lit she is right there (and moving): no marker over her.
 				Figure shadow = s.figure("shadow");
-				return shadow != null ? new Mission.Target(D, shadow.position().add(0.0, 2.2, 0.0)) : null;
+				return shadow != null && !s.has("tmp.duel") ? new Mission.Target(D, shadow.position().add(0.0, 2.2, 0.0)) : null;
 			}
 			default -> {
 				return step.target();

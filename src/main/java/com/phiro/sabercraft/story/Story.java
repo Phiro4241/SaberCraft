@@ -196,10 +196,7 @@ public final class Story {
 				progress.journal.removeIf(entry -> false);
 			}
 			case CONTINUE -> {
-				if (progress.finished && progress.mission >= missions - 1 && progress.step >= chapter.missions().get(missions - 1).steps().size()) {
-					progress.mission = 0;
-					progress.step = 0;
-				}
+				// Where one left off (after the chapter's end: in the Falcon, at the epilogue).
 			}
 		}
 
@@ -499,6 +496,7 @@ public final class Story {
 			session.progress.flags.clear();
 			session.progress.flags.addAll(session.flags);
 			save(session);
+			session.dirty = true;
 			cue(session, CUE_END, "", "sabercraft.story.end", 0);
 		}
 	}
@@ -730,8 +728,9 @@ public final class Story {
 				points.add(new StoryStatePayload.Point(point.id(), point.label(), point.hack(), point.box().move(Vec3.atLowerCornerOf(session.origin(point.ship())))));
 			}
 
-			alarm = session.alarm > 0 ? session.unseen >= Stealth.LOSE ? 1 : 2 : session.alert ? 1 : 0;
-			disguise = session.disguised ? session.burned ? 2 : 1 : 0;
+			// The alarm and the disguise are the Star Destroyer's (in the Falcon one is safe).
+			alarm = !DESTROYER.equals(session.here) ? 0 : session.alarm > 0 ? session.unseen >= Stealth.LOSE ? 1 : 2 : session.alert ? 1 : 0;
+			disguise = !session.disguised || !DESTROYER.equals(session.here) ? 0 : session.burned ? 2 : 1;
 			falcon = session.falcon;
 			destroyer = session.destroyer;
 
@@ -789,9 +788,12 @@ public final class Story {
 			answers.add(answer.key(dialog, line));
 		}
 
-		if (session.partner != null) {
-			session.partner.mode = Figure.HELD;
-			session.partner.target = session.local(session.partner.ship);
+		Figure partner = session.partner;
+
+		if (partner != null && partner.mode != Figure.SCRIPTED && partner.mode != Figure.FIGHT && partner.mode != Figure.DOWN) {
+			// They stop and look at the player (unless a script sends them off, or they fight).
+			partner.mode = Figure.HELD;
+			partner.target = session.local(partner.ship);
 		}
 
 		ServerPlayNetworking.send(player, new StoryDialogPayload(true, line.speaker(), line.radio(), line.key(dialog), answers, dialog.id + "." + line.id()));

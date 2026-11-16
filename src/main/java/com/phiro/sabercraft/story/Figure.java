@@ -139,9 +139,16 @@ public final class Figure {
 
 	/** The box they fill (plot space), for clicking on them and for blows and bolts. */
 	public AABB box() {
+		// The same box as the client aims at (StoryInput): lower when sitting, small for droids.
 		boolean sit = Crew.SIT.equals(this.pose());
-		double half = sit ? 0.4 : 0.32;
-		double top = this.mode == DOWN ? 0.5 : sit ? 1.45 : this.crew.height();
+		String kind = this.kind();
+		double half = kind.startsWith("droid") ? 0.36 : sit ? 0.4 : 0.32;
+		double top = this.mode == DOWN ? 0.5 : switch (kind) {
+			case "droid_mouse" -> 0.45;
+			case "droid_r2" -> 1.15;
+			case Crew.WOOKIEE -> sit ? 1.6 : 2.25;
+			default -> sit ? 1.45 : 1.8;
+		};
 		return new AABB(this.x - half, this.y, this.z - half, this.x + half, this.y + top, this.z + half);
 	}
 

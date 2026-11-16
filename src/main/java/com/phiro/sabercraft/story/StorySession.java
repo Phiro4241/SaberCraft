@@ -63,6 +63,8 @@ public final class StorySession {
 	public @Nullable String line;
 	/** The dialog's speaker (a figure held while they talk), or null. */
 	public @Nullable Figure partner;
+	/** What the partner was doing before the dialog (they go back to it after). */
+	private int partnerWas = Figure.ROUTINE;
 
 	/** A step to complete as soon as the open dialog is closed (said in a dialog, done after it), or null. */
 	public @Nullable String pending;
@@ -301,9 +303,26 @@ public final class StorySession {
 			return;
 		}
 
+		if (partner != this.partner) {
+			this.release();
+			this.partnerWas = partner != null ? partner.mode : Figure.ROUTINE;
+		}
+
 		this.dialog = d;
 		this.partner = partner;
 		this.show(d.first);
+	}
+
+	/** The dialog's partner goes back to what they did (unless a script gave them something else to do). */
+	private void release() {
+		Figure figure = this.partner;
+
+		if (figure != null && figure.mode == Figure.HELD && this.partnerWas != Figure.HELD) {
+			figure.mode = this.partnerWas == Figure.SCRIPTED || this.partnerWas == Figure.FIGHT ? this.partnerWas : Figure.RETURN;
+			figure.target = null;
+		}
+
+		this.partner = null;
 	}
 
 	/** Shows a line of the open dialog (running what it does), or closes it. */
@@ -312,9 +331,9 @@ public final class StorySession {
 		Dialog.Node line = d != null && !node.isEmpty() ? d.node(node) : null;
 
 		if (line == null) {
+			this.release();
 			this.dialog = null;
 			this.line = null;
-			this.partner = null;
 			Story.sendDialog(this);
 			return;
 		}
@@ -348,7 +367,7 @@ public final class StorySession {
 		List<Dialog.Answer> shown = line.shown(this);
 
 		if (shown.isEmpty()) {
-			this.show(line.next());
+			this.show(line.next(this));
 			return;
 		}
 
@@ -370,6 +389,11 @@ public final class StorySession {
 	/** A line over the comlink while playing (a subtitle; nothing stops). */
 	public void radio(String speaker, String key) {
 		Story.cue(this, Story.CUE_RADIO, speaker, key, 0);
+	}
+
+	/** Something said nearby that the player overhears (shown like the comlink, but not as a hologram). */
+	public void hear(String speaker, String key) {
+		Story.cue(this, Story.CUE_RADIO, speaker, key, 1);
 	}
 
 	/** A short message over the hotbar. */

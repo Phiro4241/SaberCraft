@@ -39,6 +39,8 @@ public final class DialogScreen extends Screen {
 	private StoryDialogPayload line;
 	/** The words of the line (in the SaberCraft language), how far they are shown, a pause after a sentence. */
 	private String words = "";
+	/** The language the words were made in (made again when the SaberCraft language changes). */
+	private net.minecraft.locale.@org.jspecify.annotations.Nullable Language madeIn;
 	private float shown;
 	private int pause;
 	private int lastBlip;
@@ -72,6 +74,7 @@ public final class DialogScreen extends Screen {
 
 	private void start() {
 		this.words = Component.translatable(this.line.text()).getString();
+		this.madeIn = net.minecraft.locale.Language.getInstance();
 		int speed = Mth.clamp(ImmersionConfig.get().storyTextSpeed, 0, 2);
 		this.shown = speed == 0 ? this.words.length() : 0.0F;
 		this.pause = 0;
@@ -88,6 +91,14 @@ public final class DialogScreen extends Screen {
 	@Override
 	public void tick() {
 		this.age++;
+
+		if (this.madeIn != net.minecraft.locale.Language.getInstance()) {
+			// The language changed (the menu, or Minecraft's): the same line in the new words.
+			boolean whole = !this.typing();
+			this.words = Component.translatable(this.line.text()).getString();
+			this.madeIn = net.minecraft.locale.Language.getInstance();
+			this.shown = whole ? this.words.length() : Math.min(this.shown, this.words.length());
+		}
 
 		if (this.sent) {
 			this.sentAge++;

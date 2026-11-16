@@ -7,6 +7,7 @@ import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.components.CycleButton;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.FormattedCharSequence;
@@ -107,9 +108,14 @@ public class StoryMenuScreen extends SaberMenuScreen {
 			this.chosen = state != null ? Mth.clamp(state.mission(), 0, unlocked) : 0;
 		}
 
-		this.cycle(0, 3, "sabercraft.menu.story.mission", reached, this.chosen,
-				i -> Component.translatable("sabercraft.menu.story.mission_name", i + 1, missions, Component.translatable("sabercraft.story.mission.m" + (i + 1))),
-				i -> this.chosen = i).active = server && unlocked > 0;
+		// Only the mission's name on the button (with "Mission:" before it, the longer names scrolled).
+		CycleButton<Integer> mission = this.addRenderableWidget(CycleButton.<Integer>builder(
+				i -> Component.translatable("sabercraft.menu.story.mission_name", i + 1, missions, Component.translatable("sabercraft.story.mission.m" + (i + 1))), this.chosen)
+				.withValues(reached)
+				.displayOnlyValue()
+				.withTooltip(v -> Tooltip.create(Component.translatable("sabercraft.menu.story.mission.description")))
+				.create(this.column(0), this.row(3), COLUMN_WIDTH, 20, Component.translatable("sabercraft.menu.story.mission"), (button, v) -> this.chosen = v));
+		mission.active = server && unlocked > 0;
 		Button play = this.button(1, 3, Component.translatable("sabercraft.menu.story.play"), () -> {
 			this.act(StoryActionPayload.MISSION, this.chosen);
 			return true;
