@@ -94,6 +94,9 @@ public class DroidEntity extends Pig {
 		@Nullable Spot spot(DroidEntity droid, ServerPlayer owner);
 	}
 
+	/** Phase 21: how close a droid that stood in another goes to its place. */
+	static final double TIGHT = 0.35;
+
 	/**
 	 * Phase 21: a place to keep to (in the level), how far from it the droid may be before it sets
 	 * off, and how close it comes before it stops.
@@ -512,6 +515,8 @@ public class DroidEntity extends Pig {
 	final class FollowGoal extends Goal {
 		private @Nullable ServerPlayer target;
 		private int recalc;
+		/** Phase 21: set off because it stood in another droid or at the player's feet: on to the place itself. */
+		private boolean tight;
 
 		FollowGoal() {
 			this.setFlags(EnumSet.of(Goal.Flag.MOVE, Goal.Flag.LOOK));
@@ -535,9 +540,13 @@ public class DroidEntity extends Pig {
 				boolean crowded = DroidEntity.this.distanceToSqr(player) < 1.2 * 1.2 || !DroidEntity.this.level()
 						.getEntitiesOfClass(DroidEntity.class, DroidEntity.this.getBoundingBox().inflate(0.5), other -> other != DroidEntity.this).isEmpty();
 
-				if (away < spot.start() && !(crowded && away > spot.stop() + 0.3)) {
+				// Two droids that crossed (each one's place beyond the other) both go, right onto their
+				// places: the places are apart, and only one of them going left them stuck in each other.
+				if (away < spot.start() && !(crowded && away > TIGHT + 0.1)) {
 					return false;
 				}
+
+				this.tight = crowded && away < spot.start();
 			} else if (DroidEntity.this.distanceToSqr(player) < 3.0 * 3.0) {
 				return false;
 			}
@@ -554,7 +563,8 @@ public class DroidEntity extends Pig {
 			}
 
 			Spot spot = advisor != null ? advisor.spot(DroidEntity.this, this.target) : null;
-			return spot != null ? DroidEntity.this.position().distanceTo(spot.at()) > spot.stop() : DroidEntity.this.distanceToSqr(this.target) > 2.0 * 2.0;
+			return spot != null ? DroidEntity.this.position().distanceTo(spot.at()) > (this.tight ? TIGHT : spot.stop())
+					: DroidEntity.this.distanceToSqr(this.target) > 2.0 * 2.0;
 		}
 
 		@Override
@@ -567,6 +577,7 @@ public class DroidEntity extends Pig {
 		@Override
 		public void stop() {
 			this.target = null;
+			this.tight = false;
 			DroidEntity.this.getNavigation().stop();
 		}
 

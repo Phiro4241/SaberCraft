@@ -737,9 +737,7 @@ public final class Stealth {
 				// Close by and no nearer (their place is a seat, a bunk, a console in the way): they
 				// sit down or step into place.
 				if (distance < 0.35 || distance < 1.3 && figure.stuck > 8) {
-					figure.mode = Figure.ROUTINE;
-					figure.stuck = 0;
-					figure.closestTo = null;
+					settle(figure, at);
 				} else {
 					go(figure, home, WALK, level, corner, time);
 
@@ -749,9 +747,7 @@ public final class Stealth {
 						figure.closest = distance;
 						figure.stuck = 0;
 					} else if (++figure.stuck > 60 && !s.seenBy(figure)) {
-						figure.mode = Figure.ROUTINE;
-						figure.stuck = 0;
-						figure.closestTo = null;
+						settle(figure, at);
 					}
 				}
 			}
@@ -782,6 +778,22 @@ public final class Stealth {
 			}
 			default -> figure.speed = 0.0F;
 		}
+	}
+
+	/**
+	 * Back in their place: on the spot of their routine at once, in the same tick, so that nobody
+	 * (the client, a test reading their box) sees them in their routine's pose somewhere short of it.
+	 */
+	private static void settle(Figure figure, double[] at) {
+		figure.mode = Figure.ROUTINE;
+		figure.x = at[0];
+		figure.y = at[1];
+		figure.z = at[2];
+		figure.yaw = (float) at[3];
+		figure.headYaw = figure.yaw;
+		figure.speed = figure.crew.path().isEmpty() ? 0.0F : (float) figure.crew.speed();
+		figure.stuck = 0;
+		figure.closestTo = null;
 	}
 
 	/** Phase 20: the reinforcements' keys begin so. */

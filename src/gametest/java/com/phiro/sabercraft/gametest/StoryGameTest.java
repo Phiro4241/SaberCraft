@@ -400,6 +400,14 @@ public class StoryGameTest implements FabricClientGameTest {
 		check(this.on(s -> session(s).figure("kestrel").mode == Figure.ROUTINE
 				&& DestroyerInterior.HIDDEN.contains(session(s).figure("kestrel").position().add(0.0, 0.5, 0.0))), "Kestrel does not come back into the hideout ("
 				+ this.on(s -> session(s).figure("kestrel").position() + " mode " + session(s).figure("kestrel").mode) + ")");
+		// Phase 21: back in her routine means on her cot, in the same tick (once, CI read her box a
+		// step short of it, sitting in the air, and the click went over her head).
+		double off = this.on(s -> {
+			Figure kestrel = session(s).figure("kestrel");
+			double[] at = kestrel.routine(session(s).time());
+			return kestrel.position().distanceTo(new Vec3(at[0], at[1], at[2]));
+		});
+		check(off < 0.05, "Kestrel is in her routine " + String.format(Locale.ROOT, "%.2f", off) + " blocks from its place");
 		this.talkTo("kestrel", true);
 		this.converse("go");
 		check(this.lines.contains("m6_plan.pickup") && this.lines.contains("m6_plan.escort"), "the pickup or escort line of the plan was skipped");
@@ -775,14 +783,22 @@ public class StoryGameTest implements FabricClientGameTest {
 		this.context.takeScreenshot("story_m1_lure");
 
 		// He listens a moment, then walks over to the noise: a few steps, and the hatch is free.
-		for (int i = 0; i < 50 && this.on(s -> {
-			Figure guard = session(s).figure("maint");
-			return guard != null && guard.position().distanceTo(new Vec3(10.5, H, -8.0)) < 2.5;
-		}); i++) {
+		// (Phase 21: waits for the hatch itself, and says where he is if it stays guarded.)
+		boolean free = false;
+
+		for (int i = 0; i < 50 && !free; i++) {
 			this.context.waitTicks(3);
+			free = this.on(s -> {
+				Figure guard = session(s).figure("maint");
+				return guard == null || guard.position().distanceTo(Vec3.atBottomCenterOf(hatch).add(0.0, 0.0, 1.0)) > 2.4;
+			});
 		}
 
-		check(!this.on(s -> Story.hatchClosed(me(s), session(s).destroyer, hatch)), "the hatch stays guarded after the guard went to see");
+		check(free && !this.on(s -> Story.hatchClosed(me(s), session(s).destroyer, hatch)), "the hatch stays guarded after the guard went to see (" + this.on(s -> {
+			Figure guard = session(s).figure("maint");
+			return guard == null ? "no guard" : "guard at " + guard.position() + ", mode " + guard.mode + ", target " + guard.target + ", timer " + guard.timer
+					+ ", way " + StoryTesting.path(guard).size() + ", step " + StoryTesting.step(session(s));
+		}) + ")");
 		SaberCraft.LOGGER.info("STORY: the guard lured away after {} ticks", this.context.computeOnClient(client -> client.player.tickCount) - before);
 	}
 
