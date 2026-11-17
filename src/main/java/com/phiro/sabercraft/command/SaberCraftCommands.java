@@ -163,7 +163,17 @@ public final class SaberCraftCommands {
 		return message != null ? 1 : 0;
 	}
 
+	/** Phase 22: whether the command's player is in a story (then told it is locked). */
+	private static boolean inStory(CommandContext<CommandSourceStack> context) {
+		return context.getSource().getPlayer() != null && com.phiro.sabercraft.story.Story.refuse(context.getSource().getPlayer());
+	}
+
 	private static int challenge(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
+		// Phase 22: the normal SaberCraft functions are locked while the player is in a story.
+		if (inStory(context)) {
+			return 0;
+		}
+
 		ServerPlayer player = context.getSource().getPlayerOrException();
 		ServerPlayer target = EntityArgument.getPlayer(context, "player");
 
@@ -203,6 +213,11 @@ public final class SaberCraftCommands {
 	}
 
 	private static int convert(CommandContext<CommandSourceStack> context, String color, String hilt) throws CommandSyntaxException {
+		// Phase 22: the normal SaberCraft functions are locked while the player is in a story.
+		if (inStory(context)) {
+			return 0;
+		}
+
 		ServerPlayer player = context.getSource().getPlayerOrException();
 		ItemStack stack = player.getItemInHand(InteractionHand.MAIN_HAND);
 		Identifier colorId = color == null ? null : SaberCraft.id(color);
@@ -227,6 +242,11 @@ public final class SaberCraftCommands {
 	}
 
 	private static int revert(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
+		// Phase 22: the normal SaberCraft functions are locked while the player is in a story.
+		if (inStory(context)) {
+			return 0;
+		}
+
 		ServerPlayer player = context.getSource().getPlayerOrException();
 		ItemStack stack = player.getItemInHand(InteractionHand.MAIN_HAND);
 
@@ -243,6 +263,11 @@ public final class SaberCraftCommands {
 	}
 
 	private static int blaster(CommandContext<CommandSourceStack> context, String type) throws CommandSyntaxException {
+		// Phase 22: the normal SaberCraft functions are locked while the player is in a story.
+		if (inStory(context)) {
+			return 0;
+		}
+
 		ServerPlayer player = context.getSource().getPlayerOrException();
 		ItemStack stack = player.getItemInHand(InteractionHand.MAIN_HAND);
 		BlasterType chosen = type == null ? null : BlasterType.byId(SaberCraft.id(type)).orElse(null);

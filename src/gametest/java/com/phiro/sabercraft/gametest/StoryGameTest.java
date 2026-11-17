@@ -379,6 +379,12 @@ public class StoryGameTest implements FabricClientGameTest {
 		check(this.on(s -> Droids.crew(me(s)).contains(DroidType.R2D2)), "R2-V7 does not come along");
 		this.place(Story.DESTROYER, new Vec3(35.0, H, 4.6), 180.0F, 10.0F);
 		this.droid(DroidType.R2D2, s -> session(s).has("cell3.open"), "R2-V7 does not open the prisoner's cell");
+		// Phase 22: the droid opens the cell one looks at, only that one: once more on the open cell
+		// does not open Kestrel's beside it.
+		check(this.on(s -> !session(s).has("cell1.open")), "R2-V7 opened Kestrel's cell too, not looked at");
+		this.context.getInput().pressKey(DroidControl.ABILITY_KEY);
+		this.context.waitTicks(60);
+		check(this.on(s -> !session(s).has("cell1.open")), "a second press on the open cell let R2-V7 open Kestrel's cell, not looked at");
 		this.talkTo("prisoner", true);
 		this.converse();
 		this.place(Story.DESTROYER, new Vec3(27.5, H, 4.6), 180.0F, 10.0F);
@@ -452,6 +458,8 @@ public class StoryGameTest implements FabricClientGameTest {
 		check(this.lines.contains("m6_epilogue.dax") && this.lines.contains("m6_epilogue.tamsin"), "Dax's or Tamsin's line of the epilogue was skipped");
 		context.waitTicks(20);
 		check(this.on(s -> session(s).progress.finished), "the chapter is not finished after the epilogue");
+		// Phase 22: from now on the story knows it is over: no objective, the crew's new lines.
+		check(this.on(s -> session(s).has(com.phiro.sabercraft.story.Chapter1.CHAPTER_DONE)), "the end of the chapter is not remembered");
 		context.waitTicks(10);
 		StoryStatePayload state = context.computeOnClient(client -> StoryClient.state());
 		check(state != null && state.finished() && state.completed().size() == 6, "the client does not know the chapter is done: " + state);
@@ -1144,7 +1152,12 @@ public class StoryGameTest implements FabricClientGameTest {
 
 		String key = trooper.key;
 
-		for (int stroke = 0; stroke < 2; stroke++) {
+		// Phase 22: a trooper takes four strokes (two before), each one shakes him.
+		for (int stroke = 0; stroke < 4; stroke++) {
+			if (stroke == 1) {
+				check(this.on(s -> session(s).figure(key).mode != Figure.DOWN), key + " is down after one stroke");
+			}
+
 			this.faceFigure(key, 1.8);
 			float before = this.on(s -> session(s).figure(key).health);
 			int struck = this.context.computeOnClient(client -> StoryInput.struckForTest());
@@ -1156,7 +1169,7 @@ public class StoryGameTest implements FabricClientGameTest {
 			check(after < before, "the stroke does not hit " + key + " (" + before + " -> " + after + ")");
 		}
 
-		check(this.on(s -> session(s).figure(key).mode == Figure.DOWN), key + " is not down after two strokes");
+		check(this.on(s -> session(s).figure(key).mode == Figure.DOWN), key + " is not down after four strokes");
 		this.context.runOnClient(client -> client.options.setCameraType(CameraType.THIRD_PERSON_BACK));
 		this.context.waitTicks(20);
 		this.context.takeScreenshot("story_trooper_down");

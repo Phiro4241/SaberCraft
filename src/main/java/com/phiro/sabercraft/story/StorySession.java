@@ -364,6 +364,17 @@ public final class StorySession {
 	// --- People ------------------------------------------------------------------------------------
 
 	/** Someone by their story name (or {@code crew:<n>}), or null. */
+	/** Phase 22: someone by their number (as the client and the bolts know them), or {@code null}. */
+	public @Nullable Figure figureById(int id) {
+		for (Figure figure : this.figures) {
+			if (figure.id == id) {
+				return figure;
+			}
+		}
+
+		return null;
+	}
+
 	public @Nullable Figure figure(String key) {
 		for (Figure figure : this.figures) {
 			if (figure.key.equals(key)) {
@@ -497,6 +508,11 @@ public final class StorySession {
 		if (figure != null && figure.mode == Figure.HELD && this.partnerWas != Figure.HELD) {
 			figure.mode = this.partnerWas == Figure.SCRIPTED || this.partnerWas == Figure.FIGHT ? this.partnerWas : Figure.RETURN;
 			figure.target = null;
+
+			// Phase 22: someone on their seat just goes on sitting (no walk back to it).
+			if (figure.mode == Figure.RETURN && figure.onSeat()) {
+				figure.mode = Figure.ROUTINE;
+			}
 		}
 
 		this.partner = null;

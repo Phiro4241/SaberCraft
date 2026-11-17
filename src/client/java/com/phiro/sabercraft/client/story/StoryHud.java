@@ -87,6 +87,26 @@ final class StoryHud implements HudElement {
 
 		int x = width - PANEL_WIDTH - 6;
 		int y = 6;
+
+		// Phase 22: after the chapter no mission is shown any more (the last one's goal stood there),
+		// only that chapter 1 is complete, quietly, and how to play it again.
+		if (StoryClient.has("chapter.done")) {
+			List<FormattedCharSequence> done = font.split(Component.translatable("sabercraft.story.hud.chapter_done_hint"), PANEL_WIDTH - 12);
+			int h = 8 + 20 + done.size() * 10;
+			graphics.fill(x - 4, y - 4, x + PANEL_WIDTH, y + h - 2, 0x58000000);
+			graphics.fill(x - 4, y - 4, x - 2, y + h - 2, 0xC070D890);
+			graphics.text(font, Component.translatable("sabercraft.story.hud.chapter_done"), x, y, GOLD);
+			graphics.text(font, Component.translatable("sabercraft.story.hud.chapter_done_state"), x, y + 11, 0xFF90E0A8);
+			y += 22;
+
+			for (FormattedCharSequence line : done) {
+				graphics.text(font, line, x, y, DIM);
+				y += 10;
+			}
+
+			return;
+		}
+
 		List<FormattedCharSequence> main = font.split(Component.translatable(state.objective()), PANEL_WIDTH - 12);
 		int lines = 1 + main.size();
 
@@ -371,14 +391,16 @@ final class StoryHud implements HudElement {
 				graphics.fill(mx, y - 2, mx + 1, y + 7, mark == PHASE_MARKS[2] ? 0xFFFFE08A : 0xFFE8EEF6);
 			}
 
-			// What he is about to do, for the eye that has not learnt it yet: a blow wound up shows as a pulse.
+			// What he is about to do (the name of his move, never how to answer it).
 			int kind = shadow.windup() >> 5;
 
 			if (kind >= 1 && kind <= 3) {
 				Component warn = Component.translatable("sabercraft.story.duel.blow" + kind);
 				graphics.centeredText(client.font, warn, centre, y + 9, 0xFFFFC060);
 			} else if (kind == 6) {
-				graphics.centeredText(client.font, Component.translatable("sabercraft.story.duel.open"), centre, y + 9, 0xFF8CF08C);
+				// Phase 22: what he does, not what to do (no green "strike now"): the player finds
+				// out by themselves what an opening is for.
+				graphics.centeredText(client.font, Component.translatable("sabercraft.story.duel.open"), centre, y + 9, 0xFFD8DCE2);
 			} else if (kind == 4 || kind == 5) {
 				graphics.centeredText(client.font, Component.translatable("sabercraft.story.duel.force" + kind), centre, y + 9, 0xFF8CC0FF);
 			}

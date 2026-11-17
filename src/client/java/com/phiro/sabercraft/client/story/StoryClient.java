@@ -137,6 +137,9 @@ static final int CHECKPOINT_TICKS = 60;
 		StoryCinema.init();
 		ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> reset());
 		HudElementRegistry.addLast(SaberCraft.id("story"), new StoryHud());
+		// Phase 22: no hunger, experience or armour in the story; a condition bar for the hearts.
+		StoryVitals.init();
+		ClientTickEvents.END_CLIENT_TICK.register(StoryVitals::tick);
 	}
 
 	static void reset() {
@@ -314,7 +317,8 @@ static final int CHECKPOINT_TICKS = 60;
 		}
 
 		float age = clientTicks - at + Minecraft.getInstance().getDeltaTracker().getGameTimeDeltaPartialTick(false);
-		return age >= 5.0F ? 0.0F : 1.0F - age / 5.0F;
+		// Phase 22: a little longer (8 ticks), so that a trooper is seen to reel from each hit.
+		return age >= 8.0F ? 0.0F : 1.0F - age / 8.0F;
 	}
 
 	static int focusMeter() {

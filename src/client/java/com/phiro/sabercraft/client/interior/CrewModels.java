@@ -82,7 +82,7 @@ final class CrewModels {
 			case Crew.TROOPER -> new Look(InteriorAtlas.CREW_TROOPER_HELMET, InteriorAtlas.CREW_TROOPER_HELMET_SIDE, InteriorAtlas.CREW_TROOPER_HELMET_TOP,
 					InteriorAtlas.IMP_BLACK, InteriorAtlas.CREW_TROOPER_TORSO, InteriorAtlas.CREW_TROOPER_LIMB, InteriorAtlas.CREW_TROOPER_LIMB, 0, 0, false);
 			case Crew.TECH -> new Look(InteriorAtlas.CREW_TECH_HELMET, InteriorAtlas.CREW_TECH_HELMET_SIDE, InteriorAtlas.CREW_TECH_HELMET_SIDE,
-					InteriorAtlas.IMP_BLACK, InteriorAtlas.CREW_TECH_BODY, InteriorAtlas.CREW_TECH_BODY, InteriorAtlas.CREW_TECH_BODY, 0, 0, false);
+					InteriorAtlas.IMP_BLACK, InteriorAtlas.CREW_TECH_BODY, InteriorAtlas.CREW_TECH_LIMB, InteriorAtlas.CREW_TECH_LIMB, 0, 0, false);
 			case Crew.PILOT -> new Look(InteriorAtlas.CREW_PILOT_HELMET, InteriorAtlas.CREW_PILOT_HELMET_SIDE, InteriorAtlas.CREW_PILOT_HELMET_SIDE,
 					InteriorAtlas.IMP_BLACK, InteriorAtlas.CREW_PILOT_BODY, InteriorAtlas.CREW_PILOT_LIMB, InteriorAtlas.CREW_PILOT_LIMB, 0, 0, false);
 			case Crew.GUARD -> new Look(InteriorAtlas.CREW_GUARD_HELMET, InteriorAtlas.CREW_GUARD_ROBE, InteriorAtlas.CREW_GUARD_ROBE, InteriorAtlas.IMP_BLACK,

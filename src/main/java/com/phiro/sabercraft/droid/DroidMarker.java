@@ -33,6 +33,35 @@ public final class DroidMarker {
 		return stack;
 	}
 
+	/**
+	 * Phase 22: the head item of a droid of the story (R2-V7, M-31): the type, and a third string
+	 * naming the story's own droid, so that every client knows it is not the player's R2-D2.
+	 */
+	public static ItemStack item(DroidType type, @Nullable String story) {
+		if (story == null || story.isEmpty()) {
+			return item(type);
+		}
+
+		ItemStack stack = new ItemStack(Items.IRON_NUGGET);
+		stack.set(DataComponents.CUSTOM_MODEL_DATA, new CustomModelData(List.of(), List.of(), List.of(MARKER, type.id(), story), List.of()));
+		return stack;
+	}
+
+	/** Phase 22: the story's own droid an entity is ({@code r2v7}, {@code m31}), or {@code null}. */
+	public static @Nullable String story(Entity entity) {
+		if (!(entity instanceof Pig pig)) {
+			return null;
+		}
+
+		CustomModelData data = pig.getItemBySlot(EquipmentSlot.HEAD).get(DataComponents.CUSTOM_MODEL_DATA);
+
+		if (data == null || data.strings().size() < 3 || !MARKER.equals(data.strings().get(0))) {
+			return null;
+		}
+
+		return data.strings().get(2);
+	}
+
 	/** The droid type of an entity, or {@code null} if it is no droid. */
 	public static @Nullable DroidType of(Entity entity) {
 		if (!(entity instanceof Pig pig)) {

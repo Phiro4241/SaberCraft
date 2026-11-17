@@ -1093,6 +1093,50 @@ def _():
 # officers in grey uniforms, technicians in black. Inspired by the look, not copied.
 
 
+# --- Phase 22: finer armour and suits for the troopers and the reactor workers ----------------
+# Painted here like everything else (gradients, plate seams, small parts); inspired by the films'
+# armour, nothing copied from them or from any game.
+
+
+def vgrad(img, top, bottom, x0=0, x1=TILE, y0=0, y1=TILE):
+    """Shades rows from factor `top` to factor `bottom` (light from above)."""
+    for y in range(y0, y1):
+        t = (y - y0) / max(1, y1 - y0 - 1)
+        img[y, x0:x1, :3] *= top + (bottom - top) * t
+    np.clip(img, 0, 1, out=img)
+
+
+def hgrad_round(img, edge=0.8, x0=0, x1=TILE, y0=0, y1=TILE):
+    """Darkens towards the left and right edges: a round surface turning away."""
+    w = x1 - x0
+    for x in range(x0, x1):
+        t = abs((x - x0) / max(1, w - 1) * 2 - 1)
+        img[y0:y1, x, :3] *= 1.0 - (1.0 - edge) * t ** 2
+    np.clip(img, 0, 1, out=img)
+
+
+def seam(img, x0, y0, x1, y1, factor=0.62):
+    """A thin dark seam line between plates, with a light edge under it."""
+    if y0 == y1:
+        line_h(img, y0, factor, x0, x1)
+        if y0 + 1 < TILE:
+            line_h(img, y0 + 1, 1.08, x0, x1)
+    else:
+        line_v(img, x0, factor, y0, y1)
+        if x0 + 1 < TILE:
+            line_v(img, x0 + 1, 1.08, y0, y1)
+
+
+def ellipse(img, cx, cy, rx, ry, rgb=None, factor=None):
+    for y in range(max(0, int(cy - ry)), min(TILE, int(cy + ry) + 1)):
+        for x in range(max(0, int(cx - rx)), min(TILE, int(cx + rx) + 1)):
+            if ((x - cx) / rx) ** 2 + ((y - cy) / ry) ** 2 <= 1.0:
+                if rgb is not None:
+                    img[y, x, :3] = np.array(rgb) / 255.0
+                if factor is not None:
+                    img[y, x, :3] = np.clip(img[y, x, :3] * factor, 0, 1)
+
+
 def armour_white(seed):
     img = solid((226, 228, 232))
     grain(img, seed, 0.035)
@@ -1102,72 +1146,108 @@ def armour_white(seed):
 @tile("crew_trooper_helmet", "crew: trooper helmet, front (eyes, breathing grille)")
 def _():
     img = armour_white(1701)
-    # The brow and the cheeks are bevelled plates.
-    bevel(img, 4, 6, 60, 30, 1.06, 0.86, 2)
-    # Eye lenses: dark, slanting down to the outside.
-    for side in (0, 1):
-        for i in range(10):
-            x0 = 12 + i if side == 0 else 52 - i - 12
-            y0 = 22 + (i // 3 if side == 0 else (9 - i) // 3)
-            rect(img, (14 + i) if side == 0 else (40 + i), 22 + (i // 4 if side == 0 else (9 - i) // 4), (15 + i) if side == 0 else (41 + i), 31 - (i // 3 if side == 0 else (9 - i) // 3), (24, 26, 30))
-    # The tube-like breathing grille and the "frown".
-    rect(img, 24, 40, 40, 48, (70, 74, 82))
+    vgrad(img, 1.06, 0.9)
+    hgrad_round(img, 0.82)
+    # The brow ridge and the cheek plates.
+    seam(img, 6, 18, 58, 18)
+    bevel(img, 8, 4, 56, 18, 1.08, 0.9, 1)
+    # Eye lenses: big dark drops, slanting down and out, a glint in each.
+    for cx, slant in ((21, -1), (43, 1)):
+        for y in range(20, 34):
+            half = 6 + (y - 20) // 4
+            off = slant * (y - 20) // 3
+            for x in range(cx - half + off, cx + half + off):
+                if 0 <= x < TILE:
+                    img[y, x, :3] = (18 / 255.0, 20 / 255.0, 24 / 255.0)
+        rect(img, cx - 4 + slant, 22, cx - 1 + slant, 24, (70, 80, 96))
+    # The nose ridge between the eyes, the "frown" under it.
+    rect(img, 30, 20, 34, 38, factor=0.9)
+    for x in range(14, 50):
+        y = 42 + abs(x - 32) // 6
+        img[y:y + 2, x, :3] *= 0.55
+    # The breathing grille: grey with dark slots, two round vents beside it.
+    rect(img, 24, 46, 40, 56, (96, 100, 108))
     for x in range(25, 40, 3):
-        line_v(img, x, 0.5, 41, 47)
-    rect(img, 18, 50, 46, 52, factor=0.55)
-    rect(img, 16, 46, 22, 52, factor=0.6)
-    rect(img, 42, 46, 48, 52, factor=0.6)
-    # Side vents (dark), the chin.
-    rect(img, 6, 38, 12, 54, factor=0.55)
-    rect(img, 52, 38, 58, 54, factor=0.55)
-    rect(img, 0, 58, 64, 64, factor=0.75)
+        line_v(img, x, 0.45, 47, 55)
+    for cx in (17, 47):
+        ellipse(img, cx, 52, 4, 4, (52, 56, 62))
+        ellipse(img, cx, 52, 2, 2, (110, 114, 120))
+    # Side "tear" stripes (grey-blue), the chin.
+    rect(img, 6, 34, 9, 52, (120, 140, 168))
+    rect(img, 55, 34, 58, 52, (120, 140, 168))
+    rect(img, 0, 59, 64, 64, factor=0.7)
     return img
 
 
 @tile("crew_trooper_helmet_side", "crew: trooper helmet, sides and back")
 def _():
     img = armour_white(1702)
-    bevel(img, 3, 4, 61, 60, 1.06, 0.86, 2)
-    # The ear piece and a dark band low down.
-    for y in range(64):
-        for x in range(64):
-            if (x - 32) ** 2 + (y - 34) ** 2 < 90:
-                img[y, x, :3] *= 0.82
-    rect(img, 26, 28, 38, 40, factor=0.75)
-    rect(img, 0, 50, 64, 54, (60, 64, 70))
+    vgrad(img, 1.05, 0.88)
+    hgrad_round(img, 0.86)
+    # The ear cap: a raised disc with a dark ring and a little bolt, a ridge over it.
+    ellipse(img, 30, 34, 11, 11, factor=0.86)
+    ellipse(img, 30, 34, 8, 8, factor=1.08)
+    ellipse(img, 30, 34, 3, 3, (90, 94, 100))
+    seam(img, 4, 20, 60, 20)
+    # Grey-blue stripes along the lower edge, the dark rim of the neck.
+    for x in range(8, 58, 6):
+        rect(img, x, 48, x + 3, 54, (120, 140, 168))
+    rect(img, 0, 56, 64, 64, (54, 58, 64))
     return img
 
 
 @tile("crew_trooper_torso", "crew: trooper chest and back (plates, black under-suit, belt)")
 def _():
-    img = solid((32, 34, 38))
+    img = solid((26, 28, 32))
     grain(img, 1703, 0.05)
-    # Chest plate, shoulders, the plates of the belly.
-    rect(img, 6, 2, 58, 26, (228, 230, 234))
-    bevel(img, 6, 2, 58, 26, 1.05, 0.82, 2)
-    rect(img, 14, 30, 50, 36, (220, 222, 226))
-    rect(img, 16, 38, 48, 44, (220, 222, 226))
-    # The belt with its pouches.
-    rect(img, 0, 48, 64, 56, (214, 216, 220))
-    for x in (6, 18, 40, 52):
-        rect(img, x, 47, x + 7, 57, (236, 238, 240))
-        bevel(img, x, 47, x + 7, 57, 1.05, 0.8, 1)
-    rect(img, 28, 49, 36, 55, (120, 124, 130))
-    # Little controls on the chest.
-    rect(img, 24, 12, 30, 16, (60, 64, 70))
-    rect(img, 34, 12, 40, 16, (150, 60, 50))
+    # The black body suit shows between the plates, with fine ribs.
+    for y in range(0, 64, 3):
+        line_h(img, y, 0.8)
+    # Chest plate: two halves, rounded, a seam down the middle.
+    rect(img, 5, 2, 59, 24, (230, 232, 236))
+    vgrad(img, 1.06, 0.86, 5, 59, 2, 24)
+    seam(img, 32, 4, 32, 22, 0.7)
+    bevel(img, 5, 2, 59, 24, 1.06, 0.8, 1)
+    # The control box on the chest: buttons in a row.
+    rect(img, 22, 9, 42, 16, (64, 68, 76))
+    for i, col in enumerate(((190, 60, 50), (210, 210, 210), (60, 120, 200), (210, 210, 210))):
+        rect(img, 24 + i * 4, 11, 26 + i * 4, 14, col)
+    # The belly: ribbed plates, narrower going down.
+    for i, (x0, x1) in enumerate(((12, 52), (14, 50), (16, 48))):
+        y0 = 27 + i * 6
+        rect(img, x0, y0, x1, y0 + 4, (222, 224, 228))
+        bevel(img, x0, y0, x1, y0 + 4, 1.05, 0.8, 1)
+    # The belt: white with ammunition boxes, a grey buckle plate.
+    rect(img, 0, 46, 64, 50, (210, 212, 216))
+    for x in (2, 12, 44, 54):
+        rect(img, x, 45, x + 8, 56, (236, 238, 240))
+        bevel(img, x, 45, x + 8, 56, 1.06, 0.78, 1)
+        rect(img, x + 2, 47, x + 6, 49, factor=0.8)
+    rect(img, 24, 45, 40, 54, (150, 154, 160))
+    bevel(img, 24, 45, 40, 54, 1.15, 0.7, 1)
+    # Under it the thigh's upper edge.
+    rect(img, 6, 58, 58, 64, (222, 224, 228))
     return img
 
 
 @tile("crew_trooper_limb", "crew: trooper arm or leg (white plates, black joints)")
 def _():
-    img = solid((30, 32, 36))
+    img = solid((26, 28, 32))
     grain(img, 1704, 0.05)
-    rect(img, 4, 2, 60, 26, (228, 230, 234))
-    bevel(img, 4, 2, 60, 26, 1.05, 0.82, 2)
-    rect(img, 4, 34, 60, 60, (228, 230, 234))
-    bevel(img, 4, 34, 60, 60, 1.05, 0.82, 2)
-    rect(img, 0, 60, 64, 64, (210, 212, 216))
+    for y in range(0, 64, 3):
+        line_h(img, y, 0.8)
+    # Upper plate, a pad over the joint (elbow or knee), the lower plate, the cuff or boot.
+    rect(img, 6, 1, 58, 24, (230, 232, 236))
+    hgrad_round(img, 0.8, 6, 58, 1, 24)
+    bevel(img, 6, 1, 58, 24, 1.05, 0.82, 1)
+    ellipse(img, 32, 29, 12, 5, (216, 218, 222))
+    ellipse(img, 32, 29, 12, 5, factor=1.0)
+    rect(img, 6, 34, 58, 57, (230, 232, 236))
+    hgrad_round(img, 0.8, 6, 58, 34, 57)
+    bevel(img, 6, 34, 58, 57, 1.05, 0.82, 1)
+    seam(img, 32, 36, 32, 55, 0.78)
+    rect(img, 2, 58, 62, 64, (200, 202, 206))
+    line_h(img, 58, 0.6, 2, 62)
     return img
 
 
@@ -1228,25 +1308,54 @@ def _():
 
 @tile("crew_tech_helmet", "crew: technician's black helmet, front (visor)")
 def _():
-    img = solid((26, 27, 30))
+    img = solid((24, 25, 28))
     grain(img, 1709, 0.06)
-    bevel(img, 2, 2, 62, 62, 1.25, 0.7, 2)
-    rect(img, 8, 22, 56, 36, (10, 10, 12))
-    rect(img, 8, 22, 56, 24, (90, 96, 110))
-    rect(img, 22, 44, 42, 50, (60, 62, 68))
+    vgrad(img, 1.25, 0.85)
+    hgrad_round(img, 0.75)
+    # A wide visor in a raised frame, the room's lights caught in it.
+    rect(img, 6, 20, 58, 36, (8, 9, 12))
+    bevel(img, 5, 19, 59, 37, 1.6, 0.6, 1)
+    for x in range(10, 30):
+        y = 22 + (x - 10) // 5
+        img[y, x, :3] = (96 / 255.0, 104 / 255.0, 122 / 255.0)
+    rect(img, 46, 23, 52, 25, (70, 76, 92))
+    # The mouth piece: a box with a grille and two small hoses down.
+    rect(img, 22, 42, 42, 52, (52, 54, 60))
+    bevel(img, 22, 42, 42, 52, 1.3, 0.7, 1)
+    for x in range(24, 41, 3):
+        line_v(img, x, 0.5, 44, 51)
+    rect(img, 14, 48, 18, 64, (40, 42, 46))
+    rect(img, 46, 48, 50, 64, (40, 42, 46))
+    # A small rank patch (grey) on the brow.
+    rect(img, 28, 8, 36, 13, (110, 112, 118))
     return img
 
 
 @tile("crew_tech_body", "crew: technician's black suit (chest box, belt)")
 def _():
-    img = solid((30, 31, 34))
+    img = solid((28, 29, 32))
     grain(img, 1710, 0.06)
-    rect(img, 14, 10, 34, 24, (54, 56, 62))
-    bevel(img, 14, 10, 34, 24, 1.3, 0.7, 1)
-    for i, col in enumerate(((200, 60, 50), (60, 180, 90), (60, 110, 220))):
-        rect(img, 17 + i * 5, 14, 20 + i * 5, 17, col)
-    rect(img, 0, 46, 64, 52, (16, 16, 18))
-    rect(img, 28, 46, 36, 52, (120, 122, 128))
+    vgrad(img, 1.15, 0.9)
+    # Shoulder seams and a padded collar.
+    rect(img, 16, 0, 48, 4, (40, 42, 46))
+    seam(img, 2, 6, 62, 6, 0.7)
+    # The chest box: lights, switches, a little readout.
+    rect(img, 12, 10, 36, 26, (52, 54, 60))
+    bevel(img, 12, 10, 36, 26, 1.35, 0.65, 1)
+    for i, col in enumerate(((210, 60, 50), (70, 190, 100), (70, 120, 230), (220, 190, 60))):
+        rect(img, 15 + i * 5, 13, 18 + i * 5, 16, col)
+    rect(img, 15, 19, 33, 23, (20, 40, 30))
+    rect(img, 16, 20, 26, 22, (60, 160, 100))
+    # Ribbed hoses from the box round to the back.
+    for x in range(36, 58, 2):
+        line_v(img, x, 0.75 if x % 4 else 1.2, 12, 24)
+    # A rank plaque, the belt with a grey buckle and a tool pouch.
+    rect(img, 42, 9, 54, 13, (120, 122, 128))
+    rect(img, 0, 44, 64, 50, (14, 14, 16))
+    rect(img, 27, 43, 37, 51, (130, 132, 138))
+    bevel(img, 27, 43, 37, 51, 1.2, 0.7, 1)
+    rect(img, 6, 50, 16, 60, (40, 42, 46))
+    bevel(img, 6, 50, 16, 60, 1.3, 0.7, 1)
     return img
 
 
@@ -1367,17 +1476,27 @@ def _():
 @tile("crew_trooper_helmet_top", "crew: the top of a trooper's helmet (white dome, a ridge)")
 def _():
     img = armour_white(1824)
-    bevel(img, 3, 3, 61, 61, 1.05, 0.88, 2)
-    rect(img, 30, 0, 34, 64, factor=0.9)
+    hgrad_round(img, 0.84)
+    vgrad(img, 1.04, 0.9)
+    # The ridge front to back, plate seams beside it.
+    rect(img, 29, 0, 35, 64, factor=1.06)
+    seam(img, 28, 0, 28, 64, 0.8)
+    seam(img, 35, 0, 35, 64, 0.8)
     return img
 
 
 @tile("crew_tech_helmet_side", "crew: technician's black helmet, sides, back and top")
 def _():
-    img = solid((28, 29, 32))
+    img = solid((26, 27, 30))
     grain(img, 1825, 0.06)
-    bevel(img, 2, 2, 62, 62, 1.25, 0.7, 2)
-    rect(img, 0, 48, 64, 52, (60, 62, 68))
+    vgrad(img, 1.25, 0.85)
+    hgrad_round(img, 0.78)
+    # A seam round the helmet, the ear piece with a little light, the rim.
+    seam(img, 2, 18, 62, 18, 0.6)
+    ellipse(img, 32, 34, 9, 9, (40, 42, 46))
+    ellipse(img, 32, 34, 9, 9, factor=1.2)
+    rect(img, 30, 32, 34, 36, (70, 170, 110))
+    rect(img, 0, 50, 64, 54, (62, 64, 70))
     return img
 
 
@@ -1956,6 +2075,21 @@ def _():
 
 
 # --- Writing ---------------------------------------------------------------------------------
+
+
+@tile("crew_tech_limb", "crew: technician's sleeve or trouser leg (black, a knee or elbow pad, a grey strap, boots) (Phase 22)")
+def _():
+    img = solid((28, 29, 32))
+    grain(img, 2201, 0.06)
+    vgrad(img, 1.12, 0.9)
+    hgrad_round(img, 0.78)
+    seam(img, 30, 0, 30, 24, 0.75)
+    rect(img, 14, 24, 50, 34, (40, 42, 46))
+    bevel(img, 14, 24, 50, 34, 1.35, 0.65, 1)
+    rect(img, 0, 40, 64, 43, (90, 92, 98))
+    rect(img, 0, 56, 64, 64, (14, 14, 16))
+    line_h(img, 56, 1.4)
+    return img
 
 
 def main():

@@ -226,7 +226,7 @@ final class FalconRooms {
 			b.box(r0, y1 - 0.25F, -0.18F, r1, y1, 0.18F, MeshBuilder.ALL & ~MeshBuilder.UP);
 			// A little lamp under the beam.
 			b.layer(Layer.GLOW).fullBright().colour(0xFFE8D8B0).fit(InteriorAtlas.FAL_CEILING_LIGHT_GLOW);
-			b.rect(r0 + 1.0F, y1 - 0.252F, 0.1F, r1 - r0 - 2.0F, 0, 0, 0, 0, -0.2F);
+			b.rect(r0 + 1.0F, y1 - 0.262F, 0.1F, r1 - r0 - 2.0F, 0, 0, 0, 0, -0.2F);
 			b.layer(Layer.SOLID).worldLight().white();
 			b.pop();
 		}
@@ -332,7 +332,7 @@ final class FalconRooms {
 			b.fit(InteriorAtlas.FAL_WALL_TECH);
 			b.rect(27.02F, Y0 + 1.6F, z, 0, 0, 1, 0, -1.6F, 0);
 			b.layer(Layer.GLOW).fullBright().anim(InteriorScene.ANIM_SCREEN).fit(z % 2 == 0 ? InteriorAtlas.FAL_SCREEN_GLOW : InteriorAtlas.FAL_CONSOLE_GLOW);
-			b.rect(27.01F, Y0 + 2.9F, z + 0.1F, 0, 0, 0.8F, 0, -1.2F, 0);
+			b.rect(26.99F, Y0 + 2.9F, z + 0.1F, 0, 0, 0.8F, 0, -1.2F, 0);
 			b.layer(Layer.SOLID).worldLight().anim(0);
 		}
 
@@ -740,8 +740,12 @@ final class FalconRooms {
 			b.polyFacing(java.util.List.of(y(f0, Y0 + 2.0F), y(f1, Y0 + 2.0F), y(k1, Y0 + 2.0F), y(k0, Y0 + 2.0F)), new Vector3f(0, 1, 0));
 
 			if (i % 3 == 2) {
+				// Phase 22: the screen stands a little in front of the machine's face; on it, the two
+				// fought for the same depth and the screens around the reactor flickered.
+				Vector3f g0 = at(s0, rIn - 0.02F, 0);
+				Vector3f g1 = at(s1, rIn - 0.02F, 0);
 				b.layer(Layer.GLOW).fullBright().anim(InteriorScene.ANIM_SCREEN).fit(InteriorAtlas.FAL_CONSOLE_GLOW);
-				b.polyFacing(java.util.List.of(y(f0, Y0 + 1.9F), y(f1, Y0 + 1.9F), y(f1, Y0 + 0.9F), y(f0, Y0 + 0.9F)), inward);
+				b.polyFacing(java.util.List.of(y(g0, Y0 + 1.9F), y(g1, Y0 + 1.9F), y(g1, Y0 + 0.9F), y(g0, Y0 + 0.9F)), inward);
 				b.layer(Layer.SOLID).worldLight().anim(0);
 			}
 
@@ -752,6 +756,22 @@ final class FalconRooms {
 		}
 
 		// The outer wall above the machines: round (Phase 17: drawn with the other round walls).
+
+		// Phase 22: the ceiling all the way to the outer wall. The ceiling's blocks end half a block
+		// short of it (their middles further out are not in the room), and through the gap one
+		// saw the stars over the machines. A strip under the ceiling closes it.
+		b.layer(Layer.SOLID).worldLight().white().anim(0).tile(InteriorAtlas.FAL_CEILING, 1.0F);
+		float cIn = (float) ENGINE_R1 - 0.3F;
+		float cOut = (float) ENGINE_OUTER_WALL + 0.06F;
+		float cy = Y0 + 4 - 0.012F;
+		int strips = 32;
+
+		for (int i = 0; i < strips; i++) {
+			float s0 = Mth.lerp(i / (float) strips, a0, a1);
+			float s1 = Mth.lerp((i + 1) / (float) strips, a0, a1);
+			b.polyFacing(java.util.List.of(y(at(s0, cIn, 0), cy), y(at(s0, cOut, 0), cy), y(at(s1, cOut, 0), cy), y(at(s1, cIn, 0), cy)),
+					new Vector3f(0, -1, 0));
+		}
 	}
 
 	private static Vector3f at(float angle, float r, float y) {
@@ -808,7 +828,7 @@ final class FalconRooms {
 			}
 
 			b.layer(Layer.GLOW).fullBright().anim(InteriorScene.ANIM_SCREEN).fit(InteriorAtlas.FAL_SCREEN_GLOW);
-			b.rect(20.2F, y + 0.85F, 27.19F, 0.6F, 0, 0, 0, -0.4F, 0);
+			b.rect(20.2F, y + 0.85F, 27.17F, 0.6F, 0, 0, 0, -0.4F, 0);
 			b.layer(Layer.SOLID).worldLight().anim(0);
 		}
 	}

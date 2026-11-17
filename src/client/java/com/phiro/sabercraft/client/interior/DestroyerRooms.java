@@ -76,7 +76,7 @@ final class DestroyerRooms {
 		b.fit(InteriorAtlas.IMP_BLACK);
 		b.box(17.7F, y + 0.82F, -1.35F, 18.3F, y + 1.22F, -1.25F);
 		b.layer(Layer.GLOW).fullBright().anim(InteriorScene.ANIM_SLOW).fit(InteriorAtlas.IMP_SCREEN_TEXT_GLOW);
-		b.rect(17.74F, y + 1.19F, -1.249F, 0.52F, 0, 0, 0, -0.34F, 0);
+		b.rect(17.74F, y + 1.19F, -1.24F, 0.52F, 0, 0, 0, -0.34F, 0);
 		b.layer(Layer.SOLID).worldLight().anim(0);
 		// Datapads on the desk, a cup.
 		b.fit(InteriorAtlas.IMP_CONSOLE_TOP);
@@ -839,6 +839,9 @@ final class DestroyerRooms {
 		}
 
 		doorFrame(b, Direction.Axis.X, CX + 4, LOBBY_Z0, LOBBY_Z0 + 2, HANGAR + 1, HANGAR + 3, true);
+		// Phase 22: the detention block's door gets a frame like the others, on both sides.
+		doorFrame(b, Direction.Axis.X, CX - 4, com.phiro.sabercraft.interior.DestroyerInterior.DETENTION_DOOR_Z0,
+				com.phiro.sabercraft.interior.DestroyerInterior.DETENTION_DOOR_Z0 + 1, HANGAR + 1, HANGAR + 3, false);
 		liftFrame(b, CX - 2, CX + 3, HANGAR + 1, LOBBY_Z1 + 1);
 
 		// Phase 17: a rack of rifles on the west wall (in its two proxy cells).
@@ -894,7 +897,7 @@ final class DestroyerRooms {
 		b.box(x1 - d, y0, z, x1, y1 - d, z + 0.5F, MeshBuilder.ALL & ~MeshBuilder.EAST & ~MeshBuilder.UP & ~MeshBuilder.DOWN);
 		b.box(x0, y1 - d, z, x1, y1, z + 0.5F, MeshBuilder.ALL & ~MeshBuilder.UP);
 		b.layer(Layer.GLOW).fullBright().colour(0xFF90A8D8).fit(InteriorAtlas.IMP_WALL_STRIP_GLOW, 0.0F, 0.42F, 1.0F, 0.58F);
-		b.rect(x0 + 0.5F, y1 - d - 0.002F, z + 0.35F, x1 - x0 - 1.0F, 0, 0, 0, 0, -0.2F);
+		b.rect(x0 + 0.5F, y1 - d - 0.008F, z + 0.35F, x1 - x0 - 1.0F, 0, 0, 0, 0, -0.2F);
 		b.white().layer(Layer.SOLID).worldLight();
 	}
 
@@ -913,7 +916,7 @@ final class DestroyerRooms {
 
 			// The faces towards the opening stand a hair inside it: where the wall is thicker than one
 			// block they would otherwise lie on the faces of the blocks lining the passage.
-			float in = 0.01F;
+			float in = 0.016F;
 			// No face against the wall itself.
 			int mask = MeshBuilder.ALL & ~(axis == Direction.Axis.Z ? (face < wall ? MeshBuilder.SOUTH : MeshBuilder.NORTH)
 					: (face < wall ? MeshBuilder.EAST : MeshBuilder.WEST));

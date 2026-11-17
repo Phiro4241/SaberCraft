@@ -231,6 +231,13 @@ final class StoryModels {
 		StoryFiguresPayload.Fig fig = pose.fig();
 		int stage = fig.stage();
 
+		// Phase 22: a wounded trooper in a fight shows how much he has left (a slim bar over his
+		// head, turned to the camera), so every hit can be seen to count.
+		if ((fig.flags() & StoryFiguresPayload.HOSTILE) != 0 && (fig.flags() & StoryFiguresPayload.SABER) == 0 && !"down".equals(fig.pose())
+				&& fig.health() < 250) {
+			healthBar(b, pose, cameraYaw, fig.health() / 255.0F);
+		}
+
 		if ((fig.flags() & StoryFiguresPayload.OBSERVER) == 0 || (fig.flags() & StoryFiguresPayload.HOSTILE) != 0 || stage <= 0 || "down".equals(fig.pose())) {
 			return;
 		}
@@ -248,6 +255,28 @@ final class StoryModels {
 		b.layer(Layer.HOLO).fullBright().anim(0).twoSided(true).colourAlpha(colour);
 		b.fit(InteriorAtlas.STORY_MARKS, stage >= 3 ? 0.5F : 0.0F, 0.0F, stage >= 3 ? 1.0F : 0.5F, 1.0F);
 		b.rect(ox, top, oz, rx * width, 0.0F, rz * width, 0.0F, -height, 0.0F);
+		b.layer(Layer.SOLID).worldLight().white().twoSided(false);
+	}
+
+	/** Phase 22: the slim bar over a wounded trooper: dark behind, red for what is left. */
+	private static void healthBar(MeshBuilder b, StoryClient.Pose pose, float cameraYaw, float health) {
+		float width = 0.62F;
+		float height = 0.06F;
+		float top = (float) pose.y() + 2.18F;
+		float yaw = cameraYaw * Mth.DEG_TO_RAD;
+		float rx = -Mth.cos(yaw);
+		float rz = -Mth.sin(yaw);
+		// A hair towards the camera for the fill, so the two never fight over the same pixels.
+		float fx = Mth.sin(yaw) * 0.01F;
+		float fz = -Mth.cos(yaw) * 0.01F;
+		float ox = (float) pose.x() - rx * width / 2.0F;
+		float oz = (float) pose.z() - rz * width / 2.0F;
+		b.layer(Layer.HOLO).fullBright().anim(0).twoSided(true).colourAlpha(0xB0101014);
+		b.fit(InteriorAtlas.IMP_CEILING_LIGHT_GLOW);
+		b.rect(ox - rx * 0.02F, top + 0.02F, oz - rz * 0.02F, rx * (width + 0.04F), 0.0F, rz * (width + 0.04F), 0.0F, -(height + 0.04F), 0.0F);
+		float fill = Math.max(0.02F, Math.min(1.0F, health));
+		b.colourAlpha(health > 0.5F ? 0xF0E8A04A : 0xF0E0503A);
+		b.rect(ox + fx, top, oz + fz, rx * width * fill, 0.0F, rz * width * fill, 0.0F, -height, 0.0F);
 		b.layer(Layer.SOLID).worldLight().white().twoSided(false);
 	}
 

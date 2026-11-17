@@ -131,6 +131,8 @@ public final class Figure {
 	public int parried;
 	/** Phase 21: strokes that hit him in this opening. */
 	public int hits;
+	/** Phase 22: when they were last hurt (game time of the story): a moment after, a stroke only glances off. */
+	public long hurtAt = -1000L;
 	/** Phase 21: how fast they walk a scripted way (blocks a second; 0 = walking). */
 	public double scriptSpeed;
 
@@ -157,6 +159,12 @@ public final class Figure {
 		}
 
 		if (this.mode == ROUTINE || this.mode == HELD) {
+			return this.crew.pose();
+		}
+
+		// Phase 22: someone whose place is a seat stays sitting while they are on it (looking
+		// round, listening, just after a dialog): they stood upright in their chairs before.
+		if (this.onSeat() && this.speed <= 0.05F) {
 			return this.crew.pose();
 		}
 
@@ -224,9 +232,41 @@ public final class Figure {
 		this.lure = null;
 	}
 
+	/**
+	 * Phase 22: whether their place is a seat (a chair, a cot: they sit there and do not walk a
+	 * round).
+	 */
+	public boolean seated() {
+		return Crew.SIT.equals(this.crew.pose()) && this.crew.path().isEmpty();
+	}
+
+	/** Phase 22: whether they are on their seat now (within a step of it). */
+	public boolean onSeat() {
+		if (!this.seated()) {
+			return false;
+		}
+
+		double[] at = this.crew.where(0L);
+		double dx = this.x - at[0];
+		double dz = this.z - at[2];
+		return dx * dx + dz * dz < 0.36 && Math.abs(this.y - at[1]) < 0.6;
+	}
+
+	/** Phase 22: how far a seated person turns their head (and shoulders) from the way the seat faces. */
+	public static final float SEATED_TURN = 80.0F;
+
 	/** Turns the head (and over time the body) towards a point, at most {@code step} degrees. */
 	public void turnTowards(Vec3 point, float step, boolean body) {
 		float wanted = Crew.yaw(this.position(), point);
+
+		if (this.onSeat()) {
+			// Phase 22: sitting, the chair keeps facing its way; only the head turns, so far.
+			float seat = (float) this.crew.where(0L)[3];
+			float target = seat + Mth.clamp(Mth.wrapDegrees(wanted - seat), -SEATED_TURN, SEATED_TURN);
+			this.yaw = seat;
+			this.headYaw = this.headYaw + Mth.clamp(Mth.wrapDegrees(target - this.headYaw), -step, step);
+			return;
+		}
 		this.headYaw = this.headYaw + Mth.clamp(Mth.wrapDegrees(wanted - this.headYaw), -step, step);
 
 		if (body) {

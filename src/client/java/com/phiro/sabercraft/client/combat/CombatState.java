@@ -320,7 +320,12 @@ public final class CombatState {
 			return out.set(FirstPersonPose.REST);
 		}
 
-		FirstPersonPose rest = current.idleFirstPerson().copy().lerpTo(current.guardFirstPerson(), this.guardAmount(now));
+		FirstPersonPose idle = current.idleFirstPerson().copy();
+		// Phase 22: the blade in front of the eyes moves with the breath too, a little.
+		idle.elevation += Mth.sin(now * BREATH) * 0.8F;
+		idle.azimuth += Mth.sin(now * DRIFT + 1.3F) * 1.0F;
+		idle.roll += Mth.sin(now * DRIFT + 0.4F) * 1.4F;
+		FirstPersonPose rest = idle.lerpTo(current.guardFirstPerson(), this.guardAmount(now));
 
 		if (this.move == null) {
 			return out.set(this.firstPersonFrom).lerpTo(rest, this.releaseAmount(now));
@@ -377,6 +382,24 @@ public final class CombatState {
 			rest.lerpTo(current.airThirdPerson(), smooth(Mth.lerp(partial, this.previousAirWeight, this.airWeight)));
 		}
 
+		// Phase 22: standing with the saber lit, the body is not frozen: it breathes (the arms rise
+		// and sink a little every three seconds), the weight shifts slowly, the blade drifts. Only
+		// standing still (running and jumping have their own poses), and less in the guard.
+		float still = (1.0F - smooth(Mth.lerp(partial, this.previousRunWeight, this.runWeight)))
+				* (1.0F - smooth(Mth.lerp(partial, this.previousAirWeight, this.airWeight)));
+
+		if (still > 0.0F) {
+			float breath = Mth.sin(now * BREATH);
+			float drift = Mth.sin(now * DRIFT + 1.3F);
+			rest.mainArm[0] += (breath * 2.4F + drift * 1.6F) * still;
+			rest.mainArm[1] += drift * 2.2F * still;
+			rest.offArm[0] += Mth.sin(now * BREATH + 0.5F) * 2.8F * still;
+			rest.offArm[2] += drift * 1.5F * still;
+			rest.item[2] += drift * 3.5F * still;
+			rest.body[0] += breath * 0.9F * still;
+			rest.lean += breath * 0.7F * still;
+		}
+
 		return rest.lerpTo(current.guardThirdPerson(), this.guardAmount(now));
 	}
 
@@ -388,6 +411,10 @@ public final class CombatState {
 		float amount = smooth((now - this.guardChanged) / GUARD_BLEND);
 		return this.guarding ? amount : 1.0F - amount;
 	}
+
+	/** Phase 22: how fast the idle breath (about three seconds) and the slow drift (about seven) go, per tick. */
+	static final float BREATH = 0.105F;
+	static final float DRIFT = 0.045F;
 
 	/** Smoothstep, clamped to 0..1. */
 	static float smooth(float t) {

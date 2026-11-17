@@ -349,6 +349,48 @@ final class Chapter1Dialogs {
 				.say("rorrak", "rorrak").does(s -> Chapter1.done(s, "m6.epilogue"))
 				.build());
 
+		// --- Phase 22: after the chapter, on the way to the fleet --------------------------------------
+		add(Dialog.of("after_dax")
+				.say("start", "dax").thenIf(s -> s.has("trust.hale"), "hale_trusted", "hale_refused")
+				.say("hale_trusted", "dax")
+				.ask("ship", "ship").ask("next", "next").ask("bye", Dialog.END)
+				.say("hale_refused", "dax")
+				.ask("ship", "ship").ask("next", "next").ask("bye", Dialog.END)
+				.say("ship", "dax")
+				.ask("next", "next").ask("bye", Dialog.END)
+				.say("next", "dax")
+				.ask("ship", "ship").ask("bye", Dialog.END)
+				.build());
+
+		add(Dialog.of("after_kestrel")
+				.say("start", "kestrel").thenIf(s -> s.has("opt.armour2"), "armour", "plain")
+				.say("armour", "kestrel")
+				.ask("tracker", "tracker").ask("shadow", "shadow").ask("bye", Dialog.END)
+				.say("plain", "kestrel")
+				.ask("tracker", "tracker").ask("shadow", "shadow").ask("bye", Dialog.END)
+				.say("tracker", "kestrel")
+				.ask("shadow", "shadow").ask("bye", Dialog.END)
+				.say("shadow", "kestrel")
+				.ask("tracker", "tracker").ask("bye", Dialog.END)
+				.build());
+
+		add(Dialog.of("after_mira")
+				.say("start", "mira").thenIf(s -> s.has("opt.prisoner"), "tamsin", "alone")
+				.say("tamsin", "mira").then("saber")
+				.say("alone", "mira").then("saber")
+				.say("saber", "mira")
+				.build());
+
+		add(Dialog.of("after_rorrak")
+				.say("start", "rorrak").then("dax")
+				.radio("dax", "dax")
+				.build());
+
+		add(Dialog.of("after_tamsin")
+				.say("start", "prisoner").then("promise")
+				.say("promise", "prisoner")
+				.build());
+
 		add(Dialog.of("falcon_crew")
 				.say("start", "dax")
 				.build());

@@ -137,7 +137,7 @@ final class Props {
 
 		if (glowStrip) {
 			b.layer(Layer.GLOW).fullBright().fit(InteriorAtlas.IMP_WALL_STRIP_GLOW, 0.0F, 0.42F, 1.0F, 0.58F).colour(0xFFB8C8E8);
-			b.rect(x0, height - 0.001F, 0.06F, length, 0, 0, 0, 0, -0.12F);
+			b.rect(x0, height - 0.008F, 0.06F, length, 0, 0, 0, 0, -0.12F);
 			b.white();
 		}
 

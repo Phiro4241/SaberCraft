@@ -32,6 +32,11 @@ public final class SaberSwords {
 
 	public static void init() {
 		ServerPlayNetworking.registerGlobalReceiver(ConvertSaberPayload.TYPE, (payload, context) -> {
+			// Phase 22: not while a story runs.
+			if (com.phiro.sabercraft.story.Story.refuse(context.player())) {
+				return;
+			}
+
 			Component message = convert(context.player(), payload.hand(), payload.toSaber());
 
 			if (message != null) {

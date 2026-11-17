@@ -37,8 +37,12 @@ final class DroidTargetHud implements HudElement {
 		}
 
 		int cooldown = DroidClient.cooldownSeconds(entry);
+		// Phase 22: the story's own droids (R2-V7, M-31) by their names and with what they do in
+		// the story (no "R2-D2", no "Repair").
+		String story = DroidMarker.story(droid);
 		Component ability = Component.translatable("sabercraft.droid.key.ability", DroidControl.ABILITY_KEY.getTranslatedKeyMessage(),
-				Component.translatable("sabercraft.droid." + type.id() + ".ability_name"));
+				story != null ? Component.translatable("sabercraft.story.droid." + story + ".ability_name")
+						: Component.translatable("sabercraft.droid." + type.id() + ".ability_name"));
 
 		if (cooldown > 0) {
 			ability = Component.translatable("sabercraft.droid.key.cooldown", ability, cooldown);
@@ -48,7 +52,7 @@ final class DroidTargetHud implements HudElement {
 				DroidControl.ORDER_KEY.getTranslatedKeyMessage());
 		int x = graphics.guiWidth() / 2;
 		int y = graphics.guiHeight() / 2 + 12;
-		Component name = Component.translatable(type.translationKey());
+		Component name = story != null ? Component.translatable("sabercraft.story.name." + story) : Component.translatable(type.translationKey());
 		int width = Math.max(client.font.width(name), Math.max(client.font.width(ability), client.font.width(order))) + 8;
 		graphics.fill(x - width / 2, y - 2, x + width / 2, y + 31, 0x70000000);
 		graphics.centeredText(client.font, name, x, y, 0xFFE8F0FF);

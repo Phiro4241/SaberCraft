@@ -246,7 +246,9 @@ public final class DestroyerInterior extends InteriorPlan {
 		// The detention block, its door in the lobby's west wall.
 		b.room(25, HANGAR, -2, CX - 4, HANGAR + 5, 10, DARK);
 		b.box(26, HANGAR, -1, 35, HANGAR, 9, FLOOR);
-		b.clear(CX - 4, HANGAR + 1, 3, CX - 4, HANGAR + 3, 5);
+		// Phase 22: the door two wide, a block of wall on each side (it stood in the corner by the
+		// last cell, its frame cut off by the cell's field).
+		b.clear(CX - 4, HANGAR + 1, DETENTION_DOOR_Z0, CX - 4, HANGAR + 3, DETENTION_DOOR_Z0 + 1);
 
 		for (int x : new int[] {29, 33}) {
 			b.box(x, HANGAR + 1, -1, x, HANGAR + 4, CELL_FRONT, DARK);
@@ -349,6 +351,8 @@ public final class DestroyerInterior extends InteriorPlan {
 	public static final BlockPos CELL_CONSOLE = new BlockPos(26, HANGAR + 1, 9);
 	public static final BlockPos HIDEOUT_HATCH = new BlockPos(23, HANGAR + 1, -4);
 	public static final BlockPos DETENTION_HATCH = new BlockPos(25, HANGAR + 1, 6);
+	/** Phase 22: the detention block's door (z, two wide), in the lobby's west wall. */
+	public static final int DETENTION_DOOR_Z0 = 4;
 	/** The lab under the reactor (inside), its wall towards the shaft (z) and its blast door. */
 	public static final AABB LAB = new AABB(37, REACTOR_BOTTOM, 40, 52, REACTOR_BOTTOM + 5, 52);
 	public static final int LAB_WALL = 39;
@@ -546,7 +550,7 @@ public final class DestroyerInterior extends InteriorPlan {
 			// Phase 19: the airlock's inner door, the armory, the detention block, the lab's blast door.
 			Door.wall(false, AIRLOCK_WALL, 5, 7, HANGAR + 1, HANGAR + 3),
 			Door.wall(true, CX + 4, -14, -12, HANGAR + 1, HANGAR + 3),
-			Door.wall(true, CX - 4, 3, 5, HANGAR + 1, HANGAR + 3),
+			Door.wall(true, CX - 4, DETENTION_DOOR_Z0, DETENTION_DOOR_Z0 + 1, HANGAR + 1, HANGAR + 3),
 			Door.wall(false, LAB_WALL, LAB_DOOR_X0, LAB_DOOR_X0 + 2, REACTOR_BOTTOM, REACTOR_BOTTOM + 2));
 
 	/** Phase 19: the doors by name (their index in {@link #DOORS}). */
@@ -599,8 +603,9 @@ public final class DestroyerInterior extends InteriorPlan {
 		// lower level, more crew. 7 (Phase 19): nobody of the crew collides, railings and
 		// converters as drawn, lower caps over the pits' consoles. 8 (Phase 19): the story's rooms
 		// (maintenance room and airlock, armory, detention block, lab under the reactor) and
-		// Kestrel's crawl way.
-		return 8;
+		// Kestrel's crawl way. 9 (Phase 22): the detention door two wide, away from the corner;
+		// the way to the lab collides where its walls are drawn.
+		return 9;
 	}
 
 	@Override
@@ -1074,6 +1079,25 @@ public final class DestroyerInterior extends InteriorPlan {
 		b.roundShell(REACTOR_X, REACTOR_Z, new double[] {REACTOR_WALL}, (int) (REACTOR_X - r - 2), REACTOR_BOTTOM, (int) (REACTOR_Z - r - 2),
 				(int) (REACTOR_X + r + 2), REACTOR_TOP - 1, (int) (REACTOR_Z + r + 2), java.util.Set.of(InteriorBuilder.state(DARK).getBlock()),
 				DestroyerInterior::openReactor, (x, z, y) -> y == HANGAR || inGallery(x, z, y) || inLabWay(x, z, y));
+		// Phase 22: beside the way to the lab, between the shaft's wall and the lab's, there were
+		// empty cells behind the drawn walls: one walked into the wall there. Now they collide.
+		for (int x : new int[] {LAB_DOOR_X0 - 1, LAB_DOOR_X0 + 3}) {
+			for (int z = LAB_WALL - 4; z <= LAB_WALL - 1; z++) {
+				double nx = net.minecraft.util.Mth.clamp(REACTOR_X, x, x + 1) - REACTOR_X;
+				double nz = net.minecraft.util.Mth.clamp(REACTOR_Z, z, z + 1) - REACTOR_Z;
+
+				if (Math.sqrt(nx * nx + nz * nz) < REACTOR_WALL) {
+					continue;
+				}
+
+				for (int y = REACTOR_BOTTOM; y <= REACTOR_BOTTOM + 2; y++) {
+					if (b.isAir(x, y, z)) {
+						b.set(x, y, z, PROXY);
+					}
+				}
+			}
+		}
+
 		reactorFloor(b);
 		// The core gives off light.
 		b.light((int) REACTOR_X, REACTOR_BOTTOM + 4, (int) REACTOR_Z, 15);

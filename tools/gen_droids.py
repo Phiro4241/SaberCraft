@@ -55,6 +55,9 @@ gb.MATERIALS.update({
     "lens_black": ((14, 14, 18), "lens", {}),
     "eye_white": ((235, 240, 250), "glow", {}),
     "eye_yellow": ((255, 214, 90), "glow", {}),
+    # Phase 22: R2-V7, the story's astromech: a worn bone-white body, copper panels, a gunmetal dome.
+    "v7_bone": ((206, 198, 180), "polymer", {}),
+    "v7_teal": ((48, 112, 108), "polymer", {}),
 })
 gb.EMISSIVE.update({"eye_white": 13, "eye_yellow": 12})
 
@@ -264,6 +267,56 @@ def r2d2():
     d.boxc((1.9, 16.2, -3.0), (1.0, 0.8, 0.5), "led_blue")
     d.boxc((-1.6, 17.0, -2.4), (0.7, 0.6, 0.4), "led_red")
     d.boxc((0, 14.3, 4.2), (2.4, 0.9, 0.5), "r2_blue")
+    return d
+
+
+# ------------------------------------------------------------------------------------------------
+# Phase 22: R2-V7, the astromech of the story "Nachtschatten": the same build and pivots as
+# R2-D2 (it moves the same way), its own look: a worn bone-white barrel with copper panels and a
+# teal stripe, a gunmetal dome with a copper band, one big round eye lit amber, an antenna, a
+# scorched mark where the restraining bolt sat.
+
+def r2v7():
+    d = Droid("r2v7", 2207, 17.5, 11)
+    d.part("body", (0, 0, 0))
+    d.cyl("y", (0, 0), 3.0, 12.6, 4.6, "v7_bone", sides=12)
+    d.cyl("y", (0, 0), 12.6, 13.4, 4.7, "copper", sides=12)
+    d.cyl("y", (0, 0), 2.4, 3.0, 4.2, "dark_steel", sides=12)
+    # Copper panels on the front, a teal stripe across, a vent on the back.
+    for x0, x1, y0, y1 in ((-2.6, -0.4, 8.6, 12.0), (0.4, 2.6, 8.6, 12.0)):
+        d.box((x0, y0, -4.75), (x1, y1, -4.45), "copper", "panel")
+    d.box((-1.4, 3.8, -4.75), (1.4, 7.4, -4.45), "dark_steel", "slots")
+    d.box((-3.4, 7.6, -4.4), (3.4, 8.2, -4.1), "v7_teal")
+    d.box((-3.2, 4.2, -4.35), (-1.8, 7.2, -4.05), "copper")
+    d.box((1.8, 4.2, -4.35), (3.2, 7.2, -4.05), "copper")
+    # Where the restraining bolt sat: a scorched round plate.
+    d.boxc((2.6, 10.3, -4.85), (1.0, 1.0, 0.3), "rust")
+    d.box((-2.0, 10.6, 4.3), (2.0, 12.2, 4.75), "copper")
+    d.box((-1.5, 5.0, 4.3), (1.5, 9.5, 4.7), "gunmetal", "ribs")
+    for side in (-1, 1):
+        x = side * 5.3
+        d.cyl("x", (11.0, 0.0), x - 0.9 if side > 0 else x - 0.7, x + 0.7 if side > 0 else x + 0.9, 1.8, "v7_bone", sides=8)
+        d.cyl("x", (11.0, 0.0), x + (0.7 if side > 0 else -1.2), x + (1.2 if side > 0 else -0.7), 1.2, "copper", sides=8)
+        d.box((x - 0.8, 2.0, -1.5), (x + 0.8, 11.0, 1.5), "v7_bone", "panel")
+        d.box((x - 0.85, 4.5, -1.2), (x + 0.85, 9.5, -0.2), "v7_teal")
+        d.box((x - 1.1, 0.0, -2.6), (x + 1.1, 2.4, 2.6), "dark_steel", "ribs")
+        d.box((x - 0.6, 2.4, -1.8), (x + 0.6, 3.0, 1.8), "gunmetal")
+    d.box((-0.9, 0.0, -1.6), (0.9, 2.4, 1.6), "dark_steel")
+    d.box((-0.6, 2.4, -0.8), (0.6, 3.0, 0.8), "gunmetal")
+
+    d.part("head", (0, 13.4, 0))
+    d.dome(13.4, 4.6, 4.2, "gunmetal", steps=6, sides=12, bands={1: "copper"})
+    # One big round eye, lit amber, in a copper ring.
+    d.boxc((0, 15.6, -3.9), (2.4, 2.4, 0.8), "copper")
+    d.boxc((0, 15.6, -4.25), (1.7, 1.7, 0.3), "lens_black")
+    d.boxc((0, 15.6, -4.45), (0.9, 0.9, 0.2), "led_amber")
+    d.boxc((-2.4, 14.4, -3.6), (1.2, 0.8, 0.5), "v7_teal")
+    d.boxc((2.4, 14.4, -3.6), (1.2, 0.8, 0.5), "v7_teal")
+    d.boxc((1.8, 17.0, -2.6), (0.6, 0.6, 0.4), "led_green")
+    d.boxc((0, 14.3, 4.2), (2.4, 0.9, 0.5), "copper")
+    # The antenna, a little bent.
+    d.box((-1.6, 17.2, 0.6), (-1.2, 20.4, 1.0), "dark_steel")
+    d.boxc((-1.4, 20.6, 0.8), (0.6, 0.4, 0.6), "led_red")
     return d
 
 
@@ -487,7 +540,7 @@ def k2so():
     return d
 
 
-DROIDS = [r2d2, c3po, bb8, chopper, mouse, probe, b1, k2so]
+DROIDS = [r2d2, c3po, bb8, chopper, mouse, probe, b1, k2so, r2v7]
 
 
 def write_java(rigs):

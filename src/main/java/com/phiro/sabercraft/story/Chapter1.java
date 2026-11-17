@@ -291,6 +291,23 @@ public final class Chapter1 implements Chapter {
 
 	/** The Falcon's people: Mira, Dax at the controls, Rorrak at the drive; at the end everyone in the lounge. */
 	private static void falcon(StorySession s, List<Figure> list, int m, String step) {
+		if (s.has(CHAPTER_DONE)) {
+			// Phase 22: after the chapter, on the way to the fleet: Dax and Kestrel fly (sitting in
+			// the pilot's and the co-pilot's seats), Mira and Tamsin in the lounge, Rorrak at his
+			// drive.
+			list.add(person("dax", "dax", Crew.at(Crew.SMUGGLER, Crew.SIT, 42.5, FF, 21.7, 180.0F), F));
+			list.add(person("kestrel", "kestrel", Crew.at(Crew.REBEL, Crew.SIT, 45.5, FF, 21.7, 180.0F), F));
+			list.add(person("mira", "mira", Crew.at(Crew.REBEL, Crew.TALK, 19.2, FF, 24.8, -35.0F), F));
+			list.add(person("rorrak", "rorrak",
+					Crew.at(Crew.WOOKIEE, Crew.WORK, FalconInterior.DRIVE_X - FalconInterior.DRIVE_HOUSING - 0.85, FF, FalconInterior.DRIVE_Z, 270.0F), F));
+
+			if (s.has("opt.prisoner")) {
+				list.add(person("prisoner", "prisoner", Crew.at(Crew.OFFICER, Crew.STAND, 23.2, FF, 33.6, 150.0F), F));
+			}
+
+			return;
+		}
+
 		if ("m6.epilogue".equals(step)) {
 			list.add(person("kestrel", "kestrel", Crew.at(Crew.REBEL, Crew.TALK, 21.0, FF, 26.2, 0.0F), F));
 			list.add(person("mira", "mira", Crew.at(Crew.REBEL, Crew.TALK, 19.2, FF, 24.8, -35.0F), F));
@@ -759,9 +776,40 @@ public final class Chapter1 implements Chapter {
 
 	// --- Speaking to people ------------------------------------------------------------------------
 
+	/**
+	 * Phase 22: set when the chapter is over (the epilogue spoken). From then on the people of
+	 * the Falcon know what happened: their own lines, no objective, no marker. A new run or a
+	 * mission played again starts without it (their flags are those of that mission's start).
+	 */
+	public static final String CHAPTER_DONE = "chapter.done";
+
+	/** Phase 22: what the Falcon's people say after the chapter (null: they have nothing to say). */
+	static @Nullable String afterwards(StorySession s, Figure figure) {
+		return switch (figure.key) {
+			case "dax" -> "after_dax";
+			case "kestrel" -> "after_kestrel";
+			case "mira" -> "after_mira";
+			case "rorrak" -> "after_rorrak";
+			case "prisoner" -> "after_tamsin";
+			default -> null;
+		};
+	}
+
 	@Override
 	public boolean talk(StorySession s, Figure figure) {
 		String step = s.step().id();
+
+		if (s.has(CHAPTER_DONE)) {
+			String after = afterwards(s, figure);
+
+			if (after == null) {
+				return false;
+			}
+
+			s.talk(after, figure);
+			return s.dialog != null;
+		}
+
 		String dialog = switch (figure.key) {
 			case "mira" -> step.equals("m1.briefing") ? "m1_briefing" : "m1_mira_wait";
 			case "dax" -> step.equals("m1.cockpit") ? "m1_dax" : step.equals("m6.jump") ? "falcon_crew" : "dax_idle";
@@ -840,12 +888,13 @@ public final class Chapter1 implements Chapter {
 
 		if (droid.equals("astromech")) {
 			// A lock within reach: the astromech opens it (it takes a moment, and it beeps).
-			Mission.Point lock = null;
+			// Phase 22: the one the player looks at, never simply the last one in reach (in the
+			// detention block Kestrel's cell and the prisoner's both were, and the key opened
+			// the other one first, so it seemed as if a second door opened by itself).
+			Mission.Point lock = aimedLock(s, player, me);
 
-			for (Mission.Point point : this.points(s)) {
-				if (point.hack() && point.ship().equals(s.here) && point.box().distanceToSqr(me.add(0.0, 1.0, 0.0)) < 36.0) {
-					lock = point;
-				}
+			if (lock == null && lockNear(s, me)) {
+				return "sabercraft.story.droid.r2_aim";
 			}
 
 			if (lock != null) {
@@ -888,6 +937,65 @@ public final class Chapter1 implements Chapter {
 		}
 
 		return null;
+	}
+
+	/**
+	 * Phase 22: the lock (a point only a droid opens) the player looks at: the view from the eyes
+	 * passes through its box within 6 blocks; if it passes none, a lock whose middle is within 12
+	 * degrees of the view. The nearest such. {@code null} if none is looked at.
+	 */
+	static Mission.@Nullable Point aimedLock(StorySession s, ServerPlayer player, Vec3 me) {
+		Vec3 corner = Vec3.atLowerCornerOf(s.origin(s.here));
+		Vec3 eye = player.getEyePosition().subtract(corner);
+		Vec3 look = player.getLookAngle();
+		Vec3 far = eye.add(look.scale(6.0));
+		Mission.Point best = null;
+		double bestDistance = Double.MAX_VALUE;
+		Mission.Point near = null;
+		double nearAngle = Math.cos(Math.toRadians(12.0));
+
+		for (Mission.Point point : lockPoints(s)) {
+			if (!point.hack() || !point.ship().equals(s.here) || point.box().distanceToSqr(me.add(0.0, 1.0, 0.0)) >= 36.0) {
+				continue;
+			}
+
+			AABB box = point.box();
+			java.util.Optional<Vec3> hit = box.contains(eye) ? java.util.Optional.of(eye) : box.clip(eye, far);
+
+			if (hit.isPresent()) {
+				double distance = hit.get().distanceTo(eye);
+
+				if (distance < bestDistance) {
+					bestDistance = distance;
+					best = point;
+				}
+			} else {
+				Vec3 to = box.getCenter().subtract(eye).normalize();
+				double cos = to.dot(look);
+
+				if (cos > nearAngle) {
+					nearAngle = cos;
+					near = point;
+				}
+			}
+		}
+
+		return best != null ? best : near;
+	}
+
+	/** Phase 22: whether any lock is within the astromech's reach (then it asks to be shown which). */
+	private static boolean lockNear(StorySession s, Vec3 me) {
+		for (Mission.Point point : lockPoints(s)) {
+			if (point.hack() && point.ship().equals(s.here) && point.box().distanceToSqr(me.add(0.0, 1.0, 0.0)) < 36.0) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	private static List<Mission.Point> lockPoints(StorySession s) {
+		return s.chapter.points(s);
 	}
 
 	/** A lock the astromech worked on is open. */
@@ -1078,6 +1186,13 @@ public final class Chapter1 implements Chapter {
 				}
 			}
 			case "m6.epilogue" -> {
+				if (s.has(CHAPTER_DONE)) {
+					// Phase 22: continuing after the chapter: one is aboard on the way to the fleet;
+					// the epilogue is not spoken again and nobody leaves his seat to watch one.
+					Story.place(s, F, FALCON_LOUNGE, 150.0F);
+					return;
+				}
+
 				if (!again) {
 					Story.cue(s, Story.CUE_FADE, "", "", 30);
 				}
@@ -1994,6 +2109,11 @@ public final class Chapter1 implements Chapter {
 	Mission.@Nullable Target target(StorySession s) {
 		Mission.Step step = s.step();
 
+		// Phase 22: after the chapter there is nowhere to go.
+		if (s.has(CHAPTER_DONE)) {
+			return null;
+		}
+
 		switch (step.id()) {
 			case "m5.route" -> {
 				if (s.has("trust.hale")) {
@@ -2045,7 +2165,7 @@ public final class Chapter1 implements Chapter {
 			return !s.has("armory.open") || s.has("tmp.hale_door");
 		}
 
-		if (x == DestroyerInterior.CX - 4 && y == H && z == 3) {
+		if (x == DestroyerInterior.CX - 4 && y == H && z == DestroyerInterior.DETENTION_DOOR_Z0) {
 			// The detention block: open only for the one Hale expects (Phase 20: and for Hale and
 			// his trooper leaving after the trap).
 			return !(s.has("trust.hale") && s.at("m5.route")) && !(s.at("m5.cell") && (s.has("tmp.leave.hale") || s.has("tmp.leave.trap1")));

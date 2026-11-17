@@ -55,9 +55,27 @@ final class Finale {
 	/** How far a trooper shoots, and how close they come. */
 	static final double SHOT_RANGE = 26.0;
 	static final double KEEP = 9.0;
-	/** A saber stroke: how far it reaches, and what it takes of a trooper. */
+	/**
+	 * A saber stroke: how far it reaches, and what it takes of a trooper. Phase 22: four strokes
+	 * (it was two), like a mob of Minecraft: each one is seen (he reels back, sparks, a bar over his
+	 * head), and right after a hit he cannot be hit again ({@link #HURT_TICKS}, as a mob's short
+	 * protection after damage), so hammering the key does not fell him faster.
+	 */
 	static final double STROKE_REACH = 3.6;
-	static final float STROKE_TROOPER = 0.55F;
+	static final float STROKE_TROOPER = 0.26F;
+	/** Phase 22: ticks after a hit in which a trooper only takes glancing blows. */
+	static final int HURT_TICKS = 9;
+	/** Phase 22: how far a hit drives a trooper back (blocks), and how long he is thrown off. */
+	static final double KNOCK = 0.45;
+	static final int REEL_TICKS = 14;
+	/** Phase 22: what a bolt sent back into its own shooter takes (two do it). */
+	static final float RETURNED_BOLT = 0.5F;
+	/** Phase 22: how far off the shooter the player may face for a bolt sent back to go to him (degrees). */
+	static final double RETURN_CONE = 50.0;
+
+	/** Phase 22: who fired a bolt (the figure's number), and the bolts already sent back to them. */
+	private static final java.util.Map<BlasterBolt, Integer> SHOOTERS = new java.util.WeakHashMap<>();
+	private static final java.util.Set<BlasterBolt> RETURNED = java.util.Collections.newSetFromMap(new java.util.WeakHashMap<>());
 
 	/** What the Schattenklinge does ({@link Figure#action}). */
 	static final int GUARD = 0;
@@ -217,14 +235,28 @@ final class Finale {
 		BlasterBolt bolt = new BlasterBolt(level, muzzle, BlasterType.E11, BOLT_DAMAGE);
 		bolt.shoot(aim.x, aim.y, aim.z, BlasterType.E11.speed(), 2.6F);
 		level.addFreshEntity(bolt);
+		SHOOTERS.put(bolt, figure.id);
 		level.playSound(null, muzzle.x, muzzle.y, muzzle.z, ShipInteriors.sound("blaster.e11"), SoundSource.HOSTILE, 0.8F, 0.95F + player.getRandom().nextFloat() * 0.1F);
 	}
 
-	/** Bolts the player sent back: a trooper they hit goes down (the Schattenklinge turns them aside). */
+	/**
+	 * Bolts the player sent back (the saber's guard or a stroke in time, see
+	 * {@code SaberAbilities.deflection}): Phase 22: one sent back while the player faces its
+	 * shooter flies back to him (to his chest, from where it is), and hits him (half his strength);
+	 * one sent elsewhere flies on as it was sent and may hit someone else. The Schattenklinge turns
+	 * them aside.
+	 */
 	private static void bolts(StorySession s, ServerPlayer player, ServerLevel level, Vec3 corner) {
 		AABB area = player.getBoundingBox().inflate(40.0);
 
 		for (BlasterBolt bolt : level.getEntitiesOfClass(BlasterBolt.class, area, b -> b.isAlive() && b.getOwner() == player)) {
+			Integer shooterId = SHOOTERS.get(bolt);
+
+			if (shooterId != null && RETURNED.add(bolt)) {
+				Figure shooter = s.figureById(shooterId);
+				returnBolt(s, bolt, shooter, player, corner);
+			}
+
 			Vec3 from = bolt.position().subtract(corner);
 			Vec3 to = from.add(bolt.getDeltaMovement());
 
@@ -243,7 +275,8 @@ final class Finale {
 						level.sendParticles(ParticleTypes.ELECTRIC_SPARK, at.x, at.y, at.z, 8, 0.05, 0.05, 0.05, 0.3);
 						level.playSound(null, at.x, at.y, at.z, ShipInteriors.sound("saber.parry"), SoundSource.HOSTILE, 0.8F, 1.0F);
 					} else {
-						hurt(s, figure, 1.0F, level, at);
+						hurt(s, figure, RETURNED_BOLT, level, at, true);
+						s.counters.merge("returned_hits", 1, Integer::sum);
 					}
 
 					bolt.discard();
@@ -253,8 +286,57 @@ final class Finale {
 		}
 	}
 
+	/**
+	 * Phase 22: a bolt the player sent back goes to the trooper who fired it, if the player faced
+	 * him (within {@link #RETURN_CONE} degrees) and he still stands: straight to his chest, a
+	 * little quicker. Otherwise it flies on as the saber sent it.
+	 */
+	private static void returnBolt(StorySession s, BlasterBolt bolt, @org.jspecify.annotations.Nullable Figure shooter, ServerPlayer player, Vec3 corner) {
+		if (shooter == null || shooter.mode == Figure.DOWN || !shooter.hostile || shooter.saber || s.here == null || !s.here.equals(shooter.ship)) {
+			return;
+		}
+
+		Vec3 chest = shooter.position().add(0.0, 1.2, 0.0).add(corner);
+		Vec3 toShooter = chest.subtract(player.getEyePosition()).normalize();
+
+		if (toShooter.dot(player.getLookAngle()) < Math.cos(Math.toRadians(RETURN_CONE))) {
+			return;
+		}
+
+		Vec3 way = chest.subtract(bolt.position()).normalize();
+		double speed = Math.max(1.2, bolt.getDeltaMovement().length()) * 1.1;
+		bolt.setDeltaMovement(way.scale(speed));
+		bolt.needsSync = true;
+		returned++;
+	}
+
+	/** Phase 22: for tests: how many bolts went back to their shooter. */
+	static int returned;
+
 	/** A fighter is hit: down when nothing is left. */
 	private static void hurt(StorySession s, Figure figure, float amount, ServerLevel level, Vec3 at) {
+		hurt(s, figure, amount, level, at, false);
+	}
+
+	/**
+	 * A fighter is hit: down when nothing is left. Phase 22: a trooper reels back from it (driven
+	 * back a step, his aim lost for a moment) and, just hit, only takes glancing blows from a
+	 * saber; a bolt always counts.
+	 */
+	private static void hurt(StorySession s, Figure figure, float amount, ServerLevel level, Vec3 at, boolean bolt) {
+		if (!figure.saber && !bolt && s.time() - figure.hurtAt < HURT_TICKS) {
+			// Glancing off his armour: sparks, a clank, nothing more.
+			level.sendParticles(ParticleTypes.ELECTRIC_SPARK, at.x, at.y, at.z, 4, 0.06, 0.08, 0.06, 0.15);
+			level.playSound(null, at.x, at.y, at.z, ShipInteriors.sound("saber.clash"), SoundSource.HOSTILE, 0.35F, 1.4F);
+			return;
+		}
+
+		figure.hurtAt = s.time();
+
+		if (!figure.saber) {
+			reel(s, figure, level);
+		}
+
 		figure.health = Math.max(0.0F, figure.health - amount);
 		level.sendParticles(ParticleTypes.SMOKE, at.x, at.y, at.z, 6, 0.1, 0.2, 0.1, 0.02);
 		level.sendParticles(ParticleTypes.ELECTRIC_SPARK, at.x, at.y, at.z, 10, 0.08, 0.1, 0.08, 0.25);
@@ -267,10 +349,41 @@ final class Finale {
 			figure.speed = 0.0F;
 			figure.windup = 0;
 		} else {
-			figure.cooldown = Math.max(figure.cooldown, 16);
+			figure.cooldown = Math.max(figure.cooldown, figure.saber ? 16 : REEL_TICKS + 6);
+			figure.windup = 0;
 		}
 
 		s.dirty = true;
+	}
+
+	/** Phase 22: a trooper hit is driven back from the player a little (where there is room). */
+	private static void reel(StorySession s, Figure figure, ServerLevel level) {
+		ServerPlayer player = s.player();
+
+		if (player == null || s.here == null) {
+			return;
+		}
+
+		Vec3 corner = Vec3.atLowerCornerOf(s.origin(s.here));
+		Vec3 me = player.position().subtract(corner);
+		Vec3 away = new Vec3(figure.x - me.x, 0.0, figure.z - me.z);
+
+		if (away.lengthSqr() < 1.0E-4) {
+			return;
+		}
+
+		away = away.normalize();
+
+		for (double d = KNOCK; d > 0.1; d -= 0.15) {
+			double nx = figure.x + away.x * d;
+			double nz = figure.z + away.z * d;
+
+			if (Stealth.free(level, corner, nx, figure.y, nz, figure.crew.height()) && !Stealth.crowded(figure, nx, figure.y, nz)) {
+				figure.x = nx;
+				figure.z = nz;
+				break;
+			}
+		}
 	}
 
 	// --- The player's saber ------------------------------------------------------------------------
