@@ -263,9 +263,14 @@ final class StoryHud implements HudElement {
 			Component stage = Component.translatable("sabercraft.story.hud.stage." + worst);
 			int colour = STAGE_COLOURS[worst];
 			int w = client.font.width(stage);
-			// The eye: a small almond with a pupil, then the stage.
+			// The eye: a small almond with a pupil, then the stage. Phase 20: above the crosshair
+			// when a hint of several lines reaches up to it (with a large interface they overlapped).
 			int ex = cx - (w + 12) / 2;
 			int ey = cy + 26;
+
+			if (ey + 11 > hintTop(client.font, height)) {
+				ey = cy - 34;
+			}
 			graphics.fill(ex, ey + 3, ex + 9, ey + 5, colour);
 			graphics.fill(ex + 1, ey + 2, ex + 8, ey + 6, colour & 0x80FFFFFF);
 			graphics.fill(ex + 3, ey + 2, ex + 6, ey + 6, 0xFF101010);
@@ -461,6 +466,12 @@ final class StoryHud implements HudElement {
 		}
 	}
 
+	/** Phase 20: where the hint's first line is now (or far below the screen without one). */
+	private static int hintTop(Font font, int height) {
+		String key = StoryClient.hint();
+		return key == null ? Integer.MAX_VALUE : height - 72 - font.split(Component.translatable(key), 280).size() * 10 - 2;
+	}
+
 	private static void hint(GuiGraphicsExtractor graphics, Font font, int width, int height) {
 		String key = StoryClient.hint();
 
@@ -490,7 +501,8 @@ final class StoryHud implements HudElement {
 	private static void progress(GuiGraphicsExtractor graphics, Font font, int width, int height) {
 		String key = StoryClient.progressKey();
 
-		if (key == null) {
+		// Phase 20: not under a mission's title card (the finished copy stood under Mission 5's title).
+		if (key == null || StoryClient.title() != null) {
 			return;
 		}
 

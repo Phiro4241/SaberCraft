@@ -145,7 +145,8 @@ public class Phase19GameTest implements FabricClientGameTest {
 		// some of them pushed one out whole before, see the lift).
 		int hangar = com.phiro.sabercraft.interior.DestroyerInterior.HANGAR;
 		int deck = com.phiro.sabercraft.interior.DestroyerInterior.DECK;
-		Vec3 rail = approach(context, server, self, sd, new Vec3(40.5, hangar + 1, 13.0), 0.0F);
+		// Phase 20: a block east of where it was: the technician's console stands at the railing there now.
+		Vec3 rail = approach(context, server, self, sd, new Vec3(41.5, hangar + 1, 13.0), 0.0F);
 		double railR = com.phiro.sabercraft.interior.DestroyerInterior.CATWALK_RAIL_R;
 		double gap = Math.hypot(rail.x - com.phiro.sabercraft.interior.DestroyerInterior.REACTOR_X, rail.z - com.phiro.sabercraft.interior.DestroyerInterior.REACTOR_Z)
 				- railR - 0.3;

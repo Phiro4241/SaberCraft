@@ -94,7 +94,8 @@ Status labels: ✅ **finished** (built and covered by automated tests) · 🧪 *
 ### 📖 Story mode 🧪
 
 - **Chapter 1, "Nachtschatten" ("Nightshade")**: six missions as the rebel spy *Funke* ("Spark") aboard the Star Destroyer *Tenebris*, from the Falcon's briefing to a lightsaber duel in the hangar. Start it in the menu (**V**, first tab **Story**). Original story and dialogs, in **German and English**.
-- **Stealth**: the crew notices you in four stages (calm, suspicious, alerted, detected), shown by a small eye on screen. Darkness, lamps, cover, sneaking and crawling matter; caught means back to the last checkpoint, never a dead end.
+- **The arrival** (Phase 20): out of hyperspace, a short film of the Falcon sneaking under the Tenebris and docking (skip with Space).
+- **Stealth**: the crew notices you in four stages (calm, suspicious, alerted, detected), shown by a small eye on screen. Darkness, lamps, cover, sneaking and crawling matter. Seen, troopers chase you round corners, others run to a wall comm to raise the alarm, and reinforcements come through the doors (Phase 20). Caught means back to the last checkpoint with everything as it was there, never a dead end.
 - **Disguise**: stormtrooper armour fools the troops while you behave like one; officers look closer.
 - **Dialogs** with portraits, names and answers that change the story (one decision changes Missions 4 and 5).
 - **Droids to recruit**: the mouse droid M-31 (noises, small hatches, a force field) and the astromech R2-V7 (opens locks, scans the room).
@@ -211,9 +212,11 @@ All keys are in **Options → Controls → Key Binds → SaberCraft** and can be
 | Right mouse button (blaster) | Fire; costs one arrow |
 | Right mouse button on a crew member (aboard) | They answer in the chat (Phase 18) |
 | Sneak in front of an open vent hatch (Star Destroyer) | Get down on all fours and crawl in (Phase 18) |
+| Right mouse button on an open vent hatch | Shut it again, from either side (Phase 20) |
 | Right mouse button on a person or thing (story) | Speak to them, use a console, a locker, a terminal (Phase 19) |
 | **Enter** / **Space** / click, **1**–**4**, arrow keys (story dialog) | Show the whole line or go on; choose an answer (Phase 19) |
 | **N** (story) | M-31's or R2-V7's ability; you need not look at the droid: R2-V7 works on a lock nearby, M-31 makes a noise where you look (Phase 19) |
+| **Space** / **Enter** / **Esc** (story film) | Skip the film (Phase 20) |
 
 **Starships** (fixed keys, they reuse your movement keys):
 

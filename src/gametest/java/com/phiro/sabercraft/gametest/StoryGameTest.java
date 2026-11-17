@@ -595,6 +595,8 @@ public class StoryGameTest implements FabricClientGameTest {
 			return;
 		}
 
+		// The camera moves with the next frame drawn (it was read once in the very tick the film began).
+		this.context.waitTicks(2);
 		double away = this.context.computeOnClient(client -> client.gameRenderer.mainCamera().position().distanceTo(client.player.position()));
 		check(away > 300.0, "the film's camera is not out in its scene (" + Math.round(away) + " blocks from the player)");
 		check(this.context.computeOnClient(client -> client.gui.hud.isHidden()), "the HUD is shown during the film");
