@@ -105,9 +105,11 @@ public final class DestroyerVisuals implements InteriorVisuals {
 			b.inside(true);
 			DoorModels.draw(b, plot, com.phiro.sabercraft.interior.InteriorPlan.of("star_destroyer"), InteriorAtlas.IMP_DOOR,
 					InteriorAtlas.IMP_WALL_STRIP_GLOW);
+			// Phase 18: the hatches of the crawl ways.
+			HatchModels.draw(b, plot, com.phiro.sabercraft.interior.InteriorPlan.of("star_destroyer"));
 			// Phase 17: the crew.
 			float partial = net.minecraft.client.Minecraft.getInstance().getDeltaTracker().getGameTimeDeltaPartialTick(false);
-			CrewModels.draw(b, plot.level().getGameTime() + partial);
+			CrewModels.draw(b, com.phiro.sabercraft.interior.DestroyerInterior.CREW, plot.level().getGameTime() + partial);
 			b.inside(false);
 		}
 	}

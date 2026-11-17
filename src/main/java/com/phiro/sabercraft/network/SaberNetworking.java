@@ -57,6 +57,8 @@ public final class SaberNetworking {
 				context.player().sendOverlayMessage(com.phiro.sabercraft.interior.InteriorJump.request(context.player()));
 			} else if (payload.action() == InteriorActionPayload.FIRE) {
 				com.phiro.sabercraft.interior.Turrets.fire(context.player());
+			} else if (payload.action() == InteriorActionPayload.TALK) {
+				com.phiro.sabercraft.interior.CrewTalk.talk(context.player());
 			}
 		});
 		// Phase 12: choosing sabers in the menu, and droid commands for the droid looked at.

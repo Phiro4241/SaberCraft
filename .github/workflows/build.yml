@@ -5,7 +5,8 @@
 # - A push to main (usually the merge of a pull request that was just tested) only builds the JAR.
 #   The full test can be started by hand under Actions > build > Run workflow.
 # - Changes to Markdown files and docs/ alone start no run.
-# - Timeouts stop a hanging game test after 45 minutes instead of the default 6 hours.
+# - Timeouts stop a hanging game test after 60 minutes instead of the default 6 hours (the whole
+#   suite took about 40 minutes by Phase 17 and about 50 with Phase 18; 45 was too short then).
 # - Screenshots and the audio recording are only kept when the test fails (or on a manual run),
 #   and every artifact expires after a few days instead of 90.
 
@@ -35,8 +36,8 @@ jobs:
   # job is billed separately and rounded up to whole minutes.
   build:
     runs-on: ubuntu-24.04
-    # A successful run takes about 30 minutes.
-    timeout-minutes: 55
+    # A successful run takes about 50 minutes (Phase 18).
+    timeout-minutes: 70
     env:
       # Only a pull request or a manual run starts the Minecraft client.
       CLIENT_TEST: ${{ github.event_name != 'push' }}
@@ -79,7 +80,7 @@ jobs:
       - name: run client game test
         if: env.CLIENT_TEST == 'true'
         # A hanging test fails here, so the screenshots below still show how far it got.
-        timeout-minutes: 45
+        timeout-minutes: 60
         run: xvfb-run -a -s "-screen 0 1280x720x24" ./gradlew runClientGameTest
       - name: upload screenshots
         if: env.CLIENT_TEST == 'true' && (failure() || github.event_name == 'workflow_dispatch')

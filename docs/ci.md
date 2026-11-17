@@ -1,14 +1,14 @@
 # GitHub Actions: was wann läuft
 
-Stand: 26.10.2026. SaberCraft ist ein privates Repository auf GitHub Free: **2.000 Actions-Minuten und 0,5 GB Artefaktspeicher pro Monat.** Im Oktober 2026 war beides aufgebraucht, vor allem durch hängende Client-Gametests, die erst nach 6 Stunden abgebrochen wurden.
+Stand: 26.10.2026, ergänzt am 15.11.2026. Als dieses Dokument entstand, war SaberCraft ein privates Repository auf GitHub Free: **2.000 Actions-Minuten und 0,5 GB Artefaktspeicher pro Monat.** Im Oktober 2026 war beides aufgebraucht, vor allem durch hängende Client-Gametests, die erst nach 6 Stunden abgebrochen wurden. Seit dem 26.10.2026 ist das Repository öffentlich; für öffentliche Repositories rechnet GitHub die Minuten auf den Standard-Runnern nicht ab. Die Regeln unten gelten trotzdem weiter, damit ein Lauf nicht unnötig lange dauert.
 
 ## Was läuft wann
 
 | Ereignis | Was läuft | Dauer etwa |
 | --- | --- | --- |
-| Pull Request (jeder Push darauf) | Build und alle Client-Gametests | 30 min |
+| Pull Request (jeder Push darauf) | Build und alle Client-Gametests | 50 min (Phase 18) |
 | Push auf `main` (meist der Merge) | nur Build und JAR | 3 min |
-| Manuell: Actions > build > Run workflow | Build und alle Client-Gametests, Screenshots und Audio werden hochgeladen | 30 min |
+| Manuell: Actions > build > Run workflow | Build und alle Client-Gametests, Screenshots und Audio werden hochgeladen | 50 min |
 | Push auf einen Branch ohne PR | nichts | – |
 | Nur `*.md` oder `docs/` geändert | nichts | – |
 
@@ -16,7 +16,7 @@ Ein neuer Push auf einen PR bricht dessen noch laufenden Lauf ab. Auf `main` wir
 
 ## Grenzen
 
-- **Zeitlimit:** Der Test-Schritt bricht nach 45 Minuten ab, der ganze Job nach 55 Minuten. Ohne Limit lief ein hängender Test bisher 6 Stunden.
+- **Zeitlimit:** Der Test-Schritt bricht nach 60 Minuten ab, der ganze Job nach 70 Minuten. Ohne Limit lief ein hängender Test bisher 6 Stunden. Bis Phase 17 waren es 45 und 55 Minuten; die Tests von Phase 17 brauchten aber schon fast 43 Minuten, und mit Phase 18 sind es etwa 50. Der erste Lauf von PR #23 brach deshalb zu Beginn von `Phase18GameTest` ab, nachdem alle Klassen davor grün waren.
 - **Artefakte:** Die JAR bleibt 7 Tage. Screenshots (ca. 0,57 GB) und die Audioaufnahme (ca. 0,2 GB) werden nur bei einem Fehlschlag oder einem manuellen Lauf hochgeladen und bleiben 3 Tage.
 - **Cache:** `setup-java` speichert den Gradle- und Loom-Cache. Er zählt nicht zum Artefaktspeicher.
 

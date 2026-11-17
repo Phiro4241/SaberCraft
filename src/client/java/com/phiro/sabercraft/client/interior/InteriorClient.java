@@ -128,6 +128,54 @@ public final class InteriorClient {
 		}
 	}
 
+	/**
+	 * Phase 18: the use key on someone of the crew (nearer than the block or creature in the
+	 * crosshair): asks the server to let them answer. Returns whether it did (the key then does
+	 * nothing else).
+	 */
+	public static boolean talk(Minecraft client) {
+		if (client.player == null || client.level == null || client.gui.screen() != null || client.player.isSpectator()
+				|| !ShipInteriors.isInterior(client.level) || !ClientPlayNetworking.canSend(InteriorActionPayload.TYPE)) {
+			return false;
+		}
+
+		InteriorPlan plan = ShipInteriors.planAt(client.player.getX(), client.player.getZ());
+		BlockPos origin = ShipInteriors.originAt(client.player.getX(), client.player.getZ());
+
+		if (plan == null || origin == null || plan.crew().isEmpty()) {
+			return false;
+		}
+
+		float partial = client.getDeltaTracker().getGameTimeDeltaPartialTick(false);
+		net.minecraft.world.phys.Vec3 corner = net.minecraft.world.phys.Vec3.atLowerCornerOf(origin);
+		net.minecraft.world.phys.Vec3 eye = client.player.getEyePosition(partial);
+		net.minecraft.world.phys.Vec3 to = eye.add(client.player.getViewVector(partial).scale(com.phiro.sabercraft.interior.CrewTalk.REACH));
+		com.phiro.sabercraft.interior.CrewTalk.Hit hit = com.phiro.sabercraft.interior.CrewTalk.hit(plan.crew(), eye.subtract(corner), to.subtract(corner),
+				client.level.getGameTime() + partial, 0.04);
+
+		if (hit == null) {
+			return false;
+		}
+
+		net.minecraft.world.phys.HitResult aimed = client.hitResult;
+
+		if (aimed != null && aimed.getType() != net.minecraft.world.phys.HitResult.Type.MISS && aimed.getLocation().distanceTo(eye) < hit.distance() - 0.35) {
+			return false;
+		}
+
+		ClientPlayNetworking.send(new InteriorActionPayload(InteriorActionPayload.TALK));
+		client.player.swing(net.minecraft.world.InteractionHand.MAIN_HAND);
+		talked++;
+		return true;
+	}
+
+	private static int talked;
+
+	/** For tests: how often the use key spoke to the crew. */
+	public static int talkedForTest() {
+		return talked;
+	}
+
 	/** The hyperspace key: from a cockpit seat it asks for the jump. Returns whether it did. */
 	public static boolean hyperspaceKey(Minecraft client) {
 		Sitting sitting = sitting(client);

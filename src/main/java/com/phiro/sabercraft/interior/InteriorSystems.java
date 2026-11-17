@@ -70,6 +70,7 @@ public final class InteriorSystems {
 
 		InteriorJump.tick(server, interiors);
 		Turrets.tick(server);
+		Vents.tick(server);
 	}
 
 	// --- Doors -------------------------------------------------------------------------------------
@@ -154,7 +155,7 @@ public final class InteriorSystems {
 		}
 
 		BlockPos local = pos.subtract(origin);
-		return console(plan, local) != null || plan.seatFor(local, hit.subtract(origin.getX(), origin.getY(), origin.getZ())) != null;
+		return console(plan, local) != null || Vents.hatch(plan, local) != null || plan.seatFor(local, hit.subtract(origin.getX(), origin.getY(), origin.getZ())) != null;
 	}
 
 	static @Nullable Console console(InteriorPlan plan, BlockPos local) {
@@ -178,9 +179,24 @@ public final class InteriorSystems {
 
 		BlockPos local = pos.subtract(origin);
 		Console console = console(plan, local);
+		InteriorPlan.Hatch hatch = Vents.hatch(plan, local);
+
+		if (hatch != null) {
+			Vents.open(player, origin, hatch);
+			return;
+		}
 
 		if (console == null) {
 			Seats.use(player, origin, plan, local, hit);
+			return;
+		}
+
+		if (Console.STORAGE.equals(console.action())) {
+			// Phase 18: the chest under the container.
+			if (player.level().getBlockEntity(pos.below()) instanceof net.minecraft.world.MenuProvider store) {
+				player.openMenu(store);
+			}
+
 			return;
 		}
 

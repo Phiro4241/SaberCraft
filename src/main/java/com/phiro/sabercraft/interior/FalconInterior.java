@@ -89,8 +89,10 @@ public final class FalconInterior extends InteriorPlan {
 		// 3 (Phase 16): the curved walls are barriers shaped like the drawn walls, no stepped blocks
 		// poking through them any more. 4: the new cockpit, slim seats. 5 (Phase 17): collision
 		// shaped like everything drawn (machines, hyperdrive, couch, domes, ramp), the engine
-		// room's outer wall round, furniture that cannot be climbed.
-		return 5;
+		// room's outer wall round, furniture that cannot be climbed. 6 (Phase 18): the couch and
+		// table as drawn, no invisible floors and caps, a floor in the lower turret. 7: the crew
+		// (they stand in their places), a cap over the galley's barrel.
+		return 7;
 	}
 
 	@Override
@@ -195,6 +197,15 @@ public final class FalconInterior extends InteriorPlan {
 		double mx = TABLE_X + Math.cos(mid) * 2.85;
 		double mz = TABLE_Z + Math.sin(mid) * 2.85;
 		return Math.cos(mid) * 2.85 < 1.2 && Math.hypot(mx - CX, mz - CZ) < HOLD_R - MARGIN - 0.1;
+	}
+
+	/** Phase 18: the height of the couch's cushion over the floor, and where its back begins (radius from the table). */
+	public static final double COUCH_SEAT = 0.45;
+	public static final double COUCH_BACK = COUCH_IN + (COUCH_OUT - COUCH_IN) * 0.72;
+
+	/** Phase 18: whether a point (plot space) is in the couch's back, seen from above. */
+	public static boolean inCouchBack(double x, double z) {
+		return inCouch(x, z) && Math.hypot(x - TABLE_X, z - TABLE_Z) >= COUCH_BACK;
 	}
 
 	/** Phase 17: whether a point (plot space) is in the couch, seen from above. */
@@ -464,10 +475,13 @@ public final class FalconInterior extends InteriorPlan {
 			return exact;
 		}
 
-		// The couch: the nearest place on it to where it was clicked.
-		double d = Math.hypot(cell.getX() + 0.5 - TABLE_X, cell.getZ() + 0.5 - TABLE_Z);
+		// The couch: the nearest place on it to where it was clicked (Phase 18: judged by the point
+		// clicked, not the cell's middle, so its ends and its back count too).
+		double hx = Math.min(Math.max(hit.x, cell.getX() + 0.001), cell.getX() + 0.999);
+		double hz = Math.min(Math.max(hit.z, cell.getZ() + 0.001), cell.getZ() + 0.999);
+		double d = Math.hypot(hx - TABLE_X, hz - TABLE_Z);
 
-		if (d < 2.3 || d > 3.4) {
+		if (d < COUCH_IN - 0.15 || d > COUCH_OUT + 0.15 || !couchAt(Math.toDegrees(Math.atan2(hz - TABLE_Z, hx - TABLE_X)))) {
 			return null;
 		}
 
@@ -496,6 +510,21 @@ public final class FalconInterior extends InteriorPlan {
 		cargo(b);
 		ramp(b);
 		roundShell(b);
+		Crew.collide(b, CREW);
+	}
+
+	/**
+	 * Phase 18: the Falcon's people: the smuggler by the game table, the tall furry mechanic at the
+	 * hyperdrive, a rebel pilot checking the cargo. They stand clear of the walkways.
+	 */
+	public static final List<Crew> CREW = List.of(
+			Crew.at(Crew.SMUGGLER, Crew.TALK, 19.2, FLOOR + 1, 24.8, -35.0F).as("smuggler"),
+			Crew.at(Crew.WOOKIEE, Crew.WORK, DRIVE_X - DRIVE_HOUSING - 0.85, FLOOR + 1, DRIVE_Z, 270.0F).as("wookiee"),
+			Crew.at(Crew.REBEL, Crew.WORK, 13.0, FLOOR + 1, 6.4, 180.0F).as("rebel"));
+
+	@Override
+	public List<Crew> crew() {
+		return CREW;
 	}
 
 	/**
@@ -555,9 +584,13 @@ public final class FalconInterior extends InteriorPlan {
 			}, java.util.Set.of());
 		}
 
-		// The game table and the couch (the couch with a cap: one sits on it with a click).
-		b.solid(12, 22, 22, 33, y0, (x, z) -> Math.hypot(x - TABLE_X, z - TABLE_Z) < TABLE_R + 0.08 || inCouch(x, z), 1.0, java.util.Set.of());
-		b.solid(12, 22, 22, 33, y0 + 1, FalconInterior::inCouch, 0.5, java.util.Set.of());
+		// Phase 18: the game table and the couch as drawn. The couch's seat collides up to the
+		// cushion (one can step onto it, and nothing is over the head of someone sitting there:
+		// the old cap at shoulder height suffocated them), its back and the table two rows high
+		// (nobody climbs onto them and stands in the air over the table top).
+		b.spans(12, 22, 22, 33, y0, (x, z) -> Math.hypot(x - TABLE_X, z - TABLE_Z) < TABLE_R + 0.08 || inCouchBack(x, z) ? new double[] {0.0, 1.0}
+				: inCouch(x, z) ? new double[] {0.0, COUCH_SEAT} : null, java.util.Set.of());
+		b.solid(12, 22, 22, 33, y0 + 1, (x, z) -> Math.hypot(x - TABLE_X, z - TABLE_Z) < TABLE_R + 0.08 || inCouchBack(x, z), 1.0, java.util.Set.of());
 
 		// The glass domes: one walks up to the glass, not into an invisible ring a block before it.
 		// The lower one is a bowl: its glass rises from under the feet, so one can step a little
@@ -569,7 +602,9 @@ public final class FalconInterior extends InteriorPlan {
 			for (int x = 15; x <= 26; x++) {
 				for (int z = 25; z <= 36; z++) {
 					if (b.get(x, y, z).is(net.minecraft.world.level.block.Blocks.BARRIER) && Math.hypot(x + 0.5 - CX, z + 0.5 - CZ) > 2.4
-							&& !(x == 20 && (z == 27 || z == 28))) {
+							&& !(x == 20 && (z == 27 || z == 28) && (y == 1 || y == FLOOR + 6))) {
+						// Phase 18: only the gunner's seat and controls stay (the ring's barriers over the
+						// controls stayed too: an invisible wall at head height in front of the gunner).
 						b.set(x, y, z, "air");
 					}
 				}
@@ -587,20 +622,29 @@ public final class FalconInterior extends InteriorPlan {
 		}
 
 		// Caps over furniture.
+		// Phase 18: a whole block high (one stepped from a half cap onto the next).
 		for (int x = 43; x <= 45; x++) {
-			cap(b, x, y0 + 1, COCKPIT_FRONT + 1, (px, pz) -> true);
+			cap(b, x, y0 + 1, COCKPIT_FRONT + 1, (px, pz) -> true, 1.0);
 		}
 
 		for (int z = 29; z <= 33; z++) {
-			cap(b, 26, y0 + 1, z, (px, pz) -> true);
+			cap(b, 26, y0 + 1, z, (px, pz) -> true, 1.0);
 		}
 
-		for (int z = 33; z <= 35; z++) {
-			cap(b, 5, y0 + 1, z, (px, pz) -> true);
+		// (and over the barrel beside it: from its top one walked into the counter's cap).
+		for (int z = 33; z <= 36; z++) {
+			cap(b, 5, y0 + 1, z, (px, pz) -> true, 1.0);
 		}
 
-		cap(b, 7, y0 + 1, 38, (px, pz) -> true);
-		cap(b, 8, y0 + 1, 38, (px, pz) -> true);
+		// Phase 18: nobody stands on the chest beside the bed (the shelf over the bed was in the
+		// eyes); the cap only collides, so the chest is still clicked through it.
+		b.ghost(6, y0 + 1, 39, Shapes.box(0.0, 0.0, 0.0, 1.0, 1.0, 1.0));
+
+		// Phase 18: the medical bed collides as drawn (one may sit or stand on it), no cap.
+		for (int x = 7; x <= 8; x++) {
+			b.set(x, y0, 38, "air");
+			b.shaped(x, y0, 38, Shapes.box(x == 7 ? 0.05 : 0.0, 0.0, 0.1, x == 7 ? 1.0 : 0.95, 0.68, 0.9), false);
+		}
 
 		for (int z : new int[] {22, 25, 28}) {
 			for (int x = 4; x <= 6; x++) {
@@ -675,9 +719,16 @@ public final class FalconInterior extends InteriorPlan {
 
 	/** Phase 17: a barrier half a block high over a piece of furniture (where {@code solid}), if nothing else is there. */
 	private static void cap(InteriorBuilder b, int x, int y, int z, ProxyShapes.Solid solid) {
-		if (b.isAir(x, y, z)) {
-			b.shaped(x, y, z, ProxyShapes.columns(x, z, 16, solid, 0.5), false);
-		}
+		cap(b, x, y, z, solid, 0.5);
+	}
+
+	/**
+	 * Phase 18: a cap {@code height} high over a piece of furniture; where a shaped barrier is
+	 * already (the cockpit's round wall), both together (the rear seats by the wall had no cap, so
+	 * one climbed onto them and stood against the wall's invisible lip).
+	 */
+	private static void cap(InteriorBuilder b, int x, int y, int z, ProxyShapes.Solid solid, double height) {
+		b.spans(x, z, x, z, y, (px, pz) -> solid.at(px, pz) ? new double[] {0.0, height} : null, java.util.Set.of());
 	}
 
 
@@ -947,8 +998,11 @@ public final class FalconInterior extends InteriorPlan {
 
 		b.set(4, FLOOR + 1, 23, "barrel[facing=east]");
 		b.set(4, FLOOR + 1, 26, "barrel[facing=east]");
-		b.set(8, FLOOR + 1, 22, "chest[facing=west]");
-		b.set(8, FLOOR + 1, 27, PROXY);
+		// Phase 18: barrels everywhere one sees them (the client draws a cargo container round each).
+		b.set(8, FLOOR + 1, 22, "barrel[facing=up]");
+		// Phase 18: the table as drawn (its top at 0.8), a cap over it: nobody stands on it in the air.
+		b.shaped(8, FLOOR + 1, 27, Shapes.box(0.05, 0.0, 0.05, 0.95, 0.8, 0.95), false);
+		b.shaped(8, FLOOR + 2, 27, Shapes.box(0.05, 0.0, 0.05, 0.95, 1.0, 0.95), false);
 		b.light(6, FLOOR + 3, 23, 12);
 		b.light(7, FLOOR + 3, 27, 10);
 	}
@@ -960,7 +1014,7 @@ public final class FalconInterior extends InteriorPlan {
 		b.box(5, FLOOR + 1, 33, 5, FLOOR + 1, 35, PROXY);
 		b.set(5, FLOOR + 1, 36, "barrel[facing=east]");
 		b.box(7, FLOOR + 1, 38, 8, FLOOR + 1, 38, PROXY);
-		b.set(6, FLOOR + 1, 39, "chest[facing=north]");
+		b.set(6, FLOOR + 1, 39, "barrel[facing=up]");
 		b.light(7, FLOOR + 3, 35, 12);
 		b.light(8, FLOOR + 3, 38, 10);
 	}
@@ -986,7 +1040,7 @@ public final class FalconInterior extends InteriorPlan {
 		for (int z = 3; z <= 15; z += 3) {
 			b.set(9, FLOOR + 1, z, "barrel[facing=east]");
 			b.set(9, FLOOR + 2, z, z % 2 == 0 ? "barrel[facing=east]" : "air");
-			b.set(15, FLOOR + 1, z, "chest[facing=west]");
+			b.set(15, FLOOR + 1, z, "barrel[facing=up]");
 		}
 
 		// Stacks of cargo crates (proxies).

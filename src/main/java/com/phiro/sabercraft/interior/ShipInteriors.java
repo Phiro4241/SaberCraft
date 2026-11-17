@@ -175,7 +175,10 @@ public final class ShipInteriors {
 			file = null;
 		});
 		ServerTickEvents.END_SERVER_TICK.register(ShipInteriors::tick);
+		// Phase 18: the crew's remarks now and then.
+		ServerTickEvents.END_SERVER_TICK.register(CrewTalk::tick);
 		ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> {
+			CrewTalk.forget(handler.getPlayer().getUUID());
 			ABOARD.remove(handler.getPlayer().getUUID());
 			TRACTOR.remove(handler.getPlayer().getUUID());
 			SENT_PLOTS.remove(handler.getPlayer().getUUID());
@@ -273,7 +276,11 @@ public final class ShipInteriors {
 
 	/** The plan of a spot in the interiors dimension (from its coordinates), or {@code null}. */
 	public static @Nullable InteriorPlan planAt(double x, double z) {
-		int row = Mth.floor(z / SPACING) - 1;
+		// Phase 18: the row whose corner is nearest. The Star Destroyer reaches north of its corner
+		// (the hangar deck lies at negative z): with the row of the corner south of the spot, the
+		// whole hangar deck had no plan, so its shaped barriers were full blocks and nothing there
+		// could be clicked (flight control's seats, the hatches, the crew).
+		int row = Mth.floor(z / SPACING + 0.5) - 1;
 		int index = Mth.floor(x / SPACING) - 1;
 
 		if (row < 0 || index < 0 || row >= InteriorPlan.ALL.size()) {
@@ -667,6 +674,10 @@ public final class ShipInteriors {
 				if (entry.getValue().index == index && parts.length == 2 && parts[1].equals(plan.id())) {
 					try {
 						Aboard aboard = new Aboard(UUID.fromString(parts[0]), parts[1], plan, origin(plan, index));
+						// Phase 18: someone who logs in aboard an interior built from an older plan got to
+						// keep its old blocks (it was rebuilt only when someone came aboard from outside):
+						// old full barriers then stood where the new plan has none, invisible walls.
+						renew((ServerLevel) player.level(), entry.getValue(), plan, aboard.origin, player);
 						ABOARD.put(player.getUUID(), aboard);
 						return;
 					} catch (IllegalArgumentException ignored) {
@@ -831,6 +842,29 @@ public final class ShipInteriors {
 		}
 
 		return origin;
+	}
+
+	/**
+	 * Phase 18: rebuilds a plot from an older plan for a player found inside it (if nobody else is
+	 * aboard), and puts the player at the entry if the new rooms have something where they stand.
+	 */
+	private static void renew(ServerLevel interiors, Plot plot, InteriorPlan plan, BlockPos origin, ServerPlayer player) {
+		if (plot.version == 0 || plot.version == plan.version() || !nobodyAboard(origin)) {
+			return;
+		}
+
+		int moved = rebuild(interiors, plan, origin);
+		SaberCraft.LOGGER.info("Rebuilt the {} interior at {} from plan version {} to {} for a player found aboard ({} item stacks moved)", plan.id(),
+				origin, plot.version, plan.version(), moved);
+		plot.version = plan.version();
+		plotRevision++;
+		dirty = true;
+		save();
+
+		if (!player.isSpectator() && !interiors.noCollision(player, player.getBoundingBox().deflate(0.01))) {
+			Vec3 entry = Vec3.atLowerCornerOf(origin).add(plan.entry());
+			player.teleportTo(entry.x, entry.y, entry.z);
+		}
 	}
 
 	private static boolean nobodyAboard(BlockPos origin) {

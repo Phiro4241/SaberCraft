@@ -729,6 +729,10 @@ public class Phase14GameTest implements FabricClientGameTest {
 			ArrayDeque<BlockPos> queue = new ArrayDeque<>();
 			queue.add(BlockPos.containing(plan.entry()));
 			List<net.minecraft.world.level.levelgen.structure.BoundingBox> volumes = plan.volumes();
+			// Phase 18: the crawl ways (one block high): one gets in through a hatch (a click opens
+			// it) or an opening and crawls on all fours (the Phase 18 test crawls through one).
+			Set<BlockPos> mouths = new HashSet<>(plan.crawlMouths());
+			List<AABB> crawlWays = plan.rooms().stream().filter(room -> room.id().equals("vent")).map(InteriorPlan.Room::area).toList();
 
 			while (!queue.isEmpty()) {
 				BlockPos p = queue.poll();
@@ -763,6 +767,16 @@ public class Phase14GameTest implements FabricClientGameTest {
 							queue.add(n);
 							break;
 						}
+					}
+				}
+
+				for (Direction direction : Direction.Plane.HORIZONTAL) {
+					BlockPos n = p.relative(direction);
+					boolean mouth = mouths.contains(n);
+
+					if ((mouth || crawlWays.stream().anyMatch(way -> way.contains(Vec3.atBottomCenterOf(n).add(0.0, 0.1, 0.0))))
+							&& (mouth || passable(level, origin.offset(n))) && !passable(level, origin.offset(n.below()))) {
+						queue.add(n);
 					}
 				}
 

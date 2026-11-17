@@ -1250,6 +1250,331 @@ def _():
     return img
 
 
+# --- Phase 18: more people (faces, uniforms, pilots, guards, the Falcon's crew) ---------------
+
+SKINS = ((222, 180, 148), (196, 150, 112), (150, 104, 74), (234, 196, 170))
+HAIRS = ((70, 50, 36), (40, 34, 30), (150, 146, 140), (170, 120, 70))
+
+
+def disc(img, cx, cy, r, rgb=None, factor=None):
+    for y in range(max(0, int(cy - r)), min(TILE, int(cy + r) + 1)):
+        for x in range(max(0, int(cx - r)), min(TILE, int(cx + r) + 1)):
+            if (x + 0.5 - cx) ** 2 + (y + 0.5 - cy) ** 2 <= r * r:
+                rect(img, x, y, x + 1, y + 1, rgb, factor)
+
+
+def face_tile(seed, skin, hair, top=10, moustache=False, beard=False, brows=None, eyes=(70, 90, 110), long_hair=False):
+    """A face filling the whole front of a head: hair line at {top}, eyes, nose, mouth."""
+    img = solid(skin)
+    grain(img, seed, 0.035)
+    rect(img, 0, 0, 64, top, hair)
+    grain_mask = rng(seed + 3).random((TILE, TILE)) - 0.5
+    img[:top, :, :3] = np.clip(img[:top, :, :3] * (1.0 + grain_mask[:top, :, None] * 0.12), 0, 1)
+    if long_hair:
+        rect(img, 0, top, 7, 52, hair)
+        rect(img, 57, top, 64, 52, hair)
+    brows = brows or tuple(int(c * 0.8) for c in hair)
+    for x in (17, 40):
+        rect(img, x - 1, 24, x + 8, 26, brows)
+        rect(img, x, 28, x + 7, 32, (246, 246, 242))
+        rect(img, x + 2, 28, x + 5, 32, eyes)
+        rect(img, x + 3, 29, x + 4, 31, (20, 20, 22))
+    rect(img, 30, 31, 34, 42, factor=0.9)
+    rect(img, 29, 41, 35, 43, factor=0.8)
+    if moustache:
+        rect(img, 24, 44, 40, 47, hair)
+    rect(img, 25, 48, 39, 50, (150, 90, 80))
+    if beard:
+        rect(img, 8, 46, 56, 64, hair)
+        rect(img, 24, 48, 40, 51, (120, 70, 64))
+    rect(img, 0, top, 4, 40, factor=0.92)
+    rect(img, 60, top, 64, 40, factor=0.92)
+    return img
+
+
+def head_side_tile(seed, skin, hair, low=40):
+    """The sides and back of a bare head: hair down to {low}, skin (the neck, an ear) below."""
+    img = solid(hair)
+    grain(img, seed, 0.1)
+    rect(img, 0, low, 64, 64, skin)
+    rect(img, 26, low - 14, 36, low + 4, skin)
+    rect(img, 28, low - 12, 34, low + 2, factor=0.85)
+    return img
+
+
+for _i, (_skin, _hair, _mo, _beard, _eyes) in enumerate((
+        (SKINS[0], HAIRS[0], False, False, (70, 90, 110)),
+        (SKINS[1], HAIRS[1], True, False, (60, 44, 34)),
+        (SKINS[2], HAIRS[1], False, False, (50, 36, 28)),
+        (SKINS[3], HAIRS[2], True, False, (80, 110, 130)))):
+    def _make(skin=_skin, hair=_hair, mo=_mo, beard=_beard, eyes=_eyes, seed=1800 + _i):
+        return face_tile(seed, skin, hair, 12, mo, beard, eyes=eyes)
+    tile("crew_face_%d" % _i, "crew: an officer's face (variant %d), the cap is drawn over it" % _i)(_make)
+
+for _i, (_skin, _hair) in enumerate(((SKINS[0], HAIRS[0]), (SKINS[1], HAIRS[1]), (SKINS[2], HAIRS[1]), (SKINS[3], HAIRS[2]))):
+    def _make(skin=_skin, hair=_hair, seed=1810 + _i):
+        return head_side_tile(seed, skin, hair)
+    tile("crew_head_%d" % _i, "crew: sides and back of an officer's head (variant %d)" % _i)(_make)
+
+
+@tile("crew_hair_top", "crew: the top of a head, light (tinted to the hair colour)")
+def _():
+    img = solid((236, 236, 236))
+    grain(img, 1820, 0.14)
+    for x in range(4, 64, 7):
+        line_v(img, x, 0.92)
+    return img
+
+
+@tile("crew_uniform_tunic", "crew: an officer's tunic, light (tinted to the uniform): belt, rank plaque, code cylinders")
+def _():
+    img = solid((232, 232, 228))
+    grain(img, 1821, 0.045)
+    line_v(img, 32, 0.82, 0, 46)
+    rect(img, 30, 0, 34, 6, factor=0.75)
+    rect(img, 0, 46, 64, 52, (26, 26, 28))
+    rect(img, 28, 46, 36, 52, (190, 190, 196))
+    rect(img, 8, 10, 26, 18, (46, 46, 50))
+    for i, col in enumerate(((210, 60, 50), (210, 60, 50), (70, 100, 210), (230, 210, 70))):
+        rect(img, 9 + i * 4, 11, 12 + i * 4, 14, col)
+        rect(img, 9 + i * 4, 15, 12 + i * 4, 17, (210, 60, 50) if i % 2 else (70, 100, 210))
+    for x in (44, 48):
+        rect(img, x, 8, x + 2, 18, (200, 200, 206))
+    rect(img, 0, 52, 64, 64, factor=0.9)
+    return img
+
+
+@tile("crew_uniform_limb", "crew: an officer's sleeve or trouser leg, light (tinted), black boot below")
+def _():
+    img = solid((232, 232, 228))
+    grain(img, 1822, 0.045)
+    line_v(img, 32, 0.86)
+    rect(img, 0, 40, 64, 64, (24, 24, 26))
+    rect(img, 0, 40, 64, 42, (64, 64, 68))
+    return img
+
+
+@tile("crew_cap", "crew: an officer's cap, light (tinted), with the rank disc")
+def _():
+    img = solid((232, 232, 228))
+    grain(img, 1823, 0.05)
+    rect(img, 0, 52, 64, 64, factor=0.8)
+    disc(img, 32, 30, 6, (200, 200, 206))
+    disc(img, 32, 30, 3, (120, 120, 128))
+    return img
+
+
+@tile("crew_trooper_helmet_top", "crew: the top of a trooper's helmet (white dome, a ridge)")
+def _():
+    img = armour_white(1824)
+    bevel(img, 3, 3, 61, 61, 1.05, 0.88, 2)
+    rect(img, 30, 0, 34, 64, factor=0.9)
+    return img
+
+
+@tile("crew_tech_helmet_side", "crew: technician's black helmet, sides, back and top")
+def _():
+    img = solid((28, 29, 32))
+    grain(img, 1825, 0.06)
+    bevel(img, 2, 2, 62, 62, 1.25, 0.7, 2)
+    rect(img, 0, 48, 64, 52, (60, 62, 68))
+    return img
+
+
+@tile("crew_pilot_helmet", "crew: starfighter pilot's helmet, front (big lenses, breathing tubes)")
+def _():
+    img = solid((22, 23, 26))
+    grain(img, 1826, 0.06)
+    bevel(img, 2, 2, 62, 62, 1.3, 0.7, 2)
+    for x in (14, 38):
+        disc(img, x + 6, 26, 9, (8, 8, 10))
+        disc(img, x + 4, 23, 3, (70, 74, 90))
+    rect(img, 26, 38, 38, 56, (40, 42, 46))
+    for y in range(40, 56, 3):
+        line_h(img, y, 0.6, 26, 38)
+    for side in (0, 1):
+        for i in range(10):
+            x = 22 - i * 2 if side == 0 else 42 + i * 2
+            rect(img, x, 52 + i // 2, x + 3, 55 + i // 2, (70, 72, 78))
+    rect(img, 6, 6, 12, 12, (150, 150, 156))
+    rect(img, 52, 6, 58, 12, (150, 150, 156))
+    return img
+
+
+@tile("crew_pilot_helmet_side", "crew: pilot's helmet, sides, back and top (black, a grey emblem)")
+def _():
+    img = solid((22, 23, 26))
+    grain(img, 1827, 0.06)
+    bevel(img, 2, 2, 62, 62, 1.25, 0.72, 2)
+    disc(img, 32, 30, 8, (120, 122, 128))
+    disc(img, 32, 30, 5, (22, 23, 26))
+    return img
+
+
+@tile("crew_pilot_body", "crew: pilot's black flight suit (chest box with switches, hoses, harness)")
+def _():
+    img = solid((26, 27, 30))
+    grain(img, 1828, 0.06)
+    rect(img, 16, 6, 48, 26, (44, 46, 52))
+    bevel(img, 16, 6, 48, 26, 1.3, 0.7, 1)
+    for i, col in enumerate(((210, 60, 50), (220, 200, 60), (60, 120, 220), (200, 200, 206), (60, 180, 90))):
+        rect(img, 19 + i * 6, 10, 23 + i * 6, 14, col)
+    rect(img, 19, 17, 45, 22, (90, 92, 100))
+    for x in (8, 56):
+        rect(img, x - 3, 0, x + 3, 46, (60, 62, 68))
+    rect(img, 0, 46, 64, 52, (14, 14, 16))
+    rect(img, 26, 46, 38, 52, (150, 152, 160))
+    return img
+
+
+@tile("crew_pilot_limb", "crew: pilot's sleeve or leg (black, a harness strap, boots)")
+def _():
+    img = solid((26, 27, 30))
+    grain(img, 1829, 0.06)
+    rect(img, 0, 18, 64, 22, (60, 62, 68))
+    rect(img, 0, 44, 64, 64, (12, 12, 14))
+    return img
+
+
+@tile("crew_guard_helmet", "crew: honour guard's red helmet, front (a narrow black visor)")
+def _():
+    img = solid((170, 24, 22))
+    grain(img, 1830, 0.08)
+    shade(img, 0.9 + 0.2 * (np.linspace(1, 0, TILE)[None, :] * 0 + np.linspace(1.0, 0.7, TILE)[:, None]))
+    rect(img, 18, 22, 46, 27, (12, 10, 10))
+    rect(img, 30, 27, 34, 46, (12, 10, 10))
+    bevel(img, 2, 2, 62, 62, 1.2, 0.7, 2)
+    return img
+
+
+@tile("crew_guard_robe", "crew: honour guard's red robe (folds), also its hood and sleeves")
+def _():
+    img = solid((160, 22, 20))
+    grain(img, 1831, 0.08)
+    for x in range(3, 64, 9):
+        line_v(img, x, 0.78)
+        line_v(img, x + 1, 1.12)
+    return img
+
+
+@tile("crew_smuggler_face", "crew: the Falcon's smuggler: a face with a crooked smile, brown hair")
+def _():
+    img = face_tile(1832, (220, 176, 140), (92, 64, 40), 12, eyes=(70, 90, 70))
+    rect(img, 34, 47, 39, 49, (150, 90, 80))
+    rect(img, 38, 46, 40, 48, (150, 90, 80))
+    rect(img, 24, 50, 30, 51, factor=0.92)
+    return img
+
+
+@tile("crew_smuggler_head", "crew: the smuggler's head, sides and back (brown hair)")
+def _():
+    return head_side_tile(1833, (220, 176, 140), (92, 64, 40), 44)
+
+
+@tile("crew_smuggler_torso", "crew: the smuggler: white shirt, black vest, holster belt")
+def _():
+    img = solid((228, 224, 214))
+    grain(img, 1834, 0.05)
+    rect(img, 0, 0, 20, 46, (28, 28, 30))
+    rect(img, 44, 0, 64, 46, (28, 28, 30))
+    rect(img, 22, 0, 42, 6, factor=0.85)
+    for y in (12, 22, 32):
+        rect(img, 8, y, 12, y + 4, (60, 60, 64))
+    rect(img, 0, 46, 64, 53, (90, 60, 36))
+    rect(img, 6, 46, 14, 53, (180, 170, 140))
+    rect(img, 50, 46, 60, 60, (70, 46, 28))
+    rect(img, 0, 53, 64, 64, (40, 44, 60))
+    return img
+
+
+@tile("crew_smuggler_arm", "crew: the smuggler's sleeve (white shirt, the hand below)")
+def _():
+    img = solid((228, 224, 214))
+    grain(img, 1835, 0.05)
+    line_v(img, 32, 0.9)
+    rect(img, 0, 52, 64, 64, (220, 176, 140))
+    return img
+
+
+@tile("crew_smuggler_legs", "crew: the smuggler's trousers (dark blue, a red stripe, boots)")
+def _():
+    img = solid((40, 44, 62))
+    grain(img, 1836, 0.06)
+    rect(img, 4, 0, 8, 40, (150, 40, 34))
+    rect(img, 56, 0, 60, 40, (150, 40, 34))
+    rect(img, 0, 40, 64, 64, (36, 26, 20))
+    return img
+
+
+@tile("crew_wookiee_face", "crew: the tall furry mechanic's face (fur, deep-set eyes, a dark nose)")
+def _():
+    img = solid((118, 84, 52))
+    grain(img, 1837, 0.2, 32)
+    for x in (14, 38):
+        rect(img, x, 22, x + 12, 30, (70, 48, 30))
+        rect(img, x + 3, 24, x + 8, 28, (30, 22, 16))
+        rect(img, x + 4, 25, x + 6, 27, (120, 160, 190))
+    rect(img, 26, 34, 38, 42, (40, 28, 22))
+    rect(img, 22, 48, 42, 52, (60, 30, 26))
+    return img
+
+
+@tile("crew_wookiee_fur", "crew: brown fur (shaggy streaks)")
+def _():
+    img = solid((122, 88, 56))
+    grain(img, 1838, 0.22, 32)
+    r = rng(1839)
+    for _ in range(90):
+        x = int(r.integers(0, 64))
+        y = int(r.integers(0, 56))
+        rect(img, x, y, x + 1, y + int(r.integers(4, 10)), factor=float(r.choice([0.75, 1.2])))
+    return img
+
+
+@tile("crew_wookiee_torso", "crew: brown fur with a bandolier across it")
+def _():
+    img = solid((122, 88, 56))
+    grain(img, 1840, 0.22, 32)
+    for i in range(64):
+        y = int(i * 0.9)
+        rect(img, i, y, i + 1, min(64, y + 9), (78, 66, 52))
+        if i % 9 < 5:
+            rect(img, i, y + 2, i + 1, min(64, y + 7), (170, 172, 176))
+    return img
+
+
+@tile("crew_rebel_face", "crew: a rebel passenger's face (short dark hair)")
+def _():
+    return face_tile(1841, (196, 150, 112), (36, 30, 26), 13, eyes=(60, 44, 34))
+
+
+@tile("crew_rebel_head", "crew: the rebel's head, sides and back")
+def _():
+    return head_side_tile(1842, (196, 150, 112), (36, 30, 26), 42)
+
+
+@tile("crew_rebel_suit", "crew: an orange flight suit with a white vest and harness")
+def _():
+    img = solid((214, 112, 40))
+    grain(img, 1843, 0.06)
+    rect(img, 12, 0, 52, 30, (226, 224, 216))
+    rect(img, 30, 0, 34, 30, factor=0.8)
+    for x in (18, 44):
+        rect(img, x - 2, 0, x + 2, 46, (50, 50, 54))
+    rect(img, 22, 8, 28, 14, (180, 50, 40))
+    rect(img, 0, 46, 64, 52, (50, 50, 54))
+    return img
+
+
+@tile("crew_rebel_limb", "crew: the rebel's orange sleeve or leg, a black boot or glove below")
+def _():
+    img = solid((214, 112, 40))
+    grain(img, 1844, 0.06)
+    line_v(img, 32, 0.88)
+    rect(img, 0, 46, 64, 64, (30, 30, 32))
+    return img
+
+
 # --- Writing ---------------------------------------------------------------------------------
 
 

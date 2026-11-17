@@ -175,6 +175,70 @@ public final class InteriorAtlas {
 	public static final int CREW_TECH_HELMET = 81;
 	/** crew: technician's black suit (chest box, belt) */
 	public static final int CREW_TECH_BODY = 82;
+	/** crew: an officer's face (variant 0), the cap is drawn over it */
+	public static final int CREW_FACE_0 = 83;
+	/** crew: an officer's face (variant 1), the cap is drawn over it */
+	public static final int CREW_FACE_1 = 84;
+	/** crew: an officer's face (variant 2), the cap is drawn over it */
+	public static final int CREW_FACE_2 = 85;
+	/** crew: an officer's face (variant 3), the cap is drawn over it */
+	public static final int CREW_FACE_3 = 86;
+	/** crew: sides and back of an officer's head (variant 0) */
+	public static final int CREW_HEAD_0 = 87;
+	/** crew: sides and back of an officer's head (variant 1) */
+	public static final int CREW_HEAD_1 = 88;
+	/** crew: sides and back of an officer's head (variant 2) */
+	public static final int CREW_HEAD_2 = 89;
+	/** crew: sides and back of an officer's head (variant 3) */
+	public static final int CREW_HEAD_3 = 90;
+	/** crew: the top of a head, light (tinted to the hair colour) */
+	public static final int CREW_HAIR_TOP = 91;
+	/** crew: an officer's tunic, light (tinted to the uniform): belt, rank plaque, code cylinders */
+	public static final int CREW_UNIFORM_TUNIC = 92;
+	/** crew: an officer's sleeve or trouser leg, light (tinted), black boot below */
+	public static final int CREW_UNIFORM_LIMB = 93;
+	/** crew: an officer's cap, light (tinted), with the rank disc */
+	public static final int CREW_CAP = 94;
+	/** crew: the top of a trooper's helmet (white dome, a ridge) */
+	public static final int CREW_TROOPER_HELMET_TOP = 95;
+	/** crew: technician's black helmet, sides, back and top */
+	public static final int CREW_TECH_HELMET_SIDE = 96;
+	/** crew: starfighter pilot's helmet, front (big lenses, breathing tubes) */
+	public static final int CREW_PILOT_HELMET = 97;
+	/** crew: pilot's helmet, sides, back and top (black, a grey emblem) */
+	public static final int CREW_PILOT_HELMET_SIDE = 98;
+	/** crew: pilot's black flight suit (chest box with switches, hoses, harness) */
+	public static final int CREW_PILOT_BODY = 99;
+	/** crew: pilot's sleeve or leg (black, a harness strap, boots) */
+	public static final int CREW_PILOT_LIMB = 100;
+	/** crew: honour guard's red helmet, front (a narrow black visor) */
+	public static final int CREW_GUARD_HELMET = 101;
+	/** crew: honour guard's red robe (folds), also its hood and sleeves */
+	public static final int CREW_GUARD_ROBE = 102;
+	/** crew: the Falcon's smuggler: a face with a crooked smile, brown hair */
+	public static final int CREW_SMUGGLER_FACE = 103;
+	/** crew: the smuggler's head, sides and back (brown hair) */
+	public static final int CREW_SMUGGLER_HEAD = 104;
+	/** crew: the smuggler: white shirt, black vest, holster belt */
+	public static final int CREW_SMUGGLER_TORSO = 105;
+	/** crew: the smuggler's sleeve (white shirt, the hand below) */
+	public static final int CREW_SMUGGLER_ARM = 106;
+	/** crew: the smuggler's trousers (dark blue, a red stripe, boots) */
+	public static final int CREW_SMUGGLER_LEGS = 107;
+	/** crew: the tall furry mechanic's face (fur, deep-set eyes, a dark nose) */
+	public static final int CREW_WOOKIEE_FACE = 108;
+	/** crew: brown fur (shaggy streaks) */
+	public static final int CREW_WOOKIEE_FUR = 109;
+	/** crew: brown fur with a bandolier across it */
+	public static final int CREW_WOOKIEE_TORSO = 110;
+	/** crew: a rebel passenger's face (short dark hair) */
+	public static final int CREW_REBEL_FACE = 111;
+	/** crew: the rebel's head, sides and back */
+	public static final int CREW_REBEL_HEAD = 112;
+	/** crew: an orange flight suit with a white vest and harness */
+	public static final int CREW_REBEL_SUIT = 113;
+	/** crew: the rebel's orange sleeve or leg, a black boot or glove below */
+	public static final int CREW_REBEL_LIMB = 114;
 
 	private InteriorAtlas() {
 	}

@@ -48,7 +48,36 @@ final class FalconRooms {
 		cargo(b);
 		ramp(b);
 		turretSeats(b);
+		stores(b, plot);
 		b.layer(Layer.SOLID).worldLight().white().anim(0).twoSided(false);
+	}
+
+	/**
+	 * Phase 18: the stores (vanilla barrels, they keep what is put in them) look like the ship's
+	 * cargo containers: a container a little bigger than the barrel round it (so that their faces
+	 * never lie on each other). A click still opens the barrel inside. The hidden compartments
+	 * under the floor are left as they are.
+	 */
+	private static void stores(MeshBuilder b, VirtualPlot plot) {
+		b.layer(Layer.SOLID).worldLight().white().anim(0).fit(InteriorAtlas.FAL_CRATE);
+		float e = 0.015F;
+
+		for (var entry : plot.blocks.long2ObjectEntrySet()) {
+			if (!entry.getValue().is(Blocks.BARREL)) {
+				continue;
+			}
+
+			net.minecraft.core.BlockPos pos = net.minecraft.core.BlockPos.of(entry.getLongKey());
+
+			if (pos.getY() <= FLOOR) {
+				continue;
+			}
+
+			// One under another: the lower one without a top, its sides ending where the upper one's begin.
+			boolean stacked = plot.is(pos.getX(), pos.getY() + 1, pos.getZ(), Blocks.BARREL);
+			int faces = MeshBuilder.ALL & ~MeshBuilder.DOWN & (stacked ? ~MeshBuilder.UP : MeshBuilder.ALL);
+			b.box(pos.getX() - e, pos.getY(), pos.getZ() - e, pos.getX() + 1 + e, pos.getY() + 1 + (stacked ? 0.0F : e), pos.getZ() + 1 + e, faces);
+		}
 	}
 
 	// --- Panelling -------------------------------------------------------------------------------
@@ -433,6 +462,12 @@ final class FalconRooms {
 					new Vector3f(0, 1, 0));
 		}
 
+		// Phase 18: the floor between the cockpit's door and the pod's own floor (one looked down
+		// into space there, right behind the door).
+		b.tile(InteriorAtlas.FAL_FLOOR_PLATE, 2.0F);
+		b.polyFacing(java.util.List.of(new Vector3f(40.0F, Y0 + Skin.EPS, 23.0F), new Vector3f(cx - floorHalf, Y0 + Skin.EPS, 23.0F),
+				new Vector3f(cx - floorHalf, Y0 + Skin.EPS, 25.0F), new Vector3f(40.0F, Y0 + Skin.EPS, 25.0F)), new Vector3f(0, 1, 0));
+
 		b.tile(InteriorAtlas.FAL_CEILING, 1.0F);
 		b.polyFacing(java.util.List.of(new Vector3f(cx - ceilingHalf, ceiling, z0), new Vector3f(cx + ceilingHalf, ceiling, z0),
 				new Vector3f(cx + ceilingHalf, ceiling, z1), new Vector3f(cx - ceilingHalf, ceiling, z1)), new Vector3f(0, -1, 0));
@@ -733,6 +768,13 @@ final class FalconRooms {
 	}
 
 	private static void turretSeats(MeshBuilder b) {
+		// Phase 18: a deck plate in the lower turret, where one stands over the glass bowl (one stood
+		// on an invisible floor in front of the stars).
+		b.layer(Layer.SOLID).worldLight().white().tile(InteriorAtlas.FAL_FLOOR_PLATE, 2.0F);
+		b.ring(CXF, 1.0F + Skin.EPS, CZF, 0.0F, 2.75F, 40, true);
+		b.tile(InteriorAtlas.FAL_METAL_DARK, 1.0F);
+		b.ring(CXF, 1.0F + Skin.EPS, CZF, 2.75F, 2.95F, 40, true);
+
 		for (int y : new int[] {FLOOR + 6, 1}) {
 			Props.at(b, 20.5, y, 28.5, Props.south());
 			Props.chair(b, InteriorAtlas.FAL_COUCH);
