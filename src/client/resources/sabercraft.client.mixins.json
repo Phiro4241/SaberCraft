@@ -15,6 +15,7 @@
     "HumanoidModelMixin",
     "ItemInHandLayerMixin",
     "ItemInHandRendererMixin",
+    "LanguageManagerMixin",
     "LivingEntityRendererMixin",
     "LocalPlayerMixin",
     "MinecraftMixin",

@@ -239,6 +239,62 @@ public final class InteriorAtlas {
 	public static final int CREW_REBEL_SUIT = 113;
 	/** crew: the rebel's orange sleeve or leg, a black boot or glove below */
 	public static final int CREW_REBEL_LIMB = 114;
+	/** story: Kestrel, the spy: a narrow face, short auburn hair swept to one side, a scar on the cheek */
+	public static final int STORY_KESTREL_FACE = 115;
+	/** story: Kestrel's head, sides and back (short auburn hair) */
+	public static final int STORY_KESTREL_HEAD = 116;
+	/** story: Kestrel's grey work suit (an old Imperial technician's, the badge torn off), tool belt */
+	public static final int STORY_KESTREL_SUIT = 117;
+	/** story: Kestrel's sleeve or trouser leg (grey), a dark glove or boot below */
+	public static final int STORY_KESTREL_LIMB = 118;
+	/** story: Lt. Mira Sen: dark hair pulled back tight, dark eyes, a calm look */
+	public static final int STORY_MIRA_FACE = 119;
+	/** story: Mira's head, sides and back (black hair in a knot at the back) */
+	public static final int STORY_MIRA_HEAD = 120;
+	/** story: Lt. Corvan Hale of the security bureau: pale, sharp, pale blond hair combed back, grey eyes */
+	public static final int STORY_HALE_FACE = 121;
+	/** story: Hale's head, sides and back (pale blond hair, short) */
+	public static final int STORY_HALE_HEAD = 122;
+	/** story: Tamsin, the prisoner: long brown hair, a bruise, tired eyes */
+	public static final int STORY_TAMSIN_FACE = 123;
+	/** story: Tamsin's head, sides and back (long brown hair) */
+	public static final int STORY_TAMSIN_HEAD = 124;
+	/** story: a prisoner's overall (faded grey-orange), a number on the chest */
+	public static final int STORY_PRISONER_SUIT = 125;
+	/** story: the Shadowblade's mask: dark metal, a narrow red visor slit, cheek vents */
+	public static final int STORY_SHADOW_MASK = 126;
+	/** story: the Shadowblade's hood, sides, back and top (black cloth, folds) */
+	public static final int STORY_SHADOW_HOOD = 127;
+	/** story: the Shadowblade's robe: black, layered, a belt with a red-lit buckle */
+	public static final int STORY_SHADOW_ROBE = 128;
+	/** story: the Shadowblade's sleeve or leg (black cloth, wrapped), armoured glove or boot below */
+	public static final int STORY_SHADOW_LIMB = 129;
+	/** story: Ilyra Voss (as her hologram shows her): an older face, grey hair in a braid, a calm, sad look */
+	public static final int STORY_ILYRA_FACE = 130;
+	/** story: Ilyra's robe in the hologram: light, a wide sash */
+	public static final int STORY_ILYRA_ROBE = 131;
+	/** story: portrait of M-31, the mouse droid (seen from the front, a red sensor eye) */
+	public static final int STORY_M31_PORTRAIT = 132;
+	/** story: portrait of R2-V7, the astromech (its dome, a big eye, copper panels) */
+	public static final int STORY_R2_PORTRAIT = 133;
+	/** story: Funke's mark (the player's own lines): an orange spark on dark blue */
+	public static final int STORY_FUNKE_PORTRAIT = 134;
+	/** story: a terminal speaking (a screen with lines of text and a cursor) */
+	public static final int STORY_TERMINAL_PORTRAIT = 135;
+	/** story: Kestrel's sign: a falcon scratched into a dark metal panel */
+	public static final int STORY_BIRD_SIGN = 136;
+	/** story: old maintenance machinery: grimy panels, gauges, a warning stripe */
+	public static final int STORY_MACHINE = 137;
+	/** story: a locker door (grey, vents at the top, a handle, a number plate) */
+	public static final int STORY_LOCKER = 138;
+	/** story: an access card, level 2 (white, a red stripe, a chip) */
+	public static final int STORY_KEYCARD = 139;
+	/** story: the tracker's glow (glow layer): rings of light round a bright core, a sweeping line */
+	public static final int STORY_TRACKER_GLOW = 140;
+	/** story: a lamp's beam (holo layer): bright at the lamp (top), fading out along it, a little dust */
+	public static final int STORY_BEAM = 141;
+	/** story: the marks over someone who noticed: '?' on the left half, '!' on the right (white, tinted) */
+	public static final int STORY_MARKS = 142;
 
 	private InteriorAtlas() {
 	}

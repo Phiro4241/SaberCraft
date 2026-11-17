@@ -41,8 +41,11 @@ public final class Turrets {
 	public static final double PIVOT_Z = FalconInterior.CZ;
 	public static final double TOP_Y = 14.2;
 	public static final double BOTTOM_Y = 1.8;
-	/** The guns stand this far to either side of the pivot, their muzzles this far along the aim. */
-	public static final double SIDE = 2.4;
+	/**
+	 * The guns stand this far to either side of the pivot, their muzzles this far along the aim.
+	 * Phase 19: outside the glass domes (radius 4 and 4.2; at 2.4 the guns stood inside them).
+	 */
+	public static final double SIDE = 4.8;
 	public static final double BARREL = 5.4;
 	/** How far the guns can aim past the rim (degrees). */
 	public static final float RIM = 8.0F;

@@ -91,6 +91,16 @@ Status labels: ✅ **finished** (built and covered by automated tests) · 🧪 *
 - A **Millennium Falcon** (fast freighter, turning radar dish, landing legs) and a **Star Destroyer** (about 80 blocks long, six turbolaser batteries, cruises at a fixed height and never dips its nose).
 - The pilot is **not drawn** while flying. Landings never cause fall damage; hard landings and crashes cost hull, and a very hard one wrecks the ship. Ships have **flight energy** per ship that charges on the ground, shown in the HUD.
 
+### 📖 Story mode 🧪
+
+- **Chapter 1, "Nachtschatten" ("Nightshade")**: six missions as the rebel spy *Funke* ("Spark") aboard the Star Destroyer *Tenebris*, from the Falcon's briefing to a lightsaber duel in the hangar. Start it in the menu (**V**, first tab **Story**). Original story and dialogs, in **German and English**.
+- **Stealth**: the crew notices you in four stages (calm, suspicious, alerted, detected), shown by a small eye on screen. Darkness, lamps, cover, sneaking and crawling matter; caught means back to the last checkpoint, never a dead end.
+- **Disguise**: stormtrooper armour fools the troops while you behave like one; officers look closer.
+- **Dialogs** with portraits, names and answers that change the story (one decision changes Missions 4 and 5).
+- **Droids to recruit**: the mouse droid M-31 (noises, small hatches, a force field) and the astromech R2-V7 (opens locks, scans the room).
+- **Saved at every checkpoint**: leave the story at any time (your own things, place and droids come back), continue later, or play a reached mission again. The end gives a lightsaber to keep.
+- Its own **language setting** (Auto, German, English) for all SaberCraft texts, independent of Minecraft's.
+
 ### 🌌 Skies and planets ✅
 
 - A **space sky** with stars, nebulae and galaxies over the night sky of the Overworld and in the End.
@@ -185,7 +195,7 @@ All keys are in **Options → Controls → Key Binds → SaberCraft** and can be
 
 | Default key | Action |
 | --- | --- |
-| **V** | Open the SaberCraft menu (saber, blasters, droids, ships, combat, character, sky, music, graphics) |
+| **V** | Open the SaberCraft menu (story, saber, blasters, droids, ships, combat, character, sky, music, graphics) |
 | Left mouse button | Attack; the move depends on the fighting style (a stab while sprinting) |
 | **R** (hold) | Defensive stance; right after raising it, a parry |
 | **Z** | Spin attack; blade whirl with the double blade |
@@ -201,6 +211,9 @@ All keys are in **Options → Controls → Key Binds → SaberCraft** and can be
 | Right mouse button (blaster) | Fire; costs one arrow |
 | Right mouse button on a crew member (aboard) | They answer in the chat (Phase 18) |
 | Sneak in front of an open vent hatch (Star Destroyer) | Get down on all fours and crawl in (Phase 18) |
+| Right mouse button on a person or thing (story) | Speak to them, use a console, a locker, a terminal (Phase 19) |
+| **Enter** / **Space** / click, **1**–**4**, arrow keys (story dialog) | Show the whole line or go on; choose an answer (Phase 19) |
+| **N** (story) | M-31's or R2-V7's ability; you need not look at the droid: R2-V7 works on a lock nearby, M-31 makes a noise where you look (Phase 19) |
 
 **Starships** (fixed keys, they reuse your movement keys):
 

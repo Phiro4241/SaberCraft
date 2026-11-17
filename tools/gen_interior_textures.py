@@ -1575,6 +1575,386 @@ def _():
     return img
 
 
+# --- Phase 19: the story (its people, portraits and things) -----------------------------------
+
+
+@tile("story_kestrel_face", "story: Kestrel, the spy: a narrow face, short auburn hair swept to one side, a scar on the cheek")
+def _():
+    img = face_tile(1900, (226, 186, 158), (128, 66, 40), 11, eyes=(86, 120, 96))
+    # The fringe falls over one side of the brow.
+    for x in range(0, 30):
+        rect(img, x, 11, x + 1, 11 + max(0, 9 - x // 3), (128, 66, 40))
+    # A thin scar across the left cheek.
+    for i in range(7):
+        rect(img, 44 + i, 36 + i // 2, 45 + i, 37 + i // 2, factor=0.78)
+    return img
+
+
+@tile("story_kestrel_head", "story: Kestrel's head, sides and back (short auburn hair)")
+def _():
+    return head_side_tile(1901, (226, 186, 158), (128, 66, 40), 38)
+
+
+@tile("story_kestrel_suit", "story: Kestrel's grey work suit (an old Imperial technician's, the badge torn off), tool belt")
+def _():
+    img = solid((70, 74, 78))
+    grain(img, 1902, 0.07)
+    line_v(img, 32, 0.78, 0, 44)
+    # Where the badge was: lighter cloth, loose threads.
+    rect(img, 10, 10, 24, 18, factor=1.25)
+    for x in (11, 15, 19, 22):
+        rect(img, x, 18, x + 1, 20, factor=0.7)
+    rect(img, 40, 8, 54, 22, (58, 62, 66))
+    bevel(img, 40, 8, 54, 22, 1.2, 0.75, 1)
+    # The tool belt with pouches.
+    rect(img, 0, 44, 64, 50, (52, 40, 30))
+    for x in (6, 22, 42):
+        rect(img, x, 44, x + 10, 56, (66, 52, 38))
+        bevel(img, x, 44, x + 10, 56, 1.2, 0.7, 1)
+    rect(img, 30, 44, 34, 50, (170, 170, 176))
+    rect(img, 0, 56, 64, 64, factor=0.9)
+    return img
+
+
+@tile("story_kestrel_limb", "story: Kestrel's sleeve or trouser leg (grey), a dark glove or boot below")
+def _():
+    img = solid((70, 74, 78))
+    grain(img, 1903, 0.07)
+    line_v(img, 32, 0.86)
+    rect(img, 0, 22, 64, 26, factor=0.85)
+    rect(img, 0, 46, 64, 64, (34, 30, 28))
+    return img
+
+
+@tile("story_mira_face", "story: Lt. Mira Sen: dark hair pulled back tight, dark eyes, a calm look")
+def _():
+    img = face_tile(1904, (150, 104, 74), (24, 20, 18), 12, eyes=(46, 32, 24))
+    rect(img, 28, 12, 36, 16, (24, 20, 18))
+    return img
+
+
+@tile("story_mira_head", "story: Mira's head, sides and back (black hair in a knot at the back)")
+def _():
+    img = head_side_tile(1905, (150, 104, 74), (24, 20, 18), 40)
+    disc(img, 32, 22, 9, (30, 26, 22))
+    disc(img, 30, 20, 3, factor=1.3)
+    return img
+
+
+@tile("story_hale_face", "story: Lt. Corvan Hale of the security bureau: pale, sharp, pale blond hair combed back, grey eyes")
+def _():
+    img = face_tile(1906, (234, 204, 182), (208, 190, 140), 9, eyes=(120, 130, 140), brows=(170, 150, 110))
+    # A thin, set mouth.
+    rect(img, 25, 48, 39, 50, (180, 120, 110))
+    rect(img, 26, 49, 38, 50, factor=0.7)
+    # High cheekbones.
+    rect(img, 12, 36, 20, 40, factor=0.92)
+    rect(img, 44, 36, 52, 40, factor=0.92)
+    return img
+
+
+@tile("story_hale_head", "story: Hale's head, sides and back (pale blond hair, short)")
+def _():
+    return head_side_tile(1907, (234, 204, 182), (208, 190, 140), 36)
+
+
+@tile("story_tamsin_face", "story: Tamsin, the prisoner: long brown hair, a bruise, tired eyes")
+def _():
+    img = face_tile(1908, (212, 168, 132), (96, 60, 36), 12, eyes=(80, 100, 70), long_hair=True)
+    disc(img, 47, 33, 4, (150, 110, 120))
+    rect(img, 16, 33, 25, 34, factor=0.82)
+    rect(img, 39, 33, 48, 34, factor=0.82)
+    return img
+
+
+@tile("story_tamsin_head", "story: Tamsin's head, sides and back (long brown hair)")
+def _():
+    return head_side_tile(1909, (212, 168, 132), (96, 60, 36), 60)
+
+
+@tile("story_prisoner_suit", "story: a prisoner's overall (faded grey-orange), a number on the chest")
+def _():
+    img = solid((150, 112, 80))
+    grain(img, 1910, 0.08)
+    stain(img, 1911, 0.3)
+    line_v(img, 32, 0.8)
+    rect(img, 8, 10, 26, 18, (230, 226, 214))
+    for i, w in enumerate((3, 2, 3, 3)):
+        rect(img, 10 + i * 4, 12, 10 + i * 4 + w, 16, (40, 40, 44))
+    rect(img, 0, 46, 64, 50, factor=0.75)
+    return img
+
+
+@tile("story_shadow_mask", "story: the Shadowblade's mask: dark metal, a narrow red visor slit, cheek vents")
+def _():
+    img = solid((26, 24, 28))
+    grain(img, 1912, 0.08)
+    bevel(img, 3, 3, 61, 61, 1.3, 0.6, 2)
+    # The hood's edge round the mask.
+    rect(img, 0, 0, 64, 6, (14, 12, 16))
+    rect(img, 0, 0, 5, 64, (14, 12, 16))
+    rect(img, 59, 0, 64, 64, (14, 12, 16))
+    # The visor: a red slit.
+    rect(img, 12, 24, 52, 30, (40, 6, 8))
+    rect(img, 14, 26, 50, 28, (230, 40, 34))
+    rect(img, 30, 26, 34, 28, (255, 140, 120))
+    # Vents on the cheeks, a grille below.
+    for y in range(36, 52, 4):
+        rect(img, 14, y, 24, y + 2, (10, 10, 12))
+        rect(img, 40, y, 50, y + 2, (10, 10, 12))
+    rect(img, 28, 40, 36, 56, (44, 42, 48))
+    for y in range(41, 56, 3):
+        line_h(img, y, 0.5, 28, 36)
+    return img
+
+
+@tile("story_shadow_hood", "story: the Shadowblade's hood, sides, back and top (black cloth, folds)")
+def _():
+    img = solid((22, 20, 24))
+    grain(img, 1913, 0.12)
+    for x in range(5, 64, 9):
+        line_v(img, x, 1.35)
+        line_v(img, x + 1, 0.7)
+    return img
+
+
+@tile("story_shadow_robe", "story: the Shadowblade's robe: black, layered, a belt with a red-lit buckle")
+def _():
+    img = solid((24, 22, 26))
+    grain(img, 1914, 0.1)
+    # The front opening, layered folds.
+    rect(img, 28, 0, 36, 64, (16, 14, 18))
+    for x in (8, 18, 46, 56):
+        line_v(img, x, 1.3)
+    rect(img, 0, 40, 64, 46, (40, 38, 44))
+    rect(img, 28, 39, 36, 47, (110, 20, 22))
+    rect(img, 30, 41, 34, 45, (240, 60, 50))
+    # Armour plates on the shoulders.
+    rect(img, 0, 0, 64, 6, (48, 46, 52))
+    bevel(img, 0, 0, 64, 6, 1.3, 0.6, 1)
+    return img
+
+
+@tile("story_shadow_limb", "story: the Shadowblade's sleeve or leg (black cloth, wrapped), armoured glove or boot below")
+def _():
+    img = solid((24, 22, 26))
+    grain(img, 1915, 0.1)
+    for y in range(4, 44, 7):
+        line_h(img, y, 1.3)
+    rect(img, 0, 44, 64, 64, (44, 42, 48))
+    bevel(img, 0, 44, 64, 64, 1.3, 0.6, 1)
+    return img
+
+
+@tile("story_ilyra_face", "story: Ilyra Voss (as her hologram shows her): an older face, grey hair in a braid, a calm, sad look")
+def _():
+    img = face_tile(1916, (220, 190, 168), (176, 172, 168), 10, eyes=(110, 120, 130))
+    # Lines of age.
+    for y in (20, 22):
+        line_h(img, y, 0.9, 20, 44)
+    rect(img, 14, 34, 18, 35, factor=0.85)
+    rect(img, 46, 34, 50, 35, factor=0.85)
+    return img
+
+
+@tile("story_ilyra_robe", "story: Ilyra's robe in the hologram: light, a wide sash")
+def _():
+    img = solid((206, 194, 170))
+    grain(img, 1917, 0.06)
+    for x in (10, 22, 42, 54):
+        line_v(img, x, 0.85)
+    rect(img, 26, 0, 38, 64, factor=0.9)
+    rect(img, 0, 36, 64, 46, (150, 120, 84))
+    return img
+
+
+@tile("story_m31_portrait", "story: portrait of M-31, the mouse droid (seen from the front, a red sensor eye)")
+def _():
+    img = solid((16, 20, 28))
+    rect(img, 6, 22, 58, 52, (34, 34, 38))
+    bevel(img, 6, 22, 58, 52, 1.35, 0.6, 2)
+    rect(img, 12, 28, 52, 40, (58, 58, 62))
+    bevel(img, 12, 28, 52, 40, 1.2, 0.7, 1)
+    disc(img, 32, 34, 5, (40, 6, 6))
+    disc(img, 32, 34, 3, (240, 50, 40))
+    rect(img, 31, 33, 32, 34, (255, 200, 190))
+    for x in (14, 44):
+        rect(img, x, 44, x + 6, 50, (150, 150, 156))
+    rect(img, 8, 52, 18, 58, (24, 24, 26))
+    rect(img, 46, 52, 56, 58, (24, 24, 26))
+    return img
+
+
+@tile("story_r2_portrait", "story: portrait of R2-V7, the astromech (its dome, a big eye, copper panels)")
+def _():
+    img = solid((16, 20, 28))
+    disc(img, 32, 40, 24, (210, 212, 216))
+    rect(img, 0, 40, 64, 64, (16, 20, 28))
+    rect(img, 8, 40, 56, 64, (220, 222, 226))
+    rect(img, 8, 40, 56, 42, (120, 122, 128))
+    for x in (16, 36):
+        rect(img, x, 24, x + 12, 34, (176, 96, 52))
+        bevel(img, x, 24, x + 12, 34, 1.25, 0.7, 1)
+    disc(img, 32, 20, 5, (20, 20, 24))
+    disc(img, 32, 20, 3, (60, 80, 200))
+    rect(img, 31, 19, 33, 21, (200, 210, 255))
+    rect(img, 18, 46, 46, 56, (176, 96, 52))
+    for x in range(20, 46, 4):
+        line_v(img, x, 0.7, 47, 55)
+    disc(img, 48, 30, 2, (240, 60, 50))
+    return img
+
+
+@tile("story_funke_portrait", "story: Funke's mark (the player's own lines): an orange spark on dark blue")
+def _():
+    img = solid((18, 24, 36))
+    glow_blob(img, 32, 32, 26, (120, 60, 20), 0.6)
+    pts = [(32, 8), (36, 26), (56, 32), (36, 38), (32, 56), (28, 38), (8, 32), (28, 26)]
+    yy, xx = np.mgrid[0:TILE, 0:TILE]
+    inside = np.zeros((TILE, TILE), bool)
+    n = len(pts)
+    for i in range(n):
+        (x0, y0), (x1, y1) = pts[i], pts[(i + 1) % n]
+        cond = ((y0 > yy + 0.5) != (y1 > yy + 0.5)) & (xx + 0.5 < (x1 - x0) * (yy + 0.5 - y0) / ((y1 - y0) or 1e-6) + x0)
+        inside ^= cond
+    for c, v in enumerate((255, 170, 70)):
+        img[..., c] = np.where(inside, v / 255.0, img[..., c])
+    glow_blob(img, 32, 32, 8, (255, 240, 200), 0.9)
+    return img
+
+
+@tile("story_terminal_portrait", "story: a terminal speaking (a screen with lines of text and a cursor)")
+def _():
+    img = solid((14, 18, 24))
+    rect(img, 6, 8, 58, 52, (10, 24, 30))
+    bevel(img, 6, 8, 58, 52, 0.6, 1.3, 2)
+    r = rng(1918)
+    for i, y in enumerate(range(14, 46, 5)):
+        w = int(r.integers(14, 44))
+        rect(img, 11, y, 11 + w, y + 2, (90, 200, 210) if i else (230, 200, 90))
+    rect(img, 11, 46, 15, 49, (160, 240, 250))
+    rect(img, 22, 54, 42, 58, (40, 44, 50))
+    return img
+
+
+@tile("story_bird_sign", "story: Kestrel's sign: a falcon scratched into a dark metal panel")
+def _():
+    img = solid((50, 52, 56))
+    grain(img, 1919, 0.1)
+    stain(img, 1920, 0.4)
+    # The bird, scratched in light lines: wings spread, head to one side.
+    pts = [(32, 12), (35, 16), (34, 22), (44, 18), (58, 10), (52, 22), (40, 30), (37, 40), (41, 50), (32, 46), (23, 50), (27, 40), (24, 30), (12, 22),
+           (6, 10), (20, 18), (30, 22), (29, 16), (32, 12)]
+    for (x0, y0), (x1, y1) in zip(pts, pts[1:]):
+        steps = max(abs(x1 - x0), abs(y1 - y0)) * 2
+        for i in range(steps + 1):
+            x = x0 + (x1 - x0) * i / steps
+            y = y0 + (y1 - y0) * i / steps
+            rect(img, x, y, x + 1, y + 1, (200, 204, 210))
+            rect(img, x + 1, y + 1, x + 2, y + 2, factor=0.6)
+    scratches(img, 1921, 8, 1.2, 6)
+    return img
+
+
+@tile("story_machine", "story: old maintenance machinery: grimy panels, gauges, a warning stripe")
+def _():
+    img = solid((86, 88, 84))
+    grain(img, 1922, 0.1)
+    stain(img, 1923, 0.5, 4, (0.7, 0.62, 0.5))
+    bevel(img, 2, 2, 62, 40, 1.15, 0.7, 1)
+    for x in (12, 32, 52):
+        disc(img, x, 18, 7, (30, 30, 32))
+        disc(img, x, 18, 6, (220, 214, 190))
+        rect(img, x, 13, x + 1, 19, (180, 40, 30))
+    for x in range(0, 64, 8):
+        for y in range(44, 52):
+            rect(img, x + (y - 44), y, x + (y - 44) + 4, y + 1, (200, 160, 40))
+    rect(img, 0, 44, 64, 45, factor=0.6)
+    rect(img, 0, 52, 64, 64, (60, 62, 60))
+    for x in range(4, 64, 6):
+        line_v(img, x, 0.6, 54, 62)
+    return img
+
+
+@tile("story_locker", "story: a locker door (grey, vents at the top, a handle, a number plate)")
+def _():
+    img = solid((120, 124, 130))
+    grain(img, 1924, 0.05)
+    bevel(img, 1, 1, 63, 63, 1.2, 0.65, 2)
+    for y in range(6, 16, 3):
+        rect(img, 14, y, 50, y + 1, (40, 42, 46))
+    rect(img, 50, 30, 54, 40, (60, 62, 66))
+    bevel(img, 50, 30, 54, 40, 1.4, 0.6, 1)
+    rect(img, 20, 22, 44, 28, (210, 210, 200))
+    rect(img, 23, 24, 29, 26, (40, 40, 44))
+    rect(img, 32, 24, 41, 26, (40, 40, 44))
+    line_h(img, 32, 0.8, 4, 46)
+    return img
+
+
+@tile("story_keycard", "story: an access card, level 2 (white, a red stripe, a chip)")
+def _():
+    img = solid((232, 232, 228))
+    rect(img, 0, 0, 64, 14, (190, 40, 36))
+    rect(img, 8, 26, 22, 38, (200, 170, 70))
+    for y in (29, 32, 35):
+        line_h(img, y, 0.7, 8, 22)
+    for i, y in enumerate((26, 32, 38, 44)):
+        rect(img, 30, y, 56 - i * 5, y + 2, (60, 60, 66))
+    rect(img, 44, 48, 58, 58, (60, 60, 66))
+    rect(img, 47, 51, 55, 55, (232, 232, 228))
+    return img
+
+
+@tile("story_tracker_glow", "story: the tracker's glow (glow layer): rings of light round a bright core, a sweeping line")
+def _():
+    img = dark()
+    yy, xx = np.mgrid[0:TILE, 0:TILE]
+    d = np.sqrt((xx + 0.5 - 32) ** 2 + (yy + 0.5 - 32) ** 2)
+    rings = np.clip(1.0 - np.abs((d % 9) - 4.5) / 1.6, 0, 1) * np.clip(1.0 - d / 32, 0, 1)
+    for c, v in enumerate((210, 60, 170)):
+        img[..., c] = np.clip(rings * v / 255.0, 0, 1)
+    glow_blob(img, 32, 32, 12, (255, 200, 240), 1.0)
+    for i in range(32):
+        rect(img, 32 + i, 32 - i // 3, 33 + i, 33 - i // 3, (255, 140, 220))
+    return img
+
+
+@tile("story_beam", "story: a lamp's beam (holo layer): bright at the lamp (top), fading out along it, a little dust")
+def _():
+    img = np.zeros((TILE, TILE, 4))
+    yy, xx = np.mgrid[0:TILE, 0:TILE]
+    along = 1.0 - (yy + 0.5) / TILE
+    dust = 0.85 + 0.3 * (fbm(1925, 3, 4) - 0.5)
+    a = np.clip(along, 0, 1) ** 1.6 * dust
+    img[..., 0] = 1.0
+    img[..., 1] = 1.0
+    img[..., 2] = 1.0
+    img[..., 3] = a
+    return img
+
+
+@tile("story_marks", "story: the marks over someone who noticed: '?' on the left half, '!' on the right (white, tinted)")
+def _():
+    img = np.zeros((TILE, TILE, 4))
+    def put(x0, y0, x1, y1):
+        img[y0:y1, x0:x1, :3] = 1.0
+        img[y0:y1, x0:x1, 3] = 1.0
+    def edge(x0, y0, x1, y1):
+        img[y0:y1, x0:x1, :3] = 0.15
+        img[y0:y1, x0:x1, 3] = 1.0
+    # Dark outlines first, then the white glyphs over them.
+    for (x0, y0, x1, y1) in ((8, 6, 24, 12), (20, 10, 26, 28), (12, 24, 22, 30), (12, 28, 18, 42), (12, 48, 18, 56)):
+        edge(x0 - 2, y0 - 2, x1 + 2, y1 + 2)
+    for (x0, y0, x1, y1) in ((42, 6, 50, 42), (42, 48, 50, 56)):
+        edge(x0 - 2, y0 - 2, x1 + 2, y1 + 2)
+    for (x0, y0, x1, y1) in ((8, 6, 24, 12), (20, 10, 26, 28), (12, 24, 22, 30), (12, 28, 18, 42), (12, 48, 18, 56)):
+        put(x0, y0, x1, y1)
+    for (x0, y0, x1, y1) in ((42, 6, 50, 42), (42, 48, 50, 56)):
+        put(x0, y0, x1, y1)
+    return img
+
+
 # --- Writing ---------------------------------------------------------------------------------
 
 

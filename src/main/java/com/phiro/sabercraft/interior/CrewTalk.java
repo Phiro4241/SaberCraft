@@ -103,6 +103,11 @@ public final class CrewTalk {
 			return false;
 		}
 
+		// Phase 19: in a story's ship the people are the story's (spoken to through the story).
+		if (com.phiro.sabercraft.story.Story.at(origin) != null) {
+			return false;
+		}
+
 		Vec3 corner = Vec3.atLowerCornerOf(origin);
 		Vec3 eye = player.getEyePosition();
 		Vec3 to = eye.add(player.getViewVector(1.0F).scale(REACH));

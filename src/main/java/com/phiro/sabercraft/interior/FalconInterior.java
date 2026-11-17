@@ -91,8 +91,10 @@ public final class FalconInterior extends InteriorPlan {
 		// shaped like everything drawn (machines, hyperdrive, couch, domes, ramp), the engine
 		// room's outer wall round, furniture that cannot be climbed. 6 (Phase 18): the couch and
 		// table as drawn, no invisible floors and caps, a floor in the lower turret. 7: the crew
-		// (they stand in their places), a cap over the galley's barrel.
-		return 7;
+		// (they stand in their places), a cap over the galley's barrel. 8 (Phase 19): nobody of the
+		// crew collides, the table, the couch and the gun controls as drawn, the upper dome without
+		// a flat invisible ceiling under it.
+		return 8;
 	}
 
 	@Override
@@ -201,6 +203,9 @@ public final class FalconInterior extends InteriorPlan {
 
 	/** Phase 18: the height of the couch's cushion over the floor, and where its back begins (radius from the table). */
 	public static final double COUCH_SEAT = 0.45;
+	/** Phase 19: the height of the couch's back and of the game table's top (as drawn). */
+	public static final double COUCH_TOP = 1.15;
+	public static final double TABLE_TOP = 0.77;
 	public static final double COUCH_BACK = COUCH_IN + (COUCH_OUT - COUCH_IN) * 0.72;
 
 	/** Phase 18: whether a point (plot space) is in the couch's back, seen from above. */
@@ -510,7 +515,6 @@ public final class FalconInterior extends InteriorPlan {
 		cargo(b);
 		ramp(b);
 		roundShell(b);
-		Crew.collide(b, CREW);
 	}
 
 	/**
@@ -588,9 +592,16 @@ public final class FalconInterior extends InteriorPlan {
 		// cushion (one can step onto it, and nothing is over the head of someone sitting there:
 		// the old cap at shoulder height suffocated them), its back and the table two rows high
 		// (nobody climbs onto them and stands in the air over the table top).
-		b.spans(12, 22, 22, 33, y0, (x, z) -> Math.hypot(x - TABLE_X, z - TABLE_Z) < TABLE_R + 0.08 || inCouchBack(x, z) ? new double[] {0.0, 1.0}
-				: inCouch(x, z) ? new double[] {0.0, COUCH_SEAT} : null, java.util.Set.of());
-		b.solid(12, 22, 22, 33, y0 + 1, (x, z) -> Math.hypot(x - TABLE_X, z - TABLE_Z) < TABLE_R + 0.08 || inCouchBack(x, z), 1.0, java.util.Set.of());
+		// Phase 19: the table's first row up to its drawn top (a whole block before: one bumped
+		// into air over its edge).
+		b.spans(12, 22, 22, 33, y0, (x, z) -> Math.hypot(x - TABLE_X, z - TABLE_Z) < TABLE_R + 0.08 ? new double[] {0.0, TABLE_TOP}
+				: inCouchBack(x, z) ? new double[] {0.0, 1.0} : inCouch(x, z) ? new double[] {0.0, COUCH_SEAT} : null, java.util.Set.of());
+		// Nobody stands on them: the couch's back and the table are two rows high, as before (the
+		// second row, collision only above the table, is never met: one is stopped by the table's
+		// edge first). Out of a jump's reach from the cushion; lower, one stood in the air over the
+		// back's rounded top.
+		b.spans(12, 22, 22, 33, y0 + 1, (x, z) -> Math.hypot(x - TABLE_X, z - TABLE_Z) < TABLE_R + 0.08 || inCouchBack(x, z) ? new double[] {0.0, 1.0} : null,
+				java.util.Set.of());
 
 		// The glass domes: one walks up to the glass, not into an invisible ring a block before it.
 		// The lower one is a bowl: its glass rises from under the feet, so one can step a little
@@ -616,12 +627,23 @@ public final class FalconInterior extends InteriorPlan {
 			b.spans(15, 25, 26, 36, y, (x, z) -> domeSpan(Math.hypot(x - CX, z - CZ), row, false), pane);
 		}
 
-		for (int y = FLOOR + 6; y <= FLOOR + 8; y++) {
+		// Phase 19: up to the top of the dome (a flat invisible ceiling closed it a block lower).
+		for (int x = 15; x <= 26; x++) {
+			for (int z = 25; z <= 36; z++) {
+				if (b.get(x, FLOOR + 9, z).is(net.minecraft.world.level.block.Blocks.BARRIER)) {
+					b.set(x, FLOOR + 9, z, "air");
+				}
+			}
+		}
+
+		for (int y = FLOOR + 6; y <= FLOOR + 9; y++) {
 			int row = y;
 			b.spans(15, 25, 26, 36, y, (x, z) -> domeSpan(Math.hypot(x - CX, z - CZ), row, true), pane);
 		}
 
-		// Caps over furniture.
+		// Caps over furniture: they stand right over what is drawn (one is stopped by the furniture
+		// itself, the cap only keeps people from climbing onto it and standing with the head in
+		// what hangs over it). Phase 19: none over the game table and the couch any more.
 		// Phase 18: a whole block high (one stepped from a half cap onto the next).
 		for (int x = 43; x <= 45; x++) {
 			cap(b, x, y0 + 1, COCKPIT_FRONT + 1, (px, pz) -> true, 1.0);
@@ -655,9 +677,15 @@ public final class FalconInterior extends InteriorPlan {
 			}
 		}
 
-		// The gun controls in the turrets.
-		cap(b, 20, FLOOR + 7, 27, (px, pz) -> true);
-		cap(b, 20, 2, 27, (px, pz) -> true);
+
+		// The gun controls collide as drawn, with the cap over them (one stood on them with the head
+		// in their screen). Phase 19: the lower dome's glass shape had replaced the lower one's (one
+		// walked into the controls).
+		for (int y : new int[] {1, FLOOR + 6}) {
+			b.set(20, y, 27, "air");
+			b.shaped(20, y, 27, Shapes.box(0.1, 0.0, 0.2, 0.9, 0.9, 0.9), false);
+			cap(b, 20, y + 1, 27, (px, pz) -> true);
+		}
 
 		for (Seat seat : SEATS) {
 			if (!seat.role().equals(Seat.COUCH)) {

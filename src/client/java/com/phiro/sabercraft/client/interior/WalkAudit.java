@@ -56,7 +56,9 @@ public final class WalkAudit {
 	static final double EYE_HALF = 0.16;
 	/** How far from a stopping barrier a drawn surface may be and still count as "the wall that stopped you". */
 	static final double SEEN_REACH = 0.2;
-	static final int MAX_NODES = 600_000;
+	/** Phase 19: whether the walk jumps onto things too (off with SC_WALK_NOJUMP: only walking). */
+	static final boolean JUMP = System.getenv("SC_WALK_NOJUMP") == null;
+	static final int MAX_NODES = System.getenv("SC_WALK_MAX") != null ? Integer.parseInt(System.getenv("SC_WALK_MAX")) : 600_000;
 
 	private WalkAudit() {
 	}
@@ -106,8 +108,7 @@ public final class WalkAudit {
 			add(into, new Tri(p[0], p[2], p[3], layer, from));
 		});
 		visuals.build(builder);
-		// Phase 18: the crew who stand in their place (they collide there).
-		CrewModels.draw(builder, plan.crew().stream().filter(com.phiro.sabercraft.interior.Crew::still).toList(), 0.0);
+		// Phase 19: the crew no longer collide; one may stand partly in someone (that is no wall).
 
 		Vec3 home = player.position();
 		float homeYaw = player.getYRot();
@@ -165,8 +166,9 @@ public final class WalkAudit {
 					queue.add(to);
 				}
 
-				// A jump: onto something higher than a step.
-				Vec3 up = step(player, at, dir[0], dir[1], true);
+				// A jump: onto something higher than a step (Phase 19: SC_WALK_NOJUMP walks only, the
+				// way one goes from room to room).
+				Vec3 up = JUMP ? step(player, at, dir[0], dir[1], true) : null;
 
 				if (up != null && up.y > at.y + 0.6 && seen.add(key(up))) {
 					queue.add(up);
@@ -194,6 +196,131 @@ public final class WalkAudit {
 		}
 
 		return new Result(nodes, counts[0], counts[1], counts[2], lines);
+	}
+
+	/**
+	 * Phase 19: a census of the plan's invisible barriers next to where one can stand (an air cell
+	 * with a floor under it within two blocks), by room: how many there are, how many of them reach
+	 * somewhere nothing is drawn (checked in slices a quarter block high: a barrier block over a
+	 * console half a block high is drawn below and invisible above), how many only collide
+	 * ("ghosts": caps over furniture). One line per room, then the total.
+	 */
+	public static List<String> census(InteriorPlan plan) {
+		String detail = System.getenv("SC_CENSUS_DETAIL");
+		List<String> details = new ArrayList<>();
+		Map<Long, List<Tri>> grid = new HashMap<>();
+		MeshBuilder builder = new MeshBuilder((layer, xyzuv, nx, ny, nz, colours, lightMode, fixedLight, anim, samples) -> {
+			Vector3f[] p = new Vector3f[4];
+
+			for (int v = 0; v < 4; v++) {
+				p[v] = new Vector3f(xyzuv[v * 5], xyzuv[v * 5 + 1], xyzuv[v * 5 + 2]);
+			}
+
+			add(grid, new Tri(p[0], p[1], p[2], layer, ""));
+			add(grid, new Tri(p[0], p[2], p[3], layer, ""));
+		});
+		InteriorScene.visuals(plan.id()).build(builder);
+		it.unimi.dsi.fastutil.longs.Long2ObjectMap<BlockState> blocks = ProxyShapes.blocks(plan);
+		it.unimi.dsi.fastutil.longs.Long2ObjectMap<VoxelShape> shapes = ProxyShapes.of(plan);
+		it.unimi.dsi.fastutil.longs.LongSet ghosts = ProxyShapes.ghosts(plan);
+		TreeMap<String, int[]> rooms = new TreeMap<>();
+		int[] total = new int[4];
+
+		for (it.unimi.dsi.fastutil.longs.Long2ObjectMap.Entry<BlockState> entry : blocks.long2ObjectEntrySet()) {
+			if (!entry.getValue().is(Blocks.BARRIER)) {
+				continue;
+			}
+
+			long key = entry.getLongKey();
+			int x = BlockPos.getX(key);
+			int y = BlockPos.getY(key);
+			int z = BlockPos.getZ(key);
+			String room = null;
+
+			for (int[] d : new int[][] {{1, 0}, {-1, 0}, {0, 1}, {0, -1}}) {
+				int ax = x + d[0];
+				int az = z + d[1];
+
+				if (blocks.containsKey(BlockPos.asLong(ax, y, az))) {
+					continue;
+				}
+
+				// Someone can stand there: a floor under the air within two blocks.
+				for (int down = 1; down <= 2; down++) {
+					if (blocks.containsKey(BlockPos.asLong(ax, y - down, az))) {
+						InteriorPlan.Room in = plan.room(new Vec3(ax + 0.5, y + 0.5, az + 0.5));
+						in = in != null ? in : plan.room(new Vec3(ax + 0.5, y - down + 1.5, az + 0.5));
+						room = in != null ? in.id() : "-";
+						break;
+					}
+				}
+
+				if (room != null) {
+					break;
+				}
+			}
+
+			if (room == null) {
+				continue;
+			}
+
+			VoxelShape shape = shapes.get(key);
+
+			if (shape != null && shape.isEmpty()) {
+				continue;
+			}
+
+			boolean invisible = false;
+
+			for (AABB part : (shape != null ? shape : net.minecraft.world.phys.shapes.Shapes.block()).toAabbs()) {
+				AABB solid = part.move(x, y, z);
+
+				for (double y0 = solid.minY; y0 < solid.maxY - 0.01 && !invisible; y0 += 0.25) {
+					AABB slice = new AABB(solid.minX, y0, solid.minZ, solid.maxX, Math.min(solid.maxY, y0 + 0.25), solid.maxZ).inflate(0.12);
+					invisible = first(grid, slice, null) == null;
+				}
+			}
+
+			boolean ghost = ghosts.contains(key);
+
+			if (invisible && detail != null && (detail.equals("*") || detail.equals(room))) {
+				details.add(String.format(Locale.ROOT, "  invisible %s %d,%d,%d %s%s", room, x, y, z, ghost ? "ghost" : shape != null ? "shaped" : "full",
+						shape != null ? " " + shape.bounds() : ""));
+			}
+
+			int[] counts = rooms.computeIfAbsent(room, unused -> new int[4]);
+			counts[0]++;
+			total[0]++;
+
+			if (invisible) {
+				counts[1]++;
+				total[1]++;
+			}
+
+			if (ghost) {
+				counts[2]++;
+				total[2]++;
+			}
+
+			if (shape != null) {
+				counts[3]++;
+				total[3]++;
+			}
+		}
+
+		List<String> out = new ArrayList<>();
+
+		for (Map.Entry<String, int[]> entry : rooms.entrySet()) {
+			int[] c = entry.getValue();
+			out.add(String.format(Locale.ROOT, "%-18s %5d barriers by the way, %4d invisible somewhere, %4d only collide, %4d shaped", entry.getKey(), c[0], c[1],
+					c[2], c[3]));
+		}
+
+		out.add(String.format(Locale.ROOT, "%-18s %5d barriers by the way, %4d invisible somewhere, %4d only collide, %4d shaped", "TOTAL", total[0], total[1],
+				total[2], total[3]));
+		java.util.Collections.sort(details);
+		out.addAll(details);
+		return out;
 	}
 
 	/**
@@ -524,12 +651,8 @@ public final class WalkAudit {
 						continue;
 					}
 
-					// Phase 18: someone of the crew stands there (drawn, a little slimmer than the
-					// room they take); being stopped by a person is no invisible wall.
-					if (ProxyShapes.ghosts(plan).contains(BlockPos.asLong(x - origin.getX(), y - origin.getY(), z - origin.getZ()))) {
-						continue;
-					}
-
+					// (Phase 19: the cells that only collide count as well: the crew's columns are gone,
+					// and caps over furniture are invisible walls like any other.)
 					VoxelShape shape = state.getCollisionShape(level, pos, CollisionContext.empty());
 
 					for (AABB part : shape.toAabbs()) {

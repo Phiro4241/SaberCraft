@@ -40,7 +40,9 @@
 			"com.phiro.sabercraft.gametest.InteriorDesignGameTest",
 			"com.phiro.sabercraft.gametest.Phase16GameTest",
 			"com.phiro.sabercraft.gametest.Phase17GameTest",
-			"com.phiro.sabercraft.gametest.Phase18GameTest"
+			"com.phiro.sabercraft.gametest.Phase18GameTest",
+			"com.phiro.sabercraft.gametest.Phase19GameTest",
+			"com.phiro.sabercraft.gametest.StoryGameTest"
 		]
 	},
 	"depends": {

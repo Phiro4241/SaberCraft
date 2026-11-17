@@ -784,7 +784,87 @@ def capes():
     paint_cape("shadow", "#0b090b", "#3a0a10", 669, trim="#6e0f18", hood=True)
 
 
+# ---------------- Phase 19: the story's disguise ----------------
+
+def stormtrooper():
+    """A trooper's armour for the story's disguise: white plates over a black undersuit, grey
+    seams, a white helmet with dark eye lenses, a grey breathing grille and a black brow band.
+    Matches the troopers of the ships' crew (drawn by the client)."""
+    o = Outfit(1919)
+    white, shadow, seam, black, grey = "#e9eaec", "#c9cbd0", "#8d9097", "#141518", "#5c6068"
+    o.fill("body", False, black)
+    o.fill(ARMS, False, black)
+    o.fill(LEGS, False, black)
+
+    def chest(f, x, y, w, h):
+        if f == "bottom":
+            return None
+        if y in (6, 7):
+            # The black belly band between chest plate and belt; the belt with its pouches.
+            return black if y == 6 else (white if f == "front" and x in (1, 2, 5, 6) else shadow)
+        if f == "front" and y in (2, 3) and x in (1, 6):
+            return grey
+        if f == "front" and x in (3, 4) and y < 5:
+            return shadow if y % 2 else white
+        if y >= 8:
+            return white if y < 11 else shadow
+        return white if (x + y) % 7 else shadow
+    o.paint("body", True, chest)
+
+    def arm(f, x, y, w, h):
+        if f == "bottom":
+            return black
+        if f == "top":
+            return white
+        if y in (4, 5):
+            return black
+        if y >= 10:
+            return black
+        return white if y < 4 or y < 10 else seam
+    o.paint(ARMS, True, arm)
+
+    def leg(f, x, y, w, h):
+        if f in ("top",):
+            return None
+        if f == "bottom":
+            return black
+        if y in (5,):
+            return black
+        if y == 6 and f == "front":
+            return grey
+        return white if y < 11 else seam
+    o.paint(LEGS, True, leg)
+
+    # The helmet: white, dark lenses, the grille, a black band over the brow and grey sides.
+    layout = {
+        "_": {"W": white, "S": shadow, "B": black, "G": grey, "s": seam},
+        "front": [
+            "WWWWWWWW",
+            "WSSSSSSW",
+            "WBBWWBBW",
+            "WBBWWBBW",
+            "WWWSSWWW",
+            "WsGWWGsW",
+            "WGsGGsGW",
+            "SWWWWWWS",
+        ],
+        "right": ["WWWWWWWW", "WWWWWWWW", "WWWWWWWW", "SSWWWWWW", "GSWWWWWW", "SSWWWWWW", "WWWWWWWW", "SSSSSSSS"],
+        "left": ["WWWWWWWW", "WWWWWWWW", "WWWWWWWW", "WWWWWWSS", "WWWWWWSG", "WWWWWWSS", "WWWWWWWW", "SSSSSSSS"],
+        "back": ["WWWWWWWW", "WWWWWWWW", "WWWSSWWW", "WWWWWWWW", "SSSSSSSS", "WWWWWWWW", "WWWWWWWW", "SSSSSSSS"],
+        "top": ["WWWWWWWW", "WWWWWWWW", "WWWSSWWW", "WWWWWWWW", "WWWWWWWW", "WWWSSWWW", "WWWWWWWW", "WWWWWWWW"],
+        "bottom": ["BBBBBBBB"] * 8,
+    }
+    head_from(o, False, layout)
+    o.save("stormtrooper")
+
+
 if __name__ == "__main__":
+    import sys
+    if len(sys.argv) > 1:
+        # Only the named ones (Phase 19: python3 tools/paint_outfits.py stormtrooper).
+        for name in sys.argv[1:]:
+            globals()[name]()
+        raise SystemExit(0)
     wanderer()
     shadow()
     sentinel()
@@ -801,4 +881,5 @@ if __name__ == "__main__":
     kylo()
     rey()
     ezra()
+    stormtrooper()
     capes()

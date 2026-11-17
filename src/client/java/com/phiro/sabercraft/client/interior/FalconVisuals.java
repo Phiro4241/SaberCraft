@@ -84,6 +84,18 @@ public final class FalconVisuals implements InteriorVisuals {
 				new SoundSpot("ship.falcon_consoles", 26.5, FLOOR + 1.8, 31.5, 0.4F, 9.0F));
 	}
 
+	/**
+	 * Phase 19: how far from the middle the arm to a gun mount starts: just outside the glass dome
+	 * at the arm's height (the arm is 0.24 thick).
+	 */
+	static float armFrom(boolean upper) {
+		float centre = upper ? (float) com.phiro.sabercraft.interior.FalconInterior.TOP_DOME_Y : (float) com.phiro.sabercraft.interior.FalconInterior.BOTTOM_DOME_Y;
+		float radius = upper ? (float) com.phiro.sabercraft.interior.FalconInterior.TOP_DOME_R : (float) com.phiro.sabercraft.interior.FalconInterior.BOTTOM_DOME_R;
+		float y = (float) (upper ? com.phiro.sabercraft.interior.Turrets.TOP_Y : com.phiro.sabercraft.interior.Turrets.BOTTOM_Y);
+		float dy = Math.abs(y - centre) - 0.12F;
+		return Mth.sqrt(Math.max(0.0F, radius * radius - dy * dy)) + 0.08F;
+	}
+
 	@Override
 	public void animate(MeshBuilder b, float seconds, PlotView plot) {
 		this.animate(b, seconds);
@@ -92,8 +104,12 @@ public final class FalconVisuals implements InteriorVisuals {
 		if (ImmersionConfig.get().shipInteriorDetail) {
 			b.inside(true);
 			DoorModels.draw(b, plot, com.phiro.sabercraft.interior.InteriorPlan.of("falcon"), InteriorAtlas.FAL_HATCH, InteriorAtlas.FAL_CEILING_LIGHT_GLOW);
-			// Phase 18: the Falcon's people.
-			CrewModels.draw(b, com.phiro.sabercraft.interior.FalconInterior.CREW, plot.level().getGameTime() + partial);
+			// Phase 18: the Falcon's people. Phase 19: in a story's Falcon the story's people.
+			if (StoryModels.drawsCrew(plot)) {
+				StoryModels.draw(b, plot, partial);
+			} else {
+				CrewModels.draw(b, com.phiro.sabercraft.interior.FalconInterior.CREW, plot.level().getGameTime() + partial);
+			}
 			b.inside(false);
 		}
 
@@ -119,8 +135,12 @@ public final class FalconVisuals implements InteriorVisuals {
 
 		for (int g = -1; g <= 1; g += 2) {
 			float side = (float) (g * com.phiro.sabercraft.interior.Turrets.SIDE);
-			// The mount on the dome, then the gun pitched round it.
+			// Phase 19: the guns stand outside the glass (they stood inside the dome, at the head
+			// height of anyone in the turret); an arm from the glass carries the mount.
 			b.box(side - 0.35F, -0.45F, -0.35F, side + 0.35F, 0.45F, 0.35F);
+			float arm = g * armFrom(upper);
+			b.box(Math.min(arm, side - g * 0.35F), -0.12F, -0.12F, Math.max(arm, side - g * 0.35F), 0.12F, 0.12F,
+					MeshBuilder.ALL & ~(g > 0 ? MeshBuilder.WEST : MeshBuilder.EAST));
 			b.push().translate(side, 0, 0).rotateX(-pitch);
 			b.box(-0.5F, -0.4F, -2.2F, 0.5F, 0.4F, 0.3F);
 
@@ -707,6 +727,11 @@ public final class FalconVisuals implements InteriorVisuals {
 			}
 
 			boolean below = i % 3 == 0;
+
+			// Phase 19: none where the upper guns' barrels sweep over the hull.
+			if (!below && r < 7.8F) {
+				continue;
+			}
 
 			// Phase 17: none under the saucer where the ramp hall goes down through it (one stood in them).
 			if (below && p.x > 31.0F && p.x < 39.0F && p.z > 28.0F && p.z < 44.0F) {

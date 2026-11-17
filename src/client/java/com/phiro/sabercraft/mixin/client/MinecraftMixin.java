@@ -20,13 +20,19 @@ abstract class MinecraftMixin {
 	private void sabercraft$fireLasers(CallbackInfoReturnable<Boolean> info) {
 		if (ShipClient.trigger((Minecraft) (Object) this)) {
 			info.setReturnValue(false);
+			return;
 		}
+
+		// Phase 19: a stroke in the story's fight (the swing itself goes on).
+		com.phiro.sabercraft.client.story.StoryInput.attack((Minecraft) (Object) this);
 	}
 
 	/** Phase 18: the use key on someone of a ship's crew speaks to them. */
 	@Inject(method = "startUseItem", at = @At("HEAD"), cancellable = true)
 	private void sabercraft$talkToCrew(CallbackInfo info) {
-		if (com.phiro.sabercraft.client.interior.InteriorClient.talk((Minecraft) (Object) this)) {
+		// Phase 19: in the story the use key uses its things and speaks to its people first.
+		if (com.phiro.sabercraft.client.story.StoryInput.use((Minecraft) (Object) this)
+				|| com.phiro.sabercraft.client.interior.InteriorClient.talk((Minecraft) (Object) this)) {
 			info.cancel();
 		}
 	}

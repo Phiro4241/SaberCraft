@@ -55,10 +55,19 @@ final class CrewModels {
 	}
 
 	/** What a figure looks like: the tiles of its head, body, arms and legs and a colour for the uniform's light tiles. */
-	private record Look(int face, int head, int top, int bottom, int body, int arm, int leg, int tint, int hairTint, boolean cap) {
+	record Look(int face, int head, int top, int bottom, int body, int arm, int leg, int tint, int hairTint, boolean cap) {
 	}
 
-	private static Look look(Crew crew, int seed) {
+	/**
+	 * Phase 19: what a story's figure carries or does beyond the crew's routine: a lamp on the
+	 * rifle, a lightsaber (its blade colour, 0 = none; raised for a blow 0..1, the blow's follow
+	 * through 0..1, lit or not), lying beaten on the floor, a robe's skirt over the legs.
+	 */
+	record Gear(boolean lamp, int saber, boolean lit, float raise, float swing, boolean down, boolean skirt) {
+		static final Gear NONE = new Gear(false, 0, false, 0.0F, 0.0F, false, false);
+	}
+
+	static Look look(Crew crew, int seed) {
 		int f = Math.floorMod(seed, 4);
 		int face = FACES[f];
 		int head = HEADS[f];
@@ -93,17 +102,26 @@ final class CrewModels {
 	}
 
 	private static void figure(MeshBuilder b, Crew crew, double x, double y, double z, float yaw, float walk, float t, int seed) {
-		String pose = crew.pose();
+		figure(b, crew, look(crew, seed), x, y, z, yaw, walk, t, seed, Float.NaN, Gear.NONE);
+	}
+
+	/**
+	 * A figure: its kind and pose from {@code crew}, its look, where and which way it faces, how
+	 * far its legs walked, the time (seconds) and its seed. Phase 19: the head turned by
+	 * {@code headTurn} degrees from the body (NaN: looking about by itself), and what it carries.
+	 */
+	static void figure(MeshBuilder b, Crew crew, Look look, double x, double y, double z, float yaw, float walk, float t, int seed, float headTurn, Gear gear) {
+		String pose = gear.down() ? Crew.STAND : crew.pose();
 		String kind = crew.kind();
-		Look look = look(crew, seed);
 		boolean sit = Crew.SIT.equals(pose);
 		boolean work = Crew.WORK.equals(pose);
 		boolean talk = Crew.TALK.equals(pose);
-		boolean walking = walk != 0.0F;
+		boolean walking = walk != 0.0F && !gear.down();
 		boolean trooper = Crew.TROOPER.equals(kind);
 		boolean guard = Crew.GUARD.equals(kind);
 		boolean wookiee = Crew.WOOKIEE.equals(kind);
-		boolean rifle = trooper && !sit;
+		boolean saber = gear.saber() != 0 && gear.lit() && !gear.down();
+		boolean rifle = trooper && !sit && !saber;
 		float swing = walking ? Mth.sin(walk) * 30.0F : 0.0F;
 		// Breathing, a glance aside now and then, a step's bob.
 		float breathe = Mth.sin(t * 1.6F + seed) * 0.006F;
@@ -115,13 +133,28 @@ final class CrewModels {
 		b.layer(Layer.SOLID).worldLight().white().anim(0).twoSided(false);
 		b.push().translate(x, y, z).rotateY(-yaw);
 
+		if (gear.down()) {
+			// Beaten: on the back, the head towards where they faced, a little off the floor.
+			b.translate(0, HEAD / 2.0F - 0.01F, 0).rotateX(-90.0F);
+			breathe = 0.0F;
+			glance = 0.0F;
+		}
+
 		if (wookiee) {
 			float k = (float) (crew.height() / 1.8);
 			b.scale(k, k, k);
 		}
 
 		// The legs (under a guard's robe: the robe instead).
-		if (guard) {
+		if (gear.skirt()) {
+			// Phase 19: a robe's skirt over the legs, to the knees.
+			for (int side = -1; side <= 1; side += 2) {
+				legs(b, look, side, hip, sit, side * swing, walking ? Math.max(0.0F, -side * Mth.cos(walk)) * 38.0F : 0.0F);
+			}
+
+			b.white().fit(look.body(), 0.0F, 0.75F, 1.0F, 1.0F);
+			b.box(-HALF_W - 0.03F, hip - 0.42F, -HALF_D - 0.04F, HALF_W + 0.03F, hip + 0.02F, HALF_D + 0.05F, MeshBuilder.ALL & ~MeshBuilder.UP);
+		} else if (guard) {
 			b.colour(0xFFFFFFFF).fit(look.leg());
 			b.box(-HALF_W - 0.04F, 0.02F, -HALF_D - 0.05F, HALF_W + 0.04F, hip, HALF_D + 0.06F);
 		} else {
@@ -148,17 +181,42 @@ final class CrewModels {
 		}
 
 		// The arms: where the hands go.
+		float[] hilt = saber ? saberHold(shoulder, gear) : null;
+
 		for (int side = -1; side <= 1; side += 2) {
 			float sx = side * (HALF_W + LIMB * 0.9F);
-			float[] hand = hand(crew, side, shoulder, swing, t, seed, rifle, walking);
-			float[] pole = pole(crew, side, rifle, walking);
+			float[] hand = hilt != null ? new float[] {hilt[0] - hilt[3] * (side < 0 ? 0.05F : 0.17F), hilt[1] - hilt[4] * (side < 0 ? 0.05F : 0.17F),
+					hilt[2] - hilt[5] * (side < 0 ? 0.05F : 0.17F)} : hand(crew, side, shoulder, swing, t, seed, rifle, walking);
+			float[] pole = hilt != null ? new float[] {side * 0.9F, -0.8F, -0.2F} : pole(crew, side, rifle, walking);
 			arm(b, look, sx, shoulder, 0.0F, hand[0], hand[1], hand[2], pole);
+		}
+
+		if (hilt != null) {
+			lightsaber(b, hilt, gear.saber());
+		} else if (gear.saber() != 0) {
+			// The hilt at the belt.
+			b.fit(InteriorAtlas.IMP_BLACK);
+			b.box(HALF_W - 0.02F, -0.3F, -0.03F, HALF_W + 0.04F, 0.0F, 0.03F);
+			b.tile(InteriorAtlas.IMP_METAL, 1.0F);
+			b.box(HALF_W - 0.025F, -0.06F, -0.035F, HALF_W + 0.045F, -0.02F, 0.035F);
 		}
 
 		if (rifle && !work) {
 			// The rifle in both hands: the grip in the right, the barrel forward and to the left.
 			float[] grip = rifleGrip(walking, swing, t, seed);
 			blaster(b, grip[0], grip[1], grip[2], RIFLE_DIR[0], RIFLE_DIR[1], RIFLE_DIR[2]);
+
+			if (gear.lamp()) {
+				// Phase 19: a lamp under the barrel, its lens lit.
+				float lx = grip[0] + RIFLE_DIR[0] * LAMP_ALONG;
+				float ly = grip[1] + RIFLE_DIR[1] * LAMP_ALONG - 0.07F;
+				float lz = grip[2] + RIFLE_DIR[2] * LAMP_ALONG;
+				b.fit(InteriorAtlas.IMP_BLACK);
+				b.box(lx - 0.04F, ly - 0.04F, lz - 0.06F, lx + 0.04F, ly + 0.04F, lz + 0.06F);
+				b.layer(Layer.GLOW).fullBright().colour(0xFFFFF0C8).fit(InteriorAtlas.IMP_CEILING_LIGHT_GLOW);
+				b.box(lx - 0.032F, ly - 0.032F, lz + 0.06F, lx + 0.032F, ly + 0.032F, lz + 0.065F, MeshBuilder.SOUTH);
+				b.layer(Layer.SOLID).worldLight().white();
+			}
 		} else if (rifle) {
 			// At a console: slung over the back, the muzzle down to the right.
 			blaster(b, 0.17F, shoulder - 0.05F, -HALF_D - 0.05F, -0.55F, -0.83F, 0.0F);
@@ -175,13 +233,67 @@ final class CrewModels {
 			b.box(px - 0.05F, BODY + HEAD + 0.43F, pz - 0.05F, px + 0.05F, BODY + HEAD + 0.47F, pz + 0.05F);
 		}
 
-		// The head: looking about.
-		b.push().translate(0, BODY, 0).rotateY(glance);
+		// The head: looking about (Phase 19: or where the story has them look).
+		b.push().translate(0, BODY, 0).rotateY(Float.isNaN(headTurn) || gear.down() ? glance : headTurn);
 		head(b, look, Crew.TROOPER.equals(kind) ? 0.01F : 0.0F);
 		b.pop();
 		b.pop();
 		b.pop();
 		b.white();
+	}
+
+	/** Phase 19: how far along the rifle the lamp sits, and where it is (figure space, from the feet) when standing. */
+	static final float LAMP_ALONG = 0.42F;
+	static final float[] LAMP_AT = {-0.13F + 0.58F * 0.42F, LEG + 0.3F + 0.16F * 0.42F - 0.07F, 0.27F + 0.8F * 0.42F};
+
+	/**
+	 * Phase 19: where a lightsaber is held (body space) and which way its blade points: on guard
+	 * (low, forward and up), raised over the right shoulder for a blow, swept down to the left
+	 * after it. Returns x, y, z of the hilt's top and the blade's direction.
+	 */
+	private static float[] saberHold(float shoulder, Gear gear) {
+		float[] guard = {-0.02F, shoulder - 0.4F, 0.36F};
+		float[] raised = {-0.18F, shoulder + 0.14F, 0.04F};
+		float[] through = {0.14F, shoulder - 0.56F, 0.34F};
+		float[] guardDir = norm(0.12F, 0.8F, 0.6F);
+		float[] raisedDir = norm(-0.3F, 0.6F, -0.75F);
+		float[] throughDir = norm(0.55F, -0.3F, 0.78F);
+		float r = Mth.clamp(gear.raise(), 0.0F, 1.0F);
+		float w = Mth.clamp(gear.swing(), 0.0F, 1.0F);
+		float[] out = new float[6];
+
+		for (int i = 0; i < 3; i++) {
+			float p = Mth.lerp(r, guard[i], raised[i]);
+			float d = Mth.lerp(r, guardDir[i], raisedDir[i]);
+			out[i] = Mth.lerp(w, p, through[i]);
+			out[i + 3] = Mth.lerp(w, d, throughDir[i]);
+		}
+
+		float[] dir = norm(out[3], out[4], out[5]);
+		out[3] = dir[0];
+		out[4] = dir[1];
+		out[5] = dir[2];
+		return out;
+	}
+
+	/** Phase 19: a lightsaber: the hilt below {@code at}, the blade along its direction, glowing in its colour. */
+	private static void lightsaber(MeshBuilder b, float[] at, int colour) {
+		b.push().translate(at[0], at[1], at[2]);
+		pointDown(b, -at[3], -at[4], -at[5]);
+		// Now +y runs along the blade.
+		b.fit(InteriorAtlas.IMP_BLACK);
+		b.box(-0.028F, -0.27F, -0.028F, 0.028F, 0.0F, 0.028F);
+		b.tile(InteriorAtlas.IMP_METAL, 1.0F);
+		b.box(-0.034F, -0.05F, -0.034F, 0.034F, 0.0F, 0.034F);
+		b.box(-0.032F, -0.2F, -0.032F, 0.032F, -0.17F, 0.032F);
+		b.layer(Layer.GLOW).fullBright().colour(0xFFFFFFFF).fit(InteriorAtlas.WHITE);
+		b.box(-0.016F, 0.0F, -0.016F, 0.016F, 1.0F, 0.016F);
+		b.layer(Layer.HOLO).fullBright().colourAlpha(0xB0000000 | colour & 0xFFFFFF).twoSided(true);
+		b.box(-0.04F, -0.01F, -0.04F, 0.04F, 1.03F, 0.04F);
+		b.colourAlpha(0x48000000 | colour & 0xFFFFFF);
+		b.box(-0.075F, -0.03F, -0.075F, 0.075F, 1.06F, 0.075F);
+		b.layer(Layer.SOLID).worldLight().white().twoSided(false);
+		b.pop();
 	}
 
 	/** The way the rifle points (figure space): forward, to the left, a little up. */
