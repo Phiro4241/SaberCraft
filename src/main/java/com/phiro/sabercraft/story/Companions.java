@@ -53,6 +53,10 @@ public final class Companions {
 
 	/** Per droid: the spot it keeps to, and where its owner stood when it was chosen. */
 	private static final Map<Integer, Vec3[]> SPOTS = new HashMap<>();
+	/** Phase 22: when each kept place was last asked for (game time): one not asked for a while is chosen anew. */
+	private static final Map<Integer, Long> CHOSEN = new HashMap<>();
+	/** Phase 22: how long a place not asked for (the droid waited, or was away) stays kept (ticks). */
+	static final int KEEP_TICKS = 100;
 
 	private Companions() {
 	}
@@ -90,8 +94,14 @@ public final class Companions {
 		Vec3 taken = otherKept != null ? otherKept[0] : other != null ? other.position() : null;
 
 		// The same spot while the player stands about (looking round does not send them running).
-		if (kept != null && kept[1].distanceTo(here) < 1.2 && (taken == null || kept[0].distanceTo(taken) > APART)
+		// Phase 22: only a place asked for a moment ago (one kept from long before, while the
+		// droid waited or was elsewhere, could lie the other way, in front of the player).
+		long now = droid.level().getGameTime();
+		boolean fresh = now - CHOSEN.getOrDefault(droid.getId(), Long.MIN_VALUE / 2) < KEEP_TICKS;
+
+		if (kept != null && fresh && kept[1].distanceTo(here) < 1.2 && (taken == null || kept[0].distanceTo(taken) > APART)
 				&& droid.level().noCollision(droid, droid.getDimensions(droid.getPose()).makeBoundingBox(kept[0]))) {
+			CHOSEN.put(droid.getId(), now);
 			return new DroidEntity.Spot(kept[0], crawl ? 2.2 : mouse ? 3.2 : 4.2, crawl ? 0.8 : 1.0);
 		}
 
@@ -116,10 +126,12 @@ public final class Companions {
 
 		if (best == null) {
 			SPOTS.remove(droid.getId());
+			CHOSEN.remove(droid.getId());
 			return null;
 		}
 
 		SPOTS.put(droid.getId(), new Vec3[] {best, here});
+		CHOSEN.put(droid.getId(), now);
 		return new DroidEntity.Spot(best, crawl ? 2.2 : mouse ? 3.2 : 4.2, crawl ? 0.8 : 1.0);
 	}
 
