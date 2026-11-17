@@ -66,7 +66,7 @@ Hale comes into the armory; if the quartermaster is still there, Hale sends him 
 - The journal tells what each droid can do (also for files from before).
 - When M-31 makes its noise, a mark shows where, and a message says who went to see.
 - Near guards, a tip shows how to lure them (until M-31 has been used a few times).
-- In Mission 1, M-31 "rattled loose behind the crates" is what the trooper heard, so the first meeting explains the noise.
+- In Mission 1 this is also why the guard stands in front of Kestrel's hatch: he heard M-31 rattle loose behind the crates and now keeps watch there, so luring him away with M-31 is the first thing one learns to do.
 
 ## 9. The reactor: the technician and the way to the lab
 
