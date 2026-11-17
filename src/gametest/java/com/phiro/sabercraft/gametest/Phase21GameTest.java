@@ -169,13 +169,17 @@ public class Phase21GameTest implements FabricClientGameTest {
 			check(mouseAway > 1.0 && mouseAway < 5.0 && r2Away > 1.4 && r2Away < 6.0, "the droids are not at their places near the player " + where);
 			check(apart > 0.8, "the droids stand in each other " + where);
 			check((double) seen[3] < 0.3 && (double) seen[4] < 0.3, "a droid stands in front of the player " + where);
+			// Seen from in front and above, so that the places behind the player are in the picture.
 			this.context.runOnClient(client -> {
-				client.player.setXRot(10.0F);
-				client.options.setCameraType(CameraType.THIRD_PERSON_BACK);
+				client.player.setXRot(-30.0F);
+				client.options.setCameraType(CameraType.THIRD_PERSON_FRONT);
 			});
 			this.context.waitTicks(4);
 			this.context.takeScreenshot("phase21_droids_" + i);
-			this.context.runOnClient(client -> client.options.setCameraType(CameraType.FIRST_PERSON));
+			this.context.runOnClient(client -> {
+				client.player.setXRot(10.0F);
+				client.options.setCameraType(CameraType.FIRST_PERSON);
+			});
 		}
 	}
 

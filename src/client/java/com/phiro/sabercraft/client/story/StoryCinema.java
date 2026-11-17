@@ -407,10 +407,12 @@ public final class StoryCinema {
 					Component words = Component.translatable(line.key());
 					// Phase 21: long lines in two (they ran off the screen's edges).
 					java.util.List<net.minecraft.util.FormattedCharSequence> rows = this.font.split(words, Math.max(120, this.width - 60));
-					int y = this.height - bar + Math.max(2, (bar - 10 - 10 * Math.min(2, rows.size())) / 2);
+					int count = Math.min(2, rows.size());
+					// Centred in the lower bar; a line in two rises over the picture's edge rather than off the screen.
+					int y = Math.min(this.height - bar + Math.max(2, (bar - 10 - 10 * count) / 2), this.height - 3 - (10 + 10 * count));
 					graphics.centeredText(this.font, name, this.width / 2, y, alpha << 24 | ("mira".equals(line.speaker()) ? 0x8CC0FF : "shadow".equals(line.speaker()) ? 0xFF6A5C : 0xE8C878));
 
-					for (int r = 0; r < Math.min(2, rows.size()); r++) {
+					for (int r = 0; r < count; r++) {
 						graphics.centeredText(this.font, rows.get(r), this.width / 2, y + 11 + r * 10, alpha << 24 | 0xECEFF4);
 					}
 				}

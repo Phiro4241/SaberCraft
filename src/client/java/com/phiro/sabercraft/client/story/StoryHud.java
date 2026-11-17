@@ -271,6 +271,12 @@ final class StoryHud implements HudElement {
 
 			if (ey + 11 > hintTop(client.font, height)) {
 				ey = cy - 34;
+
+				// Phase 21: and beside the crosshair when a long comlink line reaches down to that.
+				if (ey < radioBottom(client.font, width) + 2) {
+					ex = cx + 26;
+					ey = cy - 4;
+				}
 			}
 			graphics.fill(ex, ey + 3, ex + 9, ey + 5, colour);
 			graphics.fill(ex + 1, ey + 2, ex + 8, ey + 6, colour & 0x80FFFFFF);
@@ -351,7 +357,8 @@ final class StoryHud implements HudElement {
 			int barWidth = Math.min(182, room - 24);
 			int centre = room / 2 + 6;
 			int x = centre - barWidth / 2;
-			int y = 22;
+			// Under a comlink line or a shout at the top left (it covered his name).
+			int y = Math.max(22, radioBottom(client.font, width) + 15);
 			float health = shadow.health() / 255.0F;
 			Component name = Component.translatable("sabercraft.story.name." + shadow.speaker());
 			graphics.centeredText(client.font, name, centre, y - 11, 0xFFFF7A6A);
@@ -522,6 +529,26 @@ final class StoryHud implements HudElement {
 	}
 
 	// --- Lines and hints -----------------------------------------------------------------------------
+
+	/** Phase 21: the bottom edge of the comlink line's box at the top left, or 0 when none is shown. */
+	private static int radioBottom(Font font, int width) {
+		StoryClient.Line line = StoryClient.radio();
+
+		if (line == null) {
+			return 0;
+		}
+
+		int age = StoryClient.radioAge();
+		float fade = Math.min(1.0F, Math.min(age / 6.0F, (line.ticks() - age) / 10.0F));
+
+		if (Math.round(Mth.clamp(fade, 0.0F, 1.0F) * 255) < 8) {
+			return 0;
+		}
+
+		int room = width - objectivesWidth(StoryClient.state()) - 8 - 32 - 18;
+		int lines = font.split(Component.translatable(line.key()), Mth.clamp(room, 100, 220)).size();
+		return 8 + Math.max(32 + 4, 14 + lines * 10);
+	}
 
 	private static void radio(GuiGraphicsExtractor graphics, Font font) {
 		StoryClient.Line line = StoryClient.radio();

@@ -1224,6 +1224,14 @@ public class StoryGameTest implements FabricClientGameTest {
 
 		context.getInput().releaseKey(options -> com.phiro.sabercraft.client.ability.SaberAbilityClient.GUARD_KEY);
 		check(open, "a blocked blow does not leave him open (he does " + this.on(s -> StoryTesting.action(session(s).figure("shadow"))) + ")");
+		boolean shown = false;
+
+		for (int i = 0; i < 6 && !shown; i++) {
+			context.waitTick();
+			shown = context.computeOnClient(client -> StoryClient.duelKindForTest()) == 6;
+		}
+
+		check(shown, "the HUD does not name the opening (it shows " + context.computeOnClient(client -> StoryClient.duelKindForTest()) + ")");
 		context.takeScreenshot("story_duel_staggers");
 		this.context.runOnClient(client -> client.options.setCameraType(CameraType.FIRST_PERSON));
 		this.faceFigure("shadow", 2.2);

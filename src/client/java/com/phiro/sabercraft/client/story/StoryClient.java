@@ -380,6 +380,12 @@ static final int CHECKPOINT_TICKS = 60;
 		return focusMeter;
 	}
 
+	/** Only for tests: what the duel HUD names (the duelist's attack kind), or -1 with no duelist. */
+	public static int duelKindForTest() {
+		StoryFiguresPayload.Fig duelist = duelist();
+		return duelist == null ? -1 : duelist.windup() >> 5;
+	}
+
 	/** Plays a sound of the mod (at a figure, or at the player). */
 	static void sound(Minecraft client, String name, float volume, float pitch, @Nullable Vec3 at) {
 		if (client.player == null) {

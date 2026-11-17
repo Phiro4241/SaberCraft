@@ -82,7 +82,13 @@ Changed: `StoryGameTest` (the chapter played through):
 - the duel: the scene before it (the camera in the hangar, the player seen from outside, the blade lights at the right moment, the scene remembered), the music, the Focus known, push locked and guard/dash allowed, strokes into his guard parried and three in a row answered, a blocked blow leaves him staggering and then a stroke hits, a blow not blocked lands, the Focus key slows time (server and HUD), the second phase begins with him stepping back, he breaks off, the scene of his flight plays, and he is gone in the Falcon step (`story_duel_*`);
 - Mission 1's lure and the hangar distraction now go through M-31 driving there.
 
-Results of the local runs are in the pull request.
+### Local results (2026-11-17)
+
+All runs in the cloud container (Xvfb, software rendering, sound written to a file), **not CI**:
+
+- `./gradlew build`: successful.
+- The whole client game test suite (all 39 classes, `Phase21GameTest` and `StoryGameTest` included): successful, 55 minutes 16 seconds (under the CI step's 75-minute limit, but closer to it than before).
+- After that run, small fixes found on the pictures: film subtitles in two rows ran off the bottom of the screen (they now rise over the picture's edge); the stagger picture was taken before the HUD showed the opening (the test now waits for the HUD and checks that it names the opening); a comlink line at the top left covered the Schattenklinge's name over his strength bar (the bar now moves below the line); Mira's longer M-31 line in Mission 1 covered the suspicion eye's label (the line is shorter again, and the label moves beside the crosshair when a comlink line reaches down to it); the mission goal and M-31's first dialog still said he "beeps where you look" (now: he drives there and rattles). The droid pictures are now taken from in front of the player, so that their places behind the player are seen. After these fixes `StoryGameTest` with `Phase21GameTest` (8 minutes), `Phase21GameTest` alone once more (1.5 minutes) and `Phase19GameTest` with `Phase20GameTest` (2 minutes) were run again: all successful. The whole suite was not run again after them.
 
 ### By hand (not covered by the automated tests)
 
@@ -90,3 +96,21 @@ Results of the local runs are in the pull request.
 - The **poses** in motion (aiming, the three wind-ups, stagger, crouch, raised hand, spin) and the camera of the two scenes: the tests take pictures, but timing and smoothness need eyes.
 - The **sounds** (stun hit, M-31's rattle, Focus): synthesised and played by the tests, but not listened to.
 - Long play: patrols and wary levels across several alarms in one mission, and M-31 used often in narrow rooms.
+- A small overlap left from before Phase 21: with the test's large interface, the droid key's tip right of the hotbar ("[N] M-31: …") runs over the hunger bar (also on Phase 20's pictures).
+- Dedicated server, Iris and shader packs.
+
+## 7. Pictures
+
+All from the test client (software rendering, 854×480): [`docs/images/phase21`](images/phase21).
+
+The duel in motion, as the story test saw it at the start of his second phase (3 seconds, a frame every 0.1 s; MP4 beside it): ![](images/phase21/duel_phase_two.gif)
+
+| | |
+|---|---|
+| The scene before the duel: behind the player, he waits at the force field ![](images/phase21/duel_film_1_back.jpg) | He turns round ![](images/phase21/duel_film_2_turns.jpg) |
+| His blade lights, the title ![](images/phase21/duel_film_3_ignition.jpg) | Over his shoulder onto the player ![](images/phase21/duel_film_4_face_off.jpg) |
+| An overhead blow wound up, named on the HUD ![](images/phase21/duel_windup.jpg) | Blocked: he staggers, the opening ![](images/phase21/duel_staggers.jpg) |
+| The Focus: the screen's edges go cold ![](images/phase21/duel_focus.jpg) | The end: his blade goes out ![](images/phase21/duel_end_1_retreat.jpg) |
+| He runs for the flight control door ![](images/phase21/duel_end_2_flight.jpg) | Mission 1: M-31 drew the guard from the hatch ![](images/phase21/m1_lure_m31.jpg) |
+| The droids in their places behind the player ![](images/phase21/droids_places.jpg) | Still there after walking into the hangar ![](images/phase21/droids_hangar.jpg) |
+| Seen: the first stun bolt comes from a distance ![](images/phase21/chase_stun_bolt.jpg) | |
