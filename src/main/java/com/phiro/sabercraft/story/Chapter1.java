@@ -476,7 +476,7 @@ public final class Chapter1 implements Chapter {
 				if (step.equals("m5.cell") || step.equals("m5.r2") || step.equals("m5.cell1") || step.equals("m5.back")) {
 					// The detention block: Phase 20: one guard, at the entrance, watching the door
 					// (his back to the cells: who would come out of them?). The officer went with Hale.
-					list.add(guard("det_guard", Crew.at(Crew.TROOPER, Crew.STAND, 34.7, H, 5.4, 270.0F)));
+					list.add(guard("det_guard", Crew.at(Crew.TROOPER, Crew.STAND, 34.7, H, 6.7, 270.0F)));
 
 					if (!s.has("droid.r2v7")) {
 						Figure r2 = person("r2v7", "r2v7", Crew.at("droid_r2", Crew.STAND, 27.5, H + 0.2, 9.45, 180.0F), D);
@@ -2005,7 +2005,8 @@ public final class Chapter1 implements Chapter {
 			if (figure != null) {
 				figure.x = key.equals("hale") ? 32.6 : 33.4;
 				figure.z = key.equals("hale") ? 3.6 : 4.8;
-				walk(figure, new Vec3(35.2, H, 4.2), new Vec3(37.6, H, 4.0), new Vec3(39.4, H, 1.6));
+				// Phase 22: through the middle of the door (two wide now, z 4 to 6).
+				walk(figure, new Vec3(35.0, H, 4.8), new Vec3(37.6, H, 4.8), new Vec3(39.4, H, 1.6));
 				s.set("tmp.leave." + key);
 			}
 		}
@@ -2117,7 +2118,7 @@ public final class Chapter1 implements Chapter {
 		switch (step.id()) {
 			case "m5.route" -> {
 				if (s.has("trust.hale")) {
-					return at(D, DestroyerInterior.CX - 3.5, H + 1.0, 4.0);
+					return at(D, DestroyerInterior.CX - 3.5, H + 1.0, DestroyerInterior.DETENTION_DOOR_Z0 + 1.0);
 				}
 
 				return s.has("know.hale_trap") || s.has("hatch.f") ? at(D, 22.6, H + 0.5, -3.5) : at(D, 18.0, H + 1.1, -1.4);
