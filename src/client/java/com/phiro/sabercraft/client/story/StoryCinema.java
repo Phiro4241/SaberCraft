@@ -26,6 +26,9 @@ import com.phiro.sabercraft.network.StoryActionPayload;
  * its sounds and music. Space or Escape skip it (the server is told, so the story goes on at once).
  *
  * <p>The player stays where they were meanwhile: a film moves only this client's camera.
+ *
+ * <p>Phase 21: films shot where the story is ({@link DuelFilm}: before the duel, his flight). The
+ * world is drawn as always then (and the player too, seen from outside).
  */
 public final class StoryCinema {
 	/** The film's lines: from, to (ticks), who speaks, the key of the words. */
@@ -37,6 +40,11 @@ public final class StoryCinema {
 			new Line(240, 300, "mira", "sabercraft.story.film.arrival.mira"),
 			new Line(304, 350, "dax", "sabercraft.story.film.arrival.dax2"),
 			new Line(400, 452, "dax", "sabercraft.story.film.arrival.dax3")};
+	private static final Line[] DUEL_LINES = {
+			new Line(22, 100, "shadow", "sabercraft.story.d.m6_shadow.start"),
+			new Line(104, 172, "shadow", "sabercraft.story.d.m6_shadow.threat")};
+	private static final Line[] DUEL_END_LINES = {
+			new Line(24, 92, "shadow", "sabercraft.story.radio.shadow_retreat")};
 	/** When the title shows (ticks). */
 	private static final int TITLE_FROM = 128;
 	private static final int TITLE_TO = 214;
@@ -52,13 +60,16 @@ public final class StoryCinema {
 	private static int played;
 	private static int skipped;
 	private static @Nullable String lastSound;
+	/** Phase 21: a film where the story is: the line from the player to him when it began, and where he stood. */
+	private static @Nullable Vec3 axis;
+	private static Vec3 shadowStart = Vec3.ZERO;
 
 	private StoryCinema() {
 	}
 
 	static void init() {
 		LevelRenderEvents.COLLECT_SUBMITS.register(context -> {
-			if (film != null) {
+			if (film != null && elsewhere()) {
 				Vec3 camera = context.levelState().cameraRenderState.pos;
 				ArrivalFilm.submit(context.poseStack(), context.submitNodeCollector(), anchor.subtract(camera), time(partial()));
 			}
@@ -69,12 +80,18 @@ public final class StoryCinema {
 
 	/** The server starts a film. */
 	static void start(Minecraft client, String name, int ticks) {
-		if (client.player == null || !"arrival".equals(name)) {
+		if (client.player == null || !"arrival".equals(name) && !"duel".equals(name) && !"duel_end".equals(name)) {
 			return;
 		}
 
 		film = name;
-		length = Math.max(20, Math.min(ticks, ArrivalFilm.LENGTH));
+		int most = switch (name) {
+			case "duel" -> DuelFilm.LENGTH;
+			case "duel_end" -> DuelFilm.END_LENGTH;
+			default -> ArrivalFilm.LENGTH;
+		};
+		length = Math.max(20, Math.min(ticks, most));
+		axis = null;
 		age = 0;
 		played++;
 		// Half way between the plots, which lie 1024 blocks apart: nothing else is near.
@@ -136,6 +153,30 @@ public final class StoryCinema {
 
 	/** The film's sounds, each at its moment. */
 	private static void sound(Minecraft client, int tick) {
+		if ("duel".equals(film)) {
+			switch (tick) {
+				case 0 -> play(client, "story.alarm", 0.25F, 0.8F);
+				case 70 -> play(client, "story.door_lock", 0.4F, 0.6F);
+				case 176 -> play(client, "saber.swing", 0.6F, 0.7F);
+				default -> {
+				}
+			}
+
+			return;
+		}
+
+		if ("duel_end".equals(film)) {
+			switch (tick) {
+				case 2 -> play(client, "saber.clash", 0.8F, 0.75F);
+				case 88 -> play(client, "story.door_lock", 0.6F, 1.0F);
+				case 100 -> play(client, "ship.falcon.thrust", 0.6F, 0.9F);
+				default -> {
+				}
+			}
+
+			return;
+		}
+
 		switch (tick) {
 			case 0 -> play(client, "ship.hyperspace_arrive", 1.0F, 1.0F);
 			case 4 -> play(client, "ship.flyby", 0.9F, 0.85F);
@@ -174,10 +215,40 @@ public final class StoryCinema {
 		return film != null;
 	}
 
+	/** Phase 21: whether the film runs far from the story (the arrival): the ships' own drawing steps aside then. */
+	public static boolean elsewhere() {
+		return "arrival".equals(film);
+	}
+
+	/** Phase 21: whether the film runs where the story is (the camera sees the player from outside). */
+	public static boolean inWorld() {
+		return film != null && !elsewhere();
+	}
+
 	/** The camera of the film now (in the level), or null without a film. */
 	public static ArrivalFilm.@Nullable Shot camera(float partial) {
 		if (film == null) {
 			return null;
+		}
+
+		if (!elsewhere()) {
+			Minecraft client = Minecraft.getInstance();
+
+			if (client.player == null) {
+				return null;
+			}
+
+			Vec3 player = client.player.getPosition(partial);
+			Vec3 shadow = StoryClient.saberFigure(partial);
+
+			if (axis == null) {
+				Vec3 to = shadow != null ? shadow.subtract(player) : Vec3.directionFromRotation(0.0F, client.player.getYRot());
+				to = new Vec3(to.x, 0.0, to.z);
+				axis = to.lengthSqr() > 1.0E-4 ? to.normalize() : new Vec3(0.0, 0.0, -1.0);
+				shadowStart = shadow != null ? shadow : player.add(axis.scale(7.0));
+			}
+
+			return DuelFilm.camera(film, time(partial), player, shadowStart, shadow != null ? shadow : shadowStart, axis);
 		}
 
 		ArrivalFilm.Shot shot = ArrivalFilm.camera(time(partial));
@@ -186,7 +257,11 @@ public final class StoryCinema {
 
 	/** The film's music. */
 	public static String music() {
-		return "music.flight_imperial";
+		return switch (film != null ? film : "") {
+			case "duel" -> "music.story_duel";
+			case "duel_end" -> "music.event_rise";
+			default -> "music.flight_imperial";
+		};
 	}
 
 	/** Only for tests: how many films started and how many were skipped, how far the film is, its shot. */
@@ -209,6 +284,11 @@ public final class StoryCinema {
 	/** Only for tests: starts a film without the server (for its pictures). */
 	public static void startForTest(String name) {
 		start(Minecraft.getInstance(), name, ArrivalFilm.LENGTH);
+	}
+
+	/** Only for tests: which film runs, or null. */
+	public static @Nullable String filmForTest() {
+		return film;
 	}
 
 	/** Only for tests: jumps to a moment of the film. */
@@ -278,13 +358,20 @@ public final class StoryCinema {
 			float t = time(a);
 			int bar = Math.max(18, this.height / 9);
 			// Out of hyperspace in a white flash, into black at the end; the bars all the time.
-			int flash = t < 8.0F ? Math.round((1.0F - t / 8.0F) * 230.0F) : 0;
+			boolean arrival = elsewhere();
+			int flash = arrival && t < 8.0F ? Math.round((1.0F - t / 8.0F) * 230.0F) : 0;
 
 			if (flash > 0) {
 				graphics.fill(0, 0, this.width, this.height, flash << 24 | 0xF2F6FF);
 			}
 
-			int black = t > length - 20 ? Math.round(Mth.clamp((t - (length - 20)) / 20.0F, 0.0F, 1.0F) * 255.0F) : 0;
+			int fade = arrival ? 20 : 10;
+			int black = t > length - fade ? Math.round(Mth.clamp((t - (length - fade)) / fade, 0.0F, 1.0F) * 255.0F) : 0;
+
+			// Phase 21: the duel's film comes out of black.
+			if (!arrival && t < 8.0F) {
+				black = Math.max(black, Math.round((1.0F - t / 8.0F) * 255.0F));
+			}
 
 			if (black > 0) {
 				graphics.fill(0, 0, this.width, this.height, black << 24);
@@ -294,11 +381,14 @@ public final class StoryCinema {
 			graphics.fill(0, this.height - bar, this.width, this.height, 0xFF000000);
 
 			// The title over the hull.
-			if (t >= TITLE_FROM && t < TITLE_TO) {
-				float in = Mth.clamp(Math.min(t - TITLE_FROM, TITLE_TO - t) / 14.0F, 0.0F, 1.0F);
+			int titleFrom = arrival ? TITLE_FROM : "duel".equals(film) ? 150 : Integer.MAX_VALUE;
+			int titleTo = arrival ? TITLE_TO : 206;
+
+			if (t >= titleFrom && t < titleTo) {
+				float in = Mth.clamp(Math.min(t - titleFrom, titleTo - t) / 14.0F, 0.0F, 1.0F);
 				int alpha = Math.max(4, Math.round(in * 255.0F));
-				Component title = Component.translatable("sabercraft.story.film.arrival.title");
-				Component under = Component.translatable("sabercraft.story.film.arrival.subtitle");
+				Component title = Component.translatable("sabercraft.story.film." + film + ".title");
+				Component under = Component.translatable("sabercraft.story.film." + film + ".subtitle");
 				var pose = graphics.pose();
 				pose.pushMatrix();
 				pose.translate(this.width / 2.0F, bar + 16.0F);
@@ -309,15 +399,20 @@ public final class StoryCinema {
 			}
 
 			// The crew's lines, in the lower bar.
-			for (Line line : ARRIVAL_LINES) {
+			for (Line line : arrival ? ARRIVAL_LINES : "duel".equals(film) ? DUEL_LINES : DUEL_END_LINES) {
 				if (t >= line.from() && t < line.to()) {
 					float in = Mth.clamp(Math.min(t - line.from(), line.to() - t) / 6.0F, 0.0F, 1.0F);
 					int alpha = Math.max(4, Math.round(in * 255.0F));
 					Component name = Component.translatable("sabercraft.story.name." + line.speaker());
 					Component words = Component.translatable(line.key());
-					int y = this.height - bar + Math.max(2, (bar - 20) / 2);
-					graphics.centeredText(this.font, name, this.width / 2, y, alpha << 24 | ("mira".equals(line.speaker()) ? 0x8CC0FF : 0xE8C878));
-					graphics.centeredText(this.font, words, this.width / 2, y + 11, alpha << 24 | 0xECEFF4);
+					// Phase 21: long lines in two (they ran off the screen's edges).
+					java.util.List<net.minecraft.util.FormattedCharSequence> rows = this.font.split(words, Math.max(120, this.width - 60));
+					int y = this.height - bar + Math.max(2, (bar - 10 - 10 * Math.min(2, rows.size())) / 2);
+					graphics.centeredText(this.font, name, this.width / 2, y, alpha << 24 | ("mira".equals(line.speaker()) ? 0x8CC0FF : "shadow".equals(line.speaker()) ? 0xFF6A5C : 0xE8C878));
+
+					for (int r = 0; r < Math.min(2, rows.size()); r++) {
+						graphics.centeredText(this.font, rows.get(r), this.width / 2, y + 11 + r * 10, alpha << 24 | 0xECEFF4);
+					}
 				}
 			}
 

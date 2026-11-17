@@ -74,6 +74,8 @@ public final class Story {
 	public static final byte CUE_NOISE = 8;
 	public static final byte CUE_CINEMA = 9;
 	public static final byte CUE_CHECKPOINT = 10;
+	/** Phase 21: the duel's moments for the HUD (who: hit, hurt, blocked, parried, phase, meter, focus_on/off, over). */
+	public static final byte CUE_DUEL = 11;
 
 	/** How far one reaches to use a thing or speak to someone (blocks). */
 	static final double REACH = 4.5;
@@ -88,6 +90,7 @@ public final class Story {
 	}
 
 	public static void init() {
+		Companions.init();
 		ServerTickEvents.END_SERVER_TICK.register(Story::tick);
 		ServerPlayNetworking.registerGlobalReceiver(StoryActionPayload.TYPE, (payload, context) -> action(context.player(), payload));
 		ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> server.execute(() -> joined(handler.getPlayer())));
@@ -664,12 +667,26 @@ public final class Story {
 		figure.pathGoal = null;
 		cue(session, CUE_SOUND, "", "story.detected", figure.id);
 
+		// Phase 21: where the player was seen (the squad goes there when they lose sight).
+		session.huntSeen = session.time();
+		session.huntAt = me;
+
 		if (soldier(figure)) {
 			// Phase 20: a soldier shouts, gives chase and has the alarm raised over his comlink.
+			// Phase 21: the call brings two more troopers a few seconds later (once per alarm).
 			session.hear(voice(figure), "sabercraft.story.shout.halt");
 			figure.mode = Figure.CHASE;
+			figure.cooldown = 10 + figure.id % 10;
 			Stealth.rally(session, figure, me);
-			session.raiseAlarm(Stealth.SEARCH + Stealth.LOSE);
+
+			if (session.alarm <= 0) {
+				session.stuns = 0;
+				session.set("tmp.reinforce");
+				session.timer("reinforce", Stealth.REINFORCE_DELAY);
+			}
+
+			session.raiseAlarm(Stealth.SEARCH_LONG + Stealth.LOSE);
+			session.searching = false;
 			session.unseen = 0;
 			session.hint("sabercraft.story.hint.detected");
 			return;
@@ -682,7 +699,8 @@ public final class Story {
 		runToComm(session, figure);
 
 		if (joined > 0) {
-			session.raiseAlarm(Stealth.SEARCH + Stealth.LOSE);
+			session.raiseAlarm(Stealth.SEARCH_LONG + Stealth.LOSE);
+			session.searching = false;
 			session.unseen = 0;
 		}
 	}
@@ -761,7 +779,8 @@ public final class Story {
 	 * player was seen. At most four of them about at once.
 	 */
 	static void alarmCalled(StorySession session, Figure caller) {
-		session.raiseAlarm(Stealth.SEARCH + Stealth.LOSE);
+		session.raiseAlarm(Stealth.SEARCH_LONG + Stealth.LOSE);
+		session.searching = false;
 		session.unseen = 0;
 		session.hear("intercom", "sabercraft.story.shout.alarm_call");
 
@@ -770,17 +789,26 @@ public final class Story {
 			session.set(caller.key + ".called");
 		}
 
+		reinforce(session, caller.ship, caller.position(), caller.seenAt);
+	}
+
+	/**
+	 * Phase 21 (from Phase 20's call at a wall comm): two troopers from the door nearest a place
+	 * (not one right by the player), running to where the player was seen; at most four of them
+	 * about at once.
+	 */
+	static void reinforce(StorySession session, String ship, Vec3 near, @Nullable Vec3 seenAt) {
 		long already = session.figures.stream().filter(figure -> figure.key.startsWith(Stealth.REINFORCEMENT)).count();
-		Vec3 me = session.local(caller.ship);
+		Vec3 me = session.local(ship);
 		List<Vec3> doors = new ArrayList<>();
 
-		for (Vec3 entry : session.chapter.entries(session, caller.ship)) {
-			if (Math.abs(entry.y - caller.y) < 3.0) {
+		for (Vec3 entry : session.chapter.entries(session, ship)) {
+			if (Math.abs(entry.y - near.y) < 3.0) {
 				doors.add(entry);
 			}
 		}
 
-		Vec3 door = nearest(doors, caller.position(), 45.0, me);
+		Vec3 door = nearest(doors, near, 45.0, me);
 
 		if (door == null || already >= 4) {
 			return;
@@ -790,18 +818,54 @@ public final class Story {
 			double side = i == 0 ? -0.6 : 0.6;
 			Figure template = new Figure(0, Stealth.REINFORCEMENT + session.figures.size() + "." + i,
 					Crew.at(Crew.TROOPER, Crew.STAND, door.x + side, door.y, door.z, Crew.yaw(door, me)));
-			template.ship = caller.ship;
+			template.ship = ship;
 			template.observer = true;
 			template.talks = false;
-			template.lamp = session.chapter.dark(session, caller.ship, door.x, door.y, door.z);
+			template.lamp = session.chapter.dark(session, ship, door.x, door.y, door.z);
 			Figure trooper = session.add(template);
 			trooper.mode = Figure.CHASE;
 			trooper.suspicion = 1.0F;
 			trooper.stage = Figure.DETECTED;
-			trooper.seenAt = caller.seenAt;
+			trooper.seenAt = seenAt;
+			trooper.cooldown = 20 + i * 12;
 		}
 
 		session.hint("sabercraft.story.hint.reinforcements");
+	}
+
+	/**
+	 * Phase 21: a trooper's stun bolt hit the player. The hit is felt (a jolt, the screen flashes,
+	 * slowed for a moment, the HUD counts it); the third in a chase and the player is caught, as
+	 * if a chaser had reached them.
+	 */
+	public static void stunned(ServerPlayer player) {
+		StorySession session = SESSIONS.get(player.getUUID());
+
+		if (session == null || session.fighting || session.grace > 0 || session.cornered > 0) {
+			return;
+		}
+
+		session.stuns++;
+		stunHits++;
+		cue(session, CUE_SOUND, "", "story.stun_hit", 0);
+		cue(session, CUE_HINT, "stun", "sabercraft.story.hint.stunned", session.stuns);
+
+		if (session.stuns >= Combat.STUN_HITS) {
+			Figure by = Combat.nearestChaser(session, session.local(session.here != null ? session.here : DESTROYER));
+
+			if (by != null) {
+				cornered(session, by);
+			} else {
+				capture(session, null);
+			}
+		}
+	}
+
+	private static int stunHits;
+
+	/** For the tests: how many stun bolts hit a player in a story since the game started. */
+	public static int stunHitsForTest() {
+		return stunHits;
 	}
 
 	/** Phase 20: a chaser reached the player: "Hands up!", the player slowed, a moment later caught. */
@@ -828,6 +892,14 @@ public final class Story {
 
 		captures++;
 		session.progress.captures++;
+
+		// Phase 21: back at the checkpoint unhurt (stun bolts and blows took some health).
+		ServerPlayer caught = session.player();
+
+		if (caught != null) {
+			caught.setHealth(caught.getMaxHealth());
+			caught.removeAllEffects();
+		}
 		cue(session, CUE_FADE, "", "sabercraft.story.caught", 30);
 		cue(session, CUE_SOUND, "", "story.caught", 0);
 		session.grace = StorySession.GRACE;
@@ -904,9 +976,42 @@ public final class Story {
 					session.afterTick();
 				}
 			}
+			case StoryActionPayload.FOCUS -> {
+				if (session != null) {
+					String hint = Finale.focus(session);
+
+					if (hint != null) {
+						session.hint(hint);
+					}
+
+					session.afterTick();
+				}
+			}
 			default -> {
 			}
 		}
+	}
+
+	/**
+	 * Phase 21: which saber abilities work in the story. The people of the story are not entities,
+	 * so the Force powers aimed at entities (push, grip, pull) would do nothing; in the story the
+	 * guard and the dash work, and the Focus has its own key. Outside the story: everything.
+	 */
+	public static boolean allows(ServerPlayer player, String ability) {
+		StorySession session = SESSIONS.get(player.getUUID());
+
+		if (session == null) {
+			return true;
+		}
+
+		boolean allowed = "guard".equals(ability) || "dash".equals(ability);
+
+		if (!allowed && !session.timer("force_hint")) {
+			session.timer("force_hint", 100);
+			session.hint("sabercraft.story.hint.force_locked");
+		}
+
+		return allowed;
 	}
 
 	private static void message(ServerPlayer player, @Nullable Component message) {
@@ -1055,9 +1160,9 @@ public final class Story {
 			}
 
 			int flags = (f.lamp ? StoryFiguresPayload.LAMP : 0) | (f.saber ? StoryFiguresPayload.SABER : 0) | (f.hostile ? StoryFiguresPayload.HOSTILE : 0)
-					| (f.talks ? StoryFiguresPayload.TALKS : 0) | (f.observer ? StoryFiguresPayload.OBSERVER : 0);
+					| (f.talks ? StoryFiguresPayload.TALKS : 0) | (f.observer ? StoryFiguresPayload.OBSERVER : 0) | (f.lit ? StoryFiguresPayload.LIT : 0);
 			list.add(new StoryFiguresPayload.Fig(f.id, f.kind(), f.pose(), f.speaker, (float) f.x, (float) f.y, (float) f.z, f.yaw, f.headYaw, f.speed, f.stage,
-					Math.round(f.suspicion * 255.0F), flags, Math.round(Math.max(0.0F, f.health) * 255.0F), Math.min(255, f.windup)));
+					Math.round(f.suspicion * 255.0F), flags,Math.round(Math.max(0.0F, f.health) * 255.0F), Finale.shown(f)));
 		}
 
 		ServerPlayNetworking.send(player, new StoryFiguresPayload(origin, player.level().getGameTime(), list));

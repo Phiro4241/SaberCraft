@@ -51,7 +51,27 @@ public final class StoryClient {
 	static final byte CUE_NOISE = 8;
 	static final byte CUE_CINEMA = 9;
 	static final byte CUE_CHECKPOINT = 10;
-	static final int CHECKPOINT_TICKS = 60;
+	/** Phase 21: the duel's moments (who: hit, hurt, blocked, parried, phase, meter, focus_on, focus_off, over). */
+	static final byte CUE_DUEL = 11;
+
+	/** Phase 21: the Focus (slowed time in a fight; learnt with Ilyra's saber). */
+	public static final net.minecraft.client.KeyMapping FOCUS_KEY = new net.minecraft.client.KeyMapping("key.sabercraft.story_focus",
+			com.mojang.blaze3d.platform.InputConstants.Type.KEYSYM, com.mojang.blaze3d.platform.InputConstants.KEY_G,
+			com.phiro.sabercraft.client.SaberCraftClient.KEY_CATEGORY);
+	/** Phase 21: per figure, when (client ticks) it was last hit. */
+	private static final Map<Integer, Long> HITS = new HashMap<>();
+	/** Phase 21: the Focus meter (percent; -1 unknown), whether it runs, when the player was last hurt or blocked, stun hits. */
+	private static int focusMeter = -1;
+	private static boolean focusOn;
+	private static int focusAge;
+	private static int hurtAge = 1000;
+	private static int blockAge = 1000;
+	private static int stuns;
+	private static int stunAge = 1000;
+	private static int duelPhase = 1;
+	private static int foci;
+	private static int meterAge = 1000;
+static final int CHECKPOINT_TICKS = 60;
 
 	/** How long a comlink line stays (ticks) per character, at least, at most. */
 	static final int RADIO_PER_CHAR = 1;
@@ -113,6 +133,7 @@ public final class StoryClient {
 		ClientPlayNetworking.registerGlobalReceiver(StoryDialogPayload.TYPE, (payload, context) -> dialog(context.client(), payload));
 		ClientPlayNetworking.registerGlobalReceiver(StoryCuePayload.TYPE, (payload, context) -> cue(context.client(), payload));
 		ClientTickEvents.END_CLIENT_TICK.register(StoryClient::tick);
+		net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper.registerKeyMapping(FOCUS_KEY);
 		StoryCinema.init();
 		ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> reset());
 		HudElementRegistry.addLast(SaberCraft.id("story"), new StoryHud());
@@ -136,6 +157,14 @@ public final class StoryClient {
 		checkpointAge = -1;
 		music = null;
 		ended = false;
+		HITS.clear();
+		focusMeter = -1;
+		focusOn = false;
+		hurtAge = 1000;
+		blockAge = 1000;
+		stuns = 0;
+		stunAge = 1000;
+		duelPhase = 1;
 	}
 
 	// --- Receiving ---------------------------------------------------------------------------------
@@ -197,7 +226,13 @@ public final class StoryClient {
 					sound(client, "story.radio", 0.55F, 1.0F, null);
 				}
 			}
+			case CUE_DUEL -> duel(client, payload.who(), payload.value());
 			case CUE_HINT -> {
+				if ("stun".equals(payload.who())) {
+					stuns = payload.value();
+					stunAge = 0;
+				}
+
 				if ("progress".equals(payload.who())) {
 					progressKey = payload.text();
 					progressValue = payload.value();
@@ -243,6 +278,108 @@ public final class StoryClient {
 		}
 	}
 
+	/** Phase 21: a moment of the duel, for the HUD and the figures. */
+	private static void duel(Minecraft client, String who, int value) {
+		switch (who) {
+			case "hit" -> HITS.put(value, clientTicks);
+			case "hurt" -> hurtAge = 0;
+			case "blocked" -> blockAge = 0;
+			case "phase" -> duelPhase = value;
+			case "meter" -> {
+				meterAge = 0;
+				focusMeter = value % 1000;
+				focusOn = value >= 1000;
+			}
+			case "focus_on" -> {
+				focusOn = true;
+				focusAge = 0;
+				foci++;
+			}
+			case "focus_off" -> focusOn = false;
+			case "over" -> {
+				focusOn = false;
+				duelPhase = 1;
+			}
+			default -> {
+			}
+		}
+	}
+
+	/** Phase 21: the jolt of a hit on that figure (1 just hit, 0 after a quarter second). */
+	public static float hitJolt(int id) {
+		Long at = HITS.get(id);
+
+		if (at == null) {
+			return 0.0F;
+		}
+
+		float age = clientTicks - at + Minecraft.getInstance().getDeltaTracker().getGameTimeDeltaPartialTick(false);
+		return age >= 5.0F ? 0.0F : 1.0F - age / 5.0F;
+	}
+
+	static int focusMeter() {
+		return focusMeter;
+	}
+
+	static boolean focusOn() {
+		return focusOn;
+	}
+
+	/** Phase 21: whether the meter came lately (only while fighting). */
+	static boolean meterShown() {
+		return meterAge < 20 && focusMeter >= 0;
+	}
+
+	/** Phase 21: the one with a saber who fights (the Schattenklinge), or null. */
+	static StoryFiguresPayload.@Nullable Fig duelist() {
+		StoryFiguresPayload now = current;
+
+		if (now == null) {
+			return null;
+		}
+
+		for (StoryFiguresPayload.Fig fig : now.figures()) {
+			if ((fig.flags() & StoryFiguresPayload.SABER) != 0 && (fig.flags() & StoryFiguresPayload.HOSTILE) != 0) {
+				return fig;
+			}
+		}
+
+		return null;
+	}
+
+	static int focusAge() {
+		return focusAge;
+	}
+
+	static int hurtAge() {
+		return hurtAge;
+	}
+
+	static int blockAge() {
+		return blockAge;
+	}
+
+	static int stuns() {
+		return stuns;
+	}
+
+	static int stunAge() {
+		return stunAge;
+	}
+
+	static int duelPhase() {
+		return duelPhase;
+	}
+
+	/** Only for tests: how often the Focus began here, and its meter. */
+	public static int fociForTest() {
+		return foci;
+	}
+
+	public static int focusMeterForTest() {
+		return focusMeter;
+	}
+
 	/** Plays a sound of the mod (at a figure, or at the player). */
 	static void sound(Minecraft client, String name, float volume, float pitch, @Nullable Vec3 at) {
 		if (client.player == null) {
@@ -261,6 +398,17 @@ public final class StoryClient {
 
 	private static void tick(Minecraft client) {
 		clientTicks++;
+		focusAge++;
+		hurtAge++;
+		blockAge++;
+		stunAge++;
+		meterAge++;
+
+		while (FOCUS_KEY.consumeClick()) {
+			if (active() && client.gui.screen() == null) {
+				send(StoryActionPayload.FOCUS, "", 0);
+			}
+		}
 
 		if (client.level == null) {
 			return;
@@ -473,6 +621,23 @@ public final class StoryClient {
 		for (StoryFiguresPayload.Fig fig : now.figures()) {
 			if (fig.id() == id) {
 				return new Vec3(fig.x() + now.origin().getX(), fig.y() + now.origin().getY() + 1.5, fig.z() + now.origin().getZ());
+			}
+		}
+
+		return null;
+	}
+
+	/** Phase 21: where the one with a saber is now (feet, world space), or {@code null}. */
+	static @Nullable Vec3 saberFigure(float partial) {
+		StoryFiguresPayload now = current;
+
+		if (now == null) {
+			return null;
+		}
+
+		for (Pose pose : figures(now.origin(), partial)) {
+			if ((pose.fig().flags() & StoryFiguresPayload.SABER) != 0) {
+				return new Vec3(pose.x() + now.origin().getX(), pose.y() + now.origin().getY(), pose.z() + now.origin().getZ());
 			}
 		}
 

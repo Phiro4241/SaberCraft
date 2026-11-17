@@ -65,6 +65,12 @@ public abstract class CameraMixin {
 		if (film != null) {
 			this.setRotation(film.yaw(), film.pitch());
 			this.setPosition(film.position());
+
+			// Phase 21: a film where the story is shows the player from outside.
+			if (com.phiro.sabercraft.client.story.StoryCinema.inWorld()) {
+				this.detached = true;
+			}
+
 			return;
 		}
 

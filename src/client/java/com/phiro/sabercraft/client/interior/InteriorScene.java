@@ -251,7 +251,7 @@ public final class InteriorScene {
 		ClientLevel level = client.level;
 
 		if (level == null || !ShipInteriors.isInterior(level) || !ImmersionConfig.get().shipInteriorDetail || PLOTS.isEmpty()
-				|| com.phiro.sabercraft.client.story.StoryCinema.active()) {
+				|| com.phiro.sabercraft.client.story.StoryCinema.elsewhere()) {
 			return;
 		}
 

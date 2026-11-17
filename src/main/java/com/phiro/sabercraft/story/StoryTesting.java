@@ -111,8 +111,11 @@ public final class StoryTesting {
 
 	/** In the finale: the fighter is open (as after a blocked blow), so the next stroke hits. */
 	public static void open(Figure figure) {
+		figure.action = Finale.OPEN_UP;
+		figure.attack = Finale.STAGGER;
 		figure.timer = Finale.OPEN;
 		figure.windup = 0;
+		figure.hits = 0;
 	}
 
 	/** How fast that figure's suspicion of the player fills now (a second); 0 when they do not see them. */
@@ -235,5 +238,120 @@ public final class StoryTesting {
 		progress.stepId = "";
 		progress.placeShip = "";
 		StoryStore.save(server, player, progress);
+	}
+
+	// --- Phase 21 ----------------------------------------------------------------------------------
+
+	/** Phase 21: every mission open to choose (the file says all were played). The player must be out of the story. */
+	public static void unlockAll(net.minecraft.server.MinecraftServer server, java.util.UUID player) {
+		StoryProgress progress = StoryStore.load(server, player);
+
+		for (int i = 0; i < 6; i++) {
+			progress.completed.add(i);
+		}
+
+		StoryStore.save(server, player, progress);
+	}
+
+	/** Phase 21: a noise there (plot space) as M-31 makes it: who went to see, who looked, who did not care. */
+	public static int[] noise(StorySession s, Vec3 at) {
+		net.minecraft.server.level.ServerLevel level = Chapter1.interiors(s);
+
+		if (level == null || s.here == null) {
+			return new int[3];
+		}
+
+		Stealth.Noise noise = Stealth.noise(s, s.here, at, level, Vec3.atLowerCornerOf(s.origin(s.here)));
+		return new int[] {noise.went().size(), noise.looked().size(), noise.ignored().size()};
+	}
+
+	/** Phase 21: how many stun bolts the troopers fired, and how many hit. */
+	public static int stunShots() {
+		return Combat.shotsForTest();
+	}
+
+	/** Phase 21: how wary the ship is in this mission (0..3), whether they search, the search patrols there are. */
+	public static int wary(StorySession s) {
+		return Stealth.level(s);
+	}
+
+	public static boolean searching(StorySession s) {
+		return s.searching;
+	}
+
+	public static int patrols(StorySession s) {
+		int count = 0;
+
+		for (Figure figure : s.figures) {
+			if (figure.key.startsWith("patrol.")) {
+				count++;
+			}
+		}
+
+		return count;
+	}
+
+	/** Phase 21: the place a droid keeps to near its player in the story now (world space), or null. */
+	public static @Nullable Vec3 droidSpot(com.phiro.sabercraft.droid.DroidEntity droid, net.minecraft.server.level.ServerPlayer owner) {
+		com.phiro.sabercraft.droid.DroidEntity.Spot spot = Companions.spot(droid, owner);
+		return spot != null ? spot.at() : null;
+	}
+
+	/** Phase 21: the duel. He begins a blow of that kind (1 overhead, 2 sweep, 3 thrust), the last of its combo. */
+	public static void blow(Figure figure, int kind, int ticks) {
+		figure.action = Finale.WINDUP;
+		figure.attack = kind;
+		figure.windup = ticks;
+		figure.timer = ticks;
+		figure.combo = 1;
+	}
+
+	/** Phase 21: he is on guard, and will not go in for that long. */
+	public static void guard(Figure figure, int ticks) {
+		figure.action = Finale.GUARD;
+		figure.attack = 0;
+		figure.windup = 0;
+		figure.timer = 0;
+		figure.cooldown = ticks;
+		figure.parried = 0;
+	}
+
+	/** Phase 21: what he does now: guard, windup, open, leap, push, turn, recoil, escape. */
+	public static String action(Figure figure) {
+		return switch (figure.action) {
+			case Finale.WINDUP -> "windup";
+			case Finale.OPEN_UP -> "open";
+			case Finale.LEAP -> "leap";
+			case Finale.PUSH -> "push";
+			case Finale.TURN -> "turn";
+			case Finale.RECOIL -> "recoil";
+			case Finale.ESCAPE -> "escape";
+			default -> "guard";
+		};
+	}
+
+	public static int phase(Figure figure) {
+		return Finale.phase(figure);
+	}
+
+	/** Phase 21: how the keys of reinforcements begin. */
+	public static String reinforcementPrefix() {
+		return Stealth.REINFORCEMENT;
+	}
+
+	public static int ripostes() {
+		return Finale.ripostesForTest();
+	}
+
+	public static int foci() {
+		return Finale.fociForTest();
+	}
+
+	public static float hit() {
+		return Finale.HIT;
+	}
+
+	public static float phaseTwo() {
+		return Finale.PHASE_TWO;
 	}
 }

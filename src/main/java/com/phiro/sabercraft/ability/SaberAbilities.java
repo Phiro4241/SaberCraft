@@ -252,6 +252,12 @@ public final class SaberAbilities {
 			return;
 		}
 
+		// Phase 21: in the story only the guard and the dash (the people there are no entities).
+		if (pressed && !com.phiro.sabercraft.story.Story.allows(player, ability.key())) {
+			sendCooldown(player, state, ability, now);
+			return;
+		}
+
 		if (!pressed || !canUse(player) || !enabled(config, ability) || now < state.readyAt.getOrDefault(ability, 0L)) {
 			// Tell the client the real cooldown, in case it guessed wrong.
 			sendCooldown(player, state, ability, now);

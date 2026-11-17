@@ -63,8 +63,14 @@ final class CrewModels {
 	 * rifle, a lightsaber (its blade colour, 0 = none; raised for a blow 0..1, the blow's follow
 	 * through 0..1, lit or not), lying beaten on the floor, a robe's skirt over the legs.
 	 */
-	record Gear(boolean lamp, int saber, boolean lit, float raise, float swing, boolean down, boolean skirt) {
-		static final Gear NONE = new Gear(false, 0, false, 0.0F, 0.0F, false, false);
+	record Gear(boolean lamp, int saber, boolean lit, float raise, float swing, boolean down, boolean skirt, int attack, float aim, float crouch, float lean,
+			float hand, float spin) {
+		static final Gear NONE = new Gear(false, 0, false, 0.0F, 0.0F, false, false, 0, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F);
+
+		/** Phase 19's gear (no blow of a kind, no aim). */
+		Gear(boolean lamp, int saber, boolean lit, float raise, float swing, boolean down, boolean skirt) {
+			this(lamp, saber, lit, raise, swing, down, skirt, 0, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F);
+		}
 	}
 
 	static Look look(Crew crew, int seed) {
@@ -128,7 +134,8 @@ final class CrewModels {
 		float glance = Crew.STAND.equals(pose) ? Mth.sin(t * 0.35F + seed * 1.7F) * 18.0F + Mth.sin(t * 0.13F + seed) * 10.0F
 				: talk ? Mth.sin(t * 0.9F + seed) * 10.0F : walking ? Mth.sin(walk * 0.25F + seed) * 6.0F : 0.0F;
 		float bob = walking ? Math.abs(Mth.cos(walk)) * 0.035F - 0.03F : 0.0F;
-		float hip = (sit ? 0.42F : LEG) + bob;
+		// Phase 21: crouching before a leap.
+		float hip = (sit ? 0.42F : LEG) + bob - gear.crouch() * 0.28F;
 
 		b.layer(Layer.SOLID).worldLight().white().anim(0).twoSided(false);
 		b.push().translate(x, y, z).rotateY(-yaw);
@@ -165,6 +172,11 @@ final class CrewModels {
 
 		// The body: a little turn with each step.
 		b.push().translate(0, hip, 0).rotateY(walking ? Mth.sin(walk) * 4.0F : 0.0F);
+
+		// Phase 21: leaning back when hit or staggering, forward when crouching or aiming.
+		if (gear.lean() != 0.0F || gear.crouch() != 0.0F || gear.aim() != 0.0F) {
+			b.rotateX(-gear.lean() * 16.0F + gear.crouch() * 22.0F + gear.aim() * 4.0F);
+		}
 		// The chest in front only; sides, back and shoulders from the tile's edge (its belt line
 		// goes round, the badges and buttons stay in front).
 		tint(b, look.tint()).fit(look.body());
@@ -187,6 +199,16 @@ final class CrewModels {
 			float sx = side * (HALF_W + LIMB * 0.9F);
 			float[] hand = hilt != null ? new float[] {hilt[0] - hilt[3] * (side < 0 ? 0.05F : 0.17F), hilt[1] - hilt[4] * (side < 0 ? 0.05F : 0.17F),
 					hilt[2] - hilt[5] * (side < 0 ? 0.05F : 0.17F)} : hand(crew, side, shoulder, swing, t, seed, rifle, walking);
+
+			if (hilt != null && side > 0 && gear.hand() > 0.0F) {
+				// Phase 21: the free hand out towards the player (the Force push coming).
+				float k = Mth.clamp(gear.hand(), 0.0F, 1.0F);
+				hand = new float[] {Mth.lerp(k, hand[0], sx * 0.6F), Mth.lerp(k, hand[1], shoulder + 0.02F), Mth.lerp(k, hand[2], 0.62F)};
+			} else if (rifle && gear.aim() > 0.0F) {
+				// Phase 21: the rifle at the shoulder, aimed.
+				float k = Mth.clamp(gear.aim(), 0.0F, 1.0F);
+				hand = new float[] {hand[0] * (1.0F - k * 0.4F), hand[1] + k * 0.24F, hand[2] + k * 0.04F};
+			}
 			float[] pole = hilt != null ? new float[] {side * 0.9F, -0.8F, -0.2F} : pole(crew, side, rifle, walking);
 			arm(b, look, sx, shoulder, 0.0F, hand[0], hand[1], hand[2], pole);
 		}
@@ -204,7 +226,16 @@ final class CrewModels {
 		if (rifle && !work) {
 			// The rifle in both hands: the grip in the right, the barrel forward and to the left.
 			float[] grip = rifleGrip(walking, swing, t, seed);
-			blaster(b, grip[0], grip[1], grip[2], RIFLE_DIR[0], RIFLE_DIR[1], RIFLE_DIR[2]);
+			float[] dir = RIFLE_DIR;
+
+			if (gear.aim() > 0.0F) {
+				// Phase 21: aimed: up at the shoulder, the barrel straight ahead.
+				float k = Mth.clamp(gear.aim(), 0.0F, 1.0F);
+				grip = new float[] {grip[0] * (1.0F - k * 0.4F), grip[1] + k * 0.24F, grip[2] + k * 0.04F};
+				dir = norm(Mth.lerp(k, RIFLE_DIR[0], 0.08F), Mth.lerp(k, RIFLE_DIR[1], 0.02F), Mth.lerp(k, RIFLE_DIR[2], 1.0F));
+			}
+
+			blaster(b, grip[0], grip[1], grip[2], dir[0], dir[1], dir[2]);
 
 			if (gear.lamp()) {
 				// Phase 19: a lamp under the barrel, its lens lit.
@@ -258,6 +289,45 @@ final class CrewModels {
 		float[] guardDir = norm(0.12F, 0.8F, 0.6F);
 		float[] raisedDir = norm(-0.3F, 0.6F, -0.75F);
 		float[] throughDir = norm(0.55F, -0.3F, 0.78F);
+
+		// Phase 21: each kind of blow is wound up its own way (to be seen coming).
+		switch (gear.attack()) {
+			case SWEEP -> {
+				// Drawn back to the right, flat: it comes from the side.
+				raised = new float[] {-0.36F, shoulder - 0.3F, -0.06F};
+				raisedDir = norm(-0.9F, 0.12F, -0.4F);
+				through = new float[] {0.3F, shoulder - 0.36F, 0.3F};
+				throughDir = norm(0.9F, 0.06F, 0.42F);
+			}
+			case THRUST -> {
+				// Pulled in at the hip, the point forward: it comes straight.
+				raised = new float[] {-0.12F, shoulder - 0.46F, -0.1F};
+				raisedDir = norm(0.0F, 0.08F, 1.0F);
+				through = new float[] {0.0F, shoulder - 0.3F, 0.62F};
+				throughDir = norm(0.0F, 0.02F, 1.0F);
+			}
+			case STAGGER -> {
+				// Knocked aside: the blade low and out.
+				raised = new float[] {-0.3F, shoulder - 0.62F, 0.12F};
+				raisedDir = norm(-0.6F, -0.5F, 0.4F);
+			}
+			case CROUCH -> {
+				// Before the leap: the blade back over the shoulder.
+				raised = new float[] {-0.16F, shoulder + 0.02F, -0.12F};
+				raisedDir = norm(-0.2F, 0.3F, -0.95F);
+			}
+			default -> {
+			}
+		}
+
+		if (gear.spin() > 0.0F) {
+			// Spinning round: the guard's blade swept once round him.
+			float a = gear.spin() * Mth.TWO_PI;
+			float c = Mth.cos(a);
+			float si = Mth.sin(a);
+			guard = new float[] {guard[0] * c + guard[2] * si, guard[1], -guard[0] * si + guard[2] * c};
+			guardDir = norm(guardDir[0] * c + guardDir[2] * si, 0.25F, -guardDir[0] * si + guardDir[2] * c);
+		}
 		float r = Mth.clamp(gear.raise(), 0.0F, 1.0F);
 		float w = Mth.clamp(gear.swing(), 0.0F, 1.0F);
 		float[] out = new float[6];
@@ -275,6 +345,15 @@ final class CrewModels {
 		out[5] = dir[2];
 		return out;
 	}
+
+	/** Phase 21: the kinds of a blow, as the server sends them ({@code Finale}). */
+	static final int OVERHEAD = 1;
+	static final int SWEEP = 2;
+	static final int THRUST = 3;
+	static final int CROUCH = 4;
+	static final int HAND = 5;
+	static final int STAGGER = 6;
+	static final int SPIN = 7;
 
 	/** Phase 19: a lightsaber: the hilt below {@code at}, the blade along its direction, glowing in its colour. */
 	private static void lightsaber(MeshBuilder b, float[] at, int colour) {

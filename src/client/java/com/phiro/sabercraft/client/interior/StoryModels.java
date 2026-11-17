@@ -89,9 +89,9 @@ final class StoryModels {
 		float head = Math.abs(turn) < 2.0F && fig.stage() == 0 ? Float.NaN : -turn;
 		boolean shadow = "shadow".equals(kind);
 		boolean saber = (fig.flags() & StoryFiguresPayload.SABER) != 0;
-		boolean lit = saber && (fig.flags() & StoryFiguresPayload.HOSTILE) != 0;
-		float[] blade = saber ? saber(fig, lit, dt) : new float[2];
-		CrewModels.Gear gear = new CrewModels.Gear((fig.flags() & StoryFiguresPayload.LAMP) != 0, saber ? RED : 0, lit, blade[0], blade[1], down, shadow);
+		// Phase 21: lit also before the fight (in the film), out once he flees.
+		boolean lit = saber && (fig.flags() & (StoryFiguresPayload.HOSTILE | StoryFiguresPayload.LIT)) != 0;
+		CrewModels.Gear gear = saber ? saber(fig, lit, dt, down, shadow) : rifle(fig, dt, down);
 		CrewModels.figure(b, crew, look, pose.x(), pose.y(), pose.z(), pose.yaw(), pose.walk(), t, seed, head, gear);
 	}
 
@@ -135,30 +135,61 @@ final class StoryModels {
 	}
 
 	/**
-	 * The blade of someone fighting: raised while a blow is wound up (quickly), swept down when
-	 * it comes (the wind-up ends), then back on guard.
+	 * The blade of someone fighting (Phase 21: the server sends the blow's kind and how far it is
+	 * wound up): raised (or drawn back, or pulled in) as the wind-up goes on, swept through when
+	 * it comes, then back on guard. Also: staggering, crouching for a leap, the hand out for a push,
+	 * a spin, and the jolt of a hit.
 	 */
-	private static float[] saber(StoryFiguresPayload.Fig fig, boolean lit, float dt) {
-		float[] state = SABERS.computeIfAbsent(fig.id(), id -> new float[3]);
+	private static CrewModels.Gear saber(StoryFiguresPayload.Fig fig, boolean lit, float dt, boolean down, boolean skirt) {
+		// raise, swing, the kind last seen, its progress, the kind swung, crouch, lean, hand, aim
+		float[] state = SABERS.computeIfAbsent(fig.id(), id -> new float[9]);
+		int kind = fig.windup() >> 5;
+		float progress = (fig.windup() & 31) / 31.0F;
+		int lastKind = (int) state[2];
+		boolean blowKind = kind >= CrewModels.OVERHEAD && kind <= CrewModels.THRUST;
+
+		if (lastKind >= CrewModels.OVERHEAD && lastKind <= CrewModels.THRUST && (kind != lastKind || progress < state[3] - 0.25F)) {
+			// The blow fell.
+			state[0] = 0.0F;
+			state[1] = 1.0F;
+			state[4] = lastKind;
+		}
+
+		float raiseGoal = blowKind ? progress : kind == CrewModels.STAGGER || kind == CrewModels.CROUCH ? 1.0F : 0.0F;
+		state[0] = approach(state[0], raiseGoal, dt * 9.0F);
+		state[1] = Math.max(0.0F, state[1] - dt * 4.0F);
+		state[5] = approach(state[5], kind == CrewModels.CROUCH ? progress : 0.0F, dt * 6.0F);
+		state[6] = Math.max(approach(state[6], kind == CrewModels.STAGGER && lit ? 1.0F : 0.0F, dt * 5.0F), hit(fig.id()));
+		state[7] = approach(state[7], kind == CrewModels.HAND ? progress : 0.0F, dt * 8.0F);
+		state[2] = kind;
+		state[3] = progress;
 
 		if (!lit) {
 			state[0] = 0.0F;
 			state[1] = 0.0F;
-			state[2] = 0.0F;
-			return new float[] {0.0F, 0.0F};
 		}
 
-		if (fig.windup() > 0) {
-			state[0] = Math.min(1.0F, state[0] + dt * 7.0F);
-		} else if (state[2] > 0.0F) {
-			// The blow.
-			state[0] = 0.0F;
-			state[1] = 1.0F;
-		}
+		int attack = state[1] > 0.05F ? (int) state[4] : kind;
+		float spin = kind == CrewModels.SPIN ? progress : 0.0F;
+		return new CrewModels.Gear((fig.flags() & StoryFiguresPayload.LAMP) != 0, RED, lit, state[0], state[1], down, skirt, attack, 0.0F, state[5],
+				state[6], state[7], spin);
+	}
 
-		state[1] = Math.max(0.0F, state[1] - dt * 4.0F);
-		state[2] = fig.windup();
-		return new float[] {state[0], state[1]};
+	/** Phase 21: a trooper's rifle comes up to the shoulder while they aim (the wind-up of a shot). */
+	private static CrewModels.Gear rifle(StoryFiguresPayload.Fig fig, float dt, boolean down) {
+		float[] state = SABERS.computeIfAbsent(fig.id(), id -> new float[9]);
+		state[8] = approach(state[8], fig.windup() > 0 && !down ? 1.0F : 0.0F, dt * 8.0F);
+		state[6] = hit(fig.id());
+		return new CrewModels.Gear((fig.flags() & StoryFiguresPayload.LAMP) != 0, 0, false, 0.0F, 0.0F, down, false, 0, state[8], 0.0F, state[6], 0.0F, 0.0F);
+	}
+
+	private static float approach(float value, float goal, float step) {
+		return value < goal ? Math.min(goal, value + step) : Math.max(goal, value - step);
+	}
+
+	/** Phase 21: the jolt of a hit (1 just hit, fading in a quarter second). */
+	private static float hit(int id) {
+		return com.phiro.sabercraft.client.story.StoryClient.hitJolt(id);
 	}
 
 	// --- What they see and notice ------------------------------------------------------------------

@@ -16,6 +16,7 @@ import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.shapes.CollisionContext;
 
+import com.phiro.sabercraft.SaberCraft;
 import com.phiro.sabercraft.interior.Crew;
 
 /**
@@ -75,6 +76,26 @@ public final class Stealth {
 	/** Phase 20: how much further the wary see, and a wall comm's reach (blocks). */
 	static final double WARY = 1.15;
 	static final double COMM_REACH = 26.0;
+	/**
+	 * Phase 21: the search after a chase is longer (the whole deck is searched); a soldier's call
+	 * brings help after this long; of those who came, this many stay as a search patrol.
+	 */
+	static final int SEARCH_LONG = 900;
+	static final int REINFORCE_DELAY = 60;
+	static final int PATROLS = 2;
+	/** Phase 21: a droid's noise is heard this far with nothing in between, this far through walls. */
+	static final double HEAR = 7.5;
+	static final double HEAR_WALL = 3.5;
+	/** Phase 21: how long one stops and listens before going to see (ticks). */
+	static final int LISTEN = 16;
+	/** Phase 21: figures keep this far apart (blocks). */
+	static final double APART = 0.7;
+
+	/**
+	 * Phase 21: everyone of the ship being moved this tick (so that a step can keep them apart).
+	 * The server runs one story tick at a time.
+	 */
+	private static List<Figure> crowd = List.of();
 
 	private Stealth() {
 	}
@@ -109,7 +130,7 @@ public final class Stealth {
 		Vec3 corner = Vec3.atLowerCornerOf(origin);
 		Vec3 me = player.position().subtract(corner);
 		boolean watched = !s.fighting && s.grace <= 0 && !player.isSpectator() && !player.isCreative() && s.dialog == null;
-		boolean anyChaserSees = false;
+		crowd = s.figures;
 
 		if (s.grace > 0) {
 			s.grace--;
@@ -145,14 +166,12 @@ public final class Stealth {
 					figure.lastSeen = time;
 					figure.seenAt = me;
 					figure.suspicion = Math.min(1.0F, figure.suspicion + rate * LOOK_EVERY / 20.0F);
-
-					if (figure.mode == Figure.CHASE) {
-						anyChaserSees = true;
-					}
 				} else if (time - figure.lastSeen > 40) {
-					// Slowly forgetting (not while chasing: that ends by losing the player).
+					// Slowly forgetting (not while chasing: that ends by losing the player). Phase
+					// 21: after an alarm in this mission more slowly.
 					if (figure.mode != Figure.CHASE) {
-						figure.suspicion = Math.max(0.0F, figure.suspicion - (s.alarmed() ? 0.06F : 0.1F) * LOOK_EVERY / 20.0F);
+						float forget = s.alarmed() || level(s) > 0 ? 0.06F : 0.1F;
+						figure.suspicion = Math.max(0.0F, figure.suspicion - forget * LOOK_EVERY / 20.0F);
 					}
 				}
 
@@ -171,58 +190,252 @@ public final class Stealth {
 			}
 		}
 
-		// Phase 20: the troopers who came for an alarm go back out of their door once it is calm.
+		// Phase 20: the troopers who came for an alarm go back out of their door once it is calm
+		// (Phase 21: those who stay as a search patrol are figures of their own).
 		if (s.alarm <= 0 && s.figures.removeIf(figure -> figure.key.startsWith(REINFORCEMENT) && figure.mode == Figure.ROUTINE)) {
 			s.dirty = true;
 		}
 
-		// The chase: kept up while anyone chasing sees the player; out of sight long enough, a search.
 		if (s.alarm > 0) {
-			// Phase 20: the siren, while they are after the player.
-			if (s.unseen < LOSE && time % SIREN == 0) {
-				Story.cue(s, Story.CUE_SOUND, "", "story.siren", 0);
+			alarm(s, level, corner, ship, time);
+		}
+
+		crowd = List.of();
+	}
+
+	/**
+	 * Phase 21: the alarm, step by step. While anyone hunting sees the player: the chase (sirens,
+	 * troopers come). Out of everyone's sight for ten seconds: the search ("search the deck", no
+	 * sirens): the chasers go to where the player was last seen and search the places round it,
+	 * the troopers who came search too. After the search, nobody found: an announcement that the
+	 * intruder is still aboard and the ship stays on alert. Then they go back to their posts, but
+	 * not as before: the crew of the mission stays wary (each further alarm in the mission more
+	 * so: they see further, forget more slowly, go to look sooner, aim faster), and two of the
+	 * troopers who came stay as a search patrol where the player was last seen. Being seen again
+	 * during the search starts the chase again.
+	 */
+	private static void alarm(StorySession s, ServerLevel level, Vec3 corner, String ship, long time) {
+		boolean seen = s.huntSeen >= time - 1;
+
+		// The siren, while they are after the player.
+		if (!s.searching && time % SIREN == 0 && Story.DESTROYER.equals(ship)) {
+			Story.cue(s, Story.CUE_SOUND, "", "story.siren", 0);
+		}
+
+		// With the saber lit it is a fight, not a search; and nobody searches the Falcon.
+		if (s.fighting || !Story.DESTROYER.equals(ship)) {
+			s.unseen = 0;
+			s.searching = false;
+			return;
+		}
+
+		// A soldier's call over the comlink: help comes from the nearest door.
+		if (s.has("tmp.reinforce") && !s.timer("reinforce")) {
+			s.unset("tmp.reinforce");
+			Vec3 at = s.huntAt != null ? s.huntAt : s.local(ship);
+			Story.reinforce(s, ship, at, at);
+		}
+
+		if (seen) {
+			s.unseen = 0;
+			s.alarm = Math.max(s.alarm, SEARCH_LONG + LOSE);
+
+			if (s.searching) {
+				s.searching = false;
+				s.hint("sabercraft.story.hint.detected");
+			}
+		} else if (++s.unseen == LOSE) {
+			// Lost: the search.
+			s.searching = true;
+			Vec3 last = s.huntAt;
+
+			for (Figure figure : s.figures) {
+				if (figure.mode == Figure.CHASE) {
+					// Where the player was last seen, then three or four places round it.
+					figure.mode = Figure.INVESTIGATE;
+					figure.target = last != null ? last : figure.seenAt;
+					figure.timer = 80;
+					figure.searches = 3 + figure.id % 2;
+					figure.windup = 0;
+					figure.burst = 0;
+				}
 			}
 
-			if (anyChaserSees) {
-				s.unseen = 0;
-				s.alarm = Math.max(s.alarm, SEARCH + LOSE);
-			} else if (++s.unseen == LOSE) {
-				for (Figure figure : s.figures) {
-					if (figure.mode == Figure.CHASE) {
-						// Where they last saw the player, then two or three places round it.
-						figure.mode = Figure.INVESTIGATE;
-						figure.target = figure.seenAt;
-						figure.timer = 100;
-						figure.searches = 2 + figure.id % 2;
-					}
+			s.alarm = Math.min(s.alarm, SEARCH_LONG);
+			s.hear("intercom", "sabercraft.story.shout.search");
+			s.hint("sabercraft.story.hint.searching");
+		} else if (s.searching && s.unseen % 240 == 0 && s.huntAt != null) {
+			// Those who came and are done search again while the search lasts.
+			for (Figure figure : s.figures) {
+				if (figure.mode == Figure.RETURN && figure.key.startsWith(REINFORCEMENT)) {
+					figure.mode = Figure.INVESTIGATE;
+					figure.target = s.huntAt;
+					figure.timer = 40;
+					figure.searches = 2;
+				}
+			}
+		}
+
+		if (--s.alarm == 0) {
+			s.unseen = 0;
+			s.searching = false;
+			s.dirty = true;
+			int stay = (int) s.flags.stream().filter(flag -> flag.startsWith(patrolPrefix(s))).count();
+
+			for (Figure figure : List.copyOf(s.figures)) {
+				if (figure.mode == Figure.CHASE || figure.mode == Figure.INVESTIGATE || figure.mode == Figure.CALL) {
+					figure.mode = Figure.RETURN;
+					figure.called = false;
+					figure.searches = 0;
+					figure.windup = 0;
 				}
 
-				s.alarm = Math.min(s.alarm, SEARCH);
-				s.hint("sabercraft.story.hint.searching");
+				figure.suspicion = Math.min(figure.suspicion, 0.2F);
+
+				// Two of those who came stay and patrol where the player was last seen.
+				if (figure.key.startsWith(REINFORCEMENT) && stay < PATROLS && s.huntAt != null && figure.ship.equals(ship)
+						&& stayAsPatrol(s, level, corner, figure, s.huntAt, stay) != null) {
+					stay++;
+				}
 			}
 
-			if (--s.alarm == 0) {
-				s.unseen = 0;
-				s.dirty = true;
+			// Calm again, but the crew stays wary until the mission ends (and more so each time).
+			raiseLevel(s);
+			s.hear("intercom", "sabercraft.story.shout.search_over");
+			s.hint("sabercraft.story.hint.calm");
+		}
+	}
 
-				for (Figure figure : s.figures) {
-					if (figure.mode == Figure.CHASE || figure.mode == Figure.INVESTIGATE || figure.mode == Figure.CALL) {
-						figure.mode = Figure.RETURN;
-						figure.called = false;
-						figure.searches = 0;
-					}
+	/** Phase 21: how wary the crew of this mission is: 0 calm, 1 after one alarm, 2 after two, 3 after more. */
+	static int level(StorySession s) {
+		String m = s.mission().id();
+		return s.has("wary3." + m) ? 3 : s.has("wary2." + m) ? 2 : s.has("wary." + m) ? 1 : 0;
+	}
 
-					figure.suspicion = Math.min(figure.suspicion, 0.2F);
+	private static void raiseLevel(StorySession s) {
+		String m = s.mission().id();
+
+		if (!s.has("wary." + m)) {
+			s.set("wary." + m);
+		} else if (!s.has("wary2." + m)) {
+			s.set("wary2." + m);
+		} else {
+			s.set("wary3." + m);
+		}
+	}
+
+	/** Phase 21: the flags of this mission's search patrols begin so ({@code sp:<mission>:<n>:<door x:y:z>:<place x:y:z>}). */
+	static String patrolPrefix(StorySession s) {
+		return "sp:" + s.mission().id() + ":";
+	}
+
+	/**
+	 * Phase 21: one of the troopers who came stays: from now on (in this mission, also after a
+	 * checkpoint) a trooper walks between the door they came in by and where the player was last
+	 * seen. Returns the new patrol, or null if there is no way.
+	 */
+	private static @Nullable Figure stayAsPatrol(StorySession s, ServerLevel level, Vec3 corner, Figure came, Vec3 at, int index) {
+		Vec3 door = new Vec3(came.crew.x(), came.crew.y(), came.crew.z());
+		Figure template = patrol(s, level, corner, came.ship, door, at, index);
+
+		if (template == null) {
+			// No way from the door they came in by: between where they stand now and that place.
+			door = came.position();
+			template = patrol(s, level, corner, came.ship, door, at, index);
+		}
+
+		if (template == null) {
+			SaberCraft.LOGGER.debug("Story: no way for a search patrol from {} to {}", door, at);
+			return null;
+		}
+
+		Figure patrol = s.add(template);
+		s.set(String.format(java.util.Locale.ROOT, "%s%d:%.1f:%.1f:%.1f:%.1f:%.1f:%.1f", patrolPrefix(s), index, door.x, door.y, door.z, at.x, at.y, at.z));
+		patrol.x = came.x;
+		patrol.y = came.y;
+		patrol.z = came.z;
+		patrol.yaw = came.yaw;
+		patrol.headYaw = came.headYaw;
+		patrol.mode = Figure.RETURN;
+		s.figures.remove(came);
+		return patrol;
+	}
+
+	/**
+	 * Phase 21: a search patrol between a door and a place, there and back on a way round walls (a
+	 * template: the session numbers it), or null when there is no way.
+	 */
+	static @Nullable Figure patrol(StorySession s, ServerLevel level, Vec3 corner, String ship, Vec3 door, Vec3 at, int index) {
+		List<Vec3> way = Paths.find(level, corner, door, at, 1.8);
+
+		if (way.isEmpty() && door.distanceTo(at) > 0.8 && door.distanceTo(at) < 3.0 && clear(level, corner.add(door).add(0.0, 1.0, 0.0), corner.add(at).add(0.0, 1.0, 0.0))) {
+			// Close by already: a short beat between the two.
+			way = List.of(at);
+		}
+
+		if (way.isEmpty() || way.get(way.size() - 1).distanceTo(at) > 3.0) {
+			return null;
+		}
+
+		// There and back on the same way (a patrol goes round its path as a loop).
+		List<Vec3> loop = new ArrayList<>();
+		loop.add(door);
+		loop.addAll(way);
+
+		for (int i = way.size() - 2; i >= 0; i--) {
+			loop.add(way.get(i));
+		}
+
+		if (loop.size() < 2) {
+			return null;
+		}
+
+		Figure patrol = new Figure(0, "patrol." + s.mission().id() + "." + index,
+				Crew.patrol(Crew.TROOPER, 1.3, index * 7.0, loop.toArray(Vec3[]::new)).as("search"));
+		patrol.ship = ship;
+		patrol.observer = true;
+		patrol.talks = false;
+		patrol.lamp = s.chapter.dark(s, ship, at.x, at.y, at.z) || s.chapter.dark(s, ship, door.x, door.y, door.z);
+		return patrol;
+	}
+
+	/** Phase 21: the search patrols this mission left (after a checkpoint: for the figures of the story). */
+	static void patrols(StorySession s, List<Figure> list) {
+		ServerLevel level = Chapter1.interiors(s);
+
+		if (level == null) {
+			return;
+		}
+
+		String prefix = patrolPrefix(s);
+
+		for (String flag : List.copyOf(s.flags)) {
+			if (!flag.startsWith(prefix)) {
+				continue;
+			}
+
+			String[] parts = flag.substring(prefix.length()).split(":");
+
+			if (parts.length != 7) {
+				continue;
+			}
+
+			try {
+				int index = Integer.parseInt(parts[0]);
+				Vec3 door = new Vec3(Double.parseDouble(parts[1]), Double.parseDouble(parts[2]), Double.parseDouble(parts[3]));
+				Vec3 at = new Vec3(Double.parseDouble(parts[4]), Double.parseDouble(parts[5]), Double.parseDouble(parts[6]));
+				Figure patrol = patrol(s, level, Vec3.atLowerCornerOf(s.destroyer), Story.DESTROYER, door, at, index);
+
+				if (patrol != null) {
+					list.add(patrol);
 				}
-
-				// Phase 20: calm again, but the crew stays wary until the mission ends.
-				s.set(wary(s));
-				s.hint("sabercraft.story.hint.calm");
+			} catch (NumberFormatException e) {
+				// A broken flag: no patrol.
 			}
 		}
 	}
 
-	/** How fast that figure's suspicion fills now (a second), 0 when they do not see the player. */
+/** How fast that figure's suspicion fills now (a second), 0 when they do not see the player. */
 	static float sees(StorySession s, Figure figure, ServerPlayer player, Vec3 me, ServerLevel level, Vec3 corner, String ship) {
 		Vec3 eye = figure.eye();
 		Vec3 chest = me.add(0.0, player.getPose() == Pose.SWIMMING ? 0.3 : 0.9, 0.0);
@@ -240,10 +453,13 @@ public final class Stealth {
 			factor *= 1.2F;
 		}
 
+		int wary = level(s);
+
 		if (s.alarmed()) {
 			range *= 1.35;
-		} else if (s.has(wary(s))) {
-			range *= WARY;
+		} else if (wary > 0) {
+			// Phase 21: each alarm of the mission a little more.
+			range *= WARY + 0.07 * (wary - 1);
 		}
 
 		// Phase 20: by the emergency lights one is seen less far.
@@ -386,11 +602,19 @@ public final class Stealth {
 			figure.target = figure.seenAt;
 			figure.timer = 100;
 		} else if (figure.stage == Figure.SUSPICIOUS && figure.mode == Figure.ROUTINE && figure.seenAt != null) {
-			figure.mode = Figure.LOOK;
-			figure.target = figure.seenAt;
-			figure.timer = 60;
+			// Phase 21: after two alarms in a mission nobody just looks: they go and see at once.
+			if (level(s) >= 2 && time - figure.lastSeen < 10) {
+				figure.mode = Figure.INVESTIGATE;
+				figure.target = figure.seenAt;
+				figure.timer = 80;
+			} else {
+				figure.mode = Figure.LOOK;
+				figure.target = figure.seenAt;
+				figure.timer = 60;
+			}
+
 			Story.cue(s, Story.CUE_SOUND, "", "story.suspicious", figure.id);
-		} else if (figure.stage == Figure.CALM && (figure.mode == Figure.LOOK || figure.mode == Figure.INVESTIGATE && figure.timer <= 0)) {
+		} else if (figure.stage == Figure.CALM && (figure.mode == Figure.LOOK && figure.lure == null || figure.mode == Figure.INVESTIGATE && figure.timer <= 0)) {
 			figure.mode = Figure.RETURN;
 		}
 	}
@@ -413,9 +637,26 @@ public final class Stealth {
 				if (figure.target != null) {
 					figure.turnTowards(figure.target, 9.0F, false);
 				}
+
+				// Phase 21: a noise heard: they listen a moment, then go to see (a step short of it).
+				if (figure.timer > 0) {
+					figure.timer--;
+				}
+
+				if (figure.lure != null && figure.timer <= 0) {
+					Vec3 lure = figure.lure;
+					Vec3 to = lure.subtract(figure.position()).multiply(1.0, 0.0, 1.0);
+					figure.lure = null;
+					figure.mode = Figure.INVESTIGATE;
+					figure.target = to.length() > 1.6 ? lure.subtract(to.normalize().scale(1.2)) : figure.position();
+					figure.timer = 60;
+					figure.searches = 1;
+					s.dirty = true;
+				}
 			}
 			case Figure.INVESTIGATE -> {
-				if (figure.target == null || figure.position().distanceTo(figure.target) < 1.2 || !go(figure, figure.target, WALK, level, corner, time)) {
+				if (figure.target == null || figure.position().distanceTo(figure.target) < 1.2
+						|| !go(figure, Combat.apart(s, figure, figure.target), s.searching ? WALK * 1.4 : WALK, level, corner, time)) {
 					// There (or no way on): look round a while; then the next place to search, or back.
 					figure.speed = 0.0F;
 					figure.headYaw = figure.yaw + Mth.sin(time * 0.08F + figure.id) * 60.0F;
@@ -435,11 +676,30 @@ public final class Stealth {
 				}
 			}
 			case Figure.CHASE -> {
+				ServerPlayer player = s.player();
+
+				if (player != null && Combat.rifle(figure)) {
+					// Phase 21: troopers fight: they keep their distance and shoot (Combat).
+					Combat.chase(s, figure, player, me, level, corner, time);
+					break;
+				}
+
+				// Others run at the player (Phase 21: out of sight to where the player was last seen).
+				boolean sees = s.grace <= 0 && Combat.sees(figure, me, level, corner, horizontal(figure.position(), me));
+
+				if (sees) {
+					figure.lastSeen = time;
+					figure.seenAt = me;
+					s.huntSeen = time;
+					s.huntAt = me;
+				}
+
+				Vec3 goal = sees || time - s.huntSeen < Combat.TRACK || s.huntAt == null ? me : s.huntAt;
 				figure.target = me;
 
 				if (s.cornerer == figure) {
 					figure.speed = 0.0F;
-				} else if (!go(figure, me, RUN, level, corner, time)) {
+				} else if (!go(figure, goal, RUN, level, corner, time)) {
 					figure.speed = 0.0F;
 					figure.turnTowards(me, 20.0F, true);
 				}
@@ -504,7 +764,7 @@ public final class Stealth {
 
 					if (figure.position().distanceTo(next) < 0.25) {
 						figure.wayIndex++;
-					} else if (!step(figure, next, WALK, level, corner)) {
+					} else if (!step(figure, next, figure.scriptSpeed > 0.0 ? figure.scriptSpeed : WALK, level, corner)) {
 						// Scripted ways go where blocks allow; if not, they are put there.
 						figure.x = next.x;
 						figure.y = next.y;
@@ -619,7 +879,7 @@ public final class Stealth {
 				double nz = figure.z + t[1];
 				double ny = figure.y + up;
 
-				if (free(level, corner, nx, ny, nz, figure.crew.height())) {
+				if (free(level, corner, nx, ny, nz, figure.crew.height()) && !crowded(figure, nx, ny, nz)) {
 					// Down onto the floor (a step, a ledge: at most a block).
 					for (int i = 0; i < 10 && free(level, corner, nx, ny - 0.1, nz, figure.crew.height()) && ny > figure.y - 1.0; i++) {
 						ny -= 0.1;
@@ -639,6 +899,33 @@ public final class Stealth {
 
 		figure.speed = 0.0F;
 		return false;
+	}
+
+	/**
+	 * Phase 21: whether that step would bring them too close to someone else (they keep apart and
+	 * do not stand in each other). A step that takes them further apart is always fine, so two
+	 * who came to stand close can still part.
+	 */
+	private static boolean crowded(Figure figure, double x, double y, double z) {
+		for (Figure other : crowd) {
+			if (other == figure || other.mode == Figure.DOWN || !other.ship.equals(figure.ship) || Math.abs(other.y - y) > 1.5) {
+				continue;
+			}
+
+			double now = Math.hypot(other.x - figure.x, other.z - figure.z);
+			double then = Math.hypot(other.x - x, other.z - z);
+
+			if (then < APART && then < now) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	/** Phase 21: for {@link Finale}: the figures to keep apart this tick (empty after it). */
+	static void crowd(List<Figure> figures) {
+		crowd = figures;
 	}
 
 	private static boolean free(ServerLevel level, Vec3 corner, double x, double y, double z, double height) {
@@ -681,25 +968,68 @@ public final class Stealth {
 		return joined;
 	}
 
-	/** Sends those near a point (plot space) to look there (a droid's noise). Returns who went. */
-	static java.util.List<Figure> distract(StorySession s, String ship, Vec3 at, double radius) {
-		java.util.List<Figure> went = new java.util.ArrayList<>();
+	/**
+	 * Phase 21: a droid's noise at a point (plot space), as those near would notice it. Only someone
+	 * who hears it (close with nothing in between, or very close through a wall) and is not busy
+	 * (chasing, held by a scene) reacts. The nearest stops, listens a moment and then goes to see
+	 * (a step short of it: looks round there and at one more place, then back to the post). The
+	 * next one or two only turn to look. Whoever was drawn by a noise before believes it less: the
+	 * second time they only look over, after that they do not care. Everyone else carries on.
+	 */
+	static Noise noise(StorySession s, String ship, Vec3 at, ServerLevel level, Vec3 corner) {
+		List<Figure> heard = new ArrayList<>();
 
 		for (Figure figure : s.figures) {
 			if (!figure.observer || !ship.equals(figure.ship) || figure.mode == Figure.CHASE || figure.mode == Figure.DOWN || figure.mode == Figure.HELD
-					|| figure.mode == Figure.SCRIPTED || figure.position().distanceTo(at) > radius) {
+					|| figure.mode == Figure.SCRIPTED || figure.mode == Figure.CALL || figure.hostile) {
 				continue;
 			}
 
-			figure.mode = Figure.INVESTIGATE;
+			Vec3 ear = figure.eye();
+			Vec3 sound = at.add(0.0, 0.3, 0.0);
+			double distance = ear.distanceTo(sound);
+
+			if (distance > HEAR || Math.abs(figure.y - at.y) > 2.5) {
+				continue;
+			}
+
+			if (distance <= HEAR_WALL || clear(level, corner.add(ear), corner.add(sound))) {
+				heard.add(figure);
+			}
+		}
+
+		heard.sort(java.util.Comparator.comparingDouble(figure -> figure.position().distanceTo(at)));
+		List<Figure> went = new ArrayList<>();
+		List<Figure> looked = new ArrayList<>();
+		List<Figure> ignored = new ArrayList<>();
+
+		for (Figure figure : heard) {
+			if (figure.distracted >= 2) {
+				ignored.add(figure);
+				continue;
+			}
+
+			boolean go = went.isEmpty() && figure.distracted == 0;
+
+			if (!go && looked.size() >= 2) {
+				continue;
+			}
+
+			figure.distracted++;
+			figure.mode = Figure.LOOK;
 			figure.target = at;
-			figure.timer = 140;
-			figure.suspicion = Math.max(figure.suspicion, SUSPICIOUS);
-			went.add(figure);
+			figure.timer = go ? LISTEN : 30;
+			figure.lure = go ? at : null;
+			figure.suspicion = Math.max(figure.suspicion, go ? 0.45F : 0.4F);
+			(go ? went : looked).add(figure);
 		}
 
 		s.dirty = true;
-		return went;
+		return new Noise(went, looked, ignored);
+	}
+
+	/** Phase 21: who went to see a noise, who only looked over, who did not care any more. */
+	record Noise(List<Figure> went, List<Figure> looked, List<Figure> ignored) {
 	}
 
 	/** The figure nearest a point within reach, of those matching. */

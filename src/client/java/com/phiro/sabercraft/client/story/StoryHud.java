@@ -55,6 +55,7 @@ final class StoryHud implements HudElement {
 
 		if (state != null && state.active() && !hidden) {
 			alarm(graphics, state, width, height);
+			duel(graphics, client, width, height);
 			scan(graphics, client, width, height);
 			noise(graphics, client, width, height);
 			checkpoint(graphics, client.font, width);
@@ -309,6 +310,98 @@ final class StoryHud implements HudElement {
 		graphics.fillGradient(0, 0, width, depth, edge, 0x00000000);
 		graphics.fillGradient(0, height - depth, width, height, 0x00000000, edge);
 		// The words (ALARM, searching) are in the objectives' panel.
+	}
+
+	// --- Phase 21: the fight ----------------------------------------------------------------------
+
+	/** The phase marks on his bar (where he changes his way, where he breaks off). */
+	static final float[] PHASE_MARKS = {0.65F, 0.35F, 0.15F};
+
+	/**
+	 * The fight: his strength at the top (with the marks where he changes and where he breaks off),
+	 * the Focus over the hotbar, a cold tint while it runs, red edges when hurt, the stun hits.
+	 */
+	private static void duel(GuiGraphicsExtractor graphics, Minecraft client, int width, int height) {
+		int hurt = StoryClient.hurtAge();
+
+		if (hurt < 12) {
+			int alpha = Math.round((1.0F - hurt / 12.0F) * 120.0F);
+			int edge = alpha << 24 | 0xC01008;
+			int depth = height / 5;
+			graphics.fillGradient(0, 0, width, depth, edge, 0x00000000);
+			graphics.fillGradient(0, height - depth, width, height, 0x00000000, edge);
+		}
+
+		if (StoryClient.focusOn()) {
+			// The Focus: the world goes still and cold at the edges.
+			int age = StoryClient.focusAge();
+			int alpha = Math.round(Math.min(1.0F, age / 6.0F) * 90.0F);
+			int edge = alpha << 24 | 0x3A6CC8;
+			int depth = height / 4;
+			graphics.fillGradient(0, 0, width, depth, edge, 0x00000000);
+			graphics.fillGradient(0, height - depth, width, height, 0x00000000, edge);
+			graphics.fill(0, 0, width, height, Math.round(Math.min(1.0F, age / 6.0F) * 28.0F) << 24 | 0x203A70);
+		}
+
+		StoryFiguresPayload.Fig shadow = StoryClient.duelist();
+
+		if (shadow != null) {
+			// Left of the objectives' panel (top right), so the two do not overlap.
+			int room = width - PANEL_WIDTH - 24;
+			int barWidth = Math.min(182, room - 24);
+			int centre = room / 2 + 6;
+			int x = centre - barWidth / 2;
+			int y = 22;
+			float health = shadow.health() / 255.0F;
+			Component name = Component.translatable("sabercraft.story.name." + shadow.speaker());
+			graphics.centeredText(client.font, name, centre, y - 11, 0xFFFF7A6A);
+			graphics.fill(x - 1, y - 1, x + barWidth + 1, y + 6, 0xC0000000);
+			graphics.fill(x, y, x + Math.round(barWidth * health), y + 5, 0xFFD8302A);
+			graphics.fill(x, y, x + Math.round(barWidth * health), y + 1, 0xFFFF8A80);
+
+			for (float mark : PHASE_MARKS) {
+				int mx = x + Math.round(barWidth * mark);
+				graphics.fill(mx, y - 2, mx + 1, y + 7, mark == PHASE_MARKS[2] ? 0xFFFFE08A : 0xFFE8EEF6);
+			}
+
+			// What he is about to do, for the eye that has not learnt it yet: a blow wound up shows as a pulse.
+			int kind = shadow.windup() >> 5;
+
+			if (kind >= 1 && kind <= 3) {
+				Component warn = Component.translatable("sabercraft.story.duel.blow" + kind);
+				graphics.centeredText(client.font, warn, centre, y + 9, 0xFFFFC060);
+			} else if (kind == 6) {
+				graphics.centeredText(client.font, Component.translatable("sabercraft.story.duel.open"), centre, y + 9, 0xFF8CF08C);
+			} else if (kind == 4 || kind == 5) {
+				graphics.centeredText(client.font, Component.translatable("sabercraft.story.duel.force" + kind), centre, y + 9, 0xFF8CC0FF);
+			}
+		}
+
+		if (StoryClient.meterShown()) {
+			int meter = StoryClient.focusMeter();
+			int barWidth = 60;
+			int x = width / 2 - 91 - barWidth - 8;
+			int y = height - 14;
+			boolean full = meter >= 100;
+			float pulse = full ? 0.5F + 0.5F * Mth.sin(Util.getMillis() / 180.0F) : 0.0F;
+			graphics.fill(x - 1, y - 1, x + barWidth + 1, y + 5, 0xB0000000);
+			graphics.fill(x, y, x + barWidth * Math.min(100, meter) / 100, y + 4, StoryClient.focusOn() ? 0xFFB8D8FF : full ? 0xFF4C8CFF : 0xFF2C5AA8);
+
+			Component label = Component.translatable(full ? "sabercraft.story.duel.focus_ready" : "sabercraft.story.duel.focus",
+					StoryClient.FOCUS_KEY.getTranslatedKeyMessage());
+			graphics.text(client.font, label, x, y - 10, (full ? Math.round(160 + 95 * pulse) : 150) << 24 | 0xBCD4FF);
+		}
+
+		if (StoryClient.stuns() > 0 && StoryClient.stunAge() < 200) {
+			// The stun hits: three marks under the crosshair (the third means caught).
+			int cx = width / 2;
+			int cy = height / 2 + 14;
+
+			for (int i = 0; i < 3; i++) {
+				int sx = cx - 14 + i * 10;
+				graphics.fill(sx, cy, sx + 7, cy + 3, i < StoryClient.stuns() ? 0xE05A9CFF : 0x60FFFFFF);
+			}
+		}
 	}
 
 	// --- A droid's scan ----------------------------------------------------------------------------

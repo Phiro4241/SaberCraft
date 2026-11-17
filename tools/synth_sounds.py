@@ -1457,6 +1457,51 @@ def phase20():
     write_ogg("siren", story_siren(rng), STORY_OUT)
 
 
+def story_stun_hit(rng, seconds=0.6):
+    """A stun bolt hitting the player: an electric crackle over a dull thump, and a ringing whine fading out."""
+    t = t_axis(seconds)
+    thump = np.sin(2 * np.pi * 70 * t) * np.exp(-t * 18)
+    crackle = bandpass_noise(seconds, 1800, 7000, rng) * np.exp(-t * 9) * (0.6 + 0.4 * np.sign(np.sin(2 * np.pi * 37 * t)))
+    whine = np.sin(2 * np.pi * np.cumsum(2400 - 1400 * t / seconds) / RATE) * np.exp(-t * 5) * 0.18
+    return normalize(lowpass(thump + crackle * 0.5, 7000) + whine, 0.5)
+
+
+def story_m31_rattle(rng, seconds=1.0):
+    """M-31 bumping about: little wheel rattles, a clatter against metal and two squeaky chirps."""
+    t = t_axis(seconds)
+    rattle = np.zeros_like(t)
+    for at in (0.0, 0.07, 0.15, 0.2, 0.31, 0.42, 0.47, 0.6, 0.71):
+        ct = np.clip(t - at, 0, None)
+        rattle += bandpass_noise(seconds, 1500, 6000, rng) * np.exp(-ct * 70) * (t >= at) * (0.5 + 0.5 * rng.random())
+    clank = sum(np.sin(2 * np.pi * f0 * np.clip(t - 0.36, 0, None)) * np.exp(-np.clip(t - 0.36, 0, None) * d) for f0, d in ((780.0, 14.0), (1630.0, 20.0))) * (t >= 0.36) * 0.4
+    chirp_a = glide_tone(1800, 2900, 0.09, vibrato=0.0)
+    chirp_b = glide_tone(2600, 1700, 0.12, vibrato=0.0)
+    out = rattle * 0.6 + clank
+    for at, c in ((0.24, chirp_a), (0.8, chirp_b)):
+        i = int(at * RATE)
+        out[i:i + len(c)] += c[: max(0, len(out) - i)] * 0.35
+    return normalize(lowpass(out, 7500), 0.45)
+
+
+def story_focus(rng, seconds, rising):
+    """The Focus: a deep breath of sound, the world slowing (in) or catching up again (out)."""
+    t = t_axis(seconds)
+    f = (90 + 140 * (t / seconds)) if rising else (230 - 140 * (t / seconds))
+    tone = np.sin(2 * np.pi * np.cumsum(f) / RATE) + 0.4 * np.sin(2 * np.pi * np.cumsum(f * 1.5) / RATE)
+    air = bandpass_noise(seconds, 300, 2400, rng) * 0.5
+    env = np.sin(np.pi * np.clip(t / seconds, 0, 1)) ** (0.7 if rising else 1.3)
+    return normalize(lowpass((tone + air) * env, 2600), 0.42)
+
+
+def phase21():
+    """Phase 21: a stun bolt's hit, M-31's rattle, the Focus in and out. Own random stream."""
+    rng = np.random.default_rng(1977_21)
+    write_ogg("stun_hit", story_stun_hit(rng), STORY_OUT)
+    write_ogg("m31_rattle", story_m31_rattle(rng), STORY_OUT)
+    write_ogg("focus_in", story_focus(rng, 0.9, True), STORY_OUT)
+    write_ogg("focus_out", story_focus(rng, 0.7, False), STORY_OUT)
+
+
 # Planet ambiences (Phase 10) ---------------------------------------------------------------------
 # Loops of AMBIENT_SECONDS. Every slow modulation runs a whole number of times per loop, and every
 # event (a gust, a bird, a crackle) that runs over the end wraps to the start, so they loop
@@ -1659,6 +1704,10 @@ def main():
 
     if "--phase20" in sys.argv:
         phase20()
+        return
+
+    if "--phase21" in sys.argv:
+        phase21()
         return
 
     if "--phase18" in sys.argv:

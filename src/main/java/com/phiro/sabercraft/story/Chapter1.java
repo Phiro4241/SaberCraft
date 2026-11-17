@@ -284,6 +284,8 @@ public final class Chapter1 implements Chapter {
 		falcon(s, list, m, step);
 		crew(s, list, m, step);
 		people(s, list, m, step);
+		// Phase 21: the search patrols left by alarms of this mission.
+		Stealth.patrols(s, list);
 		return list;
 	}
 
@@ -476,8 +478,9 @@ public final class Chapter1 implements Chapter {
 
 				hostiles(s, list, step);
 
-				if (step.equals("m6.duel") || step.equals("m6.falcon")) {
-					Figure shadow = person("shadow", "shadow", Crew.at("shadow", Crew.STAND, 40.5, H, -28.5, 0.0F), D);
+				// Phase 21: he waits with his back to the player (the film turns him round); after the duel he is gone.
+				if (step.equals("m6.duel") && !s.has("gone.shadow")) {
+					Figure shadow = person("shadow", "shadow", Crew.at("shadow", Crew.STAND, 40.5, H, -28.5, 180.0F), D);
 					shadow.talks = false;
 					shadow.saber = true;
 					shadow.health = 1.0F;
@@ -830,26 +833,9 @@ public final class Chapter1 implements Chapter {
 				return "sabercraft.story.droid.m31_field";
 			}
 
-			// A noise where the player looks: those near go to see (Phase 20: a mark shows where,
-			// the message says who goes).
-			Vec3 at = lookTarget(s, player, level, 14.0);
-			List<Figure> went = Stealth.distract(s, s.here, at, 8.0);
-			Vec3 world = at.add(Vec3.atLowerCornerOf(s.origin(s.here)));
-			level.playSound(null, world.x, world.y, world.z, ShipInteriors.sound("ship.crew_chirp"), SoundSource.NEUTRAL, 0.9F, 1.4F);
-			Story.cue(s, Story.CUE_NOISE, "", "", 50, List.of(world));
-
-			if (went.isEmpty()) {
-				return "sabercraft.story.droid.m31_noise";
-			}
-
-			if (step.equals("m1.distract") && went.stream().anyMatch(figure -> figure.key.equals("maint"))) {
-				// The exercise: he goes, the hatch is free.
-				s.radio("mira", "sabercraft.story.radio.m1_go");
-				s.complete();
-			}
-
-			s.droidArgs = new Object[] {who(went)};
-			return went.size() == 1 ? "sabercraft.story.droid.m31_distract_one" : "sabercraft.story.droid.m31_distract_more";
+			// Phase 21: M-31 drives to where the player looks and rattles there; only those who hear
+			// it react (Companions, Stealth.noise).
+			return Companions.lure(s, player, level);
 		}
 
 		if (droid.equals("astromech")) {
@@ -904,31 +890,6 @@ public final class Chapter1 implements Chapter {
 		return null;
 	}
 
-	/** Phase 20: who went to look (for the message): the one, or how many. */
-	private static Component who(List<Figure> went) {
-		if (went.size() > 1) {
-			return Component.literal(Integer.toString(went.size()));
-		}
-
-		Figure figure = went.get(0);
-		String kind = switch (figure.kind()) {
-			case Crew.TROOPER, Crew.GUARD -> "trooper";
-			case Crew.TECH -> "tech";
-			case Crew.PILOT -> "pilot";
-			default -> "officer";
-		};
-		return Component.translatable("sabercraft.story.kind." + kind);
-	}
-
-	/** Where the player looks (plot space), at most that far. */
-	private static Vec3 lookTarget(StorySession s, ServerPlayer player, ServerLevel level, double reach) {
-		Vec3 eye = player.getEyePosition();
-		Vec3 end = eye.add(player.getLookAngle().scale(reach));
-		HitResult hit = level.clip(new ClipContext(eye, end, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, CollisionContext.empty()));
-		Vec3 at = hit.getType() == HitResult.Type.MISS ? end : hit.getLocation().subtract(player.getLookAngle().scale(0.3));
-		return at.subtract(Vec3.atLowerCornerOf(s.origin(s.here)));
-	}
-
 	/** A lock the astromech worked on is open. */
 	private static void hacked(StorySession s, String id) {
 		switch (id) {
@@ -968,6 +929,11 @@ public final class Chapter1 implements Chapter {
 
 		if (s.has("droid.r2v7") && !s.journal.contains("droid_r2v7")) {
 			s.journal.add("droid_r2v7");
+		}
+
+		// Phase 21: with Ilyra's saber comes the Focus (also for files from before).
+		if (s.has("saber.taken") && !s.has("know.focus")) {
+			learnFocus(s, false);
 		}
 
 		// The ship's state at this point of the story.
@@ -1101,11 +1067,14 @@ public final class Chapter1 implements Chapter {
 			}
 			case "m6.duel" -> {
 				s.fighting = true;
+				s.unset("tmp.film");
+				s.unset("tmp.duel_end");
 				Figure shadow = s.figure("shadow");
 
 				if (shadow != null) {
 					shadow.mode = Figure.HELD;
-					shadow.target = step.spawn();
+					shadow.target = null;
+					shadow.lit = false;
 				}
 			}
 			case "m6.epilogue" -> {
@@ -1205,7 +1174,7 @@ public final class Chapter1 implements Chapter {
 			case "m5.escape" -> "music.story_alarm";
 			case "m6.escape1", "m6.escape2", "m6.falcon" -> "music.combat_duel";
 			// Silence while she speaks; the duel's music when the blades are lit.
-			case "m6.duel" -> s.has("tmp.duel") ? "music.story_duel" : "";
+			case "m6.duel" -> s.has("tmp.duel") || s.has("tmp.film") && !s.has("tmp.duel_end") ? "music.story_duel" : "";
 			case "m6.jump" -> "music.event_rise";
 			default -> D.equals(s.here) && s.inside(D, HIDDEN) ? "music.story_hideout" : "music.story_stealth";
 		};
@@ -1265,6 +1234,7 @@ public final class Chapter1 implements Chapter {
 		}
 
 		safeCheckpoint(s, player);
+		Companions.tick(s);
 
 		if (s.mission == 1 || s.mission == 2) {
 			eavesdrop(s);
@@ -1374,14 +1344,7 @@ public final class Chapter1 implements Chapter {
 					s.complete();
 				}
 			}
-			case "m6.duel" -> {
-				Figure shadow = s.figure("shadow");
-				Vec3 me = s.local(D);
-
-				if (shadow != null && !shadow.hostile && !s.has("tmp.duel") && s.dialog == null && shadow.position().distanceTo(me) < 10.0) {
-					s.talk("m6_shadow", shadow);
-				}
-			}
+			case "m6.duel" -> duelTick(s, player);
 			case "m6.jump" -> {
 				if (s.has("tmp.jump_go") && s.dialog == null && !s.has("tmp.jumping")) {
 					s.set("tmp.jumping");
@@ -1398,7 +1361,7 @@ public final class Chapter1 implements Chapter {
 		}
 
 		// Nobody fights while someone speaks (the player cannot move then).
-		if (s.fighting && !s.completing() && s.dialog == null) {
+		if (s.fighting && !s.completing() && s.dialog == null && !s.has("tmp.film")) {
 			Finale.tick(s, player, level);
 		}
 	}
@@ -1716,6 +1679,110 @@ public final class Chapter1 implements Chapter {
 		if ("arrival".equals(film) && s.at("m1.cockpit") && s.has("tmp.film")) {
 			s.timer("dock", 1);
 		}
+
+		if (("duel".equals(film) || "duel_end".equals(film)) && s.at("m6.duel") && s.has("tmp.film")) {
+			s.timer("film", 1);
+		}
+	}
+
+	/** Phase 21: how long the film before the duel and the one of his flight are (as the client's {@code DuelFilm}). */
+	static final int DUEL_FILM = 220;
+	static final int DUEL_END_FILM = 130;
+	/** Where the player stands in the film before the duel (facing him), and his way out (to the flight control door). */
+	static final Vec3 DUEL_PLAYER = new Vec3(40.5, H, -21.0);
+
+	/** Phase 21: the duel's step: the film (once; after that his words), the fight, his flight. */
+	private static void duelTick(StorySession s, ServerPlayer player) {
+		Figure shadow = s.figure("shadow");
+		Vec3 me = s.local(D);
+
+		if (s.has("tmp.duel_end")) {
+			int left = s.timers.getOrDefault("film", 0);
+			int t = DUEL_END_FILM - left;
+
+			if (shadow != null) {
+				if (t == 18) {
+					shadow.lit = false;
+					Story.cue(s, Story.CUE_SOUND, "", "saber.retract", shadow.id);
+				} else if (t == 40) {
+					shadow.scriptSpeed = 6.5;
+					walk(shadow, new Vec3(32.0, H, -31.0), new Vec3(22.0, H, -38.0), new Vec3(18.6, H, -39.0), new Vec3(15.5, H, -39.0));
+					s.set("tmp.leave.shadow");
+				}
+			}
+
+
+			if (!s.timer("film")) {
+				s.unset("tmp.film");
+				s.unset("tmp.duel_end");
+				s.unset("tmp.leave.shadow");
+				s.set("gone.shadow");
+				s.figures.removeIf(figure -> figure.key.equals("shadow"));
+
+				// His last words are in the film; Dax calls when it is over (seen with the HUD again).
+				s.radio("dax", "sabercraft.story.radio.dax_arrives");
+				Story.cue(s, Story.CUE_MUSIC, "", "music.event_rise", 0);
+
+				s.complete();
+			}
+
+			return;
+		}
+
+		if (shadow == null || shadow.hostile || s.has("tmp.duel") || s.dialog != null) {
+			return;
+		}
+
+		if (s.has("tmp.film")) {
+			int left = s.timers.getOrDefault("film", 0);
+			int t = DUEL_FILM - left;
+
+			if (t == 70) {
+				// He turns round.
+				shadow.target = null;
+			}
+
+			if (t >= 70) {
+				shadow.turnTowards(me, 6.0F, true);
+			}
+
+			if (t == 140) {
+				shadow.lit = true;
+				Story.cue(s, Story.CUE_SOUND, "", "saber.ignite", shadow.id);
+			}
+
+			if (!s.timer("film")) {
+				s.unset("tmp.film");
+				shadow.yaw = Crew.yaw(shadow.position(), me);
+				Finale.duelStarts(s);
+			}
+
+			return;
+		}
+
+		if (shadow.position().distanceTo(me) < 10.0) {
+			if (!s.has("seen.duel_film")) {
+				// The film before the duel, once (saved at once: after a defeat his words only).
+				s.set("seen.duel_film");
+				s.progress.flags.add("seen.duel_film");
+				s.set("tmp.film");
+				s.timer("film", DUEL_FILM);
+				Story.place(s, D, DUEL_PLAYER, 180.0F);
+				Story.cue(s, Story.CUE_CINEMA, "duel", "", DUEL_FILM);
+			} else {
+				shadow.yaw = Crew.yaw(shadow.position(), me);
+				s.talk("m6_shadow", shadow);
+			}
+		}
+	}
+
+	/** Phase 21: he breaks off ({@link Finale}): the film of his flight, then the Falcon. */
+	static void duelEnds(StorySession s, Figure shadow) {
+		s.set("tmp.film");
+		s.set("tmp.duel_end");
+		s.timer("film", DUEL_END_FILM);
+		shadow.mode = Figure.HELD;
+		Story.cue(s, Story.CUE_CINEMA, "duel_end", "", DUEL_END_FILM);
 	}
 
 	/** Mission 1: M-31, stuck behind the crates, comes with the player. */
@@ -1877,7 +1944,26 @@ public final class Chapter1 implements Chapter {
 		s.raiseAlarm(Stealth.SEARCH + Stealth.LOSE);
 		Story.cue(s, Story.CUE_SOUND, "", "story.alarm", 0);
 		s.radio("kestrel", "sabercraft.story.radio.saber_taken");
+		learnFocus(s, true);
 		done(s, "m6.saber");
+	}
+
+	/**
+	 * Phase 21: the Focus, the one Force skill of the story: Ilyra's saber remembers. The journal
+	 * explains it; the first time also a hint.
+	 */
+	static void learnFocus(StorySession s, boolean now) {
+		s.set("know.focus");
+		s.focus = 1.0F;
+
+		if (!s.journal.contains("focus")) {
+			s.journal.add("focus");
+		}
+
+		if (now) {
+			s.radio("kestrel", "sabercraft.story.radio.focus");
+			s.hint("sabercraft.story.hint.focus_learned");
+		}
 	}
 
 	/** Sends a figure along a way once (then it holds there). */

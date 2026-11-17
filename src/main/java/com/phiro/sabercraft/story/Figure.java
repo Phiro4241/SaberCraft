@@ -111,6 +111,28 @@ public final class Figure {
 	public @Nullable Vec3 closestTo;
 	/** Phase 20: whether they called the alarm in already (at a wall comm). */
 	public boolean called;
+	/**
+	 * Phase 21: in a chase, a second shot right after the first ({@link Combat}); which way they
+	 * step aside while waiting for the next shot (-1 or 1) and until when (game time).
+	 */
+	public int burst;
+	public int strafe = 1;
+	public long strafeUntil;
+	/** Phase 21: how often a droid's noise drew them already (each time they believe it less). */
+	public int distracted;
+	/** Phase 21: a noise they heard and will go to see once they have listened ({@link #LOOK}), or null. */
+	public @Nullable Vec3 lure;
+	/** Phase 21: their saber is lit (a scene: the blade is seen before the fight begins). */
+	public boolean lit;
+	/** Phase 21: the duel ({@link Finale}): what he does now, and a blow's kind; strokes of the player he parried in a row. */
+	public int action;
+	public int attack;
+	public int combo;
+	public int parried;
+	/** Phase 21: strokes that hit him in this opening. */
+	public int hits;
+	/** Phase 21: how fast they walk a scripted way (blocks a second; 0 = walking). */
+	public double scriptSpeed;
 
 	public Figure(int id, String key, Crew crew) {
 		this.id = id;
@@ -197,6 +219,9 @@ public final class Figure {
 		this.closest = Double.MAX_VALUE;
 		this.closestTo = null;
 		this.called = false;
+		this.windup = 0;
+		this.burst = 0;
+		this.lure = null;
 	}
 
 	/** Turns the head (and over time the body) towards a point, at most {@code step} degrees. */

@@ -774,8 +774,8 @@ public class StoryGameTest implements FabricClientGameTest {
 		check(this.context.computeOnClient(client -> StoryClient.noiseShownForTest()), "no mark shows where M-31's noise went");
 		this.context.takeScreenshot("story_m1_lure");
 
-		// He walks over to the noise: a few steps, and the hatch is free.
-		for (int i = 0; i < 20 && this.on(s -> {
+		// He listens a moment, then walks over to the noise: a few steps, and the hatch is free.
+		for (int i = 0; i < 50 && this.on(s -> {
 			Figure guard = session(s).figure("maint");
 			return guard != null && guard.position().distanceTo(new Vec3(10.5, H, -8.0)) < 2.5;
 		}); i++) {
@@ -839,7 +839,8 @@ public class StoryGameTest implements FabricClientGameTest {
 			gone = this.on(s -> session(s).figures.stream().noneMatch(f -> f.key.startsWith("reinf.")));
 		}
 
-		check(gone, "the troopers called in do not go back once it is calm");
+		// Phase 21: two of them may stay as a search patrol (no longer called in, but on their round).
+		check(gone, "the troopers called in do not go back (or stay as a patrol) once it is calm");
 		check(this.on(s -> session(s).has("wary.m4")), "the crew is not wary after the alarm");
 	}
 
@@ -1146,50 +1147,154 @@ public class StoryGameTest implements FabricClientGameTest {
 		this.context.runOnClient(client -> client.options.setCameraType(CameraType.FIRST_PERSON));
 	}
 
-	/** The duel: she speaks, lights her saber; a stroke into her guard is parried, open she is hit, and at the end she breaks off. */
+	/**
+	 * The duel (Phase 21): the film before it (his back, he turns, the blade lights, the title),
+	 * then the fight: strokes into his guard are parried and hammering at it is answered with a
+	 * thrust; a blow blocked with the guard leaves him staggering, and then a stroke hits; a blow
+	 * not blocked lands; the Focus slows him; a new phase makes him step back; at the end he breaks
+	 * off, and the film of his flight plays before the Falcon.
+	 */
 	private void duel() {
+		ClientGameTestContext context = this.context;
 		this.place(Story.DESTROYER, new Vec3(40.5, H, -21.0), 180.0F, 0.0F);
-		this.waitDialog(80, "the Shadowblade does not speak");
-		this.converse();
-		this.context.waitTicks(20);
-		check(this.on(s -> session(s).has("tmp.duel")), "the duel does not begin");
+		boolean film = false;
+
+		for (int i = 0; i < 30 && !film; i++) {
+			context.waitTicks(2);
+			film = "duel".equals(context.computeOnClient(client -> StoryCinema.filmForTest()));
+		}
+
+		check(film, "the film before the duel does not begin");
+		check(this.on(s -> !session(s).figure("shadow").lit), "his blade is lit before the film lights it");
+		double away = context.computeOnClient(client -> client.gameRenderer.mainCamera().position().distanceTo(client.player.getEyePosition()));
+		check(away > 1.5 && away < 30.0, "the duel's film camera is not in the hangar near the player (" + Math.round(away) + " blocks)");
+		check(context.computeOnClient(client -> client.gameRenderer.mainCamera().isDetached()), "the duel's film does not show the player from outside");
+		context.waitTicks(36);
+		context.takeScreenshot("story_duel_film_1_back");
+		context.waitTicks(70);
+		context.takeScreenshot("story_duel_film_2_turns");
+		context.waitTicks(48);
+		context.takeScreenshot("story_duel_film_3_ignition");
+		check(this.on(s -> session(s).figure("shadow").lit), "his blade does not light in the film");
+		context.waitTicks(34);
+		context.takeScreenshot("story_duel_film_4_face_off");
+
+		for (int i = 0; i < 40 && !this.on(s -> session(s).has("tmp.duel")); i++) {
+			context.waitTicks(5);
+		}
+
+		check(this.on(s -> session(s).has("tmp.duel")), "the duel does not begin after the film");
+		check(!context.computeOnClient(client -> StoryCinema.active()), "the film does not end");
+		check(this.on(s -> session(s).has("seen.duel_film") && session(s).progress.flags.contains("seen.duel_film")), "the film is not remembered (it would play after every defeat)");
 		this.checkMusic("music.story_duel", "the duel");
+		check(this.on(s -> session(s).has("know.focus")), "the Focus is not known in the duel");
+		check(this.on(s -> !Story.allows(me(s), "push") && Story.allows(me(s), "guard") && Story.allows(me(s), "dash")),
+				"in the story the Force push is not locked or the guard/dash is");
+
+		// Into his guard: parried. Three in a row: he answers with a thrust.
 		this.faceFigure("shadow", 2.2);
-		this.server.runOnServer(s -> {
-			Figure shadow = session(s).figure("shadow");
-			shadow.timer = 0;
-			shadow.windup = 0;
-			shadow.cooldown = 40;
-		});
+		this.server.runOnServer(s -> StoryTesting.guard(session(s).figure("shadow"), 200));
 		float before = this.on(s -> session(s).figure("shadow").health);
-		this.context.getInput().pressKey(options -> options.keyAttack);
-		this.context.waitTicks(8);
-		check(this.on(s -> session(s).figure("shadow").health) == before, "a stroke into her guard is not parried");
-		// Filmed from behind and a little aside, so that both blades are seen (not her behind the player).
+		int ripostes = this.on(s -> StoryTesting.ripostes());
+
+		for (int i = 0; i < 3; i++) {
+			this.faceFigure("shadow", 2.2);
+			context.getInput().pressKey(options -> options.keyAttack);
+			context.waitTicks(8);
+			this.server.runOnServer(s -> session(s).figure("shadow").cooldown = 200);
+		}
+
+		check(this.on(s -> session(s).figure("shadow").health) == before, "a stroke into his guard is not parried");
+		check(this.on(s -> StoryTesting.ripostes()) > ripostes, "three strokes into his guard are not answered");
+
+		// A blow blocked with the guard: he staggers; then a stroke hits.
+		this.faceFigure("shadow", 2.4);
+		context.getInput().holdKey(options -> com.phiro.sabercraft.client.ability.SaberAbilityClient.GUARD_KEY);
+		context.waitTicks(6);
+		this.server.runOnServer(s -> StoryTesting.blow(session(s).figure("shadow"), 1, 12));
+		this.context.runOnClient(client -> client.options.setCameraType(CameraType.THIRD_PERSON_BACK));
+		context.waitTicks(6);
+		context.takeScreenshot("story_duel_windup");
+		boolean open = false;
+
+		for (int i = 0; i < 12 && !open; i++) {
+			context.waitTicks(2);
+			open = this.on(s -> "open".equals(StoryTesting.action(session(s).figure("shadow"))));
+		}
+
+		context.getInput().releaseKey(options -> com.phiro.sabercraft.client.ability.SaberAbilityClient.GUARD_KEY);
+		check(open, "a blocked blow does not leave him open (he does " + this.on(s -> StoryTesting.action(session(s).figure("shadow"))) + ")");
+		context.takeScreenshot("story_duel_staggers");
+		this.context.runOnClient(client -> client.options.setCameraType(CameraType.FIRST_PERSON));
+		this.faceFigure("shadow", 2.2);
+		before = this.on(s -> session(s).figure("shadow").health);
+		context.getInput().pressKey(options -> options.keyAttack);
+		context.waitTicks(8);
+		check(this.on(s -> session(s).figure("shadow").health) < before, "a stroke while he staggers does not hit");
+
+		// A blow not blocked lands (the player is shielded by the test's resistance), and he steps back.
+		this.faceFigure("shadow", 2.4);
+		this.server.runOnServer(s -> StoryTesting.blow(session(s).figure("shadow"), 3, 6));
+		context.waitTicks(12);
+		check(this.on(s -> "recoil".equals(StoryTesting.action(session(s).figure("shadow")))), "a blow not blocked does not land");
+
+		// The Focus: full at the start of the duel; the key slows him.
+		int foci = this.on(s -> StoryTesting.foci());
+		this.server.runOnServer(s -> session(s).focus = 1.0F);
+		context.getInput().pressKey(StoryClient.FOCUS_KEY);
+		context.waitTicks(6);
+		check(this.on(s -> StoryTesting.foci()) > foci && this.on(s -> session(s).focusTicks > 0), "the Focus key does not slow time");
+		check(context.computeOnClient(client -> StoryClient.fociForTest()) > 0, "the client does not show the Focus");
+		context.takeScreenshot("story_duel_focus");
+
+		// A new phase: he steps back and comes on quicker.
+		this.server.runOnServer(s -> session(s).figure("shadow").health = StoryTesting.phaseTwo() + StoryTesting.hit() * 0.5F);
+		this.faceFigure("shadow", 2.2);
+		this.server.runOnServer(s -> StoryTesting.open(session(s).figure("shadow")));
+		context.getInput().pressKey(options -> options.keyAttack);
+		context.waitTicks(6);
+		check(this.on(s -> "turn".equals(StoryTesting.action(session(s).figure("shadow"))) && StoryTesting.phase(session(s).figure("shadow")) == 2),
+				"the second phase does not begin with him stepping back");
+
+		// Filmed from behind and a little aside, so that both blades are seen.
 		this.faceFigure("shadow", 3.0);
-		this.context.runOnClient(client -> {
+		context.runOnClient(client -> {
 			client.player.setYRot(client.player.getYRot() - 28.0F);
 			client.player.setXRot(8.0F);
 			client.options.setCameraType(CameraType.THIRD_PERSON_BACK);
 		});
 		this.film("duel", 30, 2);
-		this.context.takeScreenshot("story_duel");
-		this.context.runOnClient(client -> client.options.setCameraType(CameraType.FIRST_PERSON));
+		context.takeScreenshot("story_duel");
+		context.runOnClient(client -> client.options.setCameraType(CameraType.FIRST_PERSON));
 
-		for (int i = 0; i < 14 && this.step().equals("m6.duel"); i++) {
+		for (int i = 0; i < 20 && this.on(s -> session(s).has("tmp.duel")); i++) {
 			this.faceFigure("shadow", 2.0);
 			this.server.runOnServer(s -> {
 				Figure shadow = session(s).figure("shadow");
 
-				if (shadow != null) {
+				if (shadow != null && shadow.hostile) {
 					StoryTesting.open(shadow);
 				}
 			});
-			this.context.getInput().pressKey(options -> options.keyAttack);
-			this.context.waitTicks(8);
+			context.getInput().pressKey(options -> options.keyAttack);
+			context.waitTicks(8);
 		}
 
-		check(!this.step().equals("m6.duel"), "the Shadowblade does not break off");
+		check(!this.on(s -> session(s).has("tmp.duel")), "the Shadowblade does not break off");
+		boolean end = false;
+
+		for (int i = 0; i < 20 && !end; i++) {
+			context.waitTicks(2);
+			end = "duel_end".equals(context.computeOnClient(client -> StoryCinema.filmForTest()));
+		}
+
+		check(end, "the film of his flight does not play");
+		context.waitTicks(20);
+		context.takeScreenshot("story_duel_end_1_retreat");
+		context.waitTicks(40);
+		context.takeScreenshot("story_duel_end_2_flight");
+		this.waitStep("m6.falcon", 160);
+		check(this.on(s -> session(s).figure("shadow") == null && session(s).has("gone.shadow")), "he is still there after his flight");
 	}
 
 	// --- Doing things ----------------------------------------------------------------------------------

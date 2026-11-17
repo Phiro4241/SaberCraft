@@ -89,6 +89,12 @@ public record BlasterType(Identifier id, float damage, float speed, int interval
 	 */
 	public static final BlasterType TURBOLASER = new BlasterType(SaberCraft.id("turbolaser"), 12.0F, 4.6F, 8, 0.0F, 0.3F, 1, GREEN, 7.0F, 0, false, true,
 			160.0F, 0.9F);
+	/**
+	 * Phase 21: the stun setting of the troopers' rifles in the story: a short blue bolt that hurts
+	 * little but slows; three hits and one is caught. Not a blaster to hold, so not in {@link #ALL};
+	 * only {@link #byId} knows it, so bolts in flight are drawn right.
+	 */
+	public static final BlasterType STUN = new BlasterType(SaberCraft.id("stun"), 1.0F, 2.4F, 10, 0.0F, 1.0F, 1, BLUE, 1.1F, 30, false, true, 26.0F, 0.0F);
 	/** The bolts of starship cannons, which only ships fire. */
 	public static final List<BlasterType> SHIP_LASERS = List.of(XWING, TIE, TURBOLASER);
 
@@ -99,6 +105,10 @@ public record BlasterType(Identifier id, float damage, float speed, int interval
 	public static final List<BlasterType> ALL = List.of(DL44, E11, DC15A, SE14C, BOWCASTER, A280, REPEATER, REBEL, EZRA);
 
 	public static Optional<BlasterType> byId(@Nullable Identifier id) {
+		if (STUN.id().equals(id)) {
+			return Optional.of(STUN);
+		}
+
 		for (BlasterType laser : SHIP_LASERS) {
 			if (laser.id().equals(id)) {
 				return Optional.of(laser);

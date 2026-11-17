@@ -75,6 +75,19 @@ public final class StorySession {
 	public boolean burned;
 	/** After a capture: a few seconds before anyone can see the player again. */
 	public int grace;
+	/**
+	 * Phase 21: in a chase, when anyone hunting the player last saw them (game time) and where
+	 * (plot space): they tell each other over the comlink, so the others come there too.
+	 */
+	public long huntSeen = -1000L;
+	public @Nullable Vec3 huntAt;
+	/** Phase 21: stun bolts that hit the player in this chase (three, and they are caught). */
+	public int stuns;
+	/** Phase 21: the search after a chase was announced (sirens off, "search the deck"). */
+	public boolean searching;
+	/** Phase 21: the Focus (the duel's slowed time): how full it is (0..1) and how long it still lasts (ticks). */
+	public float focus;
+	public int focusTicks;
 
 	/** The open dialog and the line in it, or null. */
 	public @Nullable Dialog dialog;
@@ -197,6 +210,8 @@ public final class StorySession {
 
 		this.cornered = 0;
 		this.cornerer = null;
+		this.stuns = 0;
+		this.focusTicks = 0;
 		this.dialog = null;
 		this.line = null;
 		this.partner = null;

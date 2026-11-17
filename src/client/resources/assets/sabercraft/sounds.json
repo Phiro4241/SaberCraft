@@ -1466,5 +1466,33 @@
       }
     ],
     "subtitle": "subtitles.sabercraft.story.siren"
+  },
+  "story.stun_hit": {
+    "sounds": [
+      {
+        "name": "sabercraft:story/stun_hit"
+      }
+    ]
+  },
+  "story.m31_rattle": {
+    "sounds": [
+      {
+        "name": "sabercraft:story/m31_rattle"
+      }
+    ]
+  },
+  "story.focus_in": {
+    "sounds": [
+      {
+        "name": "sabercraft:story/focus_in"
+      }
+    ]
+  },
+  "story.focus_out": {
+    "sounds": [
+      {
+        "name": "sabercraft:story/focus_out"
+      }
+    ]
   }
 }

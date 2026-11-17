@@ -242,6 +242,11 @@ public class BlasterBolt extends ThrowableItemProjectile {
 			return false;
 		}
 
+		// Phase 21: a story trooper's stun bolt is meant for the player (not the droids beside them).
+		if (this.type == BlasterType.STUN && !(target instanceof Player)) {
+			return false;
+		}
+
 		return (owner == null || owner.getVehicle() != target) && super.canHitEntity(target);
 	}
 
@@ -282,6 +287,11 @@ public class BlasterBolt extends ThrowableItemProjectile {
 
 			if (this.type.stun() > 0) {
 				living.addEffect(new MobEffectInstance(MobEffects.SLOWNESS, this.type.stun(), 2), owner);
+			}
+
+			// Phase 21: a story's stun bolt: the story counts the hits (three, and one is caught).
+			if (this.type == BlasterType.STUN && living instanceof ServerPlayer player) {
+				com.phiro.sabercraft.story.Story.stunned(player);
 			}
 
 			if (this.knockback > 0.0F) {
