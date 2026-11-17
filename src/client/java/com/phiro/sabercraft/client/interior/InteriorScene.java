@@ -119,7 +119,7 @@ public final class InteriorScene {
 
 	/** Whether the fog should be pushed back in this level (the interiors, with the detailed models on). */
 	public static boolean clearFog(@Nullable ClientLevel level) {
-		return level != null && ShipInteriors.isInterior(level) && ImmersionConfig.get().shipInteriorDetail;
+		return level != null && ShipInteriors.isInterior(level) && (ImmersionConfig.get().shipInteriorDetail || com.phiro.sabercraft.client.story.StoryCinema.active());
 	}
 
 	/** The visuals of a plan, or {@code null}. */
@@ -152,6 +152,8 @@ public final class InteriorScene {
 		float brightnessAt = Float.NaN;
 		/** Phase 17: the cells need their light looked up again (the lights came back on). */
 		boolean relightAll;
+		/** Phase 20: how bright a story's ship is on its emergency lights (fades in and out). */
+		float storyDim = 1.0F;
 
 		Model(String key, int version, BlockPos origin, InteriorVisuals visuals) {
 			this.key = key;
@@ -248,7 +250,8 @@ public final class InteriorScene {
 		Minecraft client = Minecraft.getInstance();
 		ClientLevel level = client.level;
 
-		if (level == null || !ShipInteriors.isInterior(level) || !ImmersionConfig.get().shipInteriorDetail || PLOTS.isEmpty()) {
+		if (level == null || !ShipInteriors.isInterior(level) || !ImmersionConfig.get().shipInteriorDetail || PLOTS.isEmpty()
+				|| com.phiro.sabercraft.client.story.StoryCinema.elsewhere()) {
 			return;
 		}
 
@@ -338,8 +341,13 @@ public final class InteriorScene {
 				}
 			}
 
+			// Phase 20: a story's ship on emergency lights (dim, warm, red lamps) or in an alarm (red, pulsing).
+			float[] light = com.phiro.sabercraft.client.story.StoryClient.shipLight(model.origin, seconds);
+			float storyTarget = light != null ? light[6] : 1.0F;
+			float storyStep = Float.isNaN(model.brightnessAt) ? 1.0F : Math.min(1.0F, Mth.clamp(seconds - model.brightnessAt, 0.0F, 0.25F) * 2.0F);
+			model.storyDim += (storyTarget - model.storyDim) * storyStep;
 			model.brightnessAt = seconds;
-			float dim = model.brightness;
+			float dim = model.brightness * model.storyDim;
 			poseStack.pushPose();
 			poseStack.translate(origin.getX() - camera.x, origin.getY() - camera.y, origin.getZ() - camera.z);
 
@@ -358,7 +366,7 @@ public final class InteriorScene {
 					}
 
 					quads += mesh.count;
-					submitMesh(collector, poseStack, layer.getKey(), mesh, seconds, dim);
+					submitMesh(collector, poseStack, layer.getKey(), mesh, seconds, dim, light);
 				}
 			}
 
@@ -368,7 +376,7 @@ public final class InteriorScene {
 			for (Map.Entry<Layer, Mesh> layer : moving.entrySet()) {
 				if (!layer.getValue().isEmpty() && !(shadow && layer.getKey() != Layer.SOLID)) {
 					quads += layer.getValue().count;
-					submitMesh(collector, poseStack, layer.getKey(), layer.getValue(), seconds, dim);
+					submitMesh(collector, poseStack, layer.getKey(), layer.getValue(), seconds, dim, light);
 				}
 			}
 
@@ -379,13 +387,13 @@ public final class InteriorScene {
 		lastCells = cells;
 	}
 
-	private static void submitMesh(SubmitNodeCollector collector, PoseStack poseStack, Layer layer, Mesh mesh, float seconds, float brightness) {
+	private static void submitMesh(SubmitNodeCollector collector, PoseStack poseStack, Layer layer, Mesh mesh, float seconds, float brightness, float @org.jspecify.annotations.Nullable [] tint) {
 		boolean alpha = layer == Layer.GLASS || layer == Layer.HOLO;
 		float glow = com.phiro.sabercraft.interior.ShipLights.glow(brightness);
 		// A lamp is dimmed by the glow's share already: the rest makes it as dark as a lamp gets.
 		float lamp = com.phiro.sabercraft.interior.ShipLights.lamps(brightness) / glow;
 		collector.submitCustomGeometry(poseStack, renderType(layer), (pose, buffer) -> mesh.emit(pose, buffer,
-				(anim, quad) -> anim == ANIM_LAMP ? lamp : factor(anim, quad, seconds), alpha, brightness, glow));
+				(anim, quad) -> anim == ANIM_LAMP ? lamp : factor(anim, quad, seconds), alpha, brightness, glow, tint));
 	}
 
 	private static RenderType renderType(Layer layer) {

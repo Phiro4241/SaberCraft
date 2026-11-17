@@ -24,6 +24,8 @@ import com.phiro.sabercraft.client.ship.ShipClient;
  *
  * <p>Phase 14: in the first-person view a pilot's camera sits in the cockpit of the ship, pitched
  * and banked with it (see {@link CockpitView}). Only the camera of this client changes.
+ *
+ * <p>Phase 20: during a story film the camera follows the film's shots instead.
  */
 @Mixin(Camera.class)
 public abstract class CameraMixin {
@@ -57,6 +59,21 @@ public abstract class CameraMixin {
 
 	@Inject(method = "alignWithEntity", at = @At("TAIL"))
 	private void sabercraft$cockpit(float partialTicks, CallbackInfo ci) {
+		// Phase 20: a story film moves the camera along its shots.
+		com.phiro.sabercraft.client.interior.ArrivalFilm.Shot film = com.phiro.sabercraft.client.story.StoryCinema.camera(partialTicks);
+
+		if (film != null) {
+			this.setRotation(film.yaw(), film.pitch());
+			this.setPosition(film.position());
+
+			// Phase 21: a film where the story is shows the player from outside.
+			if (com.phiro.sabercraft.client.story.StoryCinema.inWorld()) {
+				this.detached = true;
+			}
+
+			return;
+		}
+
 		if (this.detached) {
 			return;
 		}

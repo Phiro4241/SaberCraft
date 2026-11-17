@@ -37,6 +37,7 @@ import com.phiro.sabercraft.character.OutfitSync;
 import com.phiro.sabercraft.droid.DroidEntity;
 import com.phiro.sabercraft.droid.DroidType;
 import com.phiro.sabercraft.droid.Droids;
+import com.phiro.sabercraft.interior.Crew;
 import com.phiro.sabercraft.interior.ShipInteriors;
 import com.phiro.sabercraft.network.StoryActionPayload;
 import com.phiro.sabercraft.network.StoryCuePayload;
@@ -69,6 +70,12 @@ public final class Story {
 	public static final byte CUE_SCAN = 5;
 	public static final byte CUE_TITLE = 6;
 	public static final byte CUE_END = 7;
+	/** Phase 20: where a droid's noise was (a mark for a moment), the cinematic arrival, a checkpoint made. */
+	public static final byte CUE_NOISE = 8;
+	public static final byte CUE_CINEMA = 9;
+	public static final byte CUE_CHECKPOINT = 10;
+	/** Phase 21: the duel's moments for the HUD (who: hit, hurt, blocked, parried, phase, meter, focus_on/off, over). */
+	public static final byte CUE_DUEL = 11;
 
 	/** How far one reaches to use a thing or speak to someone (blocks). */
 	static final double REACH = 4.5;
@@ -83,6 +90,7 @@ public final class Story {
 	}
 
 	public static void init() {
+		Companions.init();
 		ServerTickEvents.END_SERVER_TICK.register(Story::tick);
 		ServerPlayNetworking.registerGlobalReceiver(StoryActionPayload.TYPE, (payload, context) -> action(context.player(), payload));
 		ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> server.execute(() -> joined(handler.getPlayer())));
@@ -90,7 +98,9 @@ public final class Story {
 			StorySession session = SESSIONS.remove(handler.getPlayer().getUUID());
 
 			if (session != null) {
-				// Saved at the last checkpoint; the next login continues there.
+				// Saved at the last checkpoint (Phase 20: or, all calm, how far one got); the next
+				// login continues there.
+				session.keepOnLeave();
 				OutfitSync.override(handler.getPlayer(), null);
 			}
 		});
@@ -184,12 +194,16 @@ public final class Story {
 			case RESTART -> {
 				progress.mission = 0;
 				progress.step = 0;
+				progress.stepId = "";
+				progress.placeShip = "";
 				progress.flags.clear();
 				progress.journal.clear();
 			}
 			case MISSION -> {
 				progress.mission = mission;
 				progress.step = 0;
+				progress.stepId = "";
+				progress.placeShip = "";
 				List<String> before = progress.missionStart.get(mission);
 				progress.flags.clear();
 				progress.flags.addAll(before != null ? before : Chapter1.defaults(mission));
@@ -200,7 +214,8 @@ public final class Story {
 			}
 		}
 
-		progress.mission = Math.min(progress.mission, missions - 1);
+		progress.mission = Math.max(0, Math.min(progress.mission, missions - 1));
+		resolveStep(chapter, progress);
 		progress.missionStart.putIfAbsent(progress.mission, List.copyOf(progress.flags));
 		UUID owner = storyOwner(player.getUUID());
 		BlockPos falcon = ShipInteriors.storyPlot(server, owner, FALCON);
@@ -213,11 +228,40 @@ public final class Story {
 		player.getFoodData().setFoodLevel(20);
 		Droids.replaceCrew(player, storyDroids(session));
 		session.rebuildFigures();
-		session.begin(true, true);
+		session.begin(true);
 		cue(session, CUE_TITLE, "", chapter.missions().get(progress.mission).title(), 0);
 		sendState(session);
 		SaberCraft.LOGGER.info("{} entered the story ({}, mission {}, step {})", player.getPlainTextName(), start, progress.mission + 1, progress.step + 1);
 		return null;
+	}
+
+	/**
+	 * Phase 20: the step of a saved checkpoint by its id (a mission may have got a step more since
+	 * the file was written). A file of Phase 19 has only the number: it is read as a step of Phase
+	 * 19's missions, and a step that is gone now becomes the one that took its place.
+	 */
+	static void resolveStep(Chapter chapter, StoryProgress progress) {
+		Mission mission = chapter.missions().get(progress.mission);
+		String id = progress.stepId;
+
+		if ((id == null || id.isEmpty()) && progress.format < StoryProgress.FORMAT && chapter instanceof Chapter1) {
+			id = Chapter1.phase19Step(progress.mission, progress.step);
+			// Its place was the step's start then; now it is the step's safe place.
+			progress.placeShip = "";
+		}
+
+		int index = id == null || id.isEmpty() ? -1 : mission.indexOf(id);
+
+		if (index < 0 && id != null && !id.isEmpty() && chapter instanceof Chapter1) {
+			index = mission.indexOf(Chapter1.renamedStep(id));
+		}
+
+		if (index >= 0) {
+			progress.step = index;
+		}
+
+		progress.step = Math.max(0, Math.min(progress.step, mission.steps().size() - 1));
+		progress.stepId = mission.steps().get(progress.step).id();
 	}
 
 	/** The highest mission one may start (the first not yet finished). */
@@ -233,7 +277,14 @@ public final class Story {
 
 	/** Takes a player out of the story: their things, droids, game mode and place back. */
 	public static void leave(ServerPlayer player) {
-		StorySession session = SESSIONS.remove(player.getUUID());
+		StorySession session = SESSIONS.get(player.getUUID());
+
+		if (session != null) {
+			// Phase 20: calm, how far one got is kept (in a chase the last checkpoint stays).
+			session.keepOnLeave();
+		}
+
+		SESSIONS.remove(player.getUUID());
 		MinecraftServer server = player.level().getServer();
 		StoryProgress progress = session != null ? session.progress : StoryStore.load(server, player.getUUID());
 
@@ -346,6 +397,26 @@ public final class Story {
 		session.dirty = true;
 	}
 
+	/** Phase 20: whether one of the people of the story whose ship has that plot corner is in a box (world space): doors open for them. */
+	public static boolean figureNear(BlockPos origin, AABB box) {
+		StorySession session = at(origin);
+
+		if (session == null) {
+			return false;
+		}
+
+		String ship = origin.equals(session.falcon) ? FALCON : DESTROYER;
+		Vec3 corner = Vec3.atLowerCornerOf(origin);
+
+		for (Figure figure : session.figures) {
+			if (ship.equals(figure.ship) && figure.mode != Figure.DOWN && box.contains(figure.position().add(corner).add(0.0, 0.5, 0.0))) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
 	/**
 	 * A player of a story stepped into an exit of a story ship (the Falcon's ramp, below the
 	 * hangar). Returns whether the story took care of it (always, for story ships).
@@ -376,13 +447,25 @@ public final class Story {
 		return session.chapter.locked(session, ship, x, y, z);
 	}
 
-	/** A player tried a hatch the story keeps shut. */
-	public static void lockedHatch(ServerPlayer player) {
-		StorySession session = SESSIONS.get(player.getUUID());
+	/**
+	 * Phase 20: whether the story keeps that hatch of a plot shut now (bolted from the other side,
+	 * a guard standing in front of it); the player who tried is told why.
+	 */
+	public static boolean hatchClosed(ServerPlayer player, BlockPos origin, BlockPos cell) {
+		StorySession session = at(origin);
 
-		if (session != null) {
-			session.hint("sabercraft.story.hint.hatch_locked");
+		if (session == null) {
+			return false;
 		}
+
+		String ship = origin.equals(session.falcon) ? FALCON : DESTROYER;
+		String why = session.chapter.hatchClosed(session, ship, cell.getX(), cell.getY(), cell.getZ());
+
+		if (why != null && session.player.equals(player.getUUID())) {
+			session.hint(why);
+		}
+
+		return why != null;
 	}
 
 	/** A droid's ability in the story; returns the message, or null for the normal ability. */
@@ -393,8 +476,9 @@ public final class Story {
 			return null;
 		}
 
+		session.droidArgs = new Object[0];
 		String key = session.chapter.droid(session, type == DroidType.MOUSE ? "mouse" : type == DroidType.R2D2 ? "astromech" : type.id());
-		return key != null ? Component.translatable(key) : Component.translatable("sabercraft.story.droid.nothing");
+		return key != null ? Component.translatable(key, session.droidArgs) : Component.translatable("sabercraft.story.droid.nothing");
 	}
 
 	// --- Every tick --------------------------------------------------------------------------------
@@ -472,32 +556,88 @@ public final class Story {
 		StoryProgress progress = session.progress;
 		Mission mission = session.mission();
 
-		if (progress.step + 1 < mission.steps().size()) {
-			progress.step++;
-			session.begin(false, false);
+		if (session.stepIndex + 1 < mission.steps().size()) {
+			session.stepIndex++;
+			session.begin(false);
 			cue(session, CUE_SOUND, "", "story.objective", 0);
 			return;
 		}
 
 		// The mission is done.
-		progress.completed.add(progress.mission);
+		progress.completed.add(session.mission);
 		cue(session, CUE_SOUND, "", "story.mission_done", 0);
 
-		if (progress.mission + 1 < session.chapter.missions().size()) {
-			progress.mission++;
-			progress.step = 0;
+		if (session.mission + 1 < session.chapter.missions().size()) {
+			session.mission++;
+			session.stepIndex = 0;
 			session.flags.removeIf(flag -> flag.startsWith("tmp."));
-			progress.missionStart.put(progress.mission, List.copyOf(session.flags));
-			session.begin(false, false);
+			progress.missionStart.put(session.mission, List.copyOf(session.flags));
+			session.begin(false);
 			cue(session, CUE_TITLE, "", session.mission().title(), 0);
 		} else {
-			// The end of the chapter.
+			// The end of the chapter (a checkpoint where one is, in the Falcon's lounge).
 			progress.finished = true;
-			session.progress.flags.clear();
-			session.progress.flags.addAll(session.flags);
-			save(session);
+			Mission.Place place = session.chapter.place(session, session.step());
+			session.checkpoint(place.ship(), place.at(), place.yaw());
 			session.dirty = true;
 			cue(session, CUE_END, "", "sabercraft.story.end", 0);
+		}
+	}
+
+	/** Phase 20: puts the player at the checkpoint's safe place (or the step's, for a file without one). */
+	static void placeAtCheckpoint(StorySession session, Mission.Step step) {
+		StoryProgress progress = session.progress;
+		ServerPlayer player = session.player();
+
+		if (player == null) {
+			return;
+		}
+
+		boolean own = !progress.placeShip.isEmpty() && progress.step == session.stepIndex && progress.mission == session.mission;
+		Mission.Place safe = session.chapter.place(session, step);
+		String ship = own ? progress.placeShip : safe.ship();
+		Vec3 at = own ? new Vec3(progress.placeX, progress.placeY, progress.placeZ) : safe.at();
+		float yaw = own ? progress.placeYaw : safe.yaw();
+		player.stopRiding();
+		player.setDeltaMovement(Vec3.ZERO);
+		player.fallDistance = 0.0F;
+		place(session, ship, at, yaw);
+		player.setHealth(player.getMaxHealth());
+
+		// In a crawl way: down on all fours at once (there is no room to stand).
+		if (crawlway(player)) {
+			player.setPose(net.minecraft.world.entity.Pose.SWIMMING);
+		}
+	}
+
+	/** Whether there is no room to stand where the player is (a crawl way). */
+	private static boolean crawlway(ServerPlayer player) {
+		AABB standing = player.getDimensions(net.minecraft.world.entity.Pose.STANDING).makeBoundingBox(player.position()).deflate(1.0E-7);
+		return !player.level().noCollision(player, standing);
+	}
+
+	/** Phase 20: the ship as at the checkpoint: the hatches of the story's ships shut (the chapter sets the rest). */
+	static void resetShip(StorySession session) {
+		ServerLevel level = session.server.getLevel(ShipInteriors.DIMENSION);
+
+		if (level != null) {
+			com.phiro.sabercraft.interior.Vents.closeAll(level, session.destroyer);
+			com.phiro.sabercraft.interior.Vents.closeAll(level, session.falcon);
+		}
+	}
+
+	/** Phase 20: the story's droids follow the player again, next to them. */
+	public static void gatherDroids(StorySession session) {
+		ServerPlayer player = session.player();
+
+		if (player == null) {
+			return;
+		}
+
+		Droids.replaceCrew(player, storyDroids(session));
+
+		for (DroidType type : storyDroids(session)) {
+			Droids.bring(player, type);
 		}
 	}
 
@@ -522,13 +662,226 @@ public final class Story {
 			return;
 		}
 
-		figure.mode = Figure.CHASE;
 		Vec3 me = session.local(figure.ship);
-		Stealth.rally(session, figure, me);
-		session.raiseAlarm(Stealth.SEARCH + Stealth.LOSE);
-		session.unseen = 0;
+		figure.path = List.of();
+		figure.pathGoal = null;
 		cue(session, CUE_SOUND, "", "story.detected", figure.id);
-		session.hint("sabercraft.story.hint.detected");
+
+		// Phase 21: where the player was seen (the squad goes there when they lose sight).
+		session.huntSeen = session.time();
+		session.huntAt = me;
+
+		if (soldier(figure)) {
+			// Phase 20: a soldier shouts, gives chase and has the alarm raised over his comlink.
+			// Phase 21: the call brings two more troopers a few seconds later (once per alarm).
+			session.hear(voice(figure), "sabercraft.story.shout.halt");
+			figure.mode = Figure.CHASE;
+			figure.cooldown = 10 + figure.id % 10;
+			Stealth.rally(session, figure, me);
+
+			if (session.alarm <= 0) {
+				session.stuns = 0;
+				session.set("tmp.reinforce");
+				session.timer("reinforce", Stealth.REINFORCE_DELAY);
+			}
+
+			session.raiseAlarm(Stealth.SEARCH_LONG + Stealth.LOSE);
+			session.searching = false;
+			session.unseen = 0;
+			session.hint("sabercraft.story.hint.detected");
+			return;
+		}
+
+		// Phase 20: anyone else calls out and runs to the nearest wall comm: the alarm goes up when
+		// they get there (or at once, if troopers close by heard the call and come running).
+		session.hear(voice(figure), "sabercraft.story.shout.intruder");
+		int joined = Stealth.rally(session, figure, me);
+		runToComm(session, figure);
+
+		if (joined > 0) {
+			session.raiseAlarm(Stealth.SEARCH_LONG + Stealth.LOSE);
+			session.searching = false;
+			session.unseen = 0;
+		}
+	}
+
+	/** Phase 20: one who is no soldier runs to the nearest wall comm to raise the alarm there (at once, with none in reach). */
+	static void runToComm(StorySession session, Figure figure) {
+		Vec3 comm = nearest(session.chapter.comms(session, figure.ship), figure.position(), Stealth.COMM_REACH, null);
+		figure.suspicion = 1.0F;
+		figure.stage = Figure.DETECTED;
+		figure.mode = Figure.CALL;
+		figure.called = false;
+		figure.path = List.of();
+		figure.pathGoal = null;
+
+		if (figure.seenAt == null) {
+			figure.seenAt = session.local(figure.ship);
+		}
+
+		if (comm == null) {
+			figure.target = figure.position();
+			figure.timer = 0;
+		} else {
+			figure.target = comm;
+			figure.timer = 200;
+			session.hint("sabercraft.story.hint.detected_call");
+		}
+	}
+
+	/** For the tests: how often a chaser reached a player ("Hands up!") since the game started. */
+	private static int cornerings;
+
+	public static int corneringsForTest() {
+		return cornerings;
+	}
+
+	/** For the tests: whether that one gives chase when they see the player (or runs for a wall comm). */
+	public static boolean soldierForTest(Figure figure) {
+		return soldier(figure);
+	}
+
+	/** Phase 20: whether that one gives chase (the troops), or runs for a wall comm. */
+	static boolean soldier(Figure figure) {
+		return Crew.TROOPER.equals(figure.kind()) || Crew.GUARD.equals(figure.kind());
+	}
+
+	/** Phase 20: whose name an overheard shout shows (the story's name for them, else their kind). */
+	static String voice(Figure figure) {
+		if (!figure.speaker.isEmpty()) {
+			return figure.speaker;
+		}
+
+		return switch (figure.kind()) {
+			case Crew.TROOPER, Crew.GUARD -> "trooper";
+			case Crew.TECH -> "crew_tech";
+			case Crew.PILOT -> "pilot";
+			default -> "officer";
+		};
+	}
+
+	/** Phase 20: the point of those nearest to a place within reach (not one within {@code away} of another place), or null. */
+	static @Nullable Vec3 nearest(List<Vec3> points, Vec3 to, double reach, @Nullable Vec3 away) {
+		Vec3 best = null;
+
+		for (Vec3 point : points) {
+			if (point.distanceTo(to) < reach && (away == null || point.distanceTo(away) > 9.0) && (best == null || point.distanceTo(to) < best.distanceTo(to))) {
+				best = point;
+			}
+		}
+
+		return best;
+	}
+
+	/**
+	 * Phase 20: a call from a wall comm: the alarm, over the intercom, and two troopers from the
+	 * door nearest the caller (not one right by the player); they come running to where the
+	 * player was seen. At most four of them about at once.
+	 */
+	static void alarmCalled(StorySession session, Figure caller) {
+		session.raiseAlarm(Stealth.SEARCH_LONG + Stealth.LOSE);
+		session.searching = false;
+		session.unseen = 0;
+		session.hear("intercom", "sabercraft.story.shout.alarm_call");
+
+		if (!caller.key.startsWith("crew:")) {
+			// The story's people remember it (their place is by the comm then).
+			session.set(caller.key + ".called");
+		}
+
+		reinforce(session, caller.ship, caller.position(), caller.seenAt);
+	}
+
+	/**
+	 * Phase 21 (from Phase 20's call at a wall comm): two troopers from the door nearest a place
+	 * (not one right by the player), running to where the player was seen; at most four of them
+	 * about at once.
+	 */
+	static void reinforce(StorySession session, String ship, Vec3 near, @Nullable Vec3 seenAt) {
+		long already = session.figures.stream().filter(figure -> figure.key.startsWith(Stealth.REINFORCEMENT)).count();
+		Vec3 me = session.local(ship);
+		List<Vec3> doors = new ArrayList<>();
+
+		for (Vec3 entry : session.chapter.entries(session, ship)) {
+			if (Math.abs(entry.y - near.y) < 3.0) {
+				doors.add(entry);
+			}
+		}
+
+		Vec3 door = nearest(doors, near, 45.0, me);
+
+		if (door == null || already >= 4) {
+			return;
+		}
+
+		for (int i = 0; i < 2; i++) {
+			double side = i == 0 ? -0.6 : 0.6;
+			Figure template = new Figure(0, Stealth.REINFORCEMENT + session.figures.size() + "." + i,
+					Crew.at(Crew.TROOPER, Crew.STAND, door.x + side, door.y, door.z, Crew.yaw(door, me)));
+			template.ship = ship;
+			template.observer = true;
+			template.talks = false;
+			template.lamp = session.chapter.dark(session, ship, door.x, door.y, door.z);
+			Figure trooper = session.add(template);
+			trooper.mode = Figure.CHASE;
+			trooper.suspicion = 1.0F;
+			trooper.stage = Figure.DETECTED;
+			trooper.seenAt = seenAt;
+			trooper.cooldown = 20 + i * 12;
+		}
+
+		session.hint("sabercraft.story.hint.reinforcements");
+	}
+
+	/**
+	 * Phase 21: a trooper's stun bolt hit the player. The hit is felt (a jolt, the screen flashes,
+	 * slowed for a moment, the HUD counts it); the third in a chase and the player is caught, as
+	 * if a chaser had reached them.
+	 */
+	public static void stunned(ServerPlayer player) {
+		StorySession session = SESSIONS.get(player.getUUID());
+
+		if (session == null || session.fighting || session.grace > 0 || session.cornered > 0) {
+			return;
+		}
+
+		session.stuns++;
+		stunHits++;
+		cue(session, CUE_SOUND, "", "story.stun_hit", 0);
+		cue(session, CUE_HINT, "stun", "sabercraft.story.hint.stunned", session.stuns);
+
+		if (session.stuns >= Combat.STUN_HITS) {
+			Figure by = Combat.nearestChaser(session, session.local(session.here != null ? session.here : DESTROYER));
+
+			if (by != null) {
+				cornered(session, by);
+			} else {
+				capture(session, null);
+			}
+		}
+	}
+
+	private static int stunHits;
+
+	/** For the tests: how many stun bolts hit a player in a story since the game started. */
+	public static int stunHitsForTest() {
+		return stunHits;
+	}
+
+	/** Phase 20: a chaser reached the player: "Hands up!", the player slowed, a moment later caught. */
+	static void cornered(StorySession session, Figure figure) {
+		ServerPlayer player = session.player();
+
+		if (session.grace > 0 || session.cornered > 0 || player == null) {
+			return;
+		}
+
+		session.cornered = Stealth.CORNERED;
+		session.cornerer = figure;
+		cornerings++;
+		figure.speed = 0.0F;
+		session.hear(voice(figure), "sabercraft.story.shout.hands_up");
+		player.addEffect(new net.minecraft.world.effect.MobEffectInstance(net.minecraft.world.effect.MobEffects.SLOWNESS, Stealth.CORNERED + 6, 5, false, false));
 	}
 
 	/** Caught: a moment of black, back to the step's checkpoint, everything as it was then. */
@@ -539,20 +892,28 @@ public final class Story {
 
 		captures++;
 		session.progress.captures++;
+
+		// Phase 21: back at the checkpoint unhurt (stun bolts and blows took some health).
+		ServerPlayer caught = session.player();
+
+		if (caught != null) {
+			caught.setHealth(caught.getMaxHealth());
+			caught.removeAllEffects();
+		}
 		cue(session, CUE_FADE, "", "sabercraft.story.caught", 30);
 		cue(session, CUE_SOUND, "", "story.caught", 0);
-		session.grace = 60;
+		session.grace = StorySession.GRACE;
 		session.fighting = false;
-		session.begin(true, true);
+		session.begin(true);
 		session.radio(Chapter1.captureSpeaker(session), Chapter1.captureLine(session));
 		sendState(session);
 	}
 
 	/** A section that had to be done unseen failed: back to its checkpoint, with a word why. */
 	public static void fail(StorySession session, String hint) {
-		session.grace = 60;
+		session.grace = StorySession.GRACE;
 		cue(session, CUE_FADE, "", hint, 30);
-		session.begin(true, true);
+		session.begin(true);
 		session.hint(hint);
 		sendState(session);
 	}
@@ -604,15 +965,53 @@ public final class Story {
 					session.afterTick();
 				}
 			}
+			case StoryActionPayload.SKIP -> {
+				if (session != null && session.chapter instanceof Chapter1 chapter) {
+					chapter.skipFilm(session, payload.text());
+				}
+			}
 			case StoryActionPayload.STRIKE -> {
 				if (session != null && session.chapter instanceof Chapter1 chapter) {
 					chapter.strike(session, player);
 					session.afterTick();
 				}
 			}
+			case StoryActionPayload.FOCUS -> {
+				if (session != null) {
+					String hint = Finale.focus(session);
+
+					if (hint != null) {
+						session.hint(hint);
+					}
+
+					session.afterTick();
+				}
+			}
 			default -> {
 			}
 		}
+	}
+
+	/**
+	 * Phase 21: which saber abilities work in the story. The people of the story are not entities,
+	 * so the Force powers aimed at entities (push, grip, pull) would do nothing; in the story the
+	 * guard and the dash work, and the Focus has its own key. Outside the story: everything.
+	 */
+	public static boolean allows(ServerPlayer player, String ability) {
+		StorySession session = SESSIONS.get(player.getUUID());
+
+		if (session == null) {
+			return true;
+		}
+
+		boolean allowed = "guard".equals(ability) || "dash".equals(ability);
+
+		if (!allowed && !session.timer("force_hint")) {
+			session.timer("force_hint", 100);
+			session.hint("sabercraft.story.hint.force_locked");
+		}
+
+		return allowed;
 	}
 
 	private static void message(ServerPlayer player, @Nullable Component message) {
@@ -684,7 +1083,8 @@ public final class Story {
 
 		Chapter chapter = CHAPTERS.getOrDefault(progress.chapter, Chapter1.INSTANCE);
 		boolean saved = StoryStore.exists(player.level().getServer(), player.getUUID());
-		Mission mission = chapter.missions().get(Math.min(progress.mission, chapter.missions().size() - 1));
+		int missionIndex = Math.max(0, Math.min(session != null ? session.mission : progress.mission, chapter.missions().size() - 1));
+		Mission mission = chapter.missions().get(missionIndex);
 		List<StoryStatePayload.Objective> optional = new ArrayList<>();
 		List<StoryStatePayload.Point> points = new ArrayList<>();
 		String objective = "";
@@ -729,7 +1129,8 @@ public final class Story {
 			}
 
 			// The alarm and the disguise are the Star Destroyer's (in the Falcon one is safe).
-			alarm = !DESTROYER.equals(session.here) ? 0 : session.alarm > 0 ? session.unseen >= Stealth.LOSE ? 1 : 2 : session.alert ? 1 : 0;
+			// Phase 20: 3 they are after the player, 2 they search, 1 the ship is on alert (nobody after one).
+			alarm = !DESTROYER.equals(session.here) ? 0 : session.alarm > 0 ? session.unseen >= Stealth.LOSE ? 2 : 3 : session.alert ? 1 : 0;
 			disguise = !session.disguised || !DESTROYER.equals(session.here) ? 0 : session.burned ? 2 : 1;
 			falcon = session.falcon;
 			destroyer = session.destroyer;
@@ -739,7 +1140,7 @@ public final class Story {
 			}
 		}
 
-		ServerPlayNetworking.send(player, new StoryStatePayload(session != null, saved, chapter.id(), progress.mission, chapter.missions().size(),
+		ServerPlayNetworking.send(player, new StoryStatePayload(session != null, saved, chapter.id(), missionIndex, chapter.missions().size(),
 				List.copyOf(progress.completed), progress.finished, mission.title(), objective, optional, target, marker, alarm, disguise, points, falcon,
 				destroyer, List.copyOf(journal), known, progress.captures, droids));
 	}
@@ -759,9 +1160,9 @@ public final class Story {
 			}
 
 			int flags = (f.lamp ? StoryFiguresPayload.LAMP : 0) | (f.saber ? StoryFiguresPayload.SABER : 0) | (f.hostile ? StoryFiguresPayload.HOSTILE : 0)
-					| (f.talks ? StoryFiguresPayload.TALKS : 0) | (f.observer ? StoryFiguresPayload.OBSERVER : 0);
+					| (f.talks ? StoryFiguresPayload.TALKS : 0) | (f.observer ? StoryFiguresPayload.OBSERVER : 0) | (f.lit ? StoryFiguresPayload.LIT : 0);
 			list.add(new StoryFiguresPayload.Fig(f.id, f.kind(), f.pose(), f.speaker, (float) f.x, (float) f.y, (float) f.z, f.yaw, f.headYaw, f.speed, f.stage,
-					Math.round(f.suspicion * 255.0F), flags, Math.round(Math.max(0.0F, f.health) * 255.0F), Math.min(255, f.windup)));
+					Math.round(f.suspicion * 255.0F), flags,Math.round(Math.max(0.0F, f.health) * 255.0F), Finale.shown(f)));
 		}
 
 		ServerPlayNetworking.send(player, new StoryFiguresPayload(origin, player.level().getGameTime(), list));

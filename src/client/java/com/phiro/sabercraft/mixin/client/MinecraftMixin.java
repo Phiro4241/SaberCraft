@@ -31,7 +31,9 @@ abstract class MinecraftMixin {
 	@Inject(method = "startUseItem", at = @At("HEAD"), cancellable = true)
 	private void sabercraft$talkToCrew(CallbackInfo info) {
 		// Phase 19: in the story the use key uses its things and speaks to its people first.
+		// Phase 20: on an open hatch it shuts the hatch.
 		if (com.phiro.sabercraft.client.story.StoryInput.use((Minecraft) (Object) this)
+				|| com.phiro.sabercraft.client.interior.InteriorClient.hatch((Minecraft) (Object) this)
 				|| com.phiro.sabercraft.client.interior.InteriorClient.talk((Minecraft) (Object) this)) {
 			info.cancel();
 		}

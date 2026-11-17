@@ -1441,5 +1441,58 @@
       }
     ],
     "subtitle": "subtitles.sabercraft.story.alarm"
+  },
+  "story.door_lock": {
+    "sounds": [
+      {
+        "name": "sabercraft:story/door_lock"
+      }
+    ],
+    "subtitle": "subtitles.sabercraft.story.door_lock"
+  },
+  "story.crate_lid": {
+    "sounds": [
+      {
+        "name": "sabercraft:story/crate_lid"
+      }
+    ],
+    "subtitle": "subtitles.sabercraft.story.crate_lid"
+  },
+  "story.siren": {
+    "sounds": [
+      {
+        "name": "sabercraft:story/siren",
+        "volume": 0.55
+      }
+    ],
+    "subtitle": "subtitles.sabercraft.story.siren"
+  },
+  "story.stun_hit": {
+    "sounds": [
+      {
+        "name": "sabercraft:story/stun_hit"
+      }
+    ]
+  },
+  "story.m31_rattle": {
+    "sounds": [
+      {
+        "name": "sabercraft:story/m31_rattle"
+      }
+    ]
+  },
+  "story.focus_in": {
+    "sounds": [
+      {
+        "name": "sabercraft:story/focus_in"
+      }
+    ]
+  },
+  "story.focus_out": {
+    "sounds": [
+      {
+        "name": "sabercraft:story/focus_out"
+      }
+    ]
   }
 }

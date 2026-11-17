@@ -98,6 +98,11 @@ public final class InteriorJump {
 		return true;
 	}
 
+	/** Phase 20: when, in a jump, the tunnel of light ends and the ship falls out of hyperspace (ticks). */
+	public static int tunnelEnd() {
+		return CHARGE + TUNNEL;
+	}
+
 	/** Phase 19: how long a jump takes from the first charge to the arrival (ticks). */
 	public static int length() {
 		return CHARGE + TUNNEL + ARRIVE;

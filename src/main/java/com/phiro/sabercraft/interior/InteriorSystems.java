@@ -117,7 +117,9 @@ public final class InteriorSystems {
 		AABB box = new AABB(origin.getX() + door.x0(), origin.getY() + door.y0() - 0.5, origin.getZ() + door.z0(), origin.getX() + door.x1() + 1,
 				origin.getY() + door.y1() + 1, origin.getZ() + door.z1() + 1)
 				.inflate(door.alongX() ? DOOR_REACH : 0.3, 0.0, door.alongX() ? 0.3 : DOOR_REACH);
-		return !level.getEntitiesOfClass(net.minecraft.world.entity.player.Player.class, box, player -> !player.isSpectator()).isEmpty();
+		return !level.getEntitiesOfClass(net.minecraft.world.entity.player.Player.class, box, player -> !player.isSpectator()).isEmpty()
+				// Phase 20: the people of a story walk through doors too (chasing, sent somewhere).
+				|| com.phiro.sabercraft.story.Story.figureNear(origin, box);
 	}
 
 	static Vec3 middle(BlockPos origin, Door door) {
@@ -183,9 +185,9 @@ public final class InteriorSystems {
 		InteriorPlan.Hatch hatch = Vents.hatch(plan, local);
 
 		if (hatch != null) {
-			// Phase 19: a story can keep a hatch shut (bolted from the other side).
-			if (com.phiro.sabercraft.story.Story.locked(origin, hatch.cell().getX(), hatch.cell().getY(), hatch.cell().getZ())) {
-				com.phiro.sabercraft.story.Story.lockedHatch(player);
+			// Phase 19: a story can keep a hatch shut (bolted from the other side; Phase 20: or a
+			// guard stands right in front of it).
+			if (com.phiro.sabercraft.story.Story.hatchClosed(player, origin, hatch.cell())) {
 				return;
 			}
 

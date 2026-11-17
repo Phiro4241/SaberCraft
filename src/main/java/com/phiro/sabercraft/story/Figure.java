@@ -37,6 +37,11 @@ public final class Figure {
 	public static final int SCRIPTED = 7;
 	/** In the finale: moved by the fight ({@link Finale}), not by seeing. */
 	public static final int FIGHT = 8;
+	/**
+	 * Phase 20: one who is no soldier saw the player: runs to the nearest wall comm and raises the
+	 * alarm there (then stays by it, out of the way, until it is calm again).
+	 */
+	public static final int CALL = 9;
 
 	// How much they suspect (the client shows it).
 	public static final int CALM = 0;
@@ -92,6 +97,42 @@ public final class Figure {
 	/** A scripted way (plot space), walked once in {@link #SCRIPTED}. */
 	public java.util.List<Vec3> way = java.util.List.of();
 	public int wayIndex;
+	/** Phase 20: the way found round walls ({@link Paths}), to where, and when (game time). */
+	public java.util.List<Vec3> path = java.util.List.of();
+	public int pathIndex;
+	public long pathAt = -1000L;
+	public @Nullable Vec3 pathGoal;
+	/** Phase 20: how many more places they search after losing the player. */
+	public int searches;
+	/** Phase 20: ticks they found no way on (going back: then they slip into place, unseen). */
+	public int stuck;
+	/** Phase 20: the nearest they came to where they are going back to (to tell going on from going round in circles). */
+	public double closest = Double.MAX_VALUE;
+	public @Nullable Vec3 closestTo;
+	/** Phase 20: whether they called the alarm in already (at a wall comm). */
+	public boolean called;
+	/**
+	 * Phase 21: in a chase, a second shot right after the first ({@link Combat}); which way they
+	 * step aside while waiting for the next shot (-1 or 1) and until when (game time).
+	 */
+	public int burst;
+	public int strafe = 1;
+	public long strafeUntil;
+	/** Phase 21: how often a droid's noise drew them already (each time they believe it less). */
+	public int distracted;
+	/** Phase 21: a noise they heard and will go to see once they have listened ({@link #LOOK}), or null. */
+	public @Nullable Vec3 lure;
+	/** Phase 21: their saber is lit (a scene: the blade is seen before the fight begins). */
+	public boolean lit;
+	/** Phase 21: the duel ({@link Finale}): what he does now, and a blow's kind; strokes of the player he parried in a row. */
+	public int action;
+	public int attack;
+	public int combo;
+	public int parried;
+	/** Phase 21: strokes that hit him in this opening. */
+	public int hits;
+	/** Phase 21: how fast they walk a scripted way (blocks a second; 0 = walking). */
+	public double scriptSpeed;
 
 	public Figure(int id, String key, Crew crew) {
 		this.id = id;
@@ -171,6 +212,16 @@ public final class Figure {
 		this.stage = CALM;
 		this.target = null;
 		this.timer = 0;
+		this.path = java.util.List.of();
+		this.pathGoal = null;
+		this.searches = 0;
+		this.stuck = 0;
+		this.closest = Double.MAX_VALUE;
+		this.closestTo = null;
+		this.called = false;
+		this.windup = 0;
+		this.burst = 0;
+		this.lure = null;
 	}
 
 	/** Turns the head (and over time the body) towards a point, at most {@code step} degrees. */

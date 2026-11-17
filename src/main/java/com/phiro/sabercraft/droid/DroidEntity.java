@@ -86,9 +86,44 @@ public class DroidEntity extends Pig {
 		this.refreshDimensions();
 	}
 
+	/**
+	 * Phase 21: where a droid should keep itself instead of right at its owner's heels (the story
+	 * places its droids behind and beside the player), or null for the normal following.
+	 */
+	public interface Advisor {
+		@Nullable Spot spot(DroidEntity droid, ServerPlayer owner);
+	}
+
+	/** Phase 21: how close a droid that stood in another goes to its place. */
+	static final double TIGHT = 0.35;
+
+	/**
+	 * Phase 21: a place to keep to (in the level), how far from it the droid may be before it sets
+	 * off, and how close it comes before it stops.
+	 */
+	public record Spot(Vec3 at, double start, double stop) {
+	}
+
+	/** Phase 21: set by the story; null outside it. */
+	public static @Nullable Advisor advisor;
+
+	/** Phase 21: an errand (the story sends M-31 somewhere): none, on the way, there, it could not get there, back to where it waited. */
+	public static final int ERRAND_NONE = 0;
+	public static final int ERRAND_GOING = 1;
+	public static final int ERRAND_THERE = 2;
+	public static final int ERRAND_FAILED = 3;
+	public static final int ERRAND_BACK = 4;
+
+	private int errand = ERRAND_NONE;
+	private @Nullable Vec3 errandAt;
+	private int errandTicks;
+	/** Phase 21: where it was told to wait (it goes back there after an errand). */
+	private @Nullable Vec3 stayAt;
+
 	@Override
 	protected void registerGoals() {
 		this.goalSelector.addGoal(0, new FloatGoal(this));
+		this.goalSelector.addGoal(1, new ErrandGoal());
 		this.goalSelector.addGoal(2, new FollowGoal());
 		this.goalSelector.addGoal(7, new LookAtPlayerGoal(this, Player.class, 8.0F));
 		this.goalSelector.addGoal(8, new RandomLookAroundGoal(this));
@@ -108,6 +143,44 @@ public class DroidEntity extends Pig {
 
 	public void setStaying(boolean staying) {
 		this.staying = staying;
+		this.stayAt = staying ? this.position() : null;
+		this.getNavigation().stop();
+	}
+
+	/**
+	 * Phase 21: sends the droid to a place (it drives there on its own way, round walls). Returns
+	 * false if it cannot get there from here. It stays there until {@link #endErrand}.
+	 */
+	public boolean startErrand(Vec3 at, int ticks) {
+		net.minecraft.world.level.pathfinder.Path path = this.getNavigation().createPath(at.x, at.y, at.z, 0);
+
+		if (path == null || !path.canReach() && Vec3.atBottomCenterOf(path.getTarget()).distanceTo(at) > 1.5) {
+			return false;
+		}
+
+		this.errand = ERRAND_GOING;
+		this.errandAt = at;
+		this.errandTicks = ticks;
+		this.getNavigation().moveTo(path, 1.5);
+		return true;
+	}
+
+	/** Phase 21: where the errand is (none, going, there, failed, back). */
+	public int errand() {
+		return this.errand;
+	}
+
+	/** Phase 21: the errand is over: back to following (or to where it waited). */
+	public void endErrand() {
+		if (this.staying && this.stayAt != null && this.errand != ERRAND_NONE) {
+			this.errand = ERRAND_BACK;
+			this.errandTicks = 200;
+			this.getNavigation().moveTo(this.stayAt.x, this.stayAt.y, this.stayAt.z, 1.2);
+			return;
+		}
+
+		this.errand = ERRAND_NONE;
+		this.errandAt = null;
 		this.getNavigation().stop();
 	}
 
@@ -366,10 +439,84 @@ public class DroidEntity extends Pig {
 		return this.level().noCollision(this, this.getBoundingBox().move(delta));
 	}
 
+	/** Phase 21: drives to the errand's place and waits there (or back to where it was told to wait). */
+	final class ErrandGoal extends Goal {
+		private int repath;
+		/** Ticks it has stood still (its way at an end) short of the place. */
+		private int idle;
+
+		ErrandGoal() {
+			this.setFlags(EnumSet.of(Goal.Flag.MOVE, Goal.Flag.LOOK));
+		}
+
+		@Override
+		public boolean canUse() {
+			return DroidEntity.this.errand != ERRAND_NONE && !DroidEntity.this.isPassenger();
+		}
+
+		@Override
+		public boolean canContinueToUse() {
+			return this.canUse();
+		}
+
+		@Override
+		public boolean requiresUpdateEveryTick() {
+			return true;
+		}
+
+		@Override
+		public void tick() {
+			DroidEntity droid = DroidEntity.this;
+
+			if (droid.errand == ERRAND_BACK) {
+				if (droid.stayAt == null || droid.position().distanceTo(droid.stayAt) < 0.8 || --droid.errandTicks <= 0) {
+					droid.errand = ERRAND_NONE;
+					droid.getNavigation().stop();
+				} else if (--this.repath <= 0) {
+					this.repath = 20;
+					droid.getNavigation().moveTo(droid.stayAt.x, droid.stayAt.y, droid.stayAt.z, 1.2);
+				}
+
+				return;
+			}
+
+			Vec3 at = droid.errandAt;
+
+			if (at == null) {
+				droid.errand = ERRAND_NONE;
+				return;
+			}
+
+			if (droid.errand == ERRAND_GOING) {
+				double distance = Math.hypot(droid.getX() - at.x, droid.getZ() - at.z);
+
+				if (distance < 1.1 && Math.abs(droid.getY() - at.y) < 1.5) {
+					droid.errand = ERRAND_THERE;
+					droid.getNavigation().stop();
+				} else if ((this.idle = droid.getNavigation().isDone() ? this.idle + 1 : 0) > 20 && distance < 2.2) {
+					// As close as it gets (someone in the way): there.
+					droid.errand = ERRAND_THERE;
+				} else if (--droid.errandTicks <= 0) {
+					droid.errand = distance < 2.5 ? ERRAND_THERE : ERRAND_FAILED;
+					droid.getNavigation().stop();
+				} else if (droid.getNavigation().isDone() && --this.repath <= 0) {
+					this.repath = 10;
+					droid.getNavigation().moveTo(at.x, at.y, at.z, 1.5);
+				}
+			} else if (droid.errand == ERRAND_THERE) {
+				// There: it turns about, busy with something.
+				droid.setYRot(droid.getYRot() + 9.0F);
+				droid.yBodyRot = droid.getYRot();
+			}
+		}
+	}
+
 	/** Walks after the owner; teleports when far away or stuck for a few seconds. */
 	final class FollowGoal extends Goal {
 		private @Nullable ServerPlayer target;
 		private int recalc;
+		/** Phase 21: set off because it stood in another droid or at the player's feet: on to the place itself. */
+		private boolean tight;
 
 		FollowGoal() {
 			this.setFlags(EnumSet.of(Goal.Flag.MOVE, Goal.Flag.LOOK));
@@ -379,8 +526,28 @@ public class DroidEntity extends Pig {
 		public boolean canUse() {
 			ServerPlayer player = DroidEntity.this.ownerPlayer();
 
-			if (DroidEntity.this.staying || player == null || player.isSpectator() || DroidEntity.this.isPassenger()
-					|| DroidEntity.this.distanceToSqr(player) < 3.0 * 3.0) {
+			if (DroidEntity.this.staying || player == null || player.isSpectator() || DroidEntity.this.isPassenger() || DroidEntity.this.errand != ERRAND_NONE) {
+				return false;
+			}
+
+			// Phase 21: a place the story keeps it at (behind and beside the player): it sets off
+			// only when that place is a few steps away, not at every step of the player.
+			Spot spot = advisor != null ? advisor.spot(DroidEntity.this, player) : null;
+
+			if (spot != null) {
+				double away = DroidEntity.this.position().distanceTo(spot.at());
+				// Standing in another droid or at the player's feet: off to its place even when it is near.
+				boolean crowded = DroidEntity.this.distanceToSqr(player) < 1.2 * 1.2 || !DroidEntity.this.level()
+						.getEntitiesOfClass(DroidEntity.class, DroidEntity.this.getBoundingBox().inflate(0.5), other -> other != DroidEntity.this).isEmpty();
+
+				// Two droids that crossed (each one's place beyond the other) both go, right onto their
+				// places: the places are apart, and only one of them going left them stuck in each other.
+				if (away < spot.start() && !(crowded && away > TIGHT + 0.1)) {
+					return false;
+				}
+
+				this.tight = crowded && away < spot.start();
+			} else if (DroidEntity.this.distanceToSqr(player) < 3.0 * 3.0) {
 				return false;
 			}
 
@@ -390,8 +557,14 @@ public class DroidEntity extends Pig {
 
 		@Override
 		public boolean canContinueToUse() {
-			return this.target != null && !DroidEntity.this.staying && this.target.isAlive() && this.target.level() == DroidEntity.this.level()
-					&& DroidEntity.this.distanceToSqr(this.target) > 2.0 * 2.0;
+			if (this.target == null || DroidEntity.this.staying || !this.target.isAlive() || this.target.level() != DroidEntity.this.level()
+					|| DroidEntity.this.errand != ERRAND_NONE) {
+				return false;
+			}
+
+			Spot spot = advisor != null ? advisor.spot(DroidEntity.this, this.target) : null;
+			return spot != null ? DroidEntity.this.position().distanceTo(spot.at()) > (this.tight ? TIGHT : spot.stop())
+					: DroidEntity.this.distanceToSqr(this.target) > 2.0 * 2.0;
 		}
 
 		@Override
@@ -404,6 +577,7 @@ public class DroidEntity extends Pig {
 		@Override
 		public void stop() {
 			this.target = null;
+			this.tight = false;
 			DroidEntity.this.getNavigation().stop();
 		}
 
@@ -427,8 +601,12 @@ public class DroidEntity extends Pig {
 			if (--this.recalc <= 0) {
 				this.recalc = this.adjustedTickDelay(10);
 
+				Spot spot = advisor != null ? advisor.spot(DroidEntity.this, this.target) : null;
+
 				if (distance >= TELEPORT_DISTANCE_SQR || DroidEntity.this.stuckTicks > STUCK_TICKS) {
 					DroidEntity.this.teleportToOwner();
+				} else if (spot != null) {
+					DroidEntity.this.getNavigation().moveTo(spot.at().x, spot.at().y, spot.at().z, 1.0 + Math.min(0.6, distance / 200.0));
 				} else {
 					DroidEntity.this.getNavigation().moveTo(this.target, 1.0 + Math.min(0.6, distance / 200.0));
 				}

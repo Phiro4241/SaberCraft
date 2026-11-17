@@ -106,7 +106,8 @@ final class DestroyerRooms {
 		int bz = s.z() + s.toward().getStepZ();
 
 		// Phase 16: the gallery's way through the reactor wall is lined apart (only where the wall is).
-		if (s.kind() != Kind.FLOOR && GALLERY.contains(s.x(), s.y(), s.z())) {
+		// Phase 20: so is the way to the lab (its panels and the lining were drawn on the same plane).
+		if (s.kind() != Kind.FLOOR && (GALLERY.contains(s.x(), s.y(), s.z()) || LAB_WAY.contains(s.x(), s.y(), s.z()))) {
 			return;
 		}
 
@@ -983,11 +984,13 @@ final class DestroyerRooms {
 		// The round wall, in tall panels, open where the gallery comes in.
 		b.tile(InteriorAtlas.IMP_WALL_TALL, 2.0F);
 		// Phase 16: open exactly between the gallery's sides, the gallery lined through the wall.
-		RoundWalls.wall(b, cx, cz, r, (int) bottom, (int) top, true, 0.0F, 360.0F, 48, List.of(DestroyerInterior.GALLERY),
-				(pen, row, index) -> pen.tile(InteriorAtlas.IMP_WALL_TALL, 2.0F));
+		// Phase 20: and the way to the lab on the shaft floor (the server always left it open, but the
+		// wall was drawn across it: one walked through a wall that looked closed to find the door).
+		List<InteriorPlan.Doorway> ways = List.of(DestroyerInterior.GALLERY, DestroyerInterior.LAB_WAY);
+		RoundWalls.wall(b, cx, cz, r, (int) bottom, (int) top, true, 0.0F, 360.0F, 48, ways, (pen, row, index) -> pen.tile(InteriorAtlas.IMP_WALL_TALL, 2.0F));
 		// Phase 19: the gallery's sides go on into the wall's cells, up to the curve (by its east side
 		// the curve passes just beyond the doorway's cells: one looked into the wall there).
-		RoundWalls.linings(b, List.of(DestroyerInterior.GALLERY), DestroyerInterior::openReactor, DestroyerRooms::reactorWallCell, (door, x, z) -> true,
+		RoundWalls.linings(b, ways, DestroyerInterior::openReactor, DestroyerRooms::reactorWallCell, (door, x, z) -> true,
 				() -> b.tile(InteriorAtlas.IMP_METAL, 1.0F), () -> b.tile(InteriorAtlas.IMP_METAL, 1.0F));
 		b.tile(InteriorAtlas.IMP_WALL_TALL, 2.0F);
 
@@ -1007,10 +1010,32 @@ final class DestroyerRooms {
 		int segments = 48;
 
 		for (float y : new float[] {HANGAR + 6.0F, top - 4.0F, bottom + 2.0F}) {
+			// Phase 20: not across a doorway (the low band ran across the way to the lab).
+			List<float[]> gaps = RoundWalls.gaps(cx, cz, r, (int) Math.floor(y), ways);
+
 			for (int i = 0; i < segments; i++) {
 				float a0 = 360.0F * i / segments;
 				float a1 = 360.0F * (i + 1) / segments;
-				b.arcWall(cx, cz, r - 0.02F, a0, a1, y, y + 0.25F, 1, true);
+
+				for (float[] gap : gaps) {
+					if (a1 > gap[0] && a0 < gap[1]) {
+						// Only up to the doorway's side (the band ends at the edge of the opening).
+						if (a0 < gap[0]) {
+							b.arcWall(cx, cz, r - 0.02F, a0, gap[0], y, y + 0.25F, 1, true);
+						}
+
+						if (a1 > gap[1]) {
+							b.arcWall(cx, cz, r - 0.02F, gap[1], a1, y, y + 0.25F, 1, true);
+						}
+
+						a1 = a0;
+						break;
+					}
+				}
+
+				if (a1 > a0) {
+					b.arcWall(cx, cz, r - 0.02F, a0, a1, y, y + 0.25F, 1, true);
+				}
 			}
 		}
 
@@ -1042,6 +1067,13 @@ final class DestroyerRooms {
 
 		// The catwalk: railings at the inner edge, struts below it.
 		Props.ringRailing(b, cx, HANGAR + 1, cz, 8.6F, 1.0F, 0.0F, 0.0F);
+		// Phase 20: a console against the railing, for the technician up here (he stood at the bare
+		// railing, looking at nothing): its screen faces the catwalk, the core behind it.
+		Props.at(b, CATWALK_DESK.getX() + 0.5, CATWALK_DESK.getY(), CATWALK_DESK.getZ() + 0.5, Props.north());
+		Props.desk(b, 1.0F, 0.78F, InteriorAtlas.IMP_CONSOLE, InteriorAtlas.IMP_CONSOLE_TOP, InteriorAtlas.IMP_CONSOLE_TOP_GLOW,
+				InteriorAtlas.IMP_SCREEN_TEXT_GLOW, true, 11);
+		b.pop();
+		b.layer(Layer.SOLID).worldLight().white().anim(0);
 		b.tile(InteriorAtlas.IMP_METAL, 1.0F);
 
 		for (int i = 0; i < 8; i++) {

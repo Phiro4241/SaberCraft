@@ -86,10 +86,15 @@ public final class StoryMusic {
 
 	/** The piece the story wants now: the server's choice, the alarm over a calm one. */
 	private static @Nullable String wantedPiece() {
+		// Phase 20: a film has its own music.
+		if (com.phiro.sabercraft.client.story.StoryCinema.active()) {
+			return com.phiro.sabercraft.client.story.StoryCinema.music();
+		}
+
 		String chosen = StoryClient.music();
 		StoryStatePayload state = StoryClient.state();
 
-		if (state != null && state.alarm() >= 2 && (chosen == null || CALM.contains(chosen))) {
+		if (state != null && state.alarm() >= 3 && (chosen == null || CALM.contains(chosen))) {
 			return ALARM;
 		}
 

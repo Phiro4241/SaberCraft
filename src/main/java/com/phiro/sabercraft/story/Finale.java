@@ -6,12 +6,15 @@ import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundSource;
+import net.minecraft.util.Mth;
+import net.minecraft.util.RandomSource;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
 import com.phiro.sabercraft.ability.SaberAbilities;
 import com.phiro.sabercraft.blaster.BlasterBolt;
 import com.phiro.sabercraft.blaster.BlasterType;
+import com.phiro.sabercraft.interior.Crew;
 import com.phiro.sabercraft.interior.ShipInteriors;
 import com.phiro.sabercraft.saber.SaberVariant;
 
@@ -20,11 +23,28 @@ import com.phiro.sabercraft.saber.SaberVariant;
  * troops shoot (real blaster bolts, which the saber sends back as everywhere in SaberCraft: in the
  * guard stance, with a swing); a bolt sent back or a stroke of the saber brings a trooper down.
  *
- * <p>The Schattenklinge fights with a red saber: he closes in, winds up a blow (one sees the
- * blade go up) and strikes. Blocked (the guard, facing him), the blow leaves him open for a
- * moment; a stroke then (or from behind) hits. Otherwise he parries, and sometimes strikes back
- * at once. Below sixty percent he gets faster and pushes the player away with the Force. At
- * fifteen percent he breaks off: the Falcon comes.
+ * <p><b>Phase 21: the duel.</b> The Schattenklinge does one thing at a time, and each can be seen
+ * coming:
+ * <ul>
+ * <li><b>Guard</b>: he circles at sword's length and parries every stroke. Three strokes in a row
+ * into his guard and he answers at once with a quick thrust: hammering at him does not pay.</li>
+ * <li><b>Wind-up</b>: he raises the blade for an overhead blow, draws it back for a sweep or
+ * pulls it in for a thrust (the client shows which, and how far along). Blocked (the guard,
+ * facing him) each blow of a combo; after the last blocked blow he staggers: that is the opening
+ * (two strokes hit, then he recovers). A blow not blocked hurts, and he steps back.</li>
+ * <li><b>Leap</b> (from the second phase, at a distance): he crouches, then leaps in with an
+ * overhead blow, which can be blocked or stepped away from.</li>
+ * <li><b>Push</b> (from the second phase): he raises a hand, then pushes with the Force; the
+ * guard takes most of it.</li>
+ * </ul>
+ * At 65 and 35 percent he steps back and changes his way (a short pause in which nothing hits him):
+ * the combos grow longer and quicker. At fifteen percent he breaks off, and {@link Chapter1}
+ * plays his flight.
+ *
+ * <p><b>The Focus.</b> The one Force skill of the story (the player learns it when taking Ilyra's
+ * saber): it fills while fighting (faster when blocking), and when full the focus key slows the
+ * enemies to half speed for four seconds. Nothing else of the Force works on the people of the
+ * story.
  */
 final class Finale {
 	/** The damage of a trooper's bolt (the player has 20). */
@@ -38,16 +58,59 @@ final class Finale {
 	/** A saber stroke: how far it reaches, and what it takes of a trooper. */
 	static final double STROKE_REACH = 3.6;
 	static final float STROKE_TROOPER = 0.55F;
-	/** The duel: the wind-up of a blow (ticks; second phase), the open moment after it, a hit on him, the end. */
-	static final int WINDUP = 13;
-	static final int WINDUP_FAST = 9;
-	static final int OPEN = 18;
+
+	/** What the Schattenklinge does ({@link Figure#action}). */
+	static final int GUARD = 0;
+	static final int WINDUP = 1;
+	static final int OPEN_UP = 2;
+	static final int LEAP = 3;
+	static final int PUSH = 4;
+	static final int TURN = 5;
+	static final int RECOIL = 6;
+	static final int ESCAPE = 7;
+	/** How it looks ({@link Figure#attack}), sent to the client in the top bits of the wind-up byte. */
+	static final int OVERHEAD = 1;
+	static final int SWEEP = 2;
+	static final int THRUST = 3;
+	static final int CROUCH = 4;
+	static final int HAND = 5;
+	static final int STAGGER = 6;
+	static final int SPIN = 7;
+
+	/** Per phase (1..3): wind-up of a blow, how much quicker the following blows of a combo, the damage, the opening. */
+	static final int[] WINDUPS = {0, 16, 14, 12};
+	static final int FASTER = 3;
+	static final float[] BLOWS = {0.0F, 4.0F, 3.5F, 3.0F};
+	static final int[] OPENINGS = {0, 22, 18, 15};
+	/** For the tests: an opening as long as the first phase's. */
+	static final int OPEN = 22;
+	static final double BLOW_REACH = 3.2;
+	static final double THRUST_REACH = 3.7;
+	static final int HITS_PER_OPENING = 2;
+	/** Strokes into his guard in a row before he answers. */
+	static final int PARRIES = 3;
+	static final int RIPOSTE = 7;
+	static final double LEAP_FROM = 4.5;
+	static final int CROUCH_TICKS = 16;
+	static final double LEAP_SPEED = 11.0;
+	static final int HAND_TICKS = 14;
+	static final int PUSH_EVERY = 200;
+	static final int LEAP_EVERY = 170;
+	static final int TURN_TICKS = 50;
+	static final int RECOIL_TICKS = 14;
+	/** A hit on him, the phases and the end. */
 	static final float HIT = 0.11F;
-	static final float SECOND_PHASE = 0.6F;
+	static final float PHASE_TWO = 0.65F;
+	static final float PHASE_THREE = 0.35F;
 	static final float BREAKS_OFF = 0.15F;
-	static final float BLOW = 4.0F;
-	static final float BLOW_FAST = 5.0F;
-	static final int PUSH_EVERY = 160;
+	/** Focus: how long, how much a block and each tick adds. */
+	static final int FOCUS_TICKS = 80;
+	static final float FOCUS_BLOCK = 0.34F;
+	static final float FOCUS_TIME = 0.004F;
+
+	private static int strokes;
+	private static int ripostes;
+	private static int foci;
 
 	private Finale() {
 	}
@@ -73,27 +136,39 @@ final class Finale {
 			return;
 		}
 
+		focusTick(s);
+
+		// The Focus: the enemies move on every other tick only.
+		if (slowed(s) && (level.getGameTime() & 1L) == 1L) {
+			return;
+		}
+
 		Vec3 corner = Vec3.atLowerCornerOf(s.origin(ship));
 		Vec3 me = player.position().subtract(corner);
+		Stealth.crowd(s.figures);
 
-		for (Figure figure : s.figures) {
-			if (!figure.hostile || figure.mode == Figure.DOWN || !ship.equals(figure.ship)) {
-				continue;
-			}
+		try {
+			for (Figure figure : s.figures) {
+				if (!figure.hostile || figure.mode == Figure.DOWN || !ship.equals(figure.ship)) {
+					continue;
+				}
 
-			if (figure.mode != Figure.FIGHT) {
-				figure.mode = Figure.FIGHT;
-			}
+				if (figure.mode != Figure.FIGHT) {
+					figure.mode = Figure.FIGHT;
+				}
 
-			if (figure.saber) {
-				duel(s, figure, player, me, level, corner);
-			} else {
-				trooper(s, figure, player, me, level, corner);
-			}
+				if (figure.saber) {
+					duel(s, figure, player, me, level, corner);
+				} else {
+					trooper(s, figure, player, me, level, corner);
+				}
 
-			if (s.completing()) {
-				return;
+				if (s.completing() || !s.fighting) {
+					return;
+				}
 			}
+		} finally {
+			Stealth.crowd(java.util.List.of());
 		}
 
 		bolts(s, player, level, corner);
@@ -115,18 +190,22 @@ final class Finale {
 				figure.speed = 0.0F;
 			}
 
-			figure.headYaw = com.phiro.sabercraft.interior.Crew.yaw(figure.position(), me);
+			figure.headYaw = Crew.yaw(figure.position(), me);
 
 			if (--figure.cooldown <= 0) {
 				shoot(figure, player, level, corner);
 				figure.cooldown = SHOT_MIN + player.getRandom().nextInt(SHOT_RANDOM);
 			}
+
+			// The rifle comes up the last ten ticks before a shot.
+			figure.windup = figure.cooldown <= 10 ? 10 - figure.cooldown + 1 : 0;
 		} else {
 			// Out of sight: they come to where the player is (in a fight everyone knows).
 			if (!Stealth.step(figure, me, Stealth.WALK, level, corner)) {
 				figure.speed = 0.0F;
 			}
 
+			figure.windup = 0;
 			figure.cooldown = Math.max(figure.cooldown, 12);
 		}
 	}
@@ -178,8 +257,10 @@ final class Finale {
 	private static void hurt(StorySession s, Figure figure, float amount, ServerLevel level, Vec3 at) {
 		figure.health = Math.max(0.0F, figure.health - amount);
 		level.sendParticles(ParticleTypes.SMOKE, at.x, at.y, at.z, 6, 0.1, 0.2, 0.1, 0.02);
-		level.sendParticles(ParticleTypes.ELECTRIC_SPARK, at.x, at.y, at.z, 6, 0.05, 0.05, 0.05, 0.2);
+		level.sendParticles(ParticleTypes.ELECTRIC_SPARK, at.x, at.y, at.z, 10, 0.08, 0.1, 0.08, 0.25);
 		level.playSound(null, at.x, at.y, at.z, ShipInteriors.sound("saber.hit"), SoundSource.HOSTILE, 0.9F, 1.0F);
+		// The client flashes the one hit.
+		Story.cue(s, Story.CUE_DUEL, "hit", "", figure.id);
 
 		if (figure.health <= 0.0F) {
 			figure.mode = Figure.DOWN;
@@ -227,6 +308,7 @@ final class Finale {
 			return;
 		}
 
+		strokes++;
 		Vec3 at = best.box().getCenter().add(corner);
 
 		if (!best.saber) {
@@ -234,27 +316,58 @@ final class Finale {
 			return;
 		}
 
-		// The Schattenklinge: open after a blow, or struck from behind, or caught early in his wind-up.
-		Vec3 toPlayer = new Vec3(eye.x - best.x, 0.0, eye.z - best.z).normalize();
-		boolean behind = toPlayer.dot(best.look()) < -0.35;
+		duelStroke(s, best, player, eye, level, at);
+	}
 
-		if (best.timer > 0 || behind || best.windup > WINDUP_FAST) {
-			best.timer = 0;
-			best.windup = 0;
-			best.cooldown = Math.max(best.cooldown, 14);
-			hurt(s, best, HIT, level, at);
-			best.mode = Figure.FIGHT;
+	/** A stroke at the Schattenklinge: it hits when he is open (or from behind), else he parries. */
+	private static void duelStroke(StorySession s, Figure f, ServerPlayer player, Vec3 eye, ServerLevel level, Vec3 at) {
+		Vec3 toPlayer = new Vec3(eye.x - f.x, 0.0, eye.z - f.z).normalize();
+		boolean behind = toPlayer.dot(f.look()) < -0.35;
+		boolean open = f.action == OPEN_UP || behind && f.action != TURN && f.action != ESCAPE;
 
-			if (best.health <= BREAKS_OFF) {
-				breaksOff(s, best);
+		if (open) {
+			int before = phase(f);
+			hurt(s, f, HIT, level, at);
+			f.parried = 0;
+			f.hits++;
+			s.counters.merge("duel_hits", 1, Integer::sum);
+
+			if (f.health <= BREAKS_OFF) {
+				breaksOff(s, f);
+				return;
 			}
-		} else {
-			// Parried.
-			level.sendParticles(ParticleTypes.ELECTRIC_SPARK, at.x, at.y + 0.3, at.z, 10, 0.1, 0.1, 0.1, 0.35);
-			level.playSound(null, at.x, at.y, at.z, ShipInteriors.sound("saber.clash"), SoundSource.HOSTILE, 1.0F, 0.9F + player.getRandom().nextFloat() * 0.2F);
 
-			if (player.getRandom().nextFloat() < 0.35F && best.windup == 0) {
-				best.windup = 6;
+			if (phase(f) != before) {
+				turn(s, f);
+			} else if (behind || f.hits >= HITS_PER_OPENING) {
+				// He has had enough of that: spins round and steps back.
+				act(f, RECOIL, SPIN, RECOIL_TICKS);
+				f.hits = 0;
+			} else {
+				// Each hit takes some of the opening.
+				f.timer = Math.max(4, f.timer - 4);
+			}
+
+			return;
+		}
+
+		// Parried.
+		level.sendParticles(ParticleTypes.ELECTRIC_SPARK, at.x, at.y + 0.3, at.z, 10, 0.1, 0.1, 0.1, 0.35);
+		level.playSound(null, at.x, at.y, at.z, ShipInteriors.sound("saber.clash"), SoundSource.HOSTILE, 1.0F, 0.9F + player.getRandom().nextFloat() * 0.2F);
+		Story.cue(s, Story.CUE_DUEL, "parried", "", f.id);
+
+		if (f.action == GUARD || f.action == RECOIL) {
+			if (++f.parried >= PARRIES) {
+				// Hammering at his guard: he answers at once, with a thrust.
+				f.parried = 0;
+				f.combo = 1;
+				blowStarts(f, THRUST, RIPOSTE, level, s);
+				ripostes++;
+
+				if (!s.has("tmp.hint_riposte")) {
+					s.set("tmp.hint_riposte");
+					s.hint("sabercraft.story.hint.duel_riposte");
+				}
 			}
 		}
 	}
@@ -271,79 +384,179 @@ final class Finale {
 
 		shadow.hostile = true;
 		shadow.saber = true;
+		shadow.lit = true;
 		shadow.mode = Figure.FIGHT;
 		shadow.cooldown = 30;
 		shadow.windup = 0;
 		shadow.timer = 0;
+		shadow.combo = 0;
+		shadow.parried = 0;
+		shadow.hits = 0;
+		act(shadow, GUARD, 0, 0);
 		s.fighting = true;
+		s.focus = 1.0F;
+		s.focusTicks = 0;
 		s.set("tmp.duel");
 		s.timer("push", PUSH_EVERY);
-		Chapter1.music(s, s.progress.mission, s.step().id());
+		s.timer("leap", LEAP_EVERY);
+		Chapter1.music(s, s.mission, s.step().id());
 		Story.cue(s, Story.CUE_SOUND, "", "saber.ignite", shadow.id);
+		s.hint("sabercraft.story.hint.duel_start");
 		s.dirty = true;
 	}
 
+	/** Which phase of the duel (1..3) by his strength. */
+	static int phase(Figure f) {
+		return f.health > PHASE_TWO ? 1 : f.health > PHASE_THREE ? 2 : 3;
+	}
+
+	private static void act(Figure f, int action, int attack, int ticks) {
+		f.action = action;
+		f.attack = attack;
+		f.timer = ticks;
+		f.windup = 0;
+	}
+
 	private static void duel(StorySession s, Figure f, ServerPlayer player, Vec3 me, ServerLevel level, Vec3 corner) {
-		boolean second = f.health <= SECOND_PHASE;
+		int phase = phase(f);
 		double distance = Math.hypot(me.x - f.x, me.z - f.z);
-		f.turnTowards(me, 16.0F, true);
-		f.headYaw = com.phiro.sabercraft.interior.Crew.yaw(f.position(), me);
 
-		if (f.timer > 0) {
-			f.timer--;
+		if (f.action != LEAP || f.windup > 0) {
+			f.turnTowards(me, f.action == WINDUP ? 9.0F : 16.0F, true);
 		}
 
-		if (f.windup > 0) {
-			f.speed = 0.0F;
+		f.headYaw = Crew.yaw(f.position(), me);
 
-			if (--f.windup == 0) {
-				blow(s, f, player, me, level, corner, second);
+		switch (f.action) {
+			case WINDUP -> {
+				f.speed = 0.0F;
+
+				// A thrust carries him in a little.
+				if (f.attack == THRUST && distance > 2.2) {
+					Stealth.step(f, me, 2.5, level, corner);
+				}
+
+				if (--f.windup <= 0) {
+					blow(s, f, player, me, level, corner, phase);
+				}
 			}
+			case OPEN_UP -> {
+				f.speed = 0.0F;
 
-			return;
+				if (--f.timer <= 0) {
+					act(f, GUARD, 0, 0);
+					f.cooldown = 10;
+					f.hits = 0;
+				}
+			}
+			case RECOIL, TURN -> {
+				// He steps back to sword's length and further (and turns no stroke into an opening).
+				double keep = f.action == TURN ? 4.5 : 3.0;
+
+				if (distance < keep) {
+					Vec3 away = f.position().add(f.position().subtract(me).normalize().scale(2.0));
+					Stealth.step(f, away, Stealth.WALK * 1.6, level, corner);
+				} else {
+					f.speed = 0.0F;
+				}
+
+				if (--f.timer <= 0) {
+					act(f, GUARD, 0, 0);
+					f.cooldown = f.action == TURN ? 6 : 12;
+				}
+			}
+			case LEAP -> leap(s, f, player, me, level, corner, phase);
+			case PUSH -> {
+				f.speed = 0.0F;
+
+				if (--f.windup <= 0) {
+					push(s, f, player, level, corner);
+					act(f, GUARD, 0, 0);
+					f.cooldown = 20;
+				}
+			}
+			case ESCAPE -> f.speed = 0.0F;
+			default -> guard(s, f, player, me, level, corner, phase, distance);
 		}
+	}
+
+	/** On guard: circling at sword's length until he goes in. */
+	private static void guard(StorySession s, Figure f, ServerPlayer player, Vec3 me, ServerLevel level, Vec3 corner, int phase, double distance) {
+		RandomSource random = player.getRandom();
+		boolean clear = Stealth.clear(level, corner.add(f.eye()), player.getEyePosition());
 
 		if (f.cooldown > 0) {
 			f.cooldown--;
 
-			if (distance > 2.6) {
+			if (distance > 3.0) {
 				Stealth.step(f, me, Stealth.WALK * 1.3, level, corner);
-			} else if (distance < 1.4) {
-				Vec3 away = f.position().add(f.position().subtract(me).normalize());
-				Stealth.step(f, away, Stealth.WALK, level, corner);
+			} else if (distance < 1.6) {
+				Stealth.step(f, f.position().add(f.position().subtract(me).normalize()), Stealth.WALK, level, corner);
 			} else {
-				f.speed = 0.0F;
+				// Circling: a step to the side.
+				Vec3 to = f.position().subtract(me).normalize();
+				Vec3 side = new Vec3(-to.z, 0.0, to.x).scale(f.strafe);
+
+				if (!Stealth.step(f, f.position().add(side), Stealth.WALK * 0.8, level, corner)) {
+					f.strafe = -f.strafe;
+				}
 			}
 
 			return;
 		}
 
-		// The Force: in the second phase, now and then, a push from a few blocks away.
-		if (second && !s.timer("push") && distance > 2.0 && distance < 8.0 && Stealth.clear(level, corner.add(f.eye()), player.getEyePosition())) {
-			push(s, f, player, level, corner);
+		if (phase >= 2 && !s.timer("push") && distance > 2.5 && distance < 8.0 && clear) {
+			act(f, PUSH, HAND, HAND_TICKS);
+			f.windup = HAND_TICKS;
 			s.timer("push", PUSH_EVERY);
-			f.cooldown = 24;
 			return;
 		}
 
-		if (distance <= 2.7) {
-			f.windup = second ? WINDUP_FAST : WINDUP;
-			Vec3 at = f.position().add(corner);
-			level.playSound(null, at.x, at.y + 1.2, at.z, ShipInteriors.sound("saber.swing"), SoundSource.HOSTILE, 0.9F, 0.8F);
-		} else {
-			Stealth.step(f, me, 3.8, level, corner);
+		if (phase >= 2 && !s.timer("leap") && distance > LEAP_FROM && distance < 9.0 && clear) {
+			act(f, LEAP, CROUCH, CROUCH_TICKS);
+			f.windup = CROUCH_TICKS;
+			f.lure = null;
+			s.timer("leap", LEAP_EVERY);
+			return;
+		}
+
+		if (distance <= BLOW_REACH - 0.4) {
+			f.combo = switch (phase) {
+				case 1 -> 1 + random.nextInt(2);
+				case 2 -> 2 + random.nextInt(2);
+				default -> 3;
+			};
+			blowStarts(f, 1 + random.nextInt(3), WINDUPS[phase], level, s);
+		} else if (!Stealth.step(f, me, 3.8, level, corner)) {
+			f.speed = 0.0F;
 		}
 	}
 
-	/** His blow falls: blocked (guard, facing him), it leaves him open; otherwise it hurts. */
-	private static void blow(StorySession s, Figure f, ServerPlayer player, Vec3 me, ServerLevel level, Vec3 corner, boolean second) {
-		double distance = Math.hypot(me.x - f.x, me.z - f.z);
-		Vec3 at = f.position().add(corner).add(f.look().scale(0.9)).add(0.0, 1.3, 0.0);
+	/** A blow begins: the blade goes up (or back, or in). */
+	private static void blowStarts(Figure f, int kind, int ticks, ServerLevel level, StorySession s) {
+		act(f, WINDUP, kind, ticks);
+		f.windup = ticks;
+		Vec3 at = f.position().add(Vec3.atLowerCornerOf(s.origin(f.ship)));
+		level.playSound(null, at.x, at.y + 1.2, at.z, ShipInteriors.sound("saber.swing"), SoundSource.HOSTILE, 0.7F, kind == THRUST ? 1.1F : 0.8F);
+	}
 
-		if (distance > 3.2) {
-			// Missed: the player stepped back. He is open.
-			f.timer = OPEN + 4;
-			f.cooldown = 26;
+	/** His blow falls: blocked (guard, facing him), it leads on in the combo or leaves him open; otherwise it hurts. */
+	private static void blow(StorySession s, Figure f, ServerPlayer player, Vec3 me, ServerLevel level, Vec3 corner, int phase) {
+		double distance = Math.hypot(me.x - f.x, me.z - f.z);
+		double reach = f.attack == THRUST ? THRUST_REACH : BLOW_REACH;
+		Vec3 at = f.position().add(corner).add(f.look().scale(0.9)).add(0.0, f.attack == SWEEP ? 0.8 : 1.3, 0.0);
+		RandomSource random = player.getRandom();
+		f.combo--;
+
+		if (distance > reach) {
+			// Missed: the player stepped back.
+			if (f.combo > 0) {
+				blowStarts(f, 1 + random.nextInt(3), WINDUPS[phase] - FASTER, level, s);
+			} else {
+				act(f, OPEN_UP, STAGGER, OPENINGS[phase] - 6);
+				f.hits = 0;
+			}
+
 			return;
 		}
 
@@ -353,19 +566,57 @@ final class Finale {
 		boolean guard = SaberAbilities.isGuarding(player) || player.isUsingItem() && SaberVariant.canHold(player.getUseItem());
 
 		if (guard && facing) {
-			level.sendParticles(ParticleTypes.ELECTRIC_SPARK, at.x, at.y, at.z, 14, 0.1, 0.1, 0.1, 0.4);
-			level.playSound(null, at.x, at.y, at.z, ShipInteriors.sound("saber.clash"), SoundSource.HOSTILE, 1.1F, 0.85F + player.getRandom().nextFloat() * 0.15F);
-			f.timer = OPEN;
-			f.cooldown = second ? 18 : 26;
+			level.sendParticles(ParticleTypes.ELECTRIC_SPARK, at.x, at.y, at.z, 16, 0.1, 0.1, 0.1, 0.45);
+			level.playSound(null, at.x, at.y, at.z, ShipInteriors.sound("saber.clash"), SoundSource.HOSTILE, 1.1F, 0.85F + random.nextFloat() * 0.15F);
 			s.counters.merge("blocked", 1, Integer::sum);
+			s.focus = Math.min(1.0F, s.focus + FOCUS_BLOCK);
+			Story.cue(s, Story.CUE_DUEL, "blocked", "", f.id);
+
+			if (f.combo > 0) {
+				blowStarts(f, 1 + random.nextInt(3), WINDUPS[phase] - FASTER, level, s);
+			} else {
+				// The last blow of the combo blocked: he staggers. The opening.
+				act(f, OPEN_UP, STAGGER, OPENINGS[phase]);
+				f.hits = 0;
+				f.parried = 0;
+			}
 		} else {
-			player.hurtServer(level, level.damageSources().generic(), second ? BLOW_FAST : BLOW);
+			player.hurtServer(level, level.damageSources().generic(), BLOWS[phase]);
 			Vec3 push = new Vec3(me.x - f.x, 0.0, me.z - f.z).normalize().scale(0.6);
 			player.push(push.x, 0.25, push.z);
 			player.hurtMarked = true;
 			level.playSound(null, at.x, at.y, at.z, ShipInteriors.sound("saber.hit"), SoundSource.HOSTILE, 1.0F, 0.9F);
-			f.timer = 0;
-			f.cooldown = second ? 16 : 24;
+			level.sendParticles(ParticleTypes.ELECTRIC_SPARK, player.getX(), player.getY() + 1.1, player.getZ(), 12, 0.15, 0.2, 0.15, 0.3);
+			Story.cue(s, Story.CUE_DUEL, "hurt", "", Math.round(BLOWS[phase]));
+			f.combo = 0;
+			act(f, RECOIL, 0, 10);
+		}
+	}
+
+	/** The leap: crouching (the warning), then through the air, and an overhead blow as he lands. */
+	private static void leap(StorySession s, Figure f, ServerPlayer player, Vec3 me, ServerLevel level, Vec3 corner, int phase) {
+		if (f.windup > 0) {
+			f.speed = 0.0F;
+
+			if (--f.windup == 0) {
+				f.lure = me;
+				f.attack = OVERHEAD;
+				f.timer = 20;
+				Vec3 at = f.position().add(corner);
+				level.playSound(null, at.x, at.y + 1.0, at.z, ShipInteriors.sound("saber.swing"), SoundSource.HOSTILE, 1.0F, 0.7F);
+			}
+
+			return;
+		}
+
+		Vec3 target = f.lure != null ? f.lure : me;
+		boolean moved = Stealth.step(f, target, LEAP_SPEED, level, corner);
+
+		if (!moved || --f.timer <= 0 || Math.hypot(target.x - f.x, target.z - f.z) < 1.8) {
+			f.lure = null;
+			f.combo = 1;
+			act(f, WINDUP, OVERHEAD, 4);
+			f.windup = 4;
 		}
 	}
 
@@ -380,6 +631,7 @@ final class Finale {
 
 		if (!guard) {
 			player.hurtServer(level, level.damageSources().generic(), 2.0F);
+			Story.cue(s, Story.CUE_DUEL, "hurt", "", 2);
 		}
 
 		Vec3 at = f.position().add(corner).add(0.0, 1.2, 0.0);
@@ -388,21 +640,115 @@ final class Finale {
 		s.hint("sabercraft.story.hint.push");
 	}
 
-	/** At the end of his strength he breaks off: the Falcon is coming. */
+	/** A new phase: he steps back, and comes on quicker. */
+	private static void turn(StorySession s, Figure f) {
+		act(f, TURN, 0, TURN_TICKS);
+		f.hits = 0;
+		f.parried = 0;
+		f.combo = 0;
+		int phase = phase(f);
+		s.hear("shadow", "sabercraft.story.shout.shadow_phase" + phase);
+		s.hint("sabercraft.story.hint.duel_phase" + phase);
+		Story.cue(s, Story.CUE_DUEL, "phase", "", phase);
+		// The push and the leap come soon after.
+		s.timer("push", TURN_TICKS + 30);
+		s.timer("leap", TURN_TICKS + 90);
+	}
+
+	/** At the end of his strength he breaks off: {@link Chapter1} plays his flight. */
 	private static void breaksOff(StorySession s, Figure f) {
+		act(f, ESCAPE, STAGGER, 0);
 		f.hostile = false;
 		f.mode = Figure.HELD;
-		f.windup = 0;
-		f.timer = 0;
 		f.speed = 0.0F;
-		ServerPlayer player = s.player();
-		f.target = player != null && s.here != null ? s.local(s.here) : null;
+		f.combo = 0;
+		f.target = null;
 		s.fighting = false;
-		Story.cue(s, Story.CUE_SOUND, "", "saber.retract", f.id);
-		Story.cue(s, Story.CUE_MUSIC, "", "music.event_rise", 0);
-		s.radio("shadow", "sabercraft.story.radio.shadow_retreat");
-		s.radio("dax", "sabercraft.story.radio.dax_arrives");
-		s.complete();
+		s.focusTicks = 0;
+		s.unset("tmp.duel");
+
+		// The troopers still about fall back (the fight is over).
+		for (Figure figure : s.figures) {
+			if (figure != f && figure.hostile && figure.mode != Figure.DOWN && !figure.saber) {
+				figure.mode = Figure.DOWN;
+			}
+		}
+
+		Story.cue(s, Story.CUE_DUEL, "over", "", f.id);
+		Chapter1.duelEnds(s, f);
+	}
+
+	// --- The Focus ---------------------------------------------------------------------------------
+
+	/** The focus key: slows the enemies when it is full. Returns a hint's key, or null when it began. */
+	static @Nullable String focus(StorySession s) {
+		if (!s.has("know.focus")) {
+			return "sabercraft.story.hint.focus_unknown";
+		}
+
+		if (!s.fighting) {
+			return "sabercraft.story.hint.focus_calm";
+		}
+
+		if (s.focusTicks > 0) {
+			return null;
+		}
+
+		if (s.focus < 1.0F) {
+			return "sabercraft.story.hint.focus_empty";
+		}
+
+		s.focus = 0.0F;
+		s.focusTicks = FOCUS_TICKS;
+		foci++;
+		Story.cue(s, Story.CUE_SOUND, "", "story.focus_in", -1);
+		Story.cue(s, Story.CUE_DUEL, "focus_on", "", FOCUS_TICKS);
+		return null;
+	}
+
+	/** Every tick of a fight: the Focus fills, and ends. */
+	static void focusTick(StorySession s) {
+		if (s.focusTicks > 0) {
+			if (--s.focusTicks == 0) {
+				Story.cue(s, Story.CUE_SOUND, "", "story.focus_out", -1);
+				Story.cue(s, Story.CUE_DUEL, "focus_off", "", 0);
+			}
+		} else if (s.has("know.focus")) {
+			s.focus = Math.min(1.0F, s.focus + FOCUS_TIME);
+		}
+
+		// The meter for the HUD, four times a second.
+		if (s.has("know.focus") && s.stepTicks % 5 == 0) {
+			Story.cue(s, Story.CUE_DUEL, "meter", "", Math.round(s.focus * 100.0F) + (s.focusTicks > 0 ? 1000 : 0));
+		}
+	}
+
+	/** Whether the Focus slows the enemies now. */
+	static boolean slowed(StorySession s) {
+		return s.focusTicks > 0;
+	}
+
+	// --- For the client and the tests --------------------------------------------------------------
+
+	/**
+	 * What the client is shown of a fighter's blow (one byte): the kind in the top three bits, how
+	 * far along in the bottom five (0..31). A trooper's raised rifle is kind 0.
+	 */
+	static int shown(Figure f) {
+		if (!f.saber) {
+			return Math.min(31, f.windup);
+		}
+
+		int progress = switch (f.action) {
+			case WINDUP -> f.timer > 0 ? 31 * (f.timer - f.windup) / f.timer : 31;
+			case LEAP -> f.windup > 0 ? 31 * (CROUCH_TICKS - f.windup) / CROUCH_TICKS : 20;
+			case PUSH -> 31 * (HAND_TICKS - f.windup) / HAND_TICKS;
+			case OPEN_UP, ESCAPE -> 31;
+			case RECOIL -> f.attack == SPIN ? 31 * (RECOIL_TICKS - Math.max(0, f.timer)) / RECOIL_TICKS : 0;
+			default -> 0;
+		};
+
+		return f.attack << 5 | Mth.clamp(progress, 0, 31);
 	}
 
 	/** The fighter nearest that point, or null (for tests). */
@@ -420,5 +766,17 @@ final class Finale {
 		}
 
 		return best;
+	}
+
+	static int strokesForTest() {
+		return strokes;
+	}
+
+	static int ripostesForTest() {
+		return ripostes;
+	}
+
+	static int fociForTest() {
+		return foci;
 	}
 }

@@ -312,6 +312,11 @@ public final class DestroyerInterior extends InteriorPlan {
 	public static final double REACTOR_X = 40.5;
 	public static final double REACTOR_Z = 24.5;
 	public static final double REACTOR_R = 14.0;
+	/**
+	 * Phase 20: the console on the catwalk, against the railing (cell; it faces away from the core).
+	 * Before the crew (they are placed in this class's initialisation, the technician at it).
+	 */
+	public static final BlockPos CATWALK_DESK = new BlockPos(40, HANGAR + 1, 15);
 	public static final int REACTOR_BOTTOM = 14;
 	public static final int REACTOR_TOP = 44;
 	/** Phase 16: where the reactor shaft's round wall is drawn (and collides). */
@@ -480,7 +485,9 @@ public final class DestroyerInterior extends InteriorPlan {
 		// The corridor to the lift: a patrol; a guard at the reactor gallery; a technician on the catwalk.
 		list.add(Crew.patrol(TROOPER, 1.0, 0.0, new Vec3(CX - 1.5, hangar, HANGAR_Z1 + 2.5), new Vec3(CX - 1.5, hangar, LOBBY_Z1 - 4.5)).as("patrol"));
 		list.add(Crew.at(TROOPER, STAND, CX + 2.6, hangar, LOBBY_Z0 + 1.5, 90.0F).as("reactor"));
-		list.add(Crew.at(TECH, WORK, REACTOR_X - 0.5, hangar, REACTOR_Z - 9.3, 0.0F).as("reactor"));
+		// Phase 20: the technician on the catwalk works at a console on the railing (stood at the bare
+		// railing, looking at nothing).
+		list.add(Crew.at(TECH, WORK, CATWALK_DESK.getX() + 0.5, hangar, CATWALK_DESK.getZ() - 0.95, 0.0F).as("reactor"));
 
 		// Phase 18: the reactor's lower level: technicians at the consoles, a guard by the lift.
 		list.add(Crew.at(TECH, WORK, 51.05, REACTOR_BOTTOM, 24.5, 270.0F).as("reactor"));
@@ -672,7 +679,9 @@ public final class DestroyerInterior extends InteriorPlan {
 	/** Phase 18: half the thickness of the lift's posts (one at each corner of {@link #REACTOR_LIFT}). */
 	public static final double LIFT_POST = 0.0625;
 	/** Phase 18: the ribs up the shaft wall (they collide as drawn): their angles, where they stand, how thick. */
-	public static final float[] RIB_ANGLES = {15, 45, 75, 105, 135, 165, 195, 225, 255, 285, 345};
+	// Phase 20: the rib at 75 degrees stood in the way to the lab (a pipe across the doorway, solid
+	// besides); it stands beside the doorway now, at 61 degrees.
+	public static final float[] RIB_ANGLES = {15, 45, 61, 105, 135, 165, 195, 225, 255, 285, 345};
 	public static final double RIB_R = REACTOR_WALL - 0.25;
 	public static final double RIB_SIZE = 0.21;
 
@@ -1053,6 +1062,10 @@ public final class DestroyerInterior extends InteriorPlan {
 			}
 		}
 
+		// Phase 20: the console on the catwalk collides as drawn, nobody climbs onto it.
+		b.shaped(CATWALK_DESK.getX(), CATWALK_DESK.getY(), CATWALK_DESK.getZ(), net.minecraft.world.phys.shapes.Shapes.box(0.0, 0.0, 0.1, 1.0, 1.0, 1.0),
+				false);
+		b.ghost(CATWALK_DESK.getX(), CATWALK_DESK.getY() + 1, CATWALK_DESK.getZ(), net.minecraft.world.phys.shapes.Shapes.box(0.0, 0.0, 0.1, 1.0, 0.5, 1.0));
 		b.clear(GALLERY_X0 + 1, HANGAR + 1, GALLERY_Z0, GALLERY_X1 - 1, HANGAR + 3, GALLERY_Z1 + 3);
 		// Phase 19: the way through the shaft wall to the lab (its blast door is in the lab's wall).
 		b.clear(LAB_DOOR_X0, REACTOR_BOTTOM, LAB_WALL - 3, LAB_DOOR_X0 + 2, REACTOR_BOTTOM + 2, LAB_WALL - 1);

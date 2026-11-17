@@ -19,6 +19,12 @@ import net.minecraft.world.phys.Vec3;
  * Phase 19: one player playing the story now: where their story ships are, who is in them and
  * what they are doing, the mission and step, what is known (since the last checkpoint), the alarm,
  * the open dialog. The chapter's scripts change the story through this.
+ *
+ * <p>Phase 20: the session plays its own mission and step; the progress holds the last checkpoint
+ * (the state at one moment and a safe place). A checkpoint is made by {@link #checkpoint}; after
+ * a capture, a relog or a restart {@link #begin} with {@code restore} puts everything back as it
+ * was then: what is known, the journal, the people at their posts, the ship (lights, force
+ * fields, hatches), the droids, and the player at the safe place.
  */
 public final class StorySession {
 	public final UUID player;
@@ -28,6 +34,15 @@ public final class StorySession {
 	/** The corners of the player's own story ships. */
 	public final BlockPos falcon;
 	public final BlockPos destroyer;
+
+	/** Phase 20: the mission and the step being played now (the progress has the last checkpoint's). */
+	public int mission;
+	public int stepIndex;
+	/** Phase 20: checkpoints made in this session (tests count them), and the state at the last one. */
+	public int checkpoints;
+	private String saved = "";
+	/** Phase 20: restored to a checkpoint this many times in this session (tests count them). */
+	public int restores;
 
 	/** Everyone in both ships. */
 	public final List<Figure> figures = new ArrayList<>();
@@ -52,11 +67,27 @@ public final class StorySession {
 	public boolean alert;
 	/** Ticks since anyone last saw the player during an alarm. */
 	public int unseen;
+	/** Phase 20: a chaser reached the player ("Hands up!"): ticks until the capture, and who. */
+	public int cornered;
+	public @Nullable Figure cornerer;
 	/** Wearing the armour (a disguise), and whether it is known to the enemy (then it helps little). */
 	public boolean disguised;
 	public boolean burned;
 	/** After a capture: a few seconds before anyone can see the player again. */
 	public int grace;
+	/**
+	 * Phase 21: in a chase, when anyone hunting the player last saw them (game time) and where
+	 * (plot space): they tell each other over the comlink, so the others come there too.
+	 */
+	public long huntSeen = -1000L;
+	public @Nullable Vec3 huntAt;
+	/** Phase 21: stun bolts that hit the player in this chase (three, and they are caught). */
+	public int stuns;
+	/** Phase 21: the search after a chase was announced (sirens off, "search the deck"). */
+	public boolean searching;
+	/** Phase 21: the Focus (the duel's slowed time): how full it is (0..1) and how long it still lasts (ticks). */
+	public float focus;
+	public int focusTicks;
 
 	/** The open dialog and the line in it, or null. */
 	public @Nullable Dialog dialog;
@@ -81,6 +112,8 @@ public final class StorySession {
 	/** Positions shown by a droid's scan (plot space), and until when (game time). */
 	public List<Vec3> scanned = List.of();
 	public long scanUntil;
+	/** Phase 20: what the droid's message of the chapter names (who went to look), or none. */
+	public Object[] droidArgs = new Object[0];
 	/** The finale: the player's lightsaber is out (the stealth rules no longer apply). */
 	public boolean fighting;
 
@@ -91,8 +124,11 @@ public final class StorySession {
 		this.chapter = chapter;
 		this.falcon = falcon;
 		this.destroyer = destroyer;
+		this.mission = progress.mission;
+		this.stepIndex = progress.step;
 		this.flags.addAll(progress.flags);
 		this.journal.addAll(progress.journal);
+		this.saved = this.state();
 	}
 
 	public @Nullable ServerPlayer player() {
@@ -107,12 +143,12 @@ public final class StorySession {
 
 	public Mission mission() {
 		List<Mission> missions = this.chapter.missions();
-		return missions.get(Math.min(this.progress.mission, missions.size() - 1));
+		return missions.get(Math.max(0, Math.min(this.mission, missions.size() - 1)));
 	}
 
 	public Mission.Step step() {
 		Mission mission = this.mission();
-		return mission.steps().get(Math.min(this.progress.step, mission.steps().size() - 1));
+		return mission.steps().get(Math.max(0, Math.min(this.stepIndex, mission.steps().size() - 1)));
 	}
 
 	/** Whether the current step is that one. */
@@ -143,15 +179,39 @@ public final class StorySession {
 		}
 	}
 
-	/** Starts the current step: commits what is known (a checkpoint), sets up the ship, puts the player there if asked. */
-	void begin(boolean again, boolean teleport) {
+	/** Ticks nobody sees the player after being put back at a checkpoint. */
+	static final int GRACE = 100;
+
+	/**
+	 * Starts the current step. Going on ({@code restore} false): the people stay where they are,
+	 * and if the step has a checkpoint of its own, one is made. Back to the last checkpoint
+	 * ({@code restore} true: after a capture, a relog, a restart): its mission, step, knowledge and
+	 * journal, everyone at their post, the ship as the story has it then, the player at its safe
+	 * place with the droids, and a few seconds before anyone can see them.
+	 */
+	void begin(boolean restore) {
+		if (restore) {
+			this.mission = this.progress.mission;
+			this.stepIndex = this.progress.step;
+		}
+
 		Mission.Step step = this.step();
 		this.stepId = step.id();
 		this.stepTicks = 0;
 		this.timers.clear();
 		this.counters.clear();
-		this.alarm = 0;
-		this.unseen = 0;
+
+		// Phase 20: an alarm goes on into the next step (a script may finish one while they search);
+		// a checkpoint ends it.
+		if (restore) {
+			this.alarm = 0;
+			this.unseen = 0;
+		}
+
+		this.cornered = 0;
+		this.cornerer = null;
+		this.stuns = 0;
+		this.focusTicks = 0;
 		this.dialog = null;
 		this.line = null;
 		this.partner = null;
@@ -159,32 +219,111 @@ public final class StorySession {
 		this.scanned = List.of();
 		this.fighting = false;
 
-		if (again) {
-			// Back to how things were when the step began.
+		if (restore) {
 			this.flags.clear();
 			this.flags.addAll(this.progress.flags);
 			this.journal.clear();
 			this.journal.addAll(this.progress.journal);
 			this.rebuildFigures();
 		} else {
-			this.progress.flags.clear();
-			this.progress.flags.addAll(this.flags);
-			this.progress.journal.clear();
-			this.progress.journal.addAll(this.journal);
 			this.syncFigures();
 		}
 
 		this.disguised = this.flags.contains("wear.armour");
 		this.burned = this.flags.contains("armour.burned");
 		this.alert = this.flags.contains("ship.alert");
-		Story.save(this);
 
-		if (teleport) {
-			Story.place(this, step.ship(), step.spawn(), step.yaw());
+		if (restore) {
+			this.restores++;
+			Story.placeAtCheckpoint(this, step);
+			Story.resetShip(this);
 		}
 
-		this.chapter.begin(this, step, again);
+		this.chapter.begin(this, step, restore);
+
+		if (restore) {
+			this.grace = Math.max(this.grace, GRACE);
+			this.chapter.droids(this);
+			this.saved = this.state();
+		} else if (this.chapter.checkpoint(this, step)) {
+			Mission.Place place = this.chapter.place(this, step);
+			this.checkpoint(place.ship(), place.at(), place.yaw());
+		}
+
 		this.dirty = true;
+	}
+
+	/**
+	 * Phase 20: makes a checkpoint now: the mission and step, what is known (not the scripts'
+	 * passing marks, {@code tmp.*}), the journal, and the safe place the player is put back at.
+	 * Those walking off are gone from now on (the chapter settles them first).
+	 */
+	public void checkpoint(String ship, Vec3 place, float yaw) {
+		this.chapter.settle(this);
+		this.progress.mission = this.mission;
+		this.progress.step = this.stepIndex;
+		this.progress.stepId = this.step().id();
+		this.progress.flags.clear();
+
+		for (String flag : this.flags) {
+			if (!flag.startsWith("tmp.")) {
+				this.progress.flags.add(flag);
+			}
+		}
+
+		this.progress.journal.clear();
+		this.progress.journal.addAll(this.journal);
+		this.progress.placeShip = ship;
+		this.progress.placeX = place.x;
+		this.progress.placeY = place.y;
+		this.progress.placeZ = place.z;
+		this.progress.placeYaw = yaw;
+		this.progress.format = StoryProgress.FORMAT;
+		Story.save(this);
+		this.checkpoints++;
+		this.saved = this.state();
+		// A short notice: from here a capture brings one back.
+		Story.cue(this, Story.CUE_CHECKPOINT, "", "", 0);
+	}
+
+	/** Phase 20: what a checkpoint keeps (to tell whether a new one would change anything). */
+	String state() {
+		StringBuilder out = new StringBuilder().append(this.mission).append('/').append(this.stepIndex).append('/');
+
+		for (String flag : new java.util.TreeSet<>(this.flags)) {
+			if (!flag.startsWith("tmp.")) {
+				out.append(flag).append(',');
+			}
+		}
+
+		return out.append('/').append(String.join(",", this.journal)).toString();
+	}
+
+	/** Phase 20: whether something kept by checkpoints changed since the last one. */
+	public boolean unsaved() {
+		return !this.saved.equals(this.state());
+	}
+
+	/**
+	 * Phase 20: leaving the story while all is calm keeps how far one got (at the step's safe
+	 * place, as a checkpoint); during an alarm, a chase or a fight the last checkpoint stays (so
+	 * leaving is no way out of being caught).
+	 */
+	void keepOnLeave() {
+		if (this.progress.finished || this.alarm > 0 || this.fighting || this.completing()) {
+			return;
+		}
+
+		for (Figure figure : this.figures) {
+			if (figure.mode == Figure.CHASE || figure.stage >= Figure.ALERTED) {
+				return;
+			}
+		}
+
+		if (this.unsaved()) {
+			Mission.Place place = this.chapter.place(this, this.step());
+			this.checkpoint(place.ship(), place.at(), place.yaw());
+		}
 	}
 
 	// --- What is known -----------------------------------------------------------------------------
@@ -245,6 +384,37 @@ public final class StorySession {
 		}
 	}
 
+	/**
+	 * Phase 20: someone who comes (reinforcements for an alarm): numbered and added; they stay
+	 * while the steps go on, and leave by their door once it is calm (a checkpoint has them gone).
+	 */
+	Figure add(Figure template) {
+		Figure figure = this.numbered(template, this.time());
+		this.figures.add(figure);
+		this.dirty = true;
+		return figure;
+	}
+
+	/** Phase 20: whether the player could see that one now (in front, near enough, nothing in between). */
+	boolean seenBy(Figure figure) {
+		ServerPlayer player = this.player();
+		net.minecraft.server.level.ServerLevel level = this.server.getLevel(com.phiro.sabercraft.interior.ShipInteriors.DIMENSION);
+
+		if (player == null || level == null || this.here == null || !this.here.equals(figure.ship)) {
+			return false;
+		}
+
+		Vec3 eye = player.getEyePosition();
+		Vec3 them = figure.eye().add(Vec3.atLowerCornerOf(this.origin(figure.ship)));
+		Vec3 to = them.subtract(eye);
+
+		if (to.length() > 32.0 || to.normalize().dot(player.getLookAngle()) < 0.3) {
+			return false;
+		}
+
+		return Stealth.clear(level, eye, them);
+	}
+
 	/** Keeps those still there as they are, adds who comes, removes who goes. */
 	void syncFigures() {
 		long time = this.time();
@@ -274,6 +444,13 @@ public final class StorySession {
 				this.figures.add(kept);
 			} else {
 				this.figures.add(this.numbered(figure, time));
+			}
+		}
+
+		// Phase 20: reinforcements stay until they went back out of their door.
+		for (Figure figure : now.values()) {
+			if (figure.key.startsWith(Stealth.REINFORCEMENT)) {
+				this.figures.add(figure);
 			}
 		}
 	}

@@ -5,6 +5,7 @@ import java.util.Arrays;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 
+import org.jspecify.annotations.Nullable;
 import org.joml.Matrix3f;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
@@ -107,6 +108,14 @@ final class Mesh {
 	 * {@code lit} those lit by the world, {@code glow} the glowing ones (lamps, screens).
 	 */
 	void emit(PoseStack.Pose pose, VertexConsumer buffer, Animator animator, boolean alphaAnim, float lit, float glow) {
+		this.emit(pose, buffer, animator, alphaAnim, lit, glow, null);
+	}
+
+	/**
+	 * Phase 20: as above, the rooms' quads also tinted (a story's ship on emergency lights or in an
+	 * alarm): {@code tint} holds red, green, blue for the lit quads, then for the glowing ones.
+	 */
+	void emit(PoseStack.Pose pose, VertexConsumer buffer, Animator animator, boolean alphaAnim, float lit, float glow, float @Nullable [] tint) {
 		Matrix4f matrix = pose.pose();
 		Matrix3f normals = pose.normal();
 
@@ -137,10 +146,22 @@ final class Mesh {
 					colour = scale(colour, dim, false);
 				}
 
+				if (tint != null && (raw & INSIDE) != 0) {
+					int k = this.ints[i + 8] == LIGHT_WORLD ? 0 : 3;
+					colour = tint(colour, tint[k], tint[k + 1], tint[k + 2]);
+				}
+
 				buffer.addVertex(this.point.x, this.point.y, this.point.z, colour, this.floats[o + 3], this.floats[o + 4], OverlayTexture.NO_OVERLAY,
 						this.ints[i + 4 + v], this.normal.x, this.normal.y, this.normal.z);
 			}
 		}
+	}
+
+	static int tint(int argb, float r, float g, float b) {
+		int red = Math.min(255, Math.round((argb >> 16 & 0xFF) * r));
+		int green = Math.min(255, Math.round((argb >> 8 & 0xFF) * g));
+		int blue = Math.min(255, Math.round((argb & 0xFF) * b));
+		return argb & 0xFF000000 | red << 16 | green << 8 | blue;
 	}
 
 	static int scale(int argb, float factor, boolean alpha) {

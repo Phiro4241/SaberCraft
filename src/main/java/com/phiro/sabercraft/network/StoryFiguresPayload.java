@@ -23,11 +23,13 @@ public record StoryFiguresPayload(BlockPos origin, long time, List<Fig> figures)
 	public static final int HOSTILE = 4;
 	public static final int TALKS = 8;
 	public static final int OBSERVER = 16;
+	/** Phase 21: the saber is lit (also before the fight, in a scene). */
+	public static final int LIT = 32;
 
 	/**
 	 * One person: their number, kind and pose (as {@code Crew}), name ({@code speaker}), where and
 	 * which way they and their head face, how fast they walk, their stage and suspicion (0..255),
-	 * flags, health (0..255) and a blow being wound up (ticks).
+	 *flags, health (0..255) and a blow being wound up (Phase 21: the kind in the top three bits, how far along in the bottom five).
 	 */
 	public record Fig(int id, String kind, String pose, String speaker, float x, float y, float z, float yaw, float head, float speed, int stage, int suspicion,
 			int flags, int health, int windup) {

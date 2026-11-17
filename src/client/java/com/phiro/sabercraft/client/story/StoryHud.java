@@ -42,7 +42,8 @@ final class StoryHud implements HudElement {
 	public void extractRenderState(GuiGraphicsExtractor graphics, DeltaTracker delta) {
 		Minecraft client = Minecraft.getInstance();
 
-		if (client.player == null || client.level == null) {
+		// Phase 20: a film shows only itself.
+		if (client.player == null || client.level == null || StoryCinema.active()) {
 			return;
 		}
 
@@ -54,7 +55,10 @@ final class StoryHud implements HudElement {
 
 		if (state != null && state.active() && !hidden) {
 			alarm(graphics, state, width, height);
+			duel(graphics, client, width, height);
 			scan(graphics, client, width, height);
+			noise(graphics, client, width, height);
+			checkpoint(graphics, client.font, width);
 
 			if (ImmersionConfig.get().storyMarker) {
 				marker(graphics, client, state, width, height);
@@ -62,6 +66,7 @@ final class StoryHud implements HudElement {
 			}
 
 			objectives(graphics, client.font, state, width);
+			droidTip(graphics, client, state, partial, width, height);
 			prompt(graphics, client, partial, width, height);
 			progress(graphics, client.font, width, height);
 			hint(graphics, client.font, width, height);
@@ -89,7 +94,7 @@ final class StoryHud implements HudElement {
 			lines += font.split(Component.translatable(opt.key()), PANEL_WIDTH - 22).size();
 		}
 
-		int h = 8 + lines * 10 + (state.optional().isEmpty() ? 0 : 3) + (state.disguise() > 0 ? 11 : 0) + (state.alarm() > 0 ? 11 : 0);
+		int h = 8 + lines * 10 + (state.optional().isEmpty() ? 0 : 3) + (state.disguise() > 0 ? 11 : 0) + (state.alarm() > 0 || StoryClient.wary() ? 11 : 0);
 		graphics.fill(x - 4, y - 4, x + PANEL_WIDTH, y + h - 2, 0x78000000);
 		graphics.fill(x - 4, y - 4, x - 2, y + h - 2, 0xC0E8C46A);
 		graphics.text(font, Component.translatable("sabercraft.story.hud.mission", state.mission() + 1, Component.translatable(state.title())), x, y, GOLD);
@@ -131,10 +136,13 @@ final class StoryHud implements HudElement {
 			y += 11;
 		}
 
+		// Phase 20: after one (ALARM), searching, the ship on alert; calm again, the crew wary.
 		if (state.alarm() > 0) {
-			boolean full = state.alarm() >= 2;
-			graphics.text(font, Component.translatable(full ? "sabercraft.story.hud.alarm" : "sabercraft.story.hud.search"), x, y + 1,
-					full ? 0xFFFF5040 : 0xFFF0A040);
+			String key = state.alarm() >= 3 ? "sabercraft.story.hud.alarm" : state.alarm() == 2 ? "sabercraft.story.hud.search" : "sabercraft.story.hud.alert";
+			int colour = state.alarm() >= 3 ? 0xFFFF5040 : state.alarm() == 2 ? 0xFFF0A040 : 0xFFC8A070;
+			graphics.text(font, Component.translatable(key), x, y + 1, colour);
+		} else if (StoryClient.wary()) {
+			graphics.text(font, Component.translatable("sabercraft.story.hud.wary"), x, y + 1, 0xFFC8B890);
 		}
 	}
 
@@ -182,6 +190,45 @@ final class StoryHud implements HudElement {
 		diamond(graphics, x, y, 3, 0xA0E8C46A);
 	}
 
+	// --- Phase 20: what M-31 can do, with a guard near ----------------------------------------------
+
+	/**
+	 * While M-31 is along and someone who watches is near (and nobody is after the player), a small
+	 * line above the hotbar says what the droid key does; it is no longer shown once the noise was
+	 * made a few times.
+	 */
+	private static void droidTip(GuiGraphicsExtractor graphics, Minecraft client, StoryStatePayload state, float partial, int width, int height) {
+		var origin = StoryClient.figuresOrigin();
+
+		if (origin == null || client.gui.screen() != null || !state.droids().contains("m31") || state.alarm() >= 3 || StoryClient.noisesMade() >= 3) {
+			return;
+		}
+
+		Vec3 me = client.player.position();
+		boolean near = false;
+
+		for (StoryClient.Pose pose : StoryClient.figures(origin, partial)) {
+			StoryFiguresPayload.Fig fig = pose.fig();
+
+			if ((fig.flags() & StoryFiguresPayload.OBSERVER) != 0 && (fig.flags() & StoryFiguresPayload.HOSTILE) == 0 && !"down".equals(fig.pose())
+					&& Math.hypot(pose.x() + origin.getX() - me.x, pose.z() + origin.getZ() - me.z) < 12.0 && Math.abs(pose.y() + origin.getY() - me.y) < 3.0) {
+				near = true;
+				break;
+			}
+		}
+
+		if (!near) {
+			return;
+		}
+
+		Component text = Component.translatable("sabercraft.story.hud.droid_tip", com.phiro.sabercraft.client.droid.DroidControl.ABILITY_KEY.getTranslatedKeyMessage());
+		int w = client.font.width(text);
+		int x = width - w - 8;
+		int y = height - 34;
+		graphics.fill(x - 4, y - 2, x + w + 4, y + 10, 0x70000000);
+		graphics.text(client.font, text, x, y, 0xFFE8D8A8);
+	}
+
 	// --- Who is noticing ----------------------------------------------------------------------------
 
 	private static void suspicion(GuiGraphicsExtractor graphics, Minecraft client, float partial, int width, int height) {
@@ -217,9 +264,20 @@ final class StoryHud implements HudElement {
 			Component stage = Component.translatable("sabercraft.story.hud.stage." + worst);
 			int colour = STAGE_COLOURS[worst];
 			int w = client.font.width(stage);
-			// The eye: a small almond with a pupil, then the stage.
+			// The eye: a small almond with a pupil, then the stage. Phase 20: above the crosshair
+			// when a hint of several lines reaches up to it (with a large interface they overlapped).
 			int ex = cx - (w + 12) / 2;
 			int ey = cy + 26;
+
+			if (ey + 11 > hintTop(client.font, height)) {
+				ey = cy - 34;
+
+				// Phase 21: and beside the crosshair when a long comlink line reaches down to that.
+				if (ey < radioBottom(client.font, width) + 2) {
+					ex = cx + 26;
+					ey = cy - 4;
+				}
+			}
 			graphics.fill(ex, ey + 3, ex + 9, ey + 5, colour);
 			graphics.fill(ex + 1, ey + 2, ex + 8, ey + 6, colour & 0x80FFFFFF);
 			graphics.fill(ex + 3, ey + 2, ex + 6, ey + 6, 0xFF101010);
@@ -245,11 +303,12 @@ final class StoryHud implements HudElement {
 	// --- The alarm ------------------------------------------------------------------------------------
 
 	private static void alarm(GuiGraphicsExtractor graphics, StoryStatePayload state, int width, int height) {
-		if (state.alarm() <= 0) {
+		// Phase 20: the edges only while they search or chase (not for the ship on alert).
+		if (state.alarm() <= 1) {
 			return;
 		}
 
-		boolean full = state.alarm() >= 2;
+		boolean full = state.alarm() >= 3;
 		float pulse = 0.5F + 0.5F * Mth.sin(Util.getMillis() / (full ? 160.0F : 500.0F));
 		int alpha = Math.round((full ? 70 : 30) * (0.5F + 0.5F * pulse));
 		int edge = alpha << 24 | (full ? 0xD01010 : 0xD06010);
@@ -257,6 +316,99 @@ final class StoryHud implements HudElement {
 		graphics.fillGradient(0, 0, width, depth, edge, 0x00000000);
 		graphics.fillGradient(0, height - depth, width, height, 0x00000000, edge);
 		// The words (ALARM, searching) are in the objectives' panel.
+	}
+
+	// --- Phase 21: the fight ----------------------------------------------------------------------
+
+	/** The phase marks on his bar (where he changes his way, where he breaks off). */
+	static final float[] PHASE_MARKS = {0.65F, 0.35F, 0.15F};
+
+	/**
+	 * The fight: his strength at the top (with the marks where he changes and where he breaks off),
+	 * the Focus over the hotbar, a cold tint while it runs, red edges when hurt, the stun hits.
+	 */
+	private static void duel(GuiGraphicsExtractor graphics, Minecraft client, int width, int height) {
+		int hurt = StoryClient.hurtAge();
+
+		if (hurt < 12) {
+			int alpha = Math.round((1.0F - hurt / 12.0F) * 120.0F);
+			int edge = alpha << 24 | 0xC01008;
+			int depth = height / 5;
+			graphics.fillGradient(0, 0, width, depth, edge, 0x00000000);
+			graphics.fillGradient(0, height - depth, width, height, 0x00000000, edge);
+		}
+
+		if (StoryClient.focusOn()) {
+			// The Focus: the world goes still and cold at the edges.
+			int age = StoryClient.focusAge();
+			int alpha = Math.round(Math.min(1.0F, age / 6.0F) * 90.0F);
+			int edge = alpha << 24 | 0x3A6CC8;
+			int depth = height / 4;
+			graphics.fillGradient(0, 0, width, depth, edge, 0x00000000);
+			graphics.fillGradient(0, height - depth, width, height, 0x00000000, edge);
+			graphics.fill(0, 0, width, height, Math.round(Math.min(1.0F, age / 6.0F) * 28.0F) << 24 | 0x203A70);
+		}
+
+		StoryFiguresPayload.Fig shadow = StoryClient.duelist();
+
+		if (shadow != null) {
+			// Left of the objectives' panel (top right), so the two do not overlap.
+			int room = width - PANEL_WIDTH - 24;
+			int barWidth = Math.min(182, room - 24);
+			int centre = room / 2 + 6;
+			int x = centre - barWidth / 2;
+			// Under a comlink line or a shout at the top left (it covered his name).
+			int y = Math.max(22, radioBottom(client.font, width) + 15);
+			float health = shadow.health() / 255.0F;
+			Component name = Component.translatable("sabercraft.story.name." + shadow.speaker());
+			graphics.centeredText(client.font, name, centre, y - 11, 0xFFFF7A6A);
+			graphics.fill(x - 1, y - 1, x + barWidth + 1, y + 6, 0xC0000000);
+			graphics.fill(x, y, x + Math.round(barWidth * health), y + 5, 0xFFD8302A);
+			graphics.fill(x, y, x + Math.round(barWidth * health), y + 1, 0xFFFF8A80);
+
+			for (float mark : PHASE_MARKS) {
+				int mx = x + Math.round(barWidth * mark);
+				graphics.fill(mx, y - 2, mx + 1, y + 7, mark == PHASE_MARKS[2] ? 0xFFFFE08A : 0xFFE8EEF6);
+			}
+
+			// What he is about to do, for the eye that has not learnt it yet: a blow wound up shows as a pulse.
+			int kind = shadow.windup() >> 5;
+
+			if (kind >= 1 && kind <= 3) {
+				Component warn = Component.translatable("sabercraft.story.duel.blow" + kind);
+				graphics.centeredText(client.font, warn, centre, y + 9, 0xFFFFC060);
+			} else if (kind == 6) {
+				graphics.centeredText(client.font, Component.translatable("sabercraft.story.duel.open"), centre, y + 9, 0xFF8CF08C);
+			} else if (kind == 4 || kind == 5) {
+				graphics.centeredText(client.font, Component.translatable("sabercraft.story.duel.force" + kind), centre, y + 9, 0xFF8CC0FF);
+			}
+		}
+
+		if (StoryClient.meterShown()) {
+			int meter = StoryClient.focusMeter();
+			int barWidth = 60;
+			int x = width / 2 - 91 - barWidth - 8;
+			int y = height - 14;
+			boolean full = meter >= 100;
+			float pulse = full ? 0.5F + 0.5F * Mth.sin(Util.getMillis() / 180.0F) : 0.0F;
+			graphics.fill(x - 1, y - 1, x + barWidth + 1, y + 5, 0xB0000000);
+			graphics.fill(x, y, x + barWidth * Math.min(100, meter) / 100, y + 4, StoryClient.focusOn() ? 0xFFB8D8FF : full ? 0xFF4C8CFF : 0xFF2C5AA8);
+
+			Component label = Component.translatable(full ? "sabercraft.story.duel.focus_ready" : "sabercraft.story.duel.focus",
+					StoryClient.FOCUS_KEY.getTranslatedKeyMessage());
+			graphics.text(client.font, label, x, y - 10, (full ? Math.round(160 + 95 * pulse) : 150) << 24 | 0xBCD4FF);
+		}
+
+		if (StoryClient.stuns() > 0 && StoryClient.stunAge() < 200) {
+			// The stun hits: three marks under the crosshair (the third means caught).
+			int cx = width / 2;
+			int cy = height / 2 + 14;
+
+			for (int i = 0; i < 3; i++) {
+				int sx = cx - 14 + i * 10;
+				graphics.fill(sx, cy, sx + 7, cy + 3, i < StoryClient.stuns() ? 0xE05A9CFF : 0x60FFFFFF);
+			}
+		}
 	}
 
 	// --- A droid's scan ----------------------------------------------------------------------------
@@ -281,6 +433,75 @@ final class StoryHud implements HudElement {
 				graphics.fill(x, y - 12, x + 1, y - size, alpha / 2 << 24 | 0x60E0FF);
 			}
 		}
+	}
+
+	// --- Phase 20: where M-31's noise went, a checkpoint saved ----------------------------------
+
+	/** Rings spreading from where the droid made its noise (amber, like a sound on a scope). */
+	private static void noise(GuiGraphicsExtractor graphics, Minecraft client, int width, int height) {
+		float age = StoryClient.noiseAge();
+
+		if (StoryClient.noise().isEmpty()) {
+			return;
+		}
+
+		int alpha = Math.round((1.0F - age) * 230);
+
+		for (Vec3 at : StoryClient.noise()) {
+			float[] p = project(client, at.add(0.0, 0.3, 0.0), width, height);
+
+			if (p == null) {
+				continue;
+			}
+
+			int x = Math.round(p[0]);
+			int y = Math.round(p[1]);
+
+			for (int ring = 0; ring < 2; ring++) {
+				float grow = (age * 2.0F + ring * 0.5F) % 1.0F;
+				int r = 4 + Math.round(grow * 14);
+				int a = Math.round(alpha * (1.0F - grow));
+				ring(graphics, x, y, r, a << 24 | 0xF0B040);
+			}
+
+			diamond(graphics, x, y, 2, alpha << 24 | 0xFFD070);
+		}
+	}
+
+	/** A diamond's outline (the noise's rings). */
+	private static void ring(GuiGraphicsExtractor graphics, int x, int y, int r, int colour) {
+		for (int i = -r; i <= r; i++) {
+			int w = r - Math.abs(i);
+			graphics.fill(x - w, y + i, x - w + 1, y + i + 1, colour);
+
+			if (w > 0) {
+				graphics.fill(x + w, y + i, x + w + 1, y + i + 1, colour);
+			}
+		}
+	}
+
+	/** "Checkpoint saved" for a moment, small, at the top in the middle. */
+	private static void checkpoint(GuiGraphicsExtractor graphics, Font font, int width) {
+		int age = StoryClient.checkpointAge();
+
+		if (age < 0) {
+			return;
+		}
+
+		float fade = Math.min(1.0F, Math.min(age / 5.0F, (StoryClient.CHECKPOINT_TICKS - age) / 12.0F));
+		int alpha = Math.round(Mth.clamp(fade, 0.0F, 1.0F) * 255);
+
+		if (alpha < 8) {
+			return;
+		}
+
+		Component text = Component.translatable("sabercraft.story.hud.checkpoint");
+		int w = font.width(text);
+		int x = width / 2 - w / 2;
+		int y = 22;
+		graphics.fill(x - 14, y - 3, x + w + 5, y + 10, (alpha / 2) << 24);
+		diamond(graphics, x - 8, y + 3, 3, alpha << 24 | 0x80D8A0);
+		graphics.text(font, text, x, y, alpha << 24 | 0xD8F0E0);
 	}
 
 	// --- What the crosshair is on ------------------------------------------------------------------
@@ -308,6 +529,26 @@ final class StoryHud implements HudElement {
 	}
 
 	// --- Lines and hints -----------------------------------------------------------------------------
+
+	/** Phase 21: the bottom edge of the comlink line's box at the top left, or 0 when none is shown. */
+	private static int radioBottom(Font font, int width) {
+		StoryClient.Line line = StoryClient.radio();
+
+		if (line == null) {
+			return 0;
+		}
+
+		int age = StoryClient.radioAge();
+		float fade = Math.min(1.0F, Math.min(age / 6.0F, (line.ticks() - age) / 10.0F));
+
+		if (Math.round(Mth.clamp(fade, 0.0F, 1.0F) * 255) < 8) {
+			return 0;
+		}
+
+		int room = width - objectivesWidth(StoryClient.state()) - 8 - 32 - 18;
+		int lines = font.split(Component.translatable(line.key()), Mth.clamp(room, 100, 220)).size();
+		return 8 + Math.max(32 + 4, 14 + lines * 10);
+	}
 
 	private static void radio(GuiGraphicsExtractor graphics, Font font) {
 		StoryClient.Line line = StoryClient.radio();
@@ -345,6 +586,12 @@ final class StoryHud implements HudElement {
 		}
 	}
 
+	/** Phase 20: where the hint's first line is now (or far below the screen without one). */
+	private static int hintTop(Font font, int height) {
+		String key = StoryClient.hint();
+		return key == null ? Integer.MAX_VALUE : height - 72 - font.split(Component.translatable(key), 280).size() * 10 - 2;
+	}
+
 	private static void hint(GuiGraphicsExtractor graphics, Font font, int width, int height) {
 		String key = StoryClient.hint();
 
@@ -374,7 +621,8 @@ final class StoryHud implements HudElement {
 	private static void progress(GuiGraphicsExtractor graphics, Font font, int width, int height) {
 		String key = StoryClient.progressKey();
 
-		if (key == null) {
+		// Phase 20: not under a mission's title card (the finished copy stood under Mission 5's title).
+		if (key == null || StoryClient.title() != null) {
 			return;
 		}
 
