@@ -255,6 +255,10 @@ public class Phase20GameTest implements FabricClientGameTest {
 		check(!this.hatchOpen(cell), "the use key does not shut the open hatch from inside");
 		check(context.computeOnClient(client -> InteriorClient.hatchesForTest()) == shut + 1, "the use key on the open hatch was not taken as shutting it");
 		context.takeScreenshot("phase20_vent_hatch_inside");
+		// Phase 22: the client must know the hatch is shut before the key is pressed again (it
+		// decides from its own world whether the key shuts an open hatch or uses the shut one);
+		// on a slow machine the change could still be on its way.
+		this.clientSees(cell, false);
 		// And opens it again from inside; out into the corridor, standing up.
 		context.getInput().pressKey(options -> options.keyUse);
 		context.waitTicks(8);
@@ -276,6 +280,15 @@ public class Phase20GameTest implements FabricClientGameTest {
 		context.waitTicks(220);
 		check(!this.hatchOpen(cell), "the hatch does not shut by itself once nobody is near");
 		SaberCraft.LOGGER.info("PHASE20: crawl way: in at {}, past M-31 to {}, out at {}", in, past, out);
+	}
+
+	/** Phase 22: waits (a second at most) until the client's world shows the hatch open or shut. */
+	private void clientSees(BlockPos cell, boolean open) {
+		BlockPos at = this.on(s -> this.world(s, cell));
+
+		for (int i = 0; i < 20 && this.context.computeOnClient(client -> client.level.getBlockState(at).isAir()) != open; i++) {
+			this.context.waitTicks(1);
+		}
 	}
 
 	private boolean hatchOpen(BlockPos cell) {
