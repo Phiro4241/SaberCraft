@@ -11,16 +11,17 @@ import com.phiro.sabercraft.client.interior.ArrivalFilm;
  *
  * <p><b>Before the duel</b> ({@link #LENGTH}): behind the player, the Schattenklinge with his back
  * to them before the force field; closer on him as he turns round; low, as his blade lights (the
- * title); over his shoulder onto the player. <b>His flight</b> ({@link #END_LENGTH}): both from the
- * side as he staggers and puts out his blade; over the player's shoulder as he runs for the door;
- * the player in front, as the comlink calls.
+ * title); over his shoulder onto the player. <b>Her defeat</b> ({@link #END_LENGTH}, Phase 23): from
+ * the side as her saber is struck from her hand and flies off spinning; low by the hilt as it lands,
+ * sputters and dies; on her as she stares at her empty hand and up at the player; over the player's
+ * shoulder as she runs for the door; the player in front, as the comlink calls.
  *
  * <p>Every shot is placed on the line from the player to him as it was when the film began, so the
  * camera does not swing about when he moves.
  */
 final class DuelFilm {
 	static final int LENGTH = 220;
-	static final int END_LENGTH = 130;
+	static final int END_LENGTH = 170;
 
 	private DuelFilm() {
 	}
@@ -38,19 +39,46 @@ final class DuelFilm {
 		Vec3 up = new Vec3(0.0, 1.0, 0.0);
 
 		if ("duel_end".equals(film)) {
-			if (t < 40.0F) {
-				float u = ease(t / 40.0F);
+			Vec3 land = StoryClient.hiltLanding();
+			Vec3 hand = StoryClient.hiltStart();
+
+			if (t < 18.0F) {
+				// From the side, wide: the saber struck from her hand flies off.
+				float u = ease(t / 18.0F);
 				Vec3 middle = player.add(start).scale(0.5);
-				Vec3 cam = middle.add(side.scale(6.2 - u * 0.8)).add(up.scale(1.9)).subtract(axis.scale(0.5));
-				return look(cam, middle.add(up.scale(1.2)));
+				Vec3 follow = land != null && hand != null ? hand.lerp(land, u * 0.8) : middle.add(up.scale(1.2));
+				Vec3 cam = middle.add(side.scale(6.4 - u * 0.6)).add(up.scale(2.0)).subtract(axis.scale(0.5));
+				return look(cam, middle.add(up.scale(1.2)).lerp(follow, 0.6));
 			}
 
-			if (t < 100.0F) {
+			if (t < 56.0F && land != null) {
+				// Low by the hilt on the floor: it sputters and dies (the camera creeps closer).
+				float u = ease((t - 18.0F) / 38.0F);
+				Vec3 away = new Vec3(land.x - shadow.x, 0.0, land.z - shadow.z);
+				away = away.lengthSqr() < 1.0E-4 ? axis : away.normalize();
+				Vec3 across = new Vec3(-away.z, 0.0, away.x);
+				Vec3 cam = land.add(away.scale(1.9 - u * 0.6)).add(across.scale(0.7)).add(up.scale(0.45 - u * 0.1));
+				return look(cam, land.add(up.scale(0.08)));
+			}
+
+			if (t < 96.0F) {
+				// On her: she stares at her empty hand, then up at the player.
+				float u = ease((t - 56.0F) / 40.0F);
+				Vec3 toPlayer = new Vec3(player.x - shadow.x, 0.0, player.z - shadow.z);
+				toPlayer = toPlayer.lengthSqr() < 1.0E-4 ? axis.scale(-1.0) : toPlayer.normalize();
+				Vec3 across = new Vec3(-toPlayer.z, 0.0, toPlayer.x);
+				Vec3 cam = shadow.add(toPlayer.scale(2.4 - u * 0.5)).add(across.scale(0.8)).add(up.scale(1.65));
+				return look(cam, shadow.add(up.scale(1.5 + 0.05 * u)));
+			}
+
+			if (t < 145.0F) {
+				// Over the player's shoulder as she runs for the door.
 				Vec3 cam = player.add(up.scale(2.0)).subtract(axis.scale(0.7)).add(side.scale(0.65));
 				return look(cam, shadow.add(up.scale(1.2)));
 			}
 
-			float u = ease((t - 100.0F) / 30.0F);
+			// The player in front, as the comlink calls.
+			float u = ease((t - 145.0F) / 25.0F);
 			Vec3 cam = player.add(axis.scale(2.9 - u * 0.5)).add(up.scale(1.75)).add(side.scale(0.4));
 			return look(cam, player.add(up.scale(1.5)));
 		}

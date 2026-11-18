@@ -166,10 +166,10 @@ public final class StoryCinema {
 		}
 
 		if ("duel_end".equals(film)) {
+			// Phase 23: the clash and the saber's landing are heard in the world (from the server).
 			switch (tick) {
-				case 2 -> play(client, "saber.clash", 0.8F, 0.75F);
-				case 88 -> play(client, "story.door_lock", 0.6F, 1.0F);
-				case 100 -> play(client, "ship.falcon.thrust", 0.6F, 0.9F);
+				case 130 -> play(client, "story.door_lock", 0.6F, 1.0F);
+				case 145 -> play(client, "ship.falcon.thrust", 0.6F, 0.9F);
 				default -> {
 				}
 			}

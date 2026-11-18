@@ -145,12 +145,11 @@ public class Phase19GameTest implements FabricClientGameTest {
 		// some of them pushed one out whole before, see the lift).
 		int hangar = com.phiro.sabercraft.interior.DestroyerInterior.HANGAR;
 		int deck = com.phiro.sabercraft.interior.DestroyerInterior.DECK;
-		// Phase 20: a block east of where it was: the technician's console stands at the railing there now.
-		Vec3 rail = approach(context, server, self, sd, new Vec3(41.5, hangar + 1, 13.0), 0.0F);
-		double railR = com.phiro.sabercraft.interior.DestroyerInterior.CATWALK_RAIL_R;
-		double gap = Math.hypot(rail.x - com.phiro.sabercraft.interior.DestroyerInterior.REACTOR_X, rail.z - com.phiro.sabercraft.interior.DestroyerInterior.REACTOR_Z)
-				- railR - 0.3;
-		check(gap < 0.2, String.format(Locale.ROOT, "one walks right up to the catwalk's railing (%.2f to spare)", gap));
+		// Phase 23: the catwalk's railing is gone (narrow bridges without one over the open shaft):
+		// one walks right up to the technician's console on the deck level instead.
+		Vec3 rail = approach(context, server, self, sd, new Vec3(40.5, hangar + 1, 17.6), 180.0F);
+		double gap = rail.z - (com.phiro.sabercraft.interior.DestroyerInterior.CATWALK_DESK.getZ() + 1.0) - 0.3;
+		check(gap < 0.2, String.format(Locale.ROOT, "one walks right up to the console on the reactor's deck level (%.2f to spare)", gap));
 		context.takeScreenshot("phase19_walk_up_rail");
 		Vec3 table = approach(context, server, self, sd, new Vec3(8.5, deck + 1, 107.5), -90.0F);
 		check(table.x > 12.55, String.format(Locale.ROOT, "one walks right up to the end of the conference table (x %.2f, its end at 13.05)", table.x));

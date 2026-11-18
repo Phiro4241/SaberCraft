@@ -143,6 +143,20 @@ public abstract class InteriorPlan {
 		return List.of();
 	}
 
+	/**
+	 * Phase 23: whether one at that point (plot space), having dropped that far, fell into an open
+	 * shaft (the Star Destroyer's reactor) and is to be caught: set back where they last stood,
+	 * unhurt (a fall there is never the end).
+	 */
+	public boolean pit(Vec3 local, double fallen) {
+		return false;
+	}
+
+	/** Phase 23: where one caught in a shaft is set down when it is not known where they last stood. */
+	public Vec3 pitRescue(Vec3 local) {
+		return this.entry();
+	}
+
 	/** Phase 16: the doorways through the plan's curved walls. */
 	public List<Doorway> doorways() {
 		return List.of();

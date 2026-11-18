@@ -59,7 +59,7 @@ public final class DestroyerVisuals implements InteriorVisuals {
 
 	@Override
 	public AABB reach() {
-		return new AABB(CX - HALF_WIDTH, -10, NOSE, CX + HALF_WIDTH, 200, STERN + 30);
+		return new AABB(CX - HALF_WIDTH, -20, NOSE, CX + HALF_WIDTH, 200, STERN + 30);
 	}
 
 	@Override

@@ -24,13 +24,21 @@ import net.minecraft.world.phys.shapes.CollisionContext;
  * cells. When the goal cannot be reached, the way leads to the cell nearest it (they come as close
  * as they can, as a person would).
  *
+ * <p>Phase 23: doors are ways, not walls. A closed sliding door is a row of barriers until someone
+ * comes near, so the search ran into it like into a wall: chasers came as close as they could on
+ * their side and stood (or walked) against the wall beside the door. Now the cells of the plot's
+ * doors count as free while the story does not keep that door shut (it opens as they come); a
+ * door the story keeps shut is a wall, and they look for another way. The search reaches further
+ * (several rooms), remembers the cells it looked at during one search, and tells whether the way
+ * reaches the goal: when it does not, they stop at its end instead of walking on into the wall.
+ *
  * <p>Positions are in plot space (as {@link Figure}); {@code corner} is the plot's corner in the
  * world.
  */
 final class Paths {
 	/** How far from where they start a way may lead (blocks), and how many cells are looked at. */
-	static final int RADIUS = 32;
-	static final int NODES = 2600;
+	static final int RADIUS = 56;
+	static final int NODES = 7000;
 	/** How high a step up may be, and how far down one steps. */
 	static final double UP = 0.55;
 	static final double DOWN = 1.1;
@@ -43,16 +51,70 @@ final class Paths {
 	private record Node(int x, int z, double y, double cost, double guess, @Nullable Node from) {
 	}
 
+	/** Phase 23: a way (the cells' centres, the first one past the start) and whether it reaches the goal. */
+	record Way(List<Vec3> points, boolean reaches) {
+		static final Way NONE = new Way(List.of(), false);
+	}
+
+	/**
+	 * Phase 23: what one search knows: the doors one may walk through (their cells, plot space),
+	 * and the cells already looked at (where one stands there, coming from about that height).
+	 */
+	private static final class Search {
+		final java.util.Set<Long> doors;
+		final Map<Long, Double> stands = new HashMap<>();
+
+		Search(java.util.Set<Long> doors) {
+			this.doors = doors;
+		}
+	}
+
+	private static final Double NO = Double.NaN;
+
+	/** Phase 23: the cells of the plot's doors the story does not keep shut (they open as people come). */
+	static java.util.Set<Long> openDoors(Vec3 corner) {
+		net.minecraft.core.BlockPos origin = net.minecraft.core.BlockPos.containing(corner.add(0.5, 0.5, 0.5));
+		com.phiro.sabercraft.interior.InteriorPlan plan = com.phiro.sabercraft.interior.ShipInteriors.plotsInUse().get(origin);
+
+		if (plan == null) {
+			return java.util.Set.of();
+		}
+
+		java.util.Set<Long> cells = new java.util.HashSet<>();
+
+		for (com.phiro.sabercraft.interior.InteriorPlan.Door door : plan.doors()) {
+			if (Story.locked(origin, door.x0(), door.y0(), door.z0())) {
+				continue;
+			}
+
+			for (int x = door.x0(); x <= door.x1(); x++) {
+				for (int y = door.y0(); y <= door.y1(); y++) {
+					for (int z = door.z0(); z <= door.z1(); z++) {
+						cells.add(net.minecraft.core.BlockPos.asLong(x, y, z));
+					}
+				}
+			}
+		}
+
+		return cells;
+	}
+
 	/**
 	 * A way from one place to another (plot space): the cells' centres on the floor, the first one
 	 * past the start; empty when they are there already or no cell around is free.
 	 */
 	static List<Vec3> find(ServerLevel level, Vec3 corner, Vec3 from, Vec3 to, double height) {
+		return way(level, corner, from, to, height).points();
+	}
+
+	/** Phase 23: a way, and whether it reaches the goal (else it ends where one comes nearest). */
+	static Way way(ServerLevel level, Vec3 corner, Vec3 from, Vec3 to, double height) {
+		Search search = new Search(openDoors(corner));
 		int sx = floor(from.x);
 		int sz = floor(from.z);
 		int gx = floor(to.x);
 		int gz = floor(to.z);
-		Double startY = stand(level, corner, sx + 0.5, from.y, sz + 0.5, height);
+		Double startY = stand(level, corner, sx + 0.5, from.y, sz + 0.5, height, search);
 
 		if (startY == null) {
 			startY = from.y;
@@ -64,6 +126,7 @@ final class Paths {
 		open.add(start);
 		best.put(key(sx, sz, startY), 0.0);
 		Node nearest = start;
+		boolean reached = sx == gx && sz == gz && Math.abs(startY - to.y) < 1.6;
 		int looked = 0;
 
 		while (!open.isEmpty() && looked < NODES) {
@@ -76,6 +139,7 @@ final class Paths {
 
 			if (Math.abs(node.x - gx) <= 0 && Math.abs(node.z - gz) <= 0 && Math.abs(node.y - to.y) < 1.6) {
 				nearest = node;
+				reached = true;
 				break;
 			}
 
@@ -87,7 +151,7 @@ final class Paths {
 					continue;
 				}
 
-				Double y = stand(level, corner, x + 0.5, node.y, z + 0.5, height);
+				Double y = stand(level, corner, x + 0.5, node.y, z + 0.5, height, search);
 
 				if (y == null) {
 					continue;
@@ -96,8 +160,8 @@ final class Paths {
 				boolean diagonal = n[0] != 0 && n[1] != 0;
 
 				// A corner is cut only where both sides are free (nobody walks through a wall's edge).
-				if (diagonal && (stand(level, corner, node.x + n[0] + 0.5, node.y, node.z + 0.5, height) == null
-						|| stand(level, corner, node.x + 0.5, node.y, node.z + n[1] + 0.5, height) == null)) {
+				if (diagonal && (stand(level, corner, node.x + n[0] + 0.5, node.y, node.z + 0.5, height, search) == null
+						|| stand(level, corner, node.x + 0.5, node.y, node.z + n[1] + 0.5, height, search) == null)) {
 					continue;
 				}
 
@@ -120,14 +184,22 @@ final class Paths {
 			way.add(0, new Vec3(node.x + 0.5, node.y, node.z + 0.5));
 		}
 
-		return smooth(level, corner, from, way, height);
+		// The goal's own cell may be no place to stand (beside a console, in a doorway's edge):
+		// next to it counts as there.
+		if (!reached) {
+			double dx = nearest.x + 0.5 - to.x;
+			double dz = nearest.z + 0.5 - to.z;
+			reached = Math.sqrt(dx * dx + dz * dz) < 1.3 && Math.abs(nearest.y - to.y) < 1.6;
+		}
+
+		return new Way(smooth(level, corner, from, way, height, search), reached);
 	}
 
 	/**
 	 * Leaves out the cells one can walk past straight from the one before (the way bends only at
 	 * corners, so they do not zigzag along a corridor).
 	 */
-	private static List<Vec3> smooth(ServerLevel level, Vec3 corner, Vec3 from, List<Vec3> way, double height) {
+	private static List<Vec3> smooth(ServerLevel level, Vec3 corner, Vec3 from, List<Vec3> way, double height, Search search) {
 		if (way.size() < 3) {
 			return way;
 		}
@@ -140,7 +212,7 @@ final class Paths {
 			int far = i;
 
 			for (int j = Math.min(way.size() - 1, i + 8); j > i; j--) {
-				if (straight(level, corner, at, way.get(j), height)) {
+				if (straight(level, corner, at, way.get(j), height, search)) {
 					far = j;
 					break;
 				}
@@ -156,6 +228,10 @@ final class Paths {
 
 	/** Whether one walks from a point to another straight on (the floor level all the way, nothing in between). */
 	static boolean straight(ServerLevel level, Vec3 corner, Vec3 from, Vec3 to, double height) {
+		return straight(level, corner, from, to, height, null);
+	}
+
+	private static boolean straight(ServerLevel level, Vec3 corner, Vec3 from, Vec3 to, double height, @Nullable Search search) {
 		if (Math.abs(from.y - to.y) > 0.3) {
 			return false;
 		}
@@ -168,7 +244,7 @@ final class Paths {
 			double x = from.x + (to.x - from.x) * t;
 			double z = from.z + (to.z - from.z) * t;
 
-			if (!free(level, corner, x, from.y, z, height) || free(level, corner, x, from.y - 0.3, z, height)) {
+			if (!free(level, corner, x, from.y, z, height, search) || free(level, corner, x, from.y - 0.3, z, height, null)) {
 				return false;
 			}
 		}
@@ -181,6 +257,40 @@ final class Paths {
 	 * most {@link #UP}, down at most {@link #DOWN}), or null when one cannot stand there.
 	 */
 	static @Nullable Double stand(ServerLevel level, Vec3 corner, double x, double y, double z, double height) {
+		return stand(level, corner, x, y, z, height, null);
+	}
+
+	private static @Nullable Double stand(ServerLevel level, Vec3 corner, double x, double y, double z, double height, @Nullable Search search) {
+		if (search == null) {
+			return standNow(level, corner, x, y, z, height, null);
+		}
+
+		long k = ((long) (floor(x) & 0xFFFFF) << 44) | ((long) (floor(z) & 0xFFFFF) << 24) | (floor(y * 4.0) & 0xFFFFFF);
+		Double known = search.stands.get(k);
+
+		if (known == null) {
+			Double found = standNow(level, corner, x, y, z, height, search);
+			search.stands.put(k, found == null ? NO : found);
+			return found;
+		}
+
+		return known.isNaN() ? null : known;
+	}
+
+	private static @Nullable Double standNow(ServerLevel level, Vec3 corner, double x, double y, double z, double height, @Nullable Search search) {
+		if (search != null && !search.doors.isEmpty()) {
+			// In a closed door one stands on the floor under its lowest cell (the barriers of the
+			// closed door are no floor to stand on).
+			int fx = floor(x);
+			int fz = floor(z);
+
+			for (int cy = floor(y - DOWN); cy <= floor(y + UP); cy++) {
+				if (search.doors.contains(net.minecraft.core.BlockPos.asLong(fx, cy, fz)) && !search.doors.contains(net.minecraft.core.BlockPos.asLong(fx, cy - 1, fz))) {
+					return free(level, corner, x, cy, z, height, search) ? (double) cy : null;
+				}
+			}
+		}
+
 		Vec3 top = corner.add(x, y + UP + 0.02, z);
 		Vec3 bottom = corner.add(x, y - DOWN - 0.02, z);
 		HitResult hit = level.clip(new ClipContext(top, bottom, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, CollisionContext.empty()));
@@ -190,13 +300,35 @@ final class Paths {
 		}
 
 		double floor = hit.getLocation().y - corner.y;
-		return free(level, corner, x, floor, z, height) ? floor : null;
+		return free(level, corner, x, floor, z, height, search) ? floor : null;
 	}
 
 	/** Whether a person fits there (plot space, standing on that height). */
 	static boolean free(ServerLevel level, Vec3 corner, double x, double y, double z, double height) {
+		return free(level, corner, x, y, z, height, null);
+	}
+
+	/** Phase 23: ... counting the cells of the doors one may open as free. */
+	private static boolean free(ServerLevel level, Vec3 corner, double x, double y, double z, double height, @Nullable Search search) {
 		AABB box = new AABB(x - 0.28, y + 0.01, z - 0.28, x + 0.28, y + Math.min(height, 1.8), z + 0.28).move(corner);
-		return level.noBlockCollision(null, box);
+
+		if (level.noBlockCollision(null, box)) {
+			return true;
+		}
+
+		if (search == null || search.doors.isEmpty()) {
+			return false;
+		}
+
+		for (net.minecraft.world.phys.shapes.VoxelShape shape : level.getBlockCollisions(null, box)) {
+			Vec3 c = shape.bounds().getCenter().subtract(corner);
+
+			if (!search.doors.contains(net.minecraft.core.BlockPos.asLong(floor(c.x), floor(c.y), floor(c.z)))) {
+				return false;
+			}
+		}
+
+		return true;
 	}
 
 	private static double distance(int x, int z, double y, Vec3 to) {

@@ -66,6 +66,11 @@ final class Combat {
 
 	/** How far from the player they like to stay. */
 	static double keep(Figure figure) {
+		if (pistol(figure)) {
+			// Phase 23: an officer keeps back, as one who gives orders does.
+			return 7.5;
+		}
+
 		return switch (role(figure)) {
 			case 0 -> 9.5;
 			case 1 -> 5.5;
@@ -76,6 +81,103 @@ final class Combat {
 	/** Whether that one fights with a rifle (troopers), or runs at the player (guards). */
 	static boolean rifle(Figure figure) {
 		return Crew.TROOPER.equals(figure.kind());
+	}
+
+	/**
+	 * Phase 23: whether that one carries a blaster pistol (officers): they defend themselves (they
+	 * keep their distance, shoot and move to a better place), and call for help over the comlink
+	 * first.
+	 */
+	static boolean pistol(Figure figure) {
+		String kind = figure.kind();
+		return Crew.OFFICER.equals(kind) || Crew.OFFICER_OLIVE.equals(kind) || Crew.OFFICER_BLACK.equals(kind);
+	}
+
+	/** Phase 23: whether that one shoots (a rifle or a pistol). */
+	static boolean armed(Figure figure) {
+		return rifle(figure) || pistol(figure);
+	}
+
+	/** Phase 23: whether that one fights when a fight begins (troopers, guards, officers), or keeps out of it. */
+	static boolean combatant(Figure figure) {
+		return armed(figure) || Crew.GUARD.equals(figure.kind());
+	}
+
+	/** Phase 23: an officer's aim (a pistol comes up quicker than a rifle) and how long the call over the comlink takes. */
+	static final int AIM_PISTOL = 12;
+	static final int COMLINK = 36;
+	/** Phase 23: how many fight at once at most (those drawn in by seeing the fight; the hunters always). */
+	static final int MAX_FIGHTERS = 6;
+
+	/**
+	 * Phase 23: a fight began (the saber taken, a section of the finale, a film): everyone who
+	 * was hunting the player (gave chase, raised the alarm, went to where the player was seen, came
+	 * as help, patrols after an alarm) fights now, at once and all the same way, and so does any
+	 * soldier who sees the fight from close by (as many as {@link #MAX_FIGHTERS}). Nobody stays
+	 * behind in an old chase. Run every tick of a fight (the near ones only now and then). Returns
+	 * how many joined.
+	 */
+	static int engage(StorySession s, String ship, Vec3 me, ServerLevel level, Vec3 corner, boolean look) {
+		int fighters = 0;
+
+		for (Figure figure : s.figures) {
+			if (figure.hostile && figure.mode != Figure.DOWN && ship.equals(figure.ship)) {
+				fighters++;
+			}
+		}
+
+		int joined = 0;
+
+		for (Figure figure : s.figures) {
+			if (figure.hostile || !figure.observer || !ship.equals(figure.ship) || !combatant(figure) || figure.mode == Figure.DOWN || figure.mode == Figure.HELD
+					|| figure.mode == Figure.SCRIPTED) {
+				continue;
+			}
+
+			boolean hunting = figure.mode == Figure.CHASE || figure.mode == Figure.INVESTIGATE || figure.mode == Figure.CALL || figure.stage >= Figure.ALERTED
+					|| figure.key.startsWith(Stealth.REINFORCEMENT) || figure.key.startsWith("patrol.");
+			boolean near = false;
+
+			if (!hunting && look && fighters < MAX_FIGHTERS) {
+				double distance = horizontal(figure.position(), me);
+				near = distance < 16.0 && sees(figure, me, level, corner, distance);
+			}
+
+			if (hunting || near) {
+				join(figure, joined++);
+				fighters++;
+			}
+		}
+
+		if (joined > 0) {
+			s.dirty = true;
+		}
+
+		return joined;
+	}
+
+	/** Phase 23: one joins the fight: a fighter from now on (shooting, hit by the saber like the others). */
+	static void join(Figure figure, int index) {
+		figure.engaged = true;
+		figure.hostile = true;
+		figure.mode = Figure.FIGHT;
+		figure.health = figure.health > 0.0F ? figure.health : 1.0F;
+		figure.suspicion = 1.0F;
+		figure.stage = Figure.DETECTED;
+		figure.cooldown = 20 + index * 13;
+		figure.windup = 0;
+		figure.burst = 0;
+		figure.target = null;
+		figure.lure = null;
+		figure.path = java.util.List.of();
+		figure.pathGoal = null;
+		figure.pathReaches = true;
+		figure.called = true;
+
+		if (figure.react == Figure.COMLINK) {
+			figure.react = 0;
+			figure.reactTicks = 0;
+		}
 	}
 
 	/** One tick of a soldier chasing the player. */
@@ -89,6 +191,39 @@ final class Combat {
 		}
 
 		double distance = horizontal(figure.position(), me);
+
+		// Phase 23: an officer calls for help first (a hand at the ear), stepping back from the
+		// player meanwhile; then he fights like the troops (Story.officerCalled brings them).
+		if (figure.react == Figure.COMLINK) {
+			Hits.slide(figure, level, corner);
+			figure.windup = 0;
+
+			if (--figure.reactTicks <= 0) {
+				figure.react = 0;
+				figure.reactTicks = 0;
+				figure.called = true;
+				figure.cooldown = 6;
+				Story.officerCalled(s, figure);
+			} else if (distance < 6.5) {
+				Vec3 away = figure.position().add(figure.position().subtract(me).multiply(1.0, 0.0, 1.0).normalize().scale(1.5));
+
+				if (!Stealth.step(figure, away, Stealth.WALK * 1.2, level, corner)) {
+					strafe(figure, me, level, corner, time, player);
+				}
+			} else {
+				figure.speed = 0.0F;
+			}
+
+			figure.headYaw = Crew.yaw(figure.position(), me);
+			figure.yaw = Crew.lerpYaw(figure.yaw, figure.headYaw, 0.3F);
+			return;
+		}
+
+		// Phase 23: thrown back by something: nothing else until it is over.
+		if (Hits.tick(figure, level, corner)) {
+			figure.windup = 0;
+			return;
+		}
 		// After a capture (and in the tests) the player is out of everyone's sight for a while.
 		boolean sees = s.grace <= 0 && sees(figure, me, level, corner, distance);
 
@@ -116,7 +251,7 @@ final class Combat {
 					fire(s, figure, player, me, level, corner, distance);
 				}
 
-				if (fired && role(figure) == 1 && figure.burst == 0) {
+				if (fired && role(figure) == 1 && figure.burst == 0 && !pistol(figure)) {
 					figure.burst = 1;
 					figure.cooldown = 0;
 				} else {
@@ -135,7 +270,7 @@ final class Combat {
 			Vec3 goal = time - s.huntSeen < TRACK ? me : s.huntAt != null ? s.huntAt : figure.seenAt;
 			figure.burst = 0;
 
-			if (goal == null || !Stealth.go(figure, apart(s, figure, goal), Stealth.RUN, level, corner, time)) {
+			if (goal == null || !Stealth.go(figure, apart(s, figure, goal, level, corner), Stealth.RUN, level, corner, time)) {
 				figure.speed = 0.0F;
 				figure.headYaw = figure.yaw + Mth.sin(time * 0.1F + figure.id) * 50.0F;
 			}
@@ -143,8 +278,20 @@ final class Combat {
 			return;
 		}
 
+		// Phase 23: an officer does not run in: too close, he steps back (and shoots from there).
+		if (pistol(figure) && distance < 3.5 && figure.cooldown > 0) {
+			Vec3 away = figure.position().add(figure.position().subtract(me).multiply(1.0, 0.0, 1.0).normalize().scale(1.5));
+
+			if (!Stealth.step(figure, away, Stealth.WALK * 1.3, level, corner)) {
+				strafe(figure, me, level, corner, time, player);
+			}
+
+			figure.headYaw = Crew.yaw(figure.position(), me);
+			return;
+		}
+
 		// Close enough to seize the player: they run in ("Hands up!" when they reach them).
-		if (distance < RUSH) {
+		if (distance < RUSH && !pistol(figure)) {
 			Stealth.go(figure, me, Stealth.RUN, level, corner, time);
 			figure.headYaw = Crew.yaw(figure.position(), me);
 			return;
@@ -152,7 +299,7 @@ final class Combat {
 
 		// Ready, in sight, nobody of theirs in the way: up with the rifle.
 		if (figure.cooldown <= 0 && distance <= SHOOT_RANGE && s.grace <= 0 && lineFree(s, figure, me)) {
-			figure.windup = figure.burst > 0 ? AIM_BURST : Stealth.level(s) >= 2 ? AIM_ALERT : AIM;
+			figure.windup = figure.burst > 0 ? AIM_BURST : pistol(figure) ? AIM_PISTOL : Stealth.level(s) >= 2 ? AIM_ALERT : AIM;
 			figure.speed = 0.0F;
 			s.dirty = true;
 			return;
@@ -163,7 +310,7 @@ final class Combat {
 
 		if (distance > keep + 1.5) {
 			Vec3 goal = role(figure) == 2 ? flank(level, corner, figure, me, keep) : me;
-			Stealth.go(figure, apart(s, figure, goal), distance > keep + 6.0 ? Stealth.RUN : Stealth.WALK * 1.5, level, corner, time);
+			Stealth.go(figure, apart(s, figure, goal, level, corner), distance > keep + 6.0 ? Stealth.RUN : Stealth.WALK * 1.5, level, corner, time);
 		} else if (distance < keep - 2.5 && role(figure) != 1) {
 			Vec3 away = figure.position().add(figure.position().subtract(me).multiply(1.0, 0.0, 1.0).normalize().scale(1.5));
 
@@ -236,11 +383,24 @@ final class Combat {
 	 * going there (each their own side), so they do not end up in one spot.
 	 */
 	static Vec3 apart(StorySession s, Figure figure, Vec3 goal) {
+		return apart(s, figure, goal, null, null);
+	}
+
+	/**
+	 * Phase 23: ... and, knowing the ship, only a place one can stand on with a clear line to the
+	 * goal (not behind a console or in a wall, where the chasers walked into each other's corner):
+	 * else the next place round, else the goal itself. The places are shared out by the order of
+	 * the people (not by who asks first), so each keeps theirs from tick to tick.
+	 */
+	static Vec3 apart(StorySession s, Figure figure, Vec3 goal, @org.jspecify.annotations.Nullable ServerLevel level,
+			@org.jspecify.annotations.Nullable Vec3 corner) {
 		int index = 0;
 		int count = 0;
+		Vec3 aim = figure.target != null ? figure.target : goal;
 
 		for (Figure other : s.figures) {
-			if (other.mode == figure.mode && other.ship.equals(figure.ship) && other.target != null && other.target.distanceTo(figure.target != null ? figure.target : goal) < 1.5) {
+			if (other.mode == figure.mode && other.ship.equals(figure.ship) && other.mode != Figure.DOWN && other.target != null
+					&& other.target.distanceTo(aim) < 3.0) {
 				if (other == figure) {
 					index = count;
 				}
@@ -253,8 +413,24 @@ final class Combat {
 			return goal;
 		}
 
-		double angle = index * (Math.PI * 2.0 / count) + figure.id * 0.7;
-		return goal.add(Math.cos(angle) * 1.4, 0.0, Math.sin(angle) * 1.4);
+		double radius = count > 4 ? 2.2 : 1.7;
+
+		for (int tries = 0; tries < count + 2; tries++) {
+			double angle = (index + tries) * (Math.PI * 2.0 / count) + 0.4;
+			Vec3 spot = goal.add(Math.cos(angle) * radius, 0.0, Math.sin(angle) * radius);
+
+			if (level == null || corner == null) {
+				return spot;
+			}
+
+			Double y = Paths.stand(level, corner, spot.x, goal.y, spot.z, figure.crew.height());
+
+			if (y != null && Math.abs(y - goal.y) < 1.1 && Stealth.clear(level, corner.add(goal.x, goal.y + 1.0, goal.z), corner.add(spot.x, y + 1.0, spot.z))) {
+				return new Vec3(spot.x, y, spot.z);
+			}
+		}
+
+		return goal;
 	}
 
 	/** Whether none of their own stands between them and the player (they do not shoot through a comrade). */
@@ -284,7 +460,7 @@ final class Combat {
 		BlasterBolt bolt = new BlasterBolt(level, muzzle, BlasterType.STUN, STUN_DAMAGE);
 		bolt.shoot(aim.x, aim.y, aim.z, BlasterType.STUN.speed(), spread);
 		level.addFreshEntity(bolt);
-		level.playSound(null, muzzle.x, muzzle.y, muzzle.z, ShipInteriors.sound("blaster.e11"), SoundSource.HOSTILE, 0.75F,
+		level.playSound(null, muzzle.x, muzzle.y, muzzle.z, ShipInteriors.sound(pistol(figure) ? "blaster.se14c" : "blaster.e11"), SoundSource.HOSTILE, 0.75F,
 				1.25F + player.getRandom().nextFloat() * 0.1F);
 		shots++;
 	}

@@ -356,15 +356,102 @@ final class StoryRooms {
 		b.pipe(0.08F, 8, VALVE_X + 0.45F, R + 1.0F, VALVE_Z + 0.45F, VALVE_X + 0.05F, R + 1.0F, VALVE_Z + 0.05F);
 	}
 
-	static final float VALVE_X = 49.2F;
-	static final float VALVE_Z = 33.2F;
+	static final float VALVE_X = (float) com.phiro.sabercraft.interior.DestroyerInterior.VALVE_X;
+	static final float VALVE_Z = (float) com.phiro.sabercraft.interior.DestroyerInterior.VALVE_Z;
 
 	// --- Moving parts and what the story changes ---------------------------------------------------
+
+	/** Phase 23: per plot: whether the reactor's bridge stood when last drawn, and when it was seen to fall (seconds). */
+	private static final java.util.Map<BlockPos, Boolean> BRIDGE_STOOD = new java.util.HashMap<>();
+	private static final java.util.Map<BlockPos, Float> BRIDGE_FELL = new java.util.HashMap<>();
+	/** Phase 23: how long its pieces are seen falling (seconds). */
+	static final float BRIDGE_FALL = 3.2F;
+
+	/**
+	 * Phase 23: the reactor's bridge that breaks in the escape: drawn while its barriers stand
+	 * (trembling while it groans under the player); the moment they are gone, its pieces fall into
+	 * the depth one after another from where it snapped, turning, and are lost in the haze.
+	 */
+	private static void collapse(MeshBuilder b, float seconds, InteriorVisuals.PlotView plot, boolean story) {
+		BlockPos o = plot.origin();
+		Gantry first = COLLAPSE.getFirst();
+		BlockPos probe = o.offset(first.x0(), first.y() - 1, first.z1());
+
+		if (!plot.level().isLoaded(probe)) {
+			return;
+		}
+
+		boolean stands = collapseStands(plot.level(), o);
+		Boolean before = BRIDGE_STOOD.put(o.immutable(), stands);
+
+		if (stands) {
+			BRIDGE_FELL.remove(o);
+			float tremble = story ? StoryClient.creak() : 0.0F;
+
+			for (Gantry g : COLLAPSE) {
+				DestroyerRooms.gantry(b, g, tremble, seconds);
+			}
+
+			return;
+		}
+
+		if (Boolean.TRUE.equals(before)) {
+			BRIDGE_FELL.put(o.immutable(), seconds);
+		}
+
+		Float fell = BRIDGE_FELL.get(o);
+
+		if (fell == null || seconds - fell > BRIDGE_FALL) {
+			return;
+		}
+
+		float t0 = seconds - fell;
+		// The pieces: a block's length of the bridge each, in the order they go (from the snap at the
+		// lift's platform along to the lab's end).
+		int index = 0;
+
+		for (Gantry g : COLLAPSE) {
+			boolean alongX = g.x1() - g.x0() > g.z1() - g.z0();
+			int count = alongX ? g.x1() - g.x0() + 1 : g.z1() - g.z0() + 1;
+
+			for (int k = 0; k < count; k++) {
+				Gantry piece = alongX ? new Gantry(g.id(), g.x0() + k, g.z0(), g.x0() + k, g.z1(), g.y(), true)
+						: new Gantry(g.id(), g.x0(), g.z0() + k, g.x1(), g.z0() + k, g.y(), true);
+				float t = t0 - index * 0.07F;
+				index++;
+
+				if (t < 0.0F) {
+					DestroyerRooms.gantry(b, piece, 1.0F, seconds);
+					continue;
+				}
+
+				float drop = 0.5F * 15.0F * t * t;
+
+				if (g.y() - drop < PIT_DRAWN + 2.0F) {
+					continue;
+				}
+
+				net.minecraft.world.phys.Vec3 c = piece.centre();
+				float spin = (index % 2 == 0 ? 1.0F : -1.0F) * (70.0F + index * 13 % 50);
+				float drift = 0.6F * t;
+				double ox = c.x - REACTOR_X;
+				double oz = c.z - REACTOR_Z;
+				double len = Math.max(0.1, Math.hypot(ox, oz));
+				b.push().translate(c.x - ox / len * drift, c.y - 0.07 - drop, c.z - oz / len * drift).rotateX(spin * t).rotateZ(spin * 0.6F * t)
+						.translate(-c.x, -c.y + 0.07, -c.z);
+				DestroyerRooms.gantry(b, piece, 0.0F, seconds);
+				b.pop();
+			}
+		}
+
+		b.layer(Layer.SOLID).worldLight().white().anim(0).twoSided(false);
+	}
 
 	static void animate(MeshBuilder b, float seconds, InteriorVisuals.PlotView plot) {
 		boolean story = StoryClient.storyPlot(plot.origin());
 		BlockPos o = plot.origin();
 		b.layer(Layer.SOLID).worldLight().white().anim(0).twoSided(false);
+		collapse(b, seconds, plot, story);
 
 		// The cells' force fields, while their barriers stand.
 		for (int[] cell : CELLS) {

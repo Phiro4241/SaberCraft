@@ -25,18 +25,34 @@ public record StoryFiguresPayload(BlockPos origin, long time, List<Fig> figures)
 	public static final int OBSERVER = 16;
 	/** Phase 21: the saber is lit (also before the fight, in a scene). */
 	public static final int LIT = 32;
+	/** Phase 23: an officer with his pistol drawn. */
+	public static final int ARMED = 64;
+	/** Phase 23: a saber fighter whose saber was struck from the hand (none to draw). */
+	public static final int UNARMED = 128;
 
 	/**
 	 * One person: their number, kind and pose (as {@code Crew}), name ({@code speaker}), where and
 	 * which way they and their head face, how fast they walk, their stage and suspicion (0..255),
-	 *flags, health (0..255) and a blow being wound up (Phase 21: the kind in the top three bits, how far along in the bottom five).
+	 * flags, health (0..255) and a blow being wound up (Phase 21: the kind in the top three bits, how far along in the bottom five).
+	 * Phase 23: what the body does beyond walking ({@code react}: a hit, a stumble, a fall, a call,
+	 * a clash; the kind times 256 plus how far along, 0..255; 0 = nothing).
 	 */
 	public record Fig(int id, String kind, String pose, String speaker, float x, float y, float z, float yaw, float head, float speed, int stage, int suspicion,
-			int flags, int health, int windup) {
+			int flags, int health, int windup, int react) {
+		/** Phase 23: the kind of the reaction (0 = none). */
+		public int reactKind() {
+			return this.react >> 8;
+		}
+
+		/** Phase 23: how far along the reaction is (0..1). */
+		public float reactProgress() {
+			return (this.react & 255) / 255.0F;
+		}
+
 		static Fig read(FriendlyByteBuf buf) {
 			return new Fig(buf.readVarInt(), buf.readUtf(32), buf.readUtf(16), buf.readUtf(32), buf.readFloat(), buf.readFloat(), buf.readFloat(),
 					buf.readFloat(), buf.readFloat(), buf.readFloat(), buf.readByte(), buf.readUnsignedByte(), buf.readUnsignedByte(), buf.readUnsignedByte(),
-					buf.readUnsignedByte());
+					buf.readUnsignedByte(), buf.readVarInt());
 		}
 
 		void write(FriendlyByteBuf buf) {
@@ -55,6 +71,7 @@ public record StoryFiguresPayload(BlockPos origin, long time, List<Fig> figures)
 			buf.writeByte(this.flags);
 			buf.writeByte(this.health);
 			buf.writeByte(this.windup);
+			buf.writeVarInt(this.react);
 		}
 	}
 

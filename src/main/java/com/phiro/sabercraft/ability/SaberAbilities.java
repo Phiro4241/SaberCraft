@@ -231,6 +231,18 @@ public final class SaberAbilities {
 		}
 	}
 
+	/** Phase 23: how long the player's guard has been up (ticks), or -1 when it is not (the story's duel: a perfect parry). */
+	public static long guardTicks(Player player) {
+		State state = STATES.get(player.getUUID());
+		return state != null && state.guarding() ? Math.max(0L, player.level().getGameTime() - state.guardStart) : -1L;
+	}
+
+	/** Phase 23: whether the player is just dodging (the dash, in its moment that evades blows). */
+	public static boolean evading(Player player) {
+		State state = STATES.get(player.getUUID());
+		return state != null && state.dashStart >= 0 && state.maneuver.evades(player.level().getGameTime() - state.dashStart);
+	}
+
 	public static boolean isGuarding(Player player) {
 		State state = STATES.get(player.getUUID());
 		return state != null && state.guarding();

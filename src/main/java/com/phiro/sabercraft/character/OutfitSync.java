@@ -37,9 +37,10 @@ public final class OutfitSync {
 		ServerLifecycleEvents.SERVER_STOPPED.register(server -> clear());
 		ServerPlayNetworking.registerGlobalReceiver(ChooseOutfitPayload.TYPE, (payload, context) -> {
 			// Phase 22: no other skin while a story runs (the story dresses the player itself).
-			if (!com.phiro.sabercraft.story.Story.refuse(context.player())) {
-				choose(context.player(), payload.outfit());
-			}
+			// Phase 23: the story's outfit (plain skin or armour) always lies over the choice, so a
+			// choice sent during the story (the client sends it by itself on joining) is only
+			// remembered quietly and comes back when the story ends.
+			choose(context.player(), payload.outfit());
 		});
 		ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> {
 			if (ServerPlayNetworking.canSend(handler.getPlayer(), OutfitSyncPayload.TYPE)) {
@@ -123,6 +124,11 @@ public final class OutfitSync {
 		if (!Objects.equals(before, after)) {
 			broadcast(player.level().getServer(), new OutfitSyncPayload.Entry(player.getUUID(), Optional.ofNullable(after)));
 		}
+	}
+
+	/** The outfit the server forces on a player (Phase 23: {@link Outfit#PLAIN} too), for tests. */
+	public static Optional<Identifier> overrideOf(UUID player) {
+		return Optional.ofNullable(OVERRIDES.get(player));
 	}
 
 	/** What others see a player wearing: the server's outfit, else their own choice. */

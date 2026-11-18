@@ -343,16 +343,17 @@ public final class StoryTesting {
 		figure.parried = 0;
 	}
 
-	/** Phase 21: what he does now: guard, windup, open, leap, push, turn, recoil, escape. */
+	/** Phase 21: what he does now: guard, windup, open, leap, push, lock (Phase 23), recoil, escape, clash (Phase 23). */
 	public static String action(Figure figure) {
 		return switch (figure.action) {
 			case Finale.WINDUP -> "windup";
 			case Finale.OPEN_UP -> "open";
 			case Finale.LEAP -> "leap";
 			case Finale.PUSH -> "push";
-			case Finale.TURN -> "turn";
+			case Finale.LOCK -> "lock";
 			case Finale.RECOIL -> "recoil";
 			case Finale.ESCAPE -> "escape";
+			case Finale.CLASHED -> "clash";
 			default -> "guard";
 		};
 	}
@@ -380,5 +381,105 @@ public final class StoryTesting {
 
 	public static float phaseTwo() {
 		return Finale.PHASE_TWO;
+	}
+
+	// --- Phase 23 ----------------------------------------------------------------------------------
+
+	/** Phase 23: counters of the duel since the game started: clashes, perfect parries, dodges, locks, disarms. */
+	public static int[] duelCounts() {
+		return Finale.countsForTest();
+	}
+
+	/** Phase 23: where the Schattenklinge's saber lies after the duel (plot space), or null. */
+	public static @Nullable Vec3 dropped(StorySession s) {
+		return s.dropped;
+	}
+
+	/** Phase 23: what a figure's body does now (the reaction's kind, 0 = nothing). */
+	public static int react(Figure figure) {
+		return figure.react;
+	}
+
+	/** Phase 23: whether that one can fight (armed, or a guard): only they are drawn into a fight. */
+	public static boolean combatant(Figure figure) {
+		return Combat.combatant(figure);
+	}
+
+	/** Phase 23: whether that one is drawn into the fight (a fighter now, from an old chase or search). */
+	public static boolean engaged(Figure figure) {
+		return figure.engaged;
+	}
+
+	/** Phase 23: whether that one carries a pistol (an officer: he fights, and calls for help over his comlink). */
+	public static boolean pistol(Figure figure) {
+		return Combat.pistol(figure);
+	}
+
+	/** Phase 23: a stroke at that figure, light or heavy, as if the player struck now. */
+	public static void stroke(StorySession s, boolean heavy) {
+		s.lastStroke = heavy ? -1000L : s.time();
+	}
+
+	/** Phase 23: the stolen armour put on (Mission 3's locker), as if the player took it now. */
+	public static void putOnArmour(StorySession s) {
+		Chapter1.putOnArmour(s);
+	}
+
+	/** Phase 23: Ilyra's saber taken (Mission 6, in the lab), as if the player took it now. */
+	public static void takeSaber(StorySession s) {
+		Chapter1.takeSaber(s);
+	}
+
+	/** Phase 23: the step now done (as a dialog or a use would finish it). */
+	public static void finishStep(StorySession s) {
+		Chapter1.done(s, s.step().id());
+	}
+
+	/**
+	 * Phase 23: the way someone of the crew would walk in the Star Destroyer (plot space) from one
+	 * place to another, as the story's people find it: the points, and as the last element a point
+	 * whose x is 1 when the way reaches the goal (0 when it ends where one comes nearest).
+	 */
+	public static List<Vec3> way(StorySession s, Vec3 from, Vec3 to) {
+		net.minecraft.server.level.ServerLevel level = Chapter1.interiors(s);
+
+		if (level == null) {
+			return List.of();
+		}
+
+		Paths.Way way = Paths.way(level, Vec3.atLowerCornerOf(s.destroyer), from, to, 1.8);
+		List<Vec3> list = new ArrayList<>(way.points());
+		list.add(new Vec3(way.reaches() ? 1.0 : 0.0, 0.0, 0.0));
+		return list;
+	}
+
+	/** Phase 23: how many officers called for help over the comlink since the game started. */
+	public static int officerCalls() {
+		return Story.officerCallsForTest();
+	}
+
+	/** Phase 23: the troopers' bolts in a fight since the game started. */
+	public static int fightShots() {
+		return Finale.shotsForTest();
+	}
+
+	/**
+	 * Phase 23: the player's file at that step of that mission (every mission before it played),
+	 * as a checkpoint there saves it. Out of the story only.
+	 */
+	public static void fileAt(net.minecraft.server.MinecraftServer server, java.util.UUID player, int mission, String stepId) {
+		StoryProgress progress = StoryStore.load(server, player);
+
+		for (int i = 0; i < mission; i++) {
+			progress.completed.add(i);
+		}
+
+		progress.mission = mission;
+		progress.step = 0;
+		progress.stepId = stepId;
+		progress.placeShip = "";
+		progress.finished = false;
+		progress.flags.remove(Chapter1.CHAPTER_DONE);
+		StoryStore.save(server, player, progress);
 	}
 }

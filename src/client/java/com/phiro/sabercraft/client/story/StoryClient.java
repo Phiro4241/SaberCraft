@@ -71,6 +71,36 @@ public final class StoryClient {
 	private static int duelPhase = 1;
 	private static int foci;
 	private static int meterAge = 1000;
+	/** Phase 23: the camera's jolt (how strong, how long, its age) and its zoom (how far in, how long, its age). */
+	private static float shakeStrength;
+	private static int shakeTicks = 1;
+	private static int shakeAge = 1000;
+	private static float zoomKick;
+	private static int zoomTicks = 1;
+	private static int zoomAge = 1000;
+	/** Phase 23: the blade lock (how long it lasts, its age; the view closes in while it holds). */
+	private static int lockTicks;
+	private static int lockAge = 1000;
+	/** Phase 23: the reactor's bridge groaning under the player (ticks it lasts, how long since it began). */
+	private static int creakTicks = 1;
+	private static int creakAge = 1000;
+	/** Phase 23: a flash over the view (a clash), its colour and age. */
+	private static int flashColour;
+	private static int flashAge = 1000;
+	/** Phase 23: where the last hurt came from (world direction, x and z), and when. */
+	private static double hurtX;
+	private static double hurtZ;
+	private static int hurtFromAge = 1000;
+	private static int lastHurtTime;
+	/** Phase 23: her saber struck from her hand: where it flew from and to (world), when (client ticks). */
+	private static @Nullable Vec3 hiltFrom;
+	private static @Nullable Vec3 hiltTo;
+	private static long hiltAt;
+	private static float hiltYaw;
+	/** Phase 23: how long the struck saber flies (ticks; as the server's). */
+	static final int HILT_FLIGHT = 16;
+	/** Phase 23: the camera moments seen (for tests). */
+	private static int jolts;
 static final int CHECKPOINT_TICKS = 60;
 
 	/** How long a comlink line stays (ticks) per character, at least, at most. */
@@ -168,6 +198,14 @@ static final int CHECKPOINT_TICKS = 60;
 		stuns = 0;
 		stunAge = 1000;
 		duelPhase = 1;
+		shakeAge = 1000;
+		zoomAge = 1000;
+		lockAge = 1000;
+		creakAge = 1000;
+		flashAge = 1000;
+		hurtFromAge = 1000;
+		hiltFrom = null;
+		hiltTo = null;
 	}
 
 	// --- Receiving ---------------------------------------------------------------------------------
@@ -229,7 +267,7 @@ static final int CHECKPOINT_TICKS = 60;
 					sound(client, "story.radio", 0.55F, 1.0F, null);
 				}
 			}
-			case CUE_DUEL -> duel(client, payload.who(), payload.value());
+			case CUE_DUEL -> duel(client, payload.who(), payload.value(), payload.points());
 			case CUE_HINT -> {
 				if ("stun".equals(payload.who())) {
 					stuns = payload.value();
@@ -281,12 +319,87 @@ static final int CHECKPOINT_TICKS = 60;
 		}
 	}
 
-	/** Phase 21: a moment of the duel, for the HUD and the figures. */
-	private static void duel(Minecraft client, String who, int value) {
+	/**
+	 * Phase 21: a moment of the duel, for the HUD and the figures. Phase 23: each moment is also
+	 * felt: the camera jolts with a hit, more with a heavy one, hard with a clash (and the view
+	 * flashes and closes in a little), it trembles while the blades are locked, and the struck
+	 * saber's flight is drawn. (Hits on troopers come the same way.)
+	 */
+	private static void duel(Minecraft client, String who, int value, List<Vec3> points) {
 		switch (who) {
-			case "hit" -> HITS.put(value, clientTicks);
-			case "hurt" -> hurtAge = 0;
-			case "blocked" -> blockAge = 0;
+			case "hit" -> {
+				HITS.put(value, clientTicks);
+				shake(0.35F, 5);
+			}
+			case "hit_heavy" -> {
+				HITS.put(value, clientTicks);
+				shake(0.9F, 8);
+				zoom(0.035F, 8);
+			}
+			case "parried" -> shake(0.45F, 5);
+			case "clash" -> {
+				shake(1.6F, 11);
+				zoom(0.06F, 10);
+				flash(0x00FFF2E0, 0);
+			}
+			case "perfect" -> {
+				blockAge = 0;
+				shake(0.8F, 7);
+				flash(0x00C8DCFF, 0);
+			}
+			case "lock" -> {
+				lockTicks = Math.max(10, value);
+				lockAge = 0;
+				shake(1.2F, 9);
+				flash(0x00FFE0D0, 0);
+			}
+			case "lock_push" -> shake(0.55F, 5);
+			case "creak" -> {
+				// Phase 23: the reactor's bridge groans: it trembles (drawn, see StoryRooms), so does the view.
+				creakTicks = Math.max(20, value);
+				creakAge = 0;
+				shake(0.5F, 14);
+			}
+			case "quake" -> {
+				// Phase 23: ... and breaks: a hard jolt, a flash of the sparks.
+				creakAge = 1000;
+				shake(2.4F, Math.max(10, value));
+				zoom(0.05F, 12);
+				flash(0x00FFE4C8, 0);
+			}
+			case "lock_end" -> {
+				lockAge = 1000;
+				shake(2.2F, 15);
+				zoom(0.08F, 14);
+				flash(0x00FFF4E8, 0);
+			}
+			case "dodged" -> zoom(-0.03F, 8);
+			case "disarm" -> {
+				shake(1.8F, 12);
+				zoom(0.07F, 16);
+				flash(0x00FFF0E0, 0);
+
+				if (points.size() >= 2) {
+					hiltFrom = points.get(0);
+					hiltTo = points.get(1);
+					hiltAt = clientTicks;
+					hiltYaw = (value * 53 % 360);
+				}
+			}
+			case "hurt" -> {
+				hurtAge = 0;
+				shake(1.1F, 8);
+
+				if (!points.isEmpty() && client.player != null) {
+					hurtX = points.get(0).x - client.player.getX();
+					hurtZ = points.get(0).z - client.player.getZ();
+					hurtFromAge = 0;
+				}
+			}
+			case "blocked" -> {
+				blockAge = 0;
+				shake(0.5F, 5);
+			}
 			case "phase" -> duelPhase = value;
 			case "meter" -> {
 				meterAge = 0;
@@ -302,10 +415,160 @@ static final int CHECKPOINT_TICKS = 60;
 			case "over" -> {
 				focusOn = false;
 				duelPhase = 1;
+				lockAge = 1000;
 			}
 			default -> {
 			}
 		}
+	}
+
+	/** Phase 23: the camera jolts (a stronger jolt wins over a weaker one still running). */
+	/** Phase 23: how hard the reactor's bridge trembles now (0 still, 1 just began to groan). */
+	public static float creak() {
+		return creakAge < creakTicks ? 1.0F - (float) creakAge / creakTicks : 0.0F;
+	}
+
+	static void shake(float strength, int ticks) {
+		if (shakeAge < shakeTicks && shakeStrength * (1.0F - (float) shakeAge / shakeTicks) > strength) {
+			return;
+		}
+
+		shakeStrength = strength;
+		shakeTicks = Math.max(1, ticks);
+		shakeAge = 0;
+		jolts++;
+	}
+
+	/** Phase 23: the view closes in for a moment (negative: it opens a little). */
+	private static void zoom(float kick, int ticks) {
+		zoomKick = kick;
+		zoomTicks = Math.max(1, ticks);
+		zoomAge = 0;
+	}
+
+	private static void flash(int colour, int age) {
+		flashColour = colour;
+		flashAge = age;
+	}
+
+	/**
+	 * Phase 23: the jolt of the camera now (first person): {dip, pitch, roll} in blocks and
+	 * degrees, or false when nothing shakes. A blade lock trembles as long as it holds.
+	 */
+	public static boolean camera(float partial, float[] out) {
+		if (!active()) {
+			return false;
+		}
+
+		float t = shakeAge + partial;
+		float strength = 0.0F;
+
+		if (shakeAge < shakeTicks) {
+			float left = 1.0F - t / shakeTicks;
+			strength = shakeStrength * Math.max(0.0F, left) * Math.max(0.0F, left);
+		}
+
+		if (lockAge < lockTicks) {
+			strength = Math.max(strength, 0.28F);
+		}
+
+		if (strength <= 0.001F) {
+			return false;
+		}
+
+		float time = (clientTicks + partial);
+		out[0] = -0.012F * strength * Mth.sin(time * 2.9F);
+		out[1] = strength * 0.9F * Mth.sin(time * 3.7F + 1.3F);
+		out[2] = strength * 0.7F * Mth.cos(time * 3.1F);
+		return true;
+	}
+
+	/** Phase 23: how the field of view is scaled now (a clash closes in, the blade lock holds it closer). */
+	public static float fovScale(float partial) {
+		if (!active()) {
+			return 1.0F;
+		}
+
+		float scale = 1.0F;
+
+		if (zoomAge < zoomTicks) {
+			float left = Math.max(0.0F, 1.0F - (zoomAge + partial) / zoomTicks);
+			scale -= zoomKick * left * left;
+		}
+
+		if (lockAge < lockTicks + 10) {
+			float in = Math.min(1.0F, (lockAge + partial) / 8.0F);
+			float out = lockAge < lockTicks ? 1.0F : Math.max(0.0F, 1.0F - (lockAge - lockTicks + partial) / 10.0F);
+			scale -= 0.08F * in * out;
+		}
+
+		return scale;
+	}
+
+	/** Phase 23: the flash over the view now (ARGB), or 0. */
+	static int flash(float partial) {
+		float age = flashAge + partial;
+
+		if (age >= 5.0F) {
+			return 0;
+		}
+
+		int alpha = Math.round((1.0F - age / 5.0F) * 110.0F);
+		return alpha << 24 | flashColour & 0xFFFFFF;
+	}
+
+	/** Phase 23: where the last hurt came from (world x and z, from the player), how long ago, or null. */
+	static double @Nullable [] hurtFrom() {
+		return hurtFromAge < 24 ? new double[] {hurtX, hurtZ, hurtFromAge} : null;
+	}
+
+	/** Phase 23, for the tests: whether the HUD shows where the last hurt came from now. */
+	public static boolean hurtFromForTest() {
+		return hurtFrom() != null;
+	}
+
+	/**
+	 * Phase 23: her struck saber (plot space of that ship): {x, y, z, yaw, pitch} while it flies
+	 * (spinning, in an arc) and after it lies on the floor; null if there is none.
+	 */
+	public static float @Nullable [] looseHilt(BlockPos origin, float partial) {
+		Vec3 from = hiltFrom;
+		Vec3 to = hiltTo;
+		StoryFiguresPayload now = current;
+
+		if (from == null || to == null || now == null || !now.origin().equals(origin)) {
+			return null;
+		}
+
+		float k = Math.min(1.0F, (clientTicks - hiltAt + partial) / HILT_FLIGHT);
+		double x = Mth.lerp(k, from.x, to.x) - origin.getX();
+		double z = Mth.lerp(k, from.z, to.z) - origin.getZ();
+		// Up in an arc, then down onto the floor (it lies a little above it, being round).
+		double y = Mth.lerp(k, from.y, to.y + 0.04) + 1.1 * 4.0 * k * (1.0 - k) - origin.getY();
+		float pitch = k < 1.0F ? k * 900.0F : 90.0F;
+		return new float[] {(float) x, (float) y, (float) z, hiltYaw + k * 160.0F, pitch};
+	}
+
+	/** Phase 23: where the struck saber flew from and lands (world), for the film of the end; null if none. */
+	static @Nullable Vec3 hiltLanding() {
+		return hiltTo;
+	}
+
+	static @Nullable Vec3 hiltStart() {
+		return hiltFrom;
+	}
+
+	/** Only for tests: how often the camera jolted, whether the struck saber is drawn. */
+	public static int joltsForTest() {
+		return jolts;
+	}
+
+	public static int duelPhaseForTest() {
+		return duelPhase;
+	}
+
+	public static boolean looseHiltForTest() {
+		return hiltFrom != null;
 	}
 
 	/** Phase 21: the jolt of a hit on that figure (1 just hit, 0 after a quarter second). */
@@ -413,6 +676,12 @@ static final int CHECKPOINT_TICKS = 60;
 		blockAge++;
 		stunAge++;
 		meterAge++;
+		shakeAge++;
+		zoomAge++;
+		lockAge++;
+		creakAge++;
+		flashAge++;
+		hurtFromAge++;
 
 		while (FOCUS_KEY.consumeClick()) {
 			if (active() && client.gui.screen() == null) {
@@ -422,6 +691,22 @@ static final int CHECKPOINT_TICKS = 60;
 
 		if (client.level == null) {
 			return;
+		}
+
+		// Phase 23: a hurt from something with a place (a bolt, a blow): the HUD shows from where.
+		int hurtTime = client.player != null ? client.player.hurtTime : 0;
+		boolean newHurt = hurtTime > lastHurtTime;
+		lastHurtTime = hurtTime;
+
+		if (newHurt && active() && hurtFromAge > 0) {
+			net.minecraft.world.damagesource.DamageSource source = client.player.getLastDamageSource();
+			Vec3 from = source != null ? source.getSourcePosition() : null;
+
+			if (from != null) {
+				hurtX = from.x - client.player.getX();
+				hurtZ = from.z - client.player.getZ();
+				hurtFromAge = 0;
+			}
 		}
 
 		// The legs of everyone walking.
@@ -583,7 +868,7 @@ static final int CHECKPOINT_TICKS = 60;
 	}
 
 	/** One person, between the last two snapshots (plot space): where, which way, how far their legs walked. */
-	public record Pose(StoryFiguresPayload.Fig fig, double x, double y, double z, float yaw, float head, float walk) {
+	public record Pose(StoryFiguresPayload.Fig fig, double x, double y, double z, float yaw, float head, float walk, float reactP) {
 	}
 
 	/** Everyone near the player in that plot, as drawn now. */
@@ -613,8 +898,11 @@ static final int CHECKPOINT_TICKS = 60;
 			// Someone put somewhere else (a checkpoint, a scene): there at once.
 			float k = jump > 4.0 ? 1.0F : t;
 			float stride = STRIDES.getOrDefault(fig.id(), 0.0F) + partial * fig.speed() / 20.0F * 3.4F;
+			// Phase 23: a reaction (a hit, a fall, a clash) runs smoothly between the snapshots.
+			float reactP = from.reactKind() == fig.reactKind() && fig.reactProgress() >= from.reactProgress()
+					? Mth.lerp(t, from.reactProgress(), fig.reactProgress()) : fig.reactProgress();
 			list.add(new Pose(fig, Mth.lerp(k, from.x(), fig.x()), Mth.lerp(k, from.y(), fig.y()), Mth.lerp(k, from.z(), fig.z()),
-					Mth.rotLerp(k, from.yaw(), fig.yaw()), Mth.rotLerp(k, from.head(), fig.head()), fig.speed() > 0.05F ? stride : 0.0F));
+					Mth.rotLerp(k, from.yaw(), fig.yaw()), Mth.rotLerp(k, from.head(), fig.head()), fig.speed() > 0.05F ? stride : 0.0F, reactP));
 		}
 
 		return list;

@@ -511,12 +511,14 @@ public class StoryGameTest implements FabricClientGameTest {
 		this.use("card", H);
 		this.converse();
 		this.waitStep("m3.hale", 40);
-		this.waitDialog(400, "Hale does not come to speak (again)");
-		check(this.line().equals("m3_hale_qm.start"), "Hale does not send the quartermaster out first (" + this.line() + ")");
-		this.converse();
-		this.waitDialog(600, "Hale does not speak once the quartermaster is out");
-		check(this.line().equals("m3_hale.start"), "after the quartermaster Hale's talk is " + this.line());
-		this.alone("Hale's talk (the quartermaster sent out)");
+		// Phase 23: the armory is emptied first (the security desk pages the quartermaster to the
+		// hangar), Hale waits outside meanwhile, then comes in himself, alone; nobody else speaks.
+		check(this.on(s -> session(s).has("qm.away")), "the quartermaster is not paged out when Hale's scene begins");
+		check(this.on(s -> session(s).figure("hale") != null && !DestroyerInterior.ARMORY.contains(session(s).figure("hale").position().add(0.0, 0.5, 0.0))),
+				"Hale is in the armory before it is empty");
+		this.waitDialog(800, "Hale does not speak once the quartermaster is out");
+		check(this.line().equals("m3_hale.start"), "Hale's talk does not begin with his own words (" + this.line() + ")");
+		this.alone("Hale's talk (the quartermaster paged out before)");
 		BlockPos armoryDoor = new BlockPos(DestroyerInterior.CX + 4, H, -14);
 		check(this.on(s -> Story.locked(session(s).destroyer, armoryDoor.getX(), armoryDoor.getY(), armoryDoor.getZ())), "Hale does not bolt the armory's door");
 		this.converse("want", "refuse");
@@ -818,13 +820,18 @@ public class StoryGameTest implements FabricClientGameTest {
 	private void callAndReinforce() {
 		this.place(Story.DESTROYER, new Vec3(50.6, R, 24.5), 270.0F, 0.0F);
 		String officer = this.on(s -> {
+			String found = null;
+
 			for (Figure figure : session(s).figures) {
-				if (figure.key.startsWith("crew:") && figure.y < H - 1 && !Story.soldierForTest(figure) && figure.observer) {
-					return figure.key;
+				// (Phase 23: one without a pistol runs to the wall comm; an officer calls over his
+				// comlink as he draws his pistol: either brings the troopers.)
+				if (figure.key.startsWith("crew:") && figure.y < H - 1 && !Story.soldierForTest(figure) && figure.observer
+						&& (found == null || !StoryTesting.pistol(figure))) {
+					found = figure.key;
 				}
 			}
 
-			return null;
+			return found;
 		});
 
 		if (officer == null) {
@@ -832,8 +839,14 @@ public class StoryGameTest implements FabricClientGameTest {
 			return;
 		}
 
+		boolean armed = this.on(s -> StoryTesting.pistol(session(s).figure(officer)));
 		this.server.runOnServer(s -> StoryTesting.detect(session(s), session(s).figure(officer)));
-		check(this.on(s -> session(s).figure(officer).mode == Figure.CALL), officer + " does not run for a wall comm");
+
+		if (armed) {
+			check(this.on(s -> StoryTesting.react(session(s).figure(officer)) == Figure.COMLINK), officer + " (an officer) does not call over his comlink");
+		} else {
+			check(this.on(s -> session(s).figure(officer).mode == Figure.CALL), officer + " does not run for a wall comm");
+		}
 		boolean called = false;
 
 		for (int i = 0; i < 60 && !called; i++) {
@@ -841,7 +854,7 @@ public class StoryGameTest implements FabricClientGameTest {
 			called = this.on(s -> session(s).alarm > 0 && session(s).figures.stream().anyMatch(f -> f.key.startsWith("reinf.")));
 		}
 
-		check(called, officer + " does not raise the alarm at the wall comm (no troopers come)");
+		check(called, officer + " does not raise the alarm (no troopers come)");
 		this.context.takeScreenshot("story_alarm_called");
 		// Round the core to the player (they cannot catch while the test keeps one unseen).
 		double nearest = 99.0;
@@ -1152,24 +1165,40 @@ public class StoryGameTest implements FabricClientGameTest {
 
 		String key = trooper.key;
 
-		// Phase 22: a trooper takes four strokes (two before), each one shakes him.
-		for (int stroke = 0; stroke < 4; stroke++) {
-			if (stroke == 1) {
-				check(this.on(s -> session(s).figure(key).mode != Figure.DOWN), key + " is down after one stroke");
+		// Phase 23: a heavy stroke throws him back (he reels, arms out); light ones make him flinch; a
+		// trooper takes four light strokes (Phase 22) or a heavy and two light ones.
+		for (int stroke = 0; stroke < 3; stroke++) {
+			boolean heavy = stroke == 0;
+			this.faceFigure(key, 1.8);
+
+			for (int i = 0; i < 10 && !this.context.computeOnClient(client -> client.player.onGround()); i++) {
+				this.context.waitTick();
 			}
 
-			this.faceFigure(key, 1.8);
+			this.server.runOnServer(s -> StoryTesting.stroke(session(s), heavy));
 			float before = this.on(s -> session(s).figure(key).health);
+			Vec3 from = this.on(s -> session(s).figure(key).position());
 			int struck = this.context.computeOnClient(client -> StoryInput.struckForTest());
 			this.context.getInput().pressKey(options -> options.keyAttack);
-			this.context.waitTicks(10);
+			this.context.waitTicks(3);
+			int reaction = this.on(s -> StoryTesting.react(session(s).figure(key)));
+			this.context.waitTicks(7);
 			float after = this.on(s -> session(s).figure(key).health);
+			double moved = this.on(s -> session(s).figure(key).position().distanceTo(from));
 			int sent = this.context.computeOnClient(client -> StoryInput.struckForTest());
 			check(sent > struck, "the attack key with the saber sends no stroke");
 			check(after < before, "the stroke does not hit " + key + " (" + before + " -> " + after + ")");
+
+			if (heavy) {
+				check(reaction == Figure.HEAVY, "a heavy stroke does not throw " + key + " back (reaction " + reaction + ")");
+				check(moved > 0.4, "a heavy stroke does not knock " + key + " back (" + Math.round(moved * 100) / 100.0 + " blocks)");
+				check(this.on(s -> session(s).figure(key).mode != Figure.DOWN), key + " is down after one stroke");
+			} else if (stroke == 1) {
+				check(reaction == Figure.FLINCH || reaction == Figure.STUMBLE, "a light stroke does not make " + key + " flinch (reaction " + reaction + ")");
+			}
 		}
 
-		check(this.on(s -> session(s).figure(key).mode == Figure.DOWN), key + " is not down after four strokes");
+		check(this.on(s -> session(s).figure(key).mode == Figure.DOWN), key + " is not down after a heavy and two light strokes");
 		this.context.runOnClient(client -> client.options.setCameraType(CameraType.THIRD_PERSON_BACK));
 		this.context.waitTicks(20);
 		this.context.takeScreenshot("story_trooper_down");
@@ -1180,8 +1209,10 @@ public class StoryGameTest implements FabricClientGameTest {
 	 * The duel (Phase 21): the film before it (his back, he turns, the blade lights, the title),
 	 * then the fight: strokes into his guard are parried and hammering at it is answered with a
 	 * thrust; a blow blocked with the guard leaves him staggering, and then a stroke hits; a blow
-	 * not blocked lands; the Focus slows him; a new phase makes him step back; at the end he breaks
-	 * off, and the film of his flight plays before the Falcon.
+	 * not blocked lands; the Focus slows him. Phase 23: a stroke into his wind-up clashes (nobody is
+	 * hurt); a guard raised just in time is a perfect parry; a blocked blow never hurts; the second
+	 * phase begins with a blade lock; the last stroke strikes the saber from his hand (it flies off and
+	 * lies on the floor), he is not killed, and the film of his defeat and flight plays before the Falcon.
 	 */
 	private void duel() {
 		ClientGameTestContext context = this.context;
@@ -1284,32 +1315,92 @@ public class StoryGameTest implements FabricClientGameTest {
 		check(context.computeOnClient(client -> StoryClient.fociForTest()) > 0, "the client does not show the Focus");
 		context.takeScreenshot("story_duel_focus");
 
-		// A new phase: he steps back and comes on quicker.
+		// Phase 23: a stroke into his wind-up: the blades clash; nobody is hurt, both are thrown apart.
+		this.faceFigure("shadow", 2.2);
+		this.server.runOnServer(s -> StoryTesting.guard(session(s).figure("shadow"), 200));
+		context.waitTicks(4);
+		this.server.runOnServer(s -> StoryTesting.blow(session(s).figure("shadow"), 1, 24));
+		context.waitTicks(3);
+		float clashFrom = this.on(s -> session(s).figure("shadow").health);
+		int hurtBefore = this.on(s -> session(s).counters.getOrDefault("duel_hurt", 0));
+		int clashes = this.on(s -> StoryTesting.duelCounts()[0]);
+		int jolts = context.computeOnClient(client -> StoryClient.joltsForTest());
+		this.faceFigure("shadow", 2.2);
+		context.getInput().pressKey(options -> options.keyAttack);
+		context.waitTicks(3);
+		check(this.on(s -> StoryTesting.duelCounts()[0]) > clashes && "clash".equals(this.on(s -> StoryTesting.action(session(s).figure("shadow")))),
+				"a stroke into his wind-up does not clash (he does " + this.on(s -> StoryTesting.action(session(s).figure("shadow"))) + ")");
+		check(this.on(s -> session(s).figure("shadow").health) == clashFrom, "a clash hurts him");
+		context.waitTicks(20);
+		check(this.on(s -> session(s).counters.getOrDefault("duel_hurt", 0)) == hurtBefore, "a clash hurts the player (his blow still fell)");
+		check(context.computeOnClient(client -> StoryClient.joltsForTest()) > jolts, "the camera does not jolt with the clash");
+
+		// Phase 23: the guard raised just before his blow: a perfect parry, he reels (an opening); never hurt.
+		this.faceFigure("shadow", 2.4);
+		this.server.runOnServer(s -> StoryTesting.guard(session(s).figure("shadow"), 200));
+		context.waitTicks(10);
+		int perfects = this.on(s -> StoryTesting.duelCounts()[1]);
+		this.server.runOnServer(s -> StoryTesting.blow(session(s).figure("shadow"), 2, 10));
+		context.waitTicks(6);
+		context.getInput().holdKey(options -> com.phiro.sabercraft.client.ability.SaberAbilityClient.GUARD_KEY);
+		boolean parried = false;
+
+		for (int i = 0; i < 10 && !parried; i++) {
+			context.waitTick();
+			parried = this.on(s -> StoryTesting.duelCounts()[1]) > perfects;
+		}
+
+		context.getInput().releaseKey(options -> com.phiro.sabercraft.client.ability.SaberAbilityClient.GUARD_KEY);
+		check(parried, "the guard raised just in time is not a perfect parry");
+		check("open".equals(this.on(s -> StoryTesting.action(session(s).figure("shadow")))), "a perfect parry does not leave him open");
+		check(this.on(s -> session(s).counters.getOrDefault("duel_hurt", 0)) == hurtBefore, "a blocked blow hurts the player");
+
+		// The second phase: the blades lock (a moment, crackling), then a burst throws both apart.
 		this.server.runOnServer(s -> session(s).figure("shadow").health = StoryTesting.phaseTwo() + StoryTesting.hit() * 0.5F);
 		this.faceFigure("shadow", 2.2);
 		this.server.runOnServer(s -> StoryTesting.open(session(s).figure("shadow")));
+		int locks = this.on(s -> StoryTesting.duelCounts()[3]);
 		context.getInput().pressKey(options -> options.keyAttack);
 		context.waitTicks(6);
-		check(this.on(s -> "turn".equals(StoryTesting.action(session(s).figure("shadow"))) && StoryTesting.phase(session(s).figure("shadow")) == 2),
-				"the second phase does not begin with him stepping back");
+		check(this.on(s -> "lock".equals(StoryTesting.action(session(s).figure("shadow"))) && StoryTesting.duelCounts()[3] > locks),
+				"the second phase does not begin with the blade lock (he does " + this.on(s -> StoryTesting.action(session(s).figure("shadow"))) + ")");
+		check(this.on(s -> StoryTesting.phase(session(s).figure("shadow")) == 2), "the blade lock does not lead into the second phase");
 
-		// Filmed from behind and a little aside, so that both blades are seen.
+		// Filmed from behind and a little aside, so that both blades are seen locked.
 		this.faceFigure("shadow", 3.0);
 		context.runOnClient(client -> {
 			client.player.setYRot(client.player.getYRot() - 28.0F);
 			client.player.setXRot(8.0F);
 			client.options.setCameraType(CameraType.THIRD_PERSON_BACK);
 		});
+		context.waitTicks(4);
+		context.takeScreenshot("story_duel_lock");
 		this.film("duel", 30, 2);
 		context.takeScreenshot("story_duel");
 		context.runOnClient(client -> client.options.setCameraType(CameraType.FIRST_PERSON));
+		boolean locked = true;
 
-		for (int i = 0; i < 20 && this.on(s -> session(s).has("tmp.duel")); i++) {
+		// Pressing against his blade ends it sooner.
+		for (int i = 0; i < 24 && locked; i++) {
+			if (i % 3 == 0) {
+				this.faceFigure("shadow", 2.0);
+				context.getInput().pressKey(options -> options.keyAttack);
+			}
+
+			context.waitTicks(4);
+			locked = "lock".equals(this.on(s -> StoryTesting.action(session(s).figure("shadow"))));
+		}
+
+		check(!locked, "the blade lock does not end");
+		check(context.computeOnClient(client -> StoryClient.duelPhaseForTest()) == 2, "the client does not know the second phase");
+		check(this.on(s -> session(s).counters.getOrDefault("duel_hurt", 0)) == hurtBefore, "the blade lock hurts the player");
+
+		for (int i = 0; i < 30 && this.on(s -> session(s).has("tmp.duel")); i++) {
 			this.faceFigure("shadow", 2.0);
 			this.server.runOnServer(s -> {
 				Figure shadow = session(s).figure("shadow");
 
-				if (shadow != null && shadow.hostile) {
+				if (shadow != null && shadow.hostile && !"lock".equals(StoryTesting.action(shadow))) {
 					StoryTesting.open(shadow);
 				}
 			});
@@ -1317,7 +1408,12 @@ public class StoryGameTest implements FabricClientGameTest {
 			context.waitTicks(8);
 		}
 
-		check(!this.on(s -> session(s).has("tmp.duel")), "the Shadowblade does not break off");
+		check(!this.on(s -> session(s).has("tmp.duel")), "the Shadowblade is not beaten");
+		// Phase 23: the end: the saber struck from his hand flies off and lies on the floor; he is not killed.
+		check(this.on(s -> StoryTesting.duelCounts()[4] > 0 && StoryTesting.dropped(session(s)) != null), "the last stroke does not strike the saber from his hand");
+		check(this.on(s -> session(s).figure("shadow") != null && StoryTesting.react(session(s).figure("shadow")) == Figure.DISARMED),
+				"he does not stand there disarmed");
+		check(context.computeOnClient(client -> StoryClient.looseHiltForTest()), "the client does not draw the struck saber");
 		boolean end = false;
 
 		for (int i = 0; i < 20 && !end; i++) {
@@ -1325,11 +1421,16 @@ public class StoryGameTest implements FabricClientGameTest {
 			end = "duel_end".equals(context.computeOnClient(client -> StoryCinema.filmForTest()));
 		}
 
-		check(end, "the film of his flight does not play");
-		context.waitTicks(20);
-		context.takeScreenshot("story_duel_end_1_retreat");
-		context.waitTicks(40);
-		context.takeScreenshot("story_duel_end_2_flight");
+		check(end, "the film of his defeat does not play");
+		context.waitTicks(8);
+		context.takeScreenshot("story_duel_end_1_disarm");
+		context.waitTicks(26);
+		context.takeScreenshot("story_duel_end_2_saber");
+		context.waitTicks(36);
+		context.takeScreenshot("story_duel_end_3_defeat");
+		check(this.on(s -> session(s).figure("shadow") != null && session(s).figure("shadow").mode != Figure.DOWN), "he is down (he should flee, not die)");
+		context.waitTicks(50);
+		context.takeScreenshot("story_duel_end_4_flight");
 		this.waitStep("m6.falcon", 160);
 		check(this.on(s -> session(s).figure("shadow") == null && session(s).has("gone.shadow")), "he is still there after his flight");
 	}
@@ -1450,6 +1551,23 @@ public class StoryGameTest implements FabricClientGameTest {
 			this.context.waitTicks(10);
 		}
 
+		// What went wrong: where the droid is, its errand, who is about.
+		this.server.runOnServer(s -> {
+			var droid = Droids.droid(me(s), type);
+			StorySession session = session(s);
+			Vec3 corner = session == null || session.here == null ? Vec3.ZERO : Vec3.atLowerCornerOf(session.origin(session.here));
+			SaberCraft.LOGGER.info("STORY: {}: droid {} errand {}, player at {} looking {}, lure {}", failure,
+					droid == null ? "none" : droid.position().subtract(corner), droid == null ? -1 : droid.errand(), me(s).position().subtract(corner),
+					me(s).getLookAngle(), session != null && session.has("tmp.lure"));
+
+			if (session != null) {
+				for (Figure figure : session.figures) {
+					if (Story.DESTROYER.equals(figure.ship) && figure.position().distanceTo(me(s).position().subtract(corner)) < 14.0) {
+						SaberCraft.LOGGER.info("STORY:   {} mode {} at {} distracted {}", figure.key, figure.mode, figure.position(), figure.distracted);
+					}
+				}
+			}
+		});
 		this.problem(failure);
 	}
 
@@ -1509,6 +1627,21 @@ public class StoryGameTest implements FabricClientGameTest {
 			this.context.waitTicks(5);
 		}
 
+		// Who was about and what the story knew (for the log).
+		this.server.runOnServer(s -> {
+			StorySession session = session(s);
+
+			if (session != null) {
+				SaberCraft.LOGGER.info("STORY: {}: player at {}, flags {}", failure, session.local(Story.DESTROYER), session.flags);
+
+				for (Figure figure : session.figures) {
+					if (Story.DESTROYER.equals(figure.ship) && figure.position().distanceTo(session.local(Story.DESTROYER)) < 24.0) {
+						SaberCraft.LOGGER.info("STORY:   {} mode {} at {} way {}/{} stage {}", figure.key, figure.mode, figure.position(), figure.wayIndex,
+								figure.way.size(), figure.stage);
+					}
+				}
+			}
+		});
 		throw new AssertionError(failure + " (step " + this.step() + "); problems so far: " + this.problems);
 	}
 

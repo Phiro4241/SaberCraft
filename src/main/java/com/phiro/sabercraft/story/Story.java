@@ -736,11 +736,38 @@ public final class Story {
 		Vec3 me = session.local(figure.ship);
 		figure.path = List.of();
 		figure.pathGoal = null;
+		figure.pathReaches = true;
 		cue(session, CUE_SOUND, "", "story.detected", figure.id);
 
 		// Phase 21: where the player was seen (the squad goes there when they lose sight).
 		session.huntSeen = session.time();
 		session.huntAt = me;
+
+		if (Combat.pistol(figure)) {
+			// Phase 23: an officer defends himself: he shouts, steps back calling for help over his
+			// comlink (help comes from the nearest door a few seconds later), then draws and
+			// shoots like the troops. Calling is something he does as well, not all he does.
+			session.hear(voice(figure), "sabercraft.story.shout.officer_halt");
+			figure.mode = Figure.CHASE;
+			figure.called = session.alarm > 0 || session.has("tmp.reinforce");
+			figure.cooldown = 10 + figure.id % 8;
+
+			if (!figure.called) {
+				figure.react(Figure.COMLINK, Combat.COMLINK);
+			}
+
+			Stealth.rally(session, figure, me);
+
+			if (session.alarm <= 0) {
+				session.stuns = 0;
+			}
+
+			session.raiseAlarm(Stealth.SEARCH_LONG + Stealth.LOSE);
+			session.searching = false;
+			session.unseen = 0;
+			session.hint("sabercraft.story.hint.detected_officer");
+			return;
+		}
 
 		if (soldier(figure)) {
 			// Phase 20: a soldier shouts, gives chase and has the alarm raised over his comlink.
@@ -776,6 +803,30 @@ public final class Story {
 		}
 	}
 
+	/**
+	 * Phase 23: an officer's call over the comlink went through: the alarm over the intercom, and
+	 * two troopers from the nearest door a few seconds later (once per alarm).
+	 */
+	static void officerCalled(StorySession session, Figure officer) {
+		session.hear(voice(officer), "sabercraft.story.shout.officer_call");
+		cue(session, CUE_SOUND, "", "story.radio", officer.id);
+
+		if (!session.has("tmp.reinforce") && session.figures.stream().noneMatch(figure -> figure.key.startsWith(Stealth.REINFORCEMENT))) {
+			session.set("tmp.reinforce");
+			session.timer("reinforce", Stealth.REINFORCE_DELAY);
+		}
+
+		session.raiseAlarm(Stealth.SEARCH_LONG + Stealth.LOSE);
+		officerCalls++;
+	}
+
+	private static int officerCalls;
+
+	/** For the tests: how many officers called for help over the comlink since the game started. */
+	public static int officerCallsForTest() {
+		return officerCalls;
+	}
+
 	/** Phase 20: one who is no soldier runs to the nearest wall comm to raise the alarm there (at once, with none in reach). */
 	static void runToComm(StorySession session, Figure figure) {
 		Vec3 comm = nearest(session.chapter.comms(session, figure.ship), figure.position(), Stealth.COMM_REACH, null);
@@ -785,6 +836,7 @@ public final class Story {
 		figure.called = false;
 		figure.path = List.of();
 		figure.pathGoal = null;
+		figure.pathReaches = true;
 
 		if (figure.seenAt == null) {
 			figure.seenAt = session.local(figure.ship);
@@ -1232,9 +1284,11 @@ public final class Story {
 			}
 
 			int flags = (f.lamp ? StoryFiguresPayload.LAMP : 0) | (f.saber ? StoryFiguresPayload.SABER : 0) | (f.hostile ? StoryFiguresPayload.HOSTILE : 0)
-					| (f.talks ? StoryFiguresPayload.TALKS : 0) | (f.observer ? StoryFiguresPayload.OBSERVER : 0) | (f.lit ? StoryFiguresPayload.LIT : 0);
+					| (f.talks ? StoryFiguresPayload.TALKS : 0) | (f.observer ? StoryFiguresPayload.OBSERVER : 0) | (f.lit ? StoryFiguresPayload.LIT : 0)
+					| (Combat.pistol(f) && f.observer && (f.mode == Figure.CHASE || f.mode == Figure.FIGHT) && f.react != Figure.COMLINK ? StoryFiguresPayload.ARMED : 0)
+					| (Finale.disarmed(f) ? StoryFiguresPayload.UNARMED : 0);
 			list.add(new StoryFiguresPayload.Fig(f.id, f.kind(), f.pose(), f.speaker, (float) f.x, (float) f.y, (float) f.z, f.yaw, f.headYaw, f.speed, f.stage,
-					Math.round(f.suspicion * 255.0F), flags,Math.round(Math.max(0.0F, f.health) * 255.0F), Finale.shown(f)));
+					Math.round(f.suspicion * 255.0F), flags, Math.round(Math.max(0.0F, f.health) * 255.0F), Finale.shown(f), f.reactShown()));
 		}
 
 		ServerPlayNetworking.send(player, new StoryFiguresPayload(origin, player.level().getGameTime(), list));

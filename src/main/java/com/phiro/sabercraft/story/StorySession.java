@@ -116,6 +116,10 @@ public final class StorySession {
 	public Object[] droidArgs = new Object[0];
 	/** The finale: the player's lightsaber is out (the stealth rules no longer apply). */
 	public boolean fighting;
+	/** Phase 23: when the player last struck with the saber (story time): a pause makes the next a heavy stroke. */
+	long lastStroke = -1000L;
+	/** Phase 23: where the Schattenklinge's saber lies after the duel (plot space), or null. */
+	@Nullable Vec3 dropped;
 
 	StorySession(UUID player, MinecraftServer server, StoryProgress progress, Chapter chapter, BlockPos falcon, BlockPos destroyer) {
 		this.player = player;
@@ -217,7 +221,13 @@ public final class StorySession {
 		this.partner = null;
 		this.pending = null;
 		this.scanned = List.of();
+		this.dropped = null;
+		this.lastStroke = -1000L;
+		// Phase 23: whether a fight went on into this step (those drawn into it stay while it lasts).
+		boolean fought = this.fighting;
 		this.fighting = false;
+
+		List<Figure> carried = List.of();
 
 		if (restore) {
 			this.flags.clear();
@@ -226,7 +236,7 @@ public final class StorySession {
 			this.journal.addAll(this.progress.journal);
 			this.rebuildFigures();
 		} else {
-			this.syncFigures();
+			carried = this.syncFigures(fought);
 		}
 
 		this.disguised = this.flags.contains("wear.armour");
@@ -240,6 +250,11 @@ public final class StorySession {
 		}
 
 		this.chapter.begin(this, step, restore);
+
+		// Phase 23: no fight in this step after all: who stayed only for the fight goes now.
+		if (!this.fighting && !carried.isEmpty()) {
+			this.figures.removeAll(carried);
+		}
 
 		if (restore) {
 			this.grace = Math.max(this.grace, GRACE);
@@ -426,10 +441,15 @@ public final class StorySession {
 		return Stealth.clear(level, eye, them);
 	}
 
-	/** Keeps those still there as they are, adds who comes, removes who goes. */
-	void syncFigures() {
+	/**
+	 * Keeps those still there as they are, adds who comes, removes who goes. Phase 23: with
+	 * {@code fought} (a fight went on into the new step) those drawn into it stay as fighters;
+	 * returns those who stayed only for that.
+	 */
+	List<Figure> syncFigures(boolean fought) {
 		long time = this.time();
 		List<Figure> wanted = this.chapter.figures(this);
+		List<Figure> carried = new ArrayList<>();
 		Map<String, Figure> now = new HashMap<>();
 
 		for (Figure figure : this.figures) {
@@ -448,7 +468,8 @@ public final class StorySession {
 				kept.observer = figure.observer;
 				kept.lamp = figure.lamp;
 				kept.talks = figure.talks;
-				kept.hostile = figure.hostile;
+				// Phase 23: one drawn into the fight stays a fighter while it lasts.
+				kept.hostile = figure.hostile || kept.engaged && kept.hostile && fought && kept.mode != Figure.DOWN;
 				kept.saber = figure.saber;
 				kept.sight = figure.sight;
 				kept.ship = figure.ship;
@@ -458,12 +479,22 @@ public final class StorySession {
 			}
 		}
 
-		// Phase 20: reinforcements stay until they went back out of their door.
+		// Phase 20: reinforcements stay until they went back out of their door. Phase 23: so do
+		// those drawn into a fight (the crew of the deck a step clears away included) while it lasts.
 		for (Figure figure : now.values()) {
+			if (this.figures.contains(figure)) {
+				continue;
+			}
+
 			if (figure.key.startsWith(Stealth.REINFORCEMENT)) {
 				this.figures.add(figure);
+			} else if (figure.engaged && figure.hostile && fought && figure.mode != Figure.DOWN) {
+				this.figures.add(figure);
+				carried.add(figure);
 			}
 		}
+
+		return carried;
 	}
 
 	private Figure numbered(Figure template, long time) {

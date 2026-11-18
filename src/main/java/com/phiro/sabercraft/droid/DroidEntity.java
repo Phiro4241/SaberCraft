@@ -65,6 +65,8 @@ public class DroidEntity extends Pig {
 	private boolean staying;
 	private double lastDistance = Double.MAX_VALUE;
 	private int stuckTicks;
+	/** Phase 23: ticks since its owner was last in a narrow passage (crawling through a vent or a gap). */
+	private int ownerNarrowAgo = 1000;
 	private @Nullable LivingEntity burstTarget;
 	private int burstLeft;
 	private int burstDelay;
@@ -211,6 +213,44 @@ public class DroidEntity extends Pig {
 		if (this.burstLeft > 0 && --this.burstDelay <= 0) {
 			this.fireBolt();
 		}
+
+		if (this.level() instanceof ServerLevel) {
+			ServerPlayer owner = this.ownerPlayer();
+			this.ownerNarrowAgo = owner != null && narrow(owner) ? 0 : Math.min(1000, this.ownerNarrowAgo + 1);
+
+			// Phase 23: fell off a walkway into an open shaft (the reactor's bridges have no
+			// railings): back by its owner, unhurt, instead of lost in the depth.
+			if (owner != null && !this.onGround() && this.fallDistance > 5.0 && this.getY() < owner.getY() - 4.0
+					&& com.phiro.sabercraft.interior.ShipInteriors.isInterior(this.level()) && this.teleportToOwner()) {
+				this.resetFallDistance();
+				this.setDeltaMovement(Vec3.ZERO);
+			}
+		}
+	}
+
+	/** Phase 23: how long (ticks) after its owner came out of a narrow passage before the droid catches up by jumping to them. */
+	static final int NARROW_GRACE = 30;
+
+	/**
+	 * Phase 23: whether a player is in a narrow passage: crawling (a vent, a one-block-high gap),
+	 * or with no headroom to stand.
+	 */
+	public static boolean narrow(Player player) {
+		return player.getPose() == net.minecraft.world.entity.Pose.SWIMMING && !player.isInWater() || player.isVisuallyCrawling();
+	}
+
+	/** Phase 23: whether the droid itself is in a narrow passage (no room above it to stand as a person). */
+	boolean inPassage() {
+		return !this.level().noCollision(this, this.getBoundingBox().setMaxY(this.getY() + 1.8).deflate(0.05, 0.0, 0.05));
+	}
+
+	/**
+	 * Phase 23: while its owner crawls through a narrow passage the droid never jumps to them (it
+	 * would land in the passage, in front of them, in the way and in their view): one already in the
+	 * passage behind them follows on, one outside waits outside; it catches up once the owner is out.
+	 */
+	boolean waitsForOwner() {
+		return this.ownerNarrowAgo < NARROW_GRACE;
 	}
 
 	/** B1: fires {@code bolts} blaster bolts of {@code damage} at the target, one every few ticks. */
@@ -397,31 +437,80 @@ public class DroidEntity extends Pig {
 		Droids.died(this);
 	}
 
-	/** Puts the droid next to its owner if there is room (as a tamed wolf does). */
+	/**
+	 * Puts the droid next to its owner if there is room (as a tamed wolf does). Phase 23: behind
+	 * or beside them, never in front of them (in their way or their view), never in a crawl way or
+	 * right at its mouth, and not while they crawl through one (see {@link #waitsForOwner}).
+	 */
 	public boolean teleportToOwner() {
 		ServerPlayer player = this.ownerPlayer();
 
-		if (player == null) {
+		if (player == null || narrow(player)) {
 			return false;
 		}
 
 		BlockPos target = player.blockPosition();
+		Vec3 look = Vec3.directionFromRotation(0.0F, player.getYRot());
+		Vec3 moving = player.getDeltaMovement().multiply(1.0, 0.0, 1.0);
+		Vec3 ahead = moving.lengthSqr() > 0.002 ? moving.normalize().add(look).normalize() : look;
+		BlockPos best = null;
+		double bestScore = -Double.MAX_VALUE;
 
-		for (int attempt = 0; attempt < 16; attempt++) {
-			int dx = this.random.nextIntBetweenInclusive(-3, 3);
-			int dz = this.random.nextIntBetweenInclusive(-3, 3);
+		for (int dx = -3; dx <= 3; dx++) {
+			for (int dz = -3; dz <= 3; dz++) {
+				if (Math.abs(dx) < 2 && Math.abs(dz) < 2) {
+					continue;
+				}
 
-			if (Math.abs(dx) < 2 && Math.abs(dz) < 2) {
-				continue;
+				Vec3 way = new Vec3(dx, 0.0, dz).normalize();
+				double front = way.dot(ahead);
+
+				// In front of the player (within about 60 degrees either side): not there.
+				if (front > 0.5) {
+					continue;
+				}
+
+				for (int dy = -1; dy <= 1; dy++) {
+					BlockPos pos = target.offset(dx, dy, dz);
+
+					if (!this.canTeleportTo(pos) || this.mouthOfPassage(pos) || !this.inSightOf(player, pos)) {
+						continue;
+					}
+
+					// Behind is best, then beside; about two blocks off; a little chance between equals.
+					double score = -front * 2.0 - Math.abs(Math.sqrt(dx * dx + dz * dz) - 2.5) * 0.4 - Math.abs(dy) * 0.3 + this.random.nextDouble() * 0.2;
+
+					if (score > bestScore) {
+						bestScore = score;
+						best = pos;
+					}
+				}
 			}
+		}
 
-			BlockPos pos = target.offset(dx, this.random.nextIntBetweenInclusive(-1, 1), dz);
+		if (best == null) {
+			return false;
+		}
 
-			if (this.canTeleportTo(pos)) {
-				this.snapTo(pos.getX() + 0.5, pos.getY(), pos.getZ() + 0.5, this.getYRot(), this.getXRot());
-				this.getNavigation().stop();
-				this.lastDistance = Double.MAX_VALUE;
-				this.stuckTicks = 0;
+		this.snapTo(best.getX() + 0.5, best.getY(), best.getZ() + 0.5, this.getYRot(), this.getXRot());
+		this.getNavigation().stop();
+		this.lastDistance = Double.MAX_VALUE;
+		this.stuckTicks = 0;
+		return true;
+	}
+
+	/**
+	 * Phase 23: whether the place is on the player's side of every wall (a clear line from them to
+	 * it, low or at the chest): behind a wall it could land in a locked room and never come out.
+	 */
+	private boolean inSightOf(ServerPlayer player, BlockPos pos) {
+		for (double h : new double[] {0.6, 1.3}) {
+			Vec3 from = player.position().add(0.0, h, 0.0);
+			Vec3 to = Vec3.atBottomCenterOf(pos).add(0.0, h, 0.0);
+			net.minecraft.world.phys.HitResult hit = this.level().clip(new net.minecraft.world.level.ClipContext(from, to,
+					net.minecraft.world.level.ClipContext.Block.COLLIDER, net.minecraft.world.level.ClipContext.Fluid.NONE, player));
+
+			if (hit.getType() == net.minecraft.world.phys.HitResult.Type.MISS) {
 				return true;
 			}
 		}
@@ -437,6 +526,60 @@ public class DroidEntity extends Pig {
 
 		BlockPos delta = pos.subtract(this.blockPosition());
 		return this.level().noCollision(this, this.getBoundingBox().move(delta));
+	}
+
+	/**
+	 * Phase 23: whether a place is in a narrow passage or right at the mouth of one (a gap one
+	 * block high beside it): a droid put there would block the way out of it.
+	 */
+	private boolean mouthOfPassage(BlockPos pos) {
+		if (this.lowCeiling(pos) || this.byCrawlMouth(pos)) {
+			return true;
+		}
+
+		for (net.minecraft.core.Direction side : net.minecraft.core.Direction.Plane.HORIZONTAL) {
+			BlockPos next = pos.relative(side);
+
+			if (this.level().getBlockState(next).getCollisionShape(this.level(), next).isEmpty() && this.lowCeiling(next)) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	/**
+	 * Phase 23: whether a place is within two blocks of where a crawl way of the ship opens (its
+	 * hatch, closed or open: a closed hatch is a barrier, so the cell beside it looked free). One
+	 * coming out of it would find the droid right in their way.
+	 */
+	private boolean byCrawlMouth(BlockPos pos) {
+		if (!com.phiro.sabercraft.interior.ShipInteriors.isInterior(this.level())) {
+			return false;
+		}
+
+		com.phiro.sabercraft.interior.InteriorPlan plan = com.phiro.sabercraft.interior.ShipInteriors.planAt(pos.getX() + 0.5, pos.getZ() + 0.5);
+		BlockPos origin = com.phiro.sabercraft.interior.ShipInteriors.originAt(pos.getX() + 0.5, pos.getZ() + 0.5);
+
+		if (plan == null || origin == null) {
+			return false;
+		}
+
+		for (BlockPos mouth : plan.crawlMouths()) {
+			BlockPos at = origin.offset(mouth);
+
+			if (Math.abs(at.getY() - pos.getY()) <= 1 && Math.abs(at.getX() - pos.getX()) <= 2 && Math.abs(at.getZ() - pos.getZ()) <= 2) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	/** Phase 23: whether a person could not stand in that place (a solid block right above its floor cell). */
+	private boolean lowCeiling(BlockPos pos) {
+		BlockPos above = pos.above();
+		return !this.level().getBlockState(above).getCollisionShape(this.level(), above).isEmpty();
 	}
 
 	/** Phase 21: drives to the errand's place and waits there (or back to where it was told to wait). */
@@ -530,6 +673,11 @@ public class DroidEntity extends Pig {
 				return false;
 			}
 
+			// Phase 23: the owner crawls through a narrow passage: one outside it waits there.
+			if (narrow(player) && !DroidEntity.this.inPassage()) {
+				return false;
+			}
+
 			// Phase 21: a place the story keeps it at (behind and beside the player): it sets off
 			// only when that place is a few steps away, not at every step of the player.
 			Spot spot = advisor != null ? advisor.spot(DroidEntity.this, player) : null;
@@ -558,7 +706,7 @@ public class DroidEntity extends Pig {
 		@Override
 		public boolean canContinueToUse() {
 			if (this.target == null || DroidEntity.this.staying || !this.target.isAlive() || this.target.level() != DroidEntity.this.level()
-					|| DroidEntity.this.errand != ERRAND_NONE) {
+					|| DroidEntity.this.errand != ERRAND_NONE || narrow(this.target) && !DroidEntity.this.inPassage()) {
 				return false;
 			}
 
@@ -611,7 +759,7 @@ public class DroidEntity extends Pig {
 
 				Spot spot = advisor != null ? advisor.spot(DroidEntity.this, this.target) : null;
 
-				if (distance >= TELEPORT_DISTANCE_SQR || DroidEntity.this.stuckTicks > STUCK_TICKS) {
+				if ((distance >= TELEPORT_DISTANCE_SQR || DroidEntity.this.stuckTicks > STUCK_TICKS) && !DroidEntity.this.waitsForOwner()) {
 					DroidEntity.this.teleportToOwner();
 				} else if (spot != null) {
 					double speed = 1.0 + Math.min(0.6, distance / 200.0);

@@ -157,8 +157,16 @@ public final class Stealth {
 				continue;
 			}
 
+			// Phase 23: those in the fight are moved by it (Finale), not by what they see; the
+			// beaten finish falling.
+			if (figure.hostile && (figure.mode == Figure.FIGHT || figure.mode == Figure.DOWN)) {
+				continue;
+			}
+
 			// What they see.
-			if (figure.observer && figure.mode != Figure.DOWN && figure.mode != Figure.HELD && figure.mode != Figure.SCRIPTED
+			// Phase 23: also on a scripted way (sent somewhere): nobody of the Empire walks past an
+			// intruder as if he were not there.
+			if (figure.observer && figure.mode != Figure.DOWN && figure.mode != Figure.HELD && (figure.mode != Figure.SCRIPTED || !figure.blind)
 					&& (time + figure.id) % LOOK_EVERY == 0) {
 				float rate = watched ? sees(s, figure, player, me, level, corner, ship) : 0.0F;
 
@@ -588,8 +596,21 @@ public final class Stealth {
 			s.dirty = true;
 		}
 
+		if (figure.mode == Figure.SCRIPTED && figure.observer && !figure.blind && figure.stage >= Figure.SUSPICIOUS && figure.seenAt != null) {
+			// Phase 23: on their way somewhere, they saw something: they stop and look (the way is
+			// given up; where they were sent stays their place, see Chapter1.rehome).
+			figure.way = List.of();
+			figure.wayIndex = 0;
+			figure.mode = Figure.LOOK;
+			figure.target = figure.seenAt;
+			figure.timer = 60;
+			figure.speed = 0.0F;
+			Story.cue(s, Story.CUE_SOUND, "", "story.suspicious", figure.id);
+			s.dirty = true;
+		}
+
 		if (figure.mode == Figure.CHASE || figure.mode == Figure.HELD || figure.mode == Figure.SCRIPTED || figure.mode == Figure.DOWN
-				|| figure.mode == Figure.CALL) {
+				|| figure.mode == Figure.CALL || figure.mode == Figure.FIGHT || figure.hostile) {
 			return;
 		}
 
@@ -656,7 +677,7 @@ public final class Stealth {
 			}
 			case Figure.INVESTIGATE -> {
 				if (figure.target == null || figure.position().distanceTo(figure.target) < 1.2
-						|| !go(figure, Combat.apart(s, figure, figure.target), s.searching ? WALK * 1.4 : WALK, level, corner, time)) {
+						|| !go(figure, Combat.apart(s, figure, figure.target, level, corner), s.searching ? WALK * 1.4 : WALK, level, corner, time)) {
 					// There (or no way on): look round a while; then the next place to search, or back.
 					figure.speed = 0.0F;
 					figure.headYaw = figure.yaw + Mth.sin(time * 0.08F + figure.id) * 60.0F;
@@ -678,8 +699,9 @@ public final class Stealth {
 			case Figure.CHASE -> {
 				ServerPlayer player = s.player();
 
-				if (player != null && Combat.rifle(figure)) {
-					// Phase 21: troopers fight: they keep their distance and shoot (Combat).
+				if (player != null && Combat.armed(figure)) {
+					// Phase 21: troopers fight: they keep their distance and shoot (Combat). Phase
+					// 23: officers too, with their pistols.
 					Combat.chase(s, figure, player, me, level, corner, time);
 					break;
 				}
@@ -699,7 +721,7 @@ public final class Stealth {
 
 				if (s.cornerer == figure) {
 					figure.speed = 0.0F;
-				} else if (!go(figure, goal, RUN, level, corner, time)) {
+				} else if (!go(figure, horizontal(figure.position(), goal) > 3.0 ? Combat.apart(s, figure, goal, level, corner) : goal, RUN, level, corner, time)) {
 					figure.speed = 0.0F;
 					figure.turnTowards(me, 20.0F, true);
 				}
@@ -817,21 +839,38 @@ public final class Stealth {
 			return false;
 		}
 
+		// Phase 23: a way that does not reach is looked for again only now and then (or when the
+		// goal moved), not every few ticks while they wait at its end.
 		boolean due = (time + figure.id) % REPATH == 0 || figure.pathGoal == null || figure.pathGoal.distanceTo(goal) > 2.0
-				|| figure.pathIndex >= figure.path.size() && horizontal(figure.position(), goal) > 1.0;
+				|| figure.pathReaches && figure.pathIndex >= figure.path.size() && horizontal(figure.position(), goal) > 1.0;
 
 		if (due && time - figure.pathAt >= 3) {
 			figure.pathAt = time;
 			figure.pathGoal = goal;
 			figure.pathIndex = 0;
 			double height = figure.crew.height();
-			figure.path = horizontal(figure.position(), goal) < 12.0 && Paths.straight(level, corner, figure.position(), goal, height) ? List.of(goal)
-					: Paths.find(level, corner, figure.position(), goal, height);
+
+			if (horizontal(figure.position(), goal) < 12.0 && Paths.straight(level, corner, figure.position(), goal, height)) {
+				figure.path = List.of(goal);
+				figure.pathReaches = true;
+			} else {
+				Paths.Way way = Paths.way(level, corner, figure.position(), goal, height);
+				figure.path = way.points();
+				figure.pathReaches = way.reaches();
+			}
 		}
 
 		// Along the way: the next point (passed when close), else straight at the goal.
 		while (figure.pathIndex < figure.path.size() && horizontal(figure.position(), figure.path.get(figure.pathIndex)) < 0.3) {
 			figure.pathIndex++;
+		}
+
+		if (figure.pathIndex >= figure.path.size() && !figure.pathReaches) {
+			// Phase 23: no way there (a door kept shut, a gap): they wait where they came nearest and
+			// watch, instead of walking on into the wall.
+			figure.speed = 0.0F;
+			figure.turnTowards(goal, 10.0F, true);
+			return false;
 		}
 
 		Vec3 next = figure.pathIndex < figure.path.size() ? figure.path.get(figure.pathIndex) : goal;
@@ -881,7 +920,10 @@ public final class Stealth {
 
 		double reach = Math.min(length, speed / 20.0);
 		Vec3 dir = to.scale(1.0 / length);
-		double[][] tries = {{dir.x * reach, dir.z * reach}, {Math.signum(dir.x) * reach, 0.0}, {0.0, Math.signum(dir.z) * reach}};
+		// Phase 23: last, a little step aside (left, then right), so two who meet in a corridor get
+		// past each other instead of both standing.
+		double[][] tries = {{dir.x * reach, dir.z * reach}, {Math.signum(dir.x) * reach, 0.0}, {0.0, Math.signum(dir.z) * reach},
+				{(dir.x * 0.4 - dir.z) * reach * 0.7, (dir.z * 0.4 + dir.x) * reach * 0.7}, {(dir.x * 0.4 + dir.z) * reach * 0.7, (dir.z * 0.4 - dir.x) * reach * 0.7}};
 
 		for (double[] t : tries) {
 			if (Math.abs(t[0]) < 1.0E-4 && Math.abs(t[1]) < 1.0E-4) {
@@ -897,6 +939,13 @@ public final class Stealth {
 					// Down onto the floor (a step, a ledge: at most a block).
 					for (int i = 0; i < 10 && free(level, corner, nx, ny - 0.1, nz, figure.crew.height()) && ny > figure.y - 1.0; i++) {
 						ny -= 0.1;
+					}
+
+					// Phase 23: no step over an edge with nothing under it (a bridge without a
+					// railing, the open reactor shaft): they stop at the edge instead of walking
+					// on into the air and sinking.
+					if (free(level, corner, nx, ny - 0.1, nz, figure.crew.height())) {
+						continue;
 					}
 
 					figure.x = nx;
@@ -965,7 +1014,7 @@ public final class Stealth {
 			}
 
 			if (figure.position().distanceTo(first.position()) < 12.0 || figure.position().distanceTo(me) < 10.0) {
-				if (Crew.TROOPER.equals(figure.kind()) && joined < 3) {
+				if (Combat.armed(figure) && joined < 3) {
 					figure.mode = Figure.CHASE;
 					figure.suspicion = 1.0F;
 					figure.stage = Figure.DETECTED;

@@ -192,12 +192,6 @@ final class Chapter1Dialogs {
 				})
 				.build());
 
-		// Phase 20: Hale sends the quartermaster out before he talks.
-		add(Dialog.of("m3_hale_qm")
-				.say("start", "hale").then("yes")
-				.say("yes", "quartermaster").does(Chapter1::sendQuartermaster)
-				.build());
-
 		add(Dialog.of("m3_hale")
 				.say("start", "hale").then("who")
 				.say("who", "hale")

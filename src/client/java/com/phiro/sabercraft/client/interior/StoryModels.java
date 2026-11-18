@@ -71,6 +71,13 @@ final class StoryModels {
 			marks(b, pose, cameraYaw, t);
 		}
 
+		// Phase 23: her saber, struck from her hand: flying, then lying where it fell.
+		float[] hilt = StoryClient.looseHilt(plot.origin(), partial);
+
+		if (hilt != null) {
+			CrewModels.looseHilt(b, hilt[0], hilt[1], hilt[2], hilt[3], hilt[4]);
+		}
+
 		b.layer(Layer.SOLID).worldLight().white().anim(0).twoSided(false);
 	}
 
@@ -91,7 +98,7 @@ final class StoryModels {
 		boolean saber = (fig.flags() & StoryFiguresPayload.SABER) != 0;
 		// Phase 21: lit also before the fight (in the film), out once he flees.
 		boolean lit = saber && (fig.flags() & (StoryFiguresPayload.HOSTILE | StoryFiguresPayload.LIT)) != 0;
-		CrewModels.Gear gear = saber ? saber(fig, lit, dt, down, shadow) : rifle(fig, dt, down);
+		CrewModels.Gear gear = saber ? saber(fig, lit, dt, down, shadow, pose.reactP()) : rifle(fig, dt, down, pose.reactP());
 		CrewModels.figure(b, crew, look, pose.x(), pose.y(), pose.z(), pose.yaw(), pose.walk(), t, seed, head, gear);
 	}
 
@@ -140,7 +147,7 @@ final class StoryModels {
 	 * it comes, then back on guard. Also: staggering, crouching for a leap, the hand out for a push,
 	 * a spin, and the jolt of a hit.
 	 */
-	private static CrewModels.Gear saber(StoryFiguresPayload.Fig fig, boolean lit, float dt, boolean down, boolean skirt) {
+	private static CrewModels.Gear saber(StoryFiguresPayload.Fig fig, boolean lit, float dt, boolean down, boolean skirt, float reactP) {
 		// raise, swing, the kind last seen, its progress, the kind swung, crouch, lean, hand, aim
 		float[] state = SABERS.computeIfAbsent(fig.id(), id -> new float[9]);
 		int kind = fig.windup() >> 5;
@@ -171,16 +178,30 @@ final class StoryModels {
 
 		int attack = state[1] > 0.05F ? (int) state[4] : kind;
 		float spin = kind == CrewModels.SPIN ? progress : 0.0F;
+		int react = fig.reactKind();
+
+		if (react != 0) {
+			// Phase 23: a hit, a clash, a parry, the lock: the body shows it, the blow's own lean gives way.
+			state[6] = Math.max(state[6] * 0.5F, 0.0F);
+		}
+
 		return new CrewModels.Gear((fig.flags() & StoryFiguresPayload.LAMP) != 0, RED, lit, state[0], state[1], down, skirt, attack, 0.0F, state[5],
-				state[6], state[7], spin);
+				state[6], state[7], spin, react, reactP, false, (fig.flags() & StoryFiguresPayload.UNARMED) != 0);
 	}
 
-	/** Phase 21: a trooper's rifle comes up to the shoulder while they aim (the wind-up of a shot). */
-	private static CrewModels.Gear rifle(StoryFiguresPayload.Fig fig, float dt, boolean down) {
+	/**
+	 * Phase 21: a trooper's rifle comes up to the shoulder while they aim (the wind-up of a shot).
+	 * Phase 23: an officer's pistol drawn (and aimed the same way); the hits, the stumbling, the
+	 * fall and the comlink.
+	 */
+	private static CrewModels.Gear rifle(StoryFiguresPayload.Fig fig, float dt, boolean down, float reactP) {
 		float[] state = SABERS.computeIfAbsent(fig.id(), id -> new float[9]);
 		state[8] = approach(state[8], fig.windup() > 0 && !down ? 1.0F : 0.0F, dt * 8.0F);
-		state[6] = hit(fig.id());
-		return new CrewModels.Gear((fig.flags() & StoryFiguresPayload.LAMP) != 0, 0, false, 0.0F, 0.0F, down, false, 0, state[8], 0.0F, state[6], 0.0F, 0.0F);
+		int react = fig.reactKind();
+		// The old jolt only where no reaction of the server shows the hit.
+		state[6] = react == 0 ? hit(fig.id()) : 0.0F;
+		return new CrewModels.Gear((fig.flags() & StoryFiguresPayload.LAMP) != 0, 0, false, 0.0F, 0.0F, down, false, 0, state[8], 0.0F, state[6], 0.0F, 0.0F,
+				react, reactP, (fig.flags() & StoryFiguresPayload.ARMED) != 0, false);
 	}
 
 	private static float approach(float value, float goal, float step) {
