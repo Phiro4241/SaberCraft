@@ -18,6 +18,7 @@ import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.HitResult;
+import net.minecraft.util.Mth;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.shapes.CollisionContext;
 
@@ -64,6 +65,9 @@ public final class Chapter1 implements Chapter {
 	static final Vec3 AIRLOCK = new Vec3(6.5, H, 10.0);
 	static final Vec3 HIDEOUT = new Vec3(20.5, H, -4.5);
 	static final Vec3 REACTOR_FLOOR = new Vec3(28.8, R, 25.0);
+	/** Phase 24: where the lab's guard stands (east of its door), and how near the droid's beeping at its lock is heard. */
+	static final Vec3 LAB_GUARD = new Vec3(48.4, R, 35.6);
+	static final double LAB_DOOR_HEARD = 4.5;
 	static final Vec3 CELL_2 = new Vec3(31.5, H, 0.0);
 	static final Vec3 LIFT_TOP = new Vec3(28.8, H, 25.0);
 	/** Phase 20: the containers of the dead drop (their mark, the west end of each along x), the contact's is K-7. */
@@ -365,7 +369,12 @@ public final class Chapter1 implements Chapter {
 					continue;
 				}
 			} else if (bottom && Crew.OFFICER_OLIVE.equals(c.kind())) {
-				if ("m4.download".equals(step)) {
+				if (m == 5 && !fight) {
+					// Phase 24: on the way to the lab he oversees the technician on the east platform
+					// (at his console by the lab's walkway, with the guard there and the droid's beeping,
+					// the way in was too hard): the crossing to the lab is one guard to get past.
+					routine = Crew.at(Crew.OFFICER_OLIVE, Crew.STAND, 50.2, R, 22.4, 300.0F);
+				} else if ("m4.download".equals(step)) {
 					// Walks the south of the floor, back and forth (Phase 23: the lab's platform,
 					// along its edge over the open shaft).
 					routine = Crew.patrol(Crew.OFFICER_OLIVE, 0.7, 0.0, new Vec3(38.5, R, 33.8), new Vec3(42.5, R, 33.6), new Vec3(47.0, R, 34.0),
@@ -477,7 +486,17 @@ public final class Chapter1 implements Chapter {
 				if (step.equals("m5.cell") || step.equals("m5.r2") || step.equals("m5.cell1") || step.equals("m5.back")) {
 					// The detention block: Phase 20: one guard, at the entrance, watching the door
 					// (his back to the cells: who would come out of them?). The officer went with Hale.
-					list.add(guard("det_guard", Crew.at(Crew.TROOPER, Crew.STAND, 34.7, H, 6.7, 270.0F)));
+					// Phase 24: by the east end, between the door and the bench, where he sees the door,
+					// the corridor, the cells and the crawl way's hatch by turning his head (he stood with
+					// his face to the wall beside the door). Overpowered, he lies where he fell.
+					Figure guard = guard("det_guard", Crew.at(Crew.TROOPER, Crew.STAND, GUARD_POST.x, H, GUARD_POST.z, GUARD_DOOR_YAW));
+
+					if (s.has(GUARD_DOWN)) {
+						guard.mode = Figure.DOWN;
+						guard.observer = false;
+					}
+
+					list.add(guard);
 
 					if (!s.has("droid.r2v7")) {
 						Figure r2 = person("r2v7", "r2v7", Crew.at("droid_r2", Crew.STAND, 27.5, H + 0.2, 9.45, 180.0F), D);
@@ -497,7 +516,9 @@ public final class Chapter1 implements Chapter {
 						&& (step.equals("m6.lab") || step.equals("m6.saber"));
 
 				if (!s.has("saber.taken") && (step.equals("m6.reactor") || step.equals("m6.door") || hunts)) {
-					list.add(guard("lab_guard", Crew.at(Crew.TROOPER, Crew.STAND, 44.5, R, 35.5, 180.0F)));
+					// Phase 24: a few steps east of the lab's door (he stood right before it), watching
+					// the shaft and the east walkway: one gets past him with care, or lures him off.
+					list.add(guard("lab_guard", Crew.at(Crew.TROOPER, Crew.STAND, LAB_GUARD.x, R, LAB_GUARD.z, 200.0F)));
 				}
 
 				hostiles(s, list, step);
@@ -552,9 +573,13 @@ public final class Chapter1 implements Chapter {
 				if (!s.has("opt.coolant")) {
 					list.add(fighter("h3", 31.0, R, 21.0, 300.0F));
 				}
+
+				// Phase 24: the corridor out of the reactor is guarded already (they wait at their posts
+				// up there, unseen from below, and are not set down out of nowhere when one comes up).
+				corridorGuards(list);
 			}
 			case "m6.escape2" -> {
-				list.add(fighter("h4", 48.0, H, 9.0, 0.0F));
+				corridorGuards(list);
 				list.add(fighter("h5", 40.5, H, 1.0, 0.0F));
 
 				if (!s.has("opt.armour2")) {
@@ -586,6 +611,22 @@ public final class Chapter1 implements Chapter {
 		figure.talks = false;
 		return figure;
 	}
+
+	/**
+	 * Phase 24: two troopers guard the narrow corridor from the reactor to the lobby (one by its
+	 * far end, one half way, a little apart, both facing the way one comes): they hold their posts
+	 * until they see the player (see {@link Finale}), shout, and fight.
+	 */
+	private static void corridorGuards(List<Figure> list) {
+		for (Vec3 at : CORRIDOR_GUARDS) {
+			Figure guard = fighter(at == CORRIDOR_GUARDS.get(0) ? "h4" : "h4b", at.x, H, at.z, 0.0F);
+			guard.post = true;
+			list.add(guard);
+		}
+	}
+
+	/** Phase 24: the corridor's guards' posts (plot space). */
+	static final List<Vec3> CORRIDOR_GUARDS = List.of(new Vec3(48.0, H, 9.0), new Vec3(47.3, H, 4.2));
 
 	private static Figure fighter(String key, double x, double y, double z, float yaw) {
 		Figure figure = new Figure(0, key, Crew.at(Crew.TROOPER, Crew.STAND, x, y, z, yaw));
@@ -662,6 +703,13 @@ public final class Chapter1 implements Chapter {
 				if (s.has("droid.r2v7") && !s.has("cell3.open")) {
 					list.add(point("cell3", 34.0, H, 2.0, 36.0, H + 3.0, 3.0, true));
 				}
+
+				// Phase 24: the guard, from close behind, while he does not see one coming.
+				Figure guard = s.figure("det_guard");
+
+				if (guard != null && takedownOpen(s, guard)) {
+					list.add(new Mission.Point("takedown", D, guard.box().inflate(0.2, 0.0, 0.2), false));
+				}
 			}
 			case 5 -> {
 				if (step.equals("m6.door") && !s.has("lab.open")) {
@@ -695,6 +743,7 @@ public final class Chapter1 implements Chapter {
 	@Override
 	public void use(StorySession s, Mission.Point point) {
 		switch (point.id()) {
+			case "takedown" -> takedown(s);
 			case "pad" -> s.talk("m1_pad", null);
 			case "sign" -> s.talk("m1_sign", null);
 			case "terminal" -> s.talk("terminal", null);
@@ -941,9 +990,11 @@ public final class Chapter1 implements Chapter {
 				s.set("tmp.hack." + lock.id());
 				Story.cue(s, Story.CUE_HINT, "progress", "sabercraft.story.hint.hacking", 0);
 
-				// Someone close by hears it beep.
+				// Someone close by hears it beep (Phase 24: the lab's door is a quiet lock: only right by it).
+				double heard = lock.id().equals("lab_door") ? LAB_DOOR_HEARD : 7.0;
+
 				for (Figure figure : s.figures) {
-					if (figure.observer && s.here.equals(figure.ship) && figure.position().distanceTo(lock.box().getCenter()) < 7.0
+					if (figure.observer && s.here.equals(figure.ship) && figure.position().distanceTo(lock.box().getCenter()) < heard
 							&& (figure.mode == Figure.ROUTINE || figure.mode == Figure.RETURN)) {
 						figure.mode = Figure.LOOK;
 						figure.target = lock.box().getCenter();
@@ -1482,6 +1533,11 @@ public final class Chapter1 implements Chapter {
 
 		if (player == null || level == null) {
 			return;
+		}
+
+		// Phase 24: the detention block's guard keeps watch (and can be overpowered).
+		if (s.mission == 4) {
+			guardTick(s, player, level);
 		}
 
 		// A step said in a dialog: done once the dialog is closed.
@@ -2036,6 +2092,11 @@ public final class Chapter1 implements Chapter {
 		if (("duel".equals(film) || "duel_end".equals(film)) && s.at("m6.duel") && s.has("tmp.film")) {
 			s.timer("film", 1);
 		}
+
+		if ("takedown".equals(film) && s.has("tmp.takedown")) {
+			// Phase 24: skipped: he is down at once (the story goes on as after the whole scene).
+			s.timer("takedown", 1);
+		}
 	}
 
 	/** Phase 21: how long the film before the duel and the one of his flight are (as the client's {@code DuelFilm}). */
@@ -2273,6 +2334,184 @@ public final class Chapter1 implements Chapter {
 		mouseOutside(s);
 		s.timer("cell_hint", CELL_HINT);
 		s.hint("sabercraft.story.hint.trapped");
+	}
+
+	// --- The detention block's guard (Phase 24) -----------------------------------------------------
+
+	/** Phase 24: where the detention block's guard stands, and the two ways he faces: the door, the room. */
+	static final Vec3 GUARD_POST = new Vec3(34.5, H, 7.6);
+	static final float GUARD_DOOR_YAW = 200.0F;
+	static final float GUARD_ROOM_YAW = 108.0F;
+	/** Phase 24: his watch (ticks): the door this long, a turn, the room this long, a turn back. */
+	static final int GUARD_DOOR_TICKS = 170;
+	static final int GUARD_ROOM_TICKS = 80;
+	static final int GUARD_TURN_TICKS = 20;
+	/** Phase 24: overpowered (a mark kept with the checkpoints after it). */
+	static final String GUARD_DOWN = "det_guard.down";
+	/** Phase 24: how near behind him one has to be, and how long the scene is (ticks, as the client's film). */
+	static final double TAKEDOWN_REACH = 2.4;
+	static final int TAKEDOWN_FILM = 76;
+	private static int takedowns;
+
+	/** For the tests: how often the guard was overpowered since the game started. */
+	public static int takedownsForTest() {
+		return takedowns;
+	}
+
+	/** Phase 24: whether the guard can be overpowered now (on duty, not hunting the player, the player out of the cell). */
+	static boolean takedownOpen(StorySession s, Figure guard) {
+		boolean out = s.at("m5.cell") && s.has("m5.trapped") && s.has("cell2.open") || s.at("m5.r2") || s.at("m5.cell1") || s.at("m5.back");
+		return out && guard.mode != Figure.DOWN && guard.mode != Figure.CHASE && guard.mode != Figure.CALL && guard.mode != Figure.FIGHT
+				&& guard.mode != Figure.SCRIPTED && guard.stage < Figure.ALERTED && !s.has("tmp.film") && !s.has(GUARD_DOWN) && !s.pursued();
+	}
+
+	/**
+	 * Phase 24: the guard's watch. At his post he looks to the door most of the time (who comes
+	 * in?), now and then he turns and looks over the corridor, the cells and the crawl way's hatch;
+	 * what he sees and hears he reacts to as anyone (a noise: he goes to look, then back to his
+	 * post). And the scene when he is overpowered.
+	 */
+	private static void guardTick(StorySession s, ServerPlayer player, ServerLevel level) {
+		Figure guard = s.figure("det_guard");
+
+		if (guard == null) {
+			return;
+		}
+
+		if (s.has("tmp.takedown")) {
+			takedownTick(s, player, level, guard);
+			return;
+		}
+
+		if (guard.mode != Figure.ROUTINE) {
+			return;
+		}
+
+		int cycle = GUARD_DOOR_TICKS + GUARD_ROOM_TICKS + 2 * GUARD_TURN_TICKS;
+		long t = (s.time() + guard.id * 37L) % cycle;
+		float yaw;
+
+		if (t < GUARD_DOOR_TICKS) {
+			yaw = GUARD_DOOR_YAW;
+		} else if (t < GUARD_DOOR_TICKS + GUARD_TURN_TICKS) {
+			yaw = Mth.rotLerp(smooth((t - GUARD_DOOR_TICKS) / (float) GUARD_TURN_TICKS), GUARD_DOOR_YAW, GUARD_ROOM_YAW);
+		} else if (t < GUARD_DOOR_TICKS + GUARD_TURN_TICKS + GUARD_ROOM_TICKS) {
+			yaw = GUARD_ROOM_YAW;
+		} else {
+			yaw = Mth.rotLerp(smooth((t - GUARD_DOOR_TICKS - GUARD_TURN_TICKS - GUARD_ROOM_TICKS) / (float) GUARD_TURN_TICKS), GUARD_ROOM_YAW, GUARD_DOOR_YAW);
+		}
+
+		guard.yaw = yaw;
+		// His head moves a little within the look (he is watching, not a statue).
+		guard.headYaw = yaw + 12.0F * Mth.sin((s.time() + guard.id) / 23.0F);
+	}
+
+	private static float smooth(float u) {
+		float x = Mth.clamp(u, 0.0F, 1.0F);
+		return x * x * (3.0F - 2.0F * x);
+	}
+
+	/**
+	 * Phase 24: the player overpowers the guard: from close behind, while he looks away. From the
+	 * front or the side he sees it coming and raises the alarm; from too far one is told to come
+	 * closer. Then a short scene seen from outside: a grab, a blow, he goes down (and stays down).
+	 */
+	static void takedown(StorySession s) {
+		Figure guard = s.figure("det_guard");
+		ServerPlayer player = s.player();
+
+		if (guard == null || player == null || !takedownOpen(s, guard)) {
+			return;
+		}
+
+		Vec3 me = s.local(D);
+		Vec3 to = new Vec3(me.x - guard.x, 0.0, me.z - guard.z);
+		double distance = to.length();
+
+		if (distance > TAKEDOWN_REACH) {
+			s.hint("sabercraft.story.hint.takedown_near");
+			return;
+		}
+
+		double angle = distance < 1.0E-3 ? 180.0 : Math.toDegrees(Math.acos(Mth.clamp(to.normalize().dot(guard.look()), -1.0, 1.0)));
+
+		if (angle < 100.0) {
+			// He sees it coming.
+			guard.suspicion = 1.0F;
+			guard.stage = Figure.DETECTED;
+			guard.seenAt = me;
+			s.hint("sabercraft.story.hint.takedown_seen");
+			Story.detected(s, guard);
+			return;
+		}
+
+		takedowns++;
+		s.set("tmp.film");
+		s.set("tmp.takedown");
+		s.timer("takedown", TAKEDOWN_FILM);
+		guard.mode = Figure.SCRIPTED;
+		guard.blind = true;
+		guard.speed = 0.0F;
+		guard.way = List.of();
+		// The player right behind him, facing him.
+		Vec3 back = guard.position().subtract(guard.look().scale(0.9));
+		Story.place(s, D, back, guard.yaw);
+		Vec3 world = guard.position().add(Vec3.atLowerCornerOf(s.destroyer));
+		Story.cue(s, Story.CUE_CINEMA, "takedown", "", TAKEDOWN_FILM, List.of(world));
+		s.dirty = true;
+	}
+
+	private static void takedownTick(StorySession s, ServerPlayer player, ServerLevel level, Figure guard) {
+		int left = s.timers.getOrDefault("takedown", 0);
+		int t = TAKEDOWN_FILM - left;
+		Vec3 corner = Vec3.atLowerCornerOf(s.destroyer);
+		Vec3 at = guard.position().add(corner).add(0.0, 1.2, 0.0);
+
+		if (guard.mode != Figure.DOWN) {
+			guard.speed = 0.0F;
+		}
+
+		if (t == 14) {
+			// The grab: an arm round his helmet, a jolt.
+			player.swing(net.minecraft.world.InteractionHand.MAIN_HAND, true);
+			guard.react(Figure.STUMBLE, 12);
+			level.playSound(null, at.x, at.y, at.z, ShipInteriors.sound("story.armour_hit"), net.minecraft.sounds.SoundSource.HOSTILE, 0.7F, 0.8F);
+		} else if (t == 26) {
+			// The blow: he goes down.
+			player.swing(net.minecraft.world.InteractionHand.OFF_HAND, true);
+			guardDown(s, guard);
+			level.playSound(null, at.x, at.y, at.z, ShipInteriors.sound("story.armour_hit"), net.minecraft.sounds.SoundSource.HOSTILE, 0.9F, 0.65F);
+			level.playSound(null, at.x, at.y - 1.0, at.z, ShipInteriors.sound("story.body_fall"), net.minecraft.sounds.SoundSource.HOSTILE, 0.9F, 0.9F);
+		}
+
+		if (guard.reactTicks > 0) {
+			Hits.tick(guard, level, corner);
+		}
+
+		if (left <= 0 || !s.timer("takedown")) {
+			// The end (or skipped): he is down for good, the player has the room.
+			if (guard.mode != Figure.DOWN) {
+				guardDown(s, guard);
+				guard.reactTicks = 0;
+			}
+
+			s.unset("tmp.takedown");
+			s.unset("tmp.film");
+			s.timers.remove("takedown");
+			s.hint("sabercraft.story.hint.takedown_done");
+			s.dirty = true;
+		}
+	}
+
+	/** Phase 24: the guard lies where he fell: no longer on watch (and it is remembered with the checkpoints). */
+	private static void guardDown(StorySession s, Figure guard) {
+		guard.mode = Figure.DOWN;
+		guard.observer = false;
+		guard.speed = 0.0F;
+		guard.suspicion = 0.0F;
+		guard.stage = Figure.CALM;
+		guard.react(Figure.FALL, 16);
+		s.set(GUARD_DOWN);
 	}
 
 	/**

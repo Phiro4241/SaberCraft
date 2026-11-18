@@ -514,7 +514,14 @@ public final class StorySession {
 		figure.saber = template.saber;
 		figure.health = template.health;
 		figure.sight = template.sight;
+		// Phase 24: a guard at his post holds it; one already overpowered lies where he fell.
+		figure.post = template.post;
 		figure.snapToRoutine(time);
+
+		if (template.mode == Figure.DOWN) {
+			figure.mode = Figure.DOWN;
+		}
+
 		return figure;
 	}
 

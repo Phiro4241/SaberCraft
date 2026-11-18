@@ -259,6 +259,26 @@ final class Finale {
 		double distance = figure.eye().distanceTo(chest);
 		boolean sees = distance < SHOT_RANGE && Stealth.clear(level, corner.add(figure.eye()), corner.add(chest));
 
+		// Phase 24: a guard at his post holds it (rifle up, facing the way one comes) until he sees
+		// the player, hears them close, or is hit: then a shout to the others, and he fights.
+		if (figure.post) {
+			if (sees && distance < POST_SIGHT || distance < POST_NEAR || figure.health < 1.0F) {
+				figure.post = false;
+				figure.cooldown = Math.max(figure.cooldown, POST_FIRST_SHOT);
+
+				if (!s.timer("contact")) {
+					s.timer("contact", 120);
+					s.hear(Story.voice(figure), "sabercraft.story.shout.contact");
+				}
+			} else {
+				figure.speed = 0.0F;
+				figure.windup = 4;
+				figure.yaw = figure.crew.yaw();
+				figure.headYaw = figure.yaw + 18.0F * (float) Math.sin(s.time() / 30.0 + figure.id);
+				return;
+			}
+		}
+
 		// Phase 23: where they go: to the player along a way they can walk (through doors, round
 		// consoles and corners), each a little apart from the others, never straight into the wall
 		// between; where no way leads (the reactor's bridge gone) they stop at its end and shoot.
@@ -297,6 +317,11 @@ final class Finale {
 			figure.cooldown = Math.max(figure.cooldown, 12);
 		}
 	}
+
+	/** Phase 24: a guard at his post sees this far, hears one this near; his first shot after a moment. */
+	static final double POST_SIGHT = 18.0;
+	static final double POST_NEAR = 5.0;
+	static final int POST_FIRST_SHOT = 18;
 
 	/** For the tests: the troopers' (and officers') bolts in a fight since the game started. */
 	private static int shots;
