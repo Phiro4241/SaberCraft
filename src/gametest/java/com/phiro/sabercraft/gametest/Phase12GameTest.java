@@ -327,6 +327,14 @@ public class Phase12GameTest implements FabricClientGameTest {
 
 	/** A droid never speaks twice right after each other; abilities always speak. */
 	private void droidVoices(ClientGameTestContext context, TestServerContext server, UUID self) {
+		// No idle chatter during this check: Droids.resetCooldowns() above also forgot when the droids
+		// last spoke, so R2-D2 could chatter in the wait below, and the three voices right after it
+		// all fell within its voice gap (none heard). Then longer than the gap, so nothing said before
+		// counts.
+		server.computeOnServer(s -> {
+			Droids.droid(me(s, self), DroidType.R2D2).ambientSoundTime = -100000;
+			return null;
+		});
 		context.waitTicks(40);
 		this.sounds.clear();
 		server.computeOnServer(s -> {
