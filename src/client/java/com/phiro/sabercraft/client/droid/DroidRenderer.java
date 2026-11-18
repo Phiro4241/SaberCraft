@@ -38,6 +38,8 @@ public class DroidRenderer extends PigRenderer {
 	public static final class State extends PigRenderState {
 		@Nullable DroidType droid;
 		@Nullable List<ItemStackRenderState> parts;
+		/** Phase 22: a droid of the story with a look of its own ({@code r2v7}), or null. */
+		@Nullable String look;
 		DroidPose pose = DroidPose.idle(0.0F);
 		// Phase 11: a starship.
 		@Nullable ShipType ship;
@@ -66,6 +68,8 @@ public class DroidRenderer extends PigRenderer {
 		super.extractRenderState(entity, state, partialTicks);
 		State droid = (State) state;
 		droid.droid = DroidMarker.of(entity);
+		// Phase 22: the story's R2-V7 has a look of its own.
+		droid.look = DroidMarker.story(entity);
 		droid.ship = ShipMarker.of(entity);
 
 		if (droid.ship != null) {
@@ -86,7 +90,7 @@ public class DroidRenderer extends PigRenderer {
 			entity.refreshDimensions();
 		}
 
-		droid.parts = DroidModels.resolve(droid.droid, droid.parts, entity.level(), entity, entity.getId() * 31);
+		droid.parts = DroidModels.resolve(droid.droid, droid.look, droid.parts, entity.level(), entity, entity.getId() * 31);
 		DroidClient.Event event = DroidClient.event(entity.getId());
 		droid.pose = new DroidPose(state.walkAnimationPos, Math.min(1.0F, state.walkAnimationSpeed), state.yRot, state.xRot,
 				entity.tickCount + partialTicks, event != null ? event.event() : 0, event != null ? event.progress() : 1.0F);
@@ -164,7 +168,7 @@ public class DroidRenderer extends PigRenderer {
 		if (!state.isInvisible) {
 			poseStack.pushPose();
 			poseStack.mulPose(Axis.YP.rotationDegrees(180.0F - state.bodyRot));
-			DroidModels.submit(poseStack, collector, droid.droid, droid.pose, droid.parts, state.lightCoords, state.outlineColor);
+			DroidModels.submit(poseStack, collector, droid.droid, droid.look, droid.pose, droid.parts, state.lightCoords, state.outlineColor);
 			poseStack.popPose();
 		}
 

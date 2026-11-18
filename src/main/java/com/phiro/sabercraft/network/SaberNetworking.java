@@ -22,7 +22,12 @@ public final class SaberNetworking {
 
 	public static void init() {
 		PayloadTypeRegistry.serverboundPlay().register(SelectSaberVariantPayload.TYPE, SelectSaberVariantPayload.CODEC);
-		ServerPlayNetworking.registerGlobalReceiver(SelectSaberVariantPayload.TYPE, (payload, context) -> handle(context.player(), payload));
+		// Phase 22: no changing the saber while a story runs (the story's saber is Ilyra's).
+		ServerPlayNetworking.registerGlobalReceiver(SelectSaberVariantPayload.TYPE, (payload, context) -> {
+			if (!com.phiro.sabercraft.story.Story.refuse(context.player())) {
+				handle(context.player(), payload);
+			}
+		});
 		PayloadTypeRegistry.serverboundPlay().register(UseAbilityPayload.TYPE, UseAbilityPayload.CODEC);
 		PayloadTypeRegistry.clientboundPlay().register(AbilityEventPayload.TYPE, AbilityEventPayload.CODEC);
 		PayloadTypeRegistry.clientboundPlay().register(AbilityCooldownPayload.TYPE, AbilityCooldownPayload.CODEC);

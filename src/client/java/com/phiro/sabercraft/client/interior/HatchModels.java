@@ -45,15 +45,18 @@ final class HatchModels {
 				// behind it; both are drawn from both sides: shut, it is tight.
 				b.fit(InteriorAtlas.IMP_WALL_VENT);
 				b.box(-0.47F, 0.0F, 0.47F, 0.47F, 0.95F, 0.5F, MeshBuilder.SOUTH | MeshBuilder.NORTH);
+				// Phase 22: the plate stands a hair inside the frame; its back lay in the plane of the
+				// frame's back, and where the two overlap the edges flickered (seen from the crawl way).
 				b.fit(InteriorAtlas.IMP_BLACK);
-				b.box(-0.47F, 0.0F, 0.44F, 0.47F, 0.95F, 0.455F, MeshBuilder.SOUTH | MeshBuilder.NORTH);
+				b.box(-0.47F, 0.0F, 0.448F, 0.47F, 0.95F, 0.46F, MeshBuilder.SOUTH | MeshBuilder.NORTH);
 				// The latch.
 				b.box(-0.06F, 0.74F, 0.5F, 0.06F, 0.82F, 0.54F, MeshBuilder.ALL & ~MeshBuilder.NORTH);
 			} else {
 				// Swung up on its hinge at the top, into the room.
 				b.push().translate(0.0F, 0.92F, 0.5F).rotateX(-100.0F);
 				b.fit(InteriorAtlas.IMP_WALL_VENT);
-				b.box(-0.42F, -0.92F, 0.0F, 0.42F, 0.0F, 0.03F);
+				// Phase 22: a hair narrower than the opening: its sides lay in the ends of the frame's top.
+				b.box(-0.41F, -0.92F, 0.0F, 0.41F, 0.0F, 0.03F);
 				b.pop();
 			}
 

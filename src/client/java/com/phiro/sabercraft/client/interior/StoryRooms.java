@@ -211,7 +211,7 @@ final class StoryRooms {
 		b.fit(InteriorAtlas.IMP_BLACK);
 		b.box(47.6F, H + 0.85F, dz0 + 0.12F, 48.4F, H + 1.35F, dz0 + 0.2F);
 		b.layer(Layer.GLOW).fullBright().anim(InteriorScene.ANIM_SCREEN).fit(InteriorAtlas.IMP_SCREEN_TEXT_GLOW);
-		b.rect(47.64F, H + 1.31F, dz0 + 0.201F, 0.72F, 0, 0, 0, -0.42F, 0);
+		b.rect(47.64F, H + 1.31F, dz0 + 0.21F, 0.72F, 0, 0, 0, -0.42F, 0);
 		b.layer(Layer.SOLID).worldLight().anim(0);
 		b.fit(InteriorAtlas.IMP_CONSOLE_TOP);
 		b.box(48.5F, H + 0.85F, dz0 + 0.3F, 48.95F, H + 0.87F, dz0 + 0.55F, MeshBuilder.ALL & ~MeshBuilder.DOWN);
@@ -225,11 +225,11 @@ final class StoryRooms {
 		b.tile(InteriorAtlas.IMP_METAL, 1.0F);
 		b.box(wall - 0.22F, H + 0.55F, -9.4F, wall, H + 1.45F, -7.6F, MeshBuilder.ALL & ~MeshBuilder.EAST);
 		b.fit(InteriorAtlas.IMP_SCREEN);
-		b.rect(wall - 0.222F, H + 1.38F, -9.3F, 0, 0, 0.9F, 0, -0.5F, 0);
+		b.rect(wall - 0.228F, H + 1.38F, -9.3F, 0, 0, 0.9F, 0, -0.5F, 0);
 		b.layer(Layer.GLOW).fullBright().anim(InteriorScene.ANIM_SCREEN).fit(InteriorAtlas.IMP_SCREEN_TEXT_GLOW);
-		b.rect(wall - 0.224F, H + 1.34F, -9.26F, 0, 0, 0.82F, 0, -0.42F, 0);
+		b.rect(wall - 0.236F, H + 1.34F, -9.26F, 0, 0, 0.82F, 0, -0.42F, 0);
 		b.fit(InteriorAtlas.IMP_CONSOLE_TOP_GLOW);
-		b.rect(wall - 0.224F, H + 0.84F, -9.0F, 0, 0, 0.6F, 0, -0.22F, 0);
+		b.rect(wall - 0.236F, H + 0.84F, -9.0F, 0, 0, 0.6F, 0, -0.22F, 0);
 		b.layer(Layer.SOLID).worldLight().anim(0);
 	}
 
@@ -249,7 +249,7 @@ final class StoryRooms {
 			b.box(x0, H, CELL_FRONT + 0.32F, x1, H + 0.12F, CELL_FRONT + 0.68F, MeshBuilder.ALL & ~MeshBuilder.DOWN);
 			b.box(x0, H + 2.86F, CELL_FRONT + 0.32F, x1, H + 3.0F, CELL_FRONT + 0.68F, MeshBuilder.ALL & ~MeshBuilder.UP);
 			b.layer(Layer.GLOW).fullBright().anim(InteriorScene.ANIM_SLOW).colour(0xFF70A8E8).fit(InteriorAtlas.IMP_WALL_STRIP_GLOW, 0.0F, 0.42F, 1.0F, 0.58F);
-			b.rect(x0, H + 0.121F, CELL_FRONT + 0.42F, x1 - x0, 0, 0, 0, 0, 0.16F);
+			b.rect(x0, H + 0.13F, CELL_FRONT + 0.42F, x1 - x0, 0, 0, 0, 0, 0.16F);
 			b.layer(Layer.SOLID).worldLight().anim(0);
 		}
 
@@ -275,9 +275,9 @@ final class StoryRooms {
 		b.fit(InteriorAtlas.IMP_CONSOLE);
 		b.box(30.12F, H, 6.12F, 30.88F, H + 1.95F, 6.88F);
 		b.layer(Layer.GLOW).fullBright().anim(InteriorScene.ANIM_SCREEN).fit(InteriorAtlas.IMP_SCREEN_RADAR_GLOW);
-		b.rect(30.2F, H + 1.75F, 6.881F, 0.6F, 0, 0, 0, -0.5F, 0);
+		b.rect(30.2F, H + 1.75F, 6.89F, 0.6F, 0, 0, 0, -0.5F, 0);
 		b.fit(InteriorAtlas.IMP_SCREEN_TEXT_GLOW);
-		b.rect(30.8F, H + 1.75F, 6.119F, -0.6F, 0, 0, 0, -0.5F, 0);
+		b.rect(30.8F, H + 1.75F, 6.11F, -0.6F, 0, 0, 0, -0.5F, 0);
 		b.layer(Layer.SOLID).worldLight().anim(0);
 		// The guards' bench.
 		b.tile(InteriorAtlas.IMP_METAL, 1.0F);
@@ -322,12 +322,12 @@ final class StoryRooms {
 			b.tile(InteriorAtlas.IMP_METAL, 1.0F);
 			b.box(51.04F, R, z + 0.04F, 52.0F, R + 1.85F, z + 0.96F, MeshBuilder.ALL & ~MeshBuilder.EAST & ~MeshBuilder.DOWN);
 			b.fit(InteriorAtlas.IMP_SCREEN);
-			b.rect(51.038F, R + 1.75F, z + 0.08F, 0, 0, 0.84F, 0, -0.7F, 0);
+			b.rect(51.03F, R + 1.75F, z + 0.08F, 0, 0, 0.84F, 0, -0.7F, 0);
 			b.layer(Layer.GLOW).fullBright().anim(InteriorScene.ANIM_SCREEN)
 					.fit(z % 4 == 0 ? InteriorAtlas.IMP_SCREEN_TACTICAL_GLOW : InteriorAtlas.IMP_SCREEN_TEXT_GLOW);
-			b.rect(51.036F, R + 1.7F, z + 0.12F, 0, 0, 0.76F, 0, -0.62F, 0);
+			b.rect(51.02F, R + 1.7F, z + 0.12F, 0, 0, 0.76F, 0, -0.62F, 0);
 			b.fit(InteriorAtlas.IMP_CONSOLE_TOP_GLOW);
-			b.rect(51.036F, R + 0.95F, z + 0.12F, 0, 0, 0.76F, 0, -0.3F, 0);
+			b.rect(51.03F, R + 0.95F, z + 0.12F, 0, 0, 0.76F, 0, -0.3F, 0);
 			b.layer(Layer.SOLID).worldLight().anim(0);
 		}
 

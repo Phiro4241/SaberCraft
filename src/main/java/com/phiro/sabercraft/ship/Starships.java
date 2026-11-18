@@ -462,6 +462,12 @@ public final class Starships {
 	 * {@code null} if the command was ignored (too fast, unknown).
 	 */
 	public static @Nullable Component command(ServerPlayer player, String action, String id) {
+		// Phase 22: no ships called, flown off or sent home while a story runs (menu or command).
+		if (com.phiro.sabercraft.story.Story.playing(player)) {
+			player.sendOverlayMessage(com.phiro.sabercraft.story.Story.lockedMessage());
+			return com.phiro.sabercraft.story.Story.lockedMessage();
+		}
+
 		long now = player.level().getGameTime();
 		Long last = LAST_COMMAND.get(player.getUUID());
 

@@ -137,6 +137,12 @@ public final class Seats {
 
 		ServerLevel level = (ServerLevel) player.level();
 		Vec3 at = seat.at().add(origin.getX(), origin.getY(), origin.getZ());
+		// Phase 22: a seat one of the story's people sits on stays theirs.
+		Component sitter = com.phiro.sabercraft.story.Story.sitterAt(origin, at);
+
+		if (sitter != null) {
+			return Component.translatableWithFallback("sabercraft.seat.taken", "%s is sitting there.", sitter);
+		}
 		Display.ItemDisplay vehicle = new Display.ItemDisplay(EntityTypes.ITEM_DISPLAY, level);
 		vehicle.setPos(at.x, at.y, at.z);
 		vehicle.setYRot(seat.yaw());

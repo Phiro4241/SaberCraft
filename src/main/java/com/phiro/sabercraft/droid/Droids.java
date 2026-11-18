@@ -142,8 +142,9 @@ public final class Droids {
 					entry.getValue().discard();
 					it.remove();
 				} else {
-					// Named in the story, plain again after it.
+					// Named in the story, plain again after it (Phase 22: in its own look again too).
 					entry.getValue().setCustomName(null);
+					entry.getValue().setItemSlot(net.minecraft.world.entity.EquipmentSlot.HEAD, DroidMarker.item(entry.getKey()));
 				}
 			}
 		}
@@ -390,8 +391,14 @@ public final class Droids {
 			return Component.translatableWithFallback("sabercraft.droid.disabled", "Droids are turned off on this server.");
 		}
 
+		// Phase 22: in a story only the droid keys work (its ability, wait/follow): no droid is
+		// called, sent home or brought back from the menu or a command; the story decides.
+		if (com.phiro.sabercraft.story.Story.playing(player) && !action.equals("ability") && !action.equals("stay")) {
+			return com.phiro.sabercraft.story.Story.lockedMessage();
+		}
+
 		List<DroidType> crew = new ArrayList<>(crew(player));
-		Component name = Component.translatableWithFallback(type.translationKey(), type.displayName());
+		Component name = name(player, type);
 
 		switch (action) {
 			case "spawn" -> {
@@ -449,7 +456,7 @@ public final class Droids {
 
 	private static Component recall(ServerPlayer player, DroidType type) {
 		DroidEntity droid = droid(player, type);
-		Component name = Component.translatableWithFallback(type.translationKey(), type.displayName());
+		Component name = name(player, type);
 
 		if (droid == null || droid.level() != player.level()) {
 			if (droid != null) {
@@ -479,7 +486,7 @@ public final class Droids {
 		droid.setStaying(!droid.isStaying());
 		droid.playVoice("interact", 0.8F);
 		event(droid, EVENT_INTERACT);
-		Component name = Component.translatableWithFallback(type.translationKey(), type.displayName());
+		Component name = name(player, type);
 		Component message = droid.isStaying() ? Component.translatableWithFallback("sabercraft.droid.staying", "%s waits here.", name)
 				: Component.translatableWithFallback("sabercraft.droid.following", "%s follows you.", name);
 		player.sendOverlayMessage(message);
@@ -487,9 +494,25 @@ public final class Droids {
 		return message;
 	}
 
+	/**
+	 * Phase 22: a droid's name as its owner should read it: in a story the story's own droids are
+	 * R2-V7 and M-31 (never "R2-D2"), elsewhere the type's name.
+	 */
+	static Component name(ServerPlayer player, DroidType type) {
+		if (com.phiro.sabercraft.story.Story.playing(player)) {
+			Component story = com.phiro.sabercraft.story.Story.droidName(type);
+
+			if (story != null) {
+				return story;
+			}
+		}
+
+		return Component.translatableWithFallback(type.translationKey(), type.displayName());
+	}
+
 	private static @Nullable Component ability(ServerPlayer player, DroidType type) {
 		DroidEntity droid = droid(player, type);
-		Component name = Component.translatableWithFallback(type.translationKey(), type.displayName());
+		Component name = name(player, type);
 
 		if (droid == null || droid.level() != player.level() || droid.distanceToSqr(player) > ABILITY_RANGE_SQR) {
 			return Component.translatableWithFallback("sabercraft.droid.too_far", "%s is too far away.", name);
@@ -517,6 +540,11 @@ public final class Droids {
 			droid.playVoice("ability", 1.0F);
 			event(droid, EVENT_ABILITY);
 			return story;
+		}
+
+		// Phase 22: in the story a droid is never the player's own (no repairs, no scans of mobs).
+		if (com.phiro.sabercraft.story.Story.playing(player)) {
+			return Component.translatableWithFallback("sabercraft.story.droid.nothing", "%s has nothing to do here.", name);
 		}
 
 		DroidAbilities.Result result = DroidAbilities.use(player, droid);

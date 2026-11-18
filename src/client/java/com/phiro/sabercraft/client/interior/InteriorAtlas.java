@@ -295,6 +295,8 @@ public final class InteriorAtlas {
 	public static final int STORY_BEAM = 141;
 	/** story: the marks over someone who noticed: '?' on the left half, '!' on the right (white, tinted) */
 	public static final int STORY_MARKS = 142;
+	/** crew: technician's sleeve or trouser leg (black, a knee or elbow pad, a grey strap, boots) (Phase 22) */
+	public static final int CREW_TECH_LIMB = 143;
 
 	private InteriorAtlas() {
 	}

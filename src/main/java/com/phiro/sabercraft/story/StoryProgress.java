@@ -19,8 +19,11 @@ import java.util.TreeSet;
  * place of its step.
  */
 public final class StoryProgress {
-	/** The file's layout; raised when it changes (2: Phase 20, with the step's id and a place). */
-	public static final int FORMAT = 2;
+	/**
+	 * The file's layout; raised when it changes (2: Phase 20, with the step's id and a place; 3:
+	 * Phase 22, the chapter's end kept as the flag {@code chapter.done}).
+	 */
+	public static final int FORMAT = 3;
 	public int format = 1;
 	/** The chapter ({@code nightshade}). */
 	public String chapter = Chapter1.ID;

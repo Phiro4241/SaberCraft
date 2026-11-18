@@ -576,9 +576,17 @@ public class DroidEntity extends Pig {
 
 		@Override
 		public void stop() {
+			Spot spot = this.target != null && advisor != null && !DroidEntity.this.staying && DroidEntity.this.errand == ERRAND_NONE
+					? advisor.spot(DroidEntity.this, this.target) : null;
 			this.target = null;
 			this.tight = false;
 			DroidEntity.this.getNavigation().stop();
+
+			// Phase 22: near its place, it rolls the last bit onto it (it used to stop up to a
+			// block short, which could be right beside the player).
+			if (spot != null && DroidEntity.this.position().distanceTo(spot.at()) < 2.0 && DroidEntity.this.clearTo(spot.at())) {
+				DroidEntity.this.getMoveControl().setWantedPosition(spot.at().x, spot.at().y, spot.at().z, 1.0);
+			}
 		}
 
 		@Override
@@ -606,11 +614,29 @@ public class DroidEntity extends Pig {
 				if (distance >= TELEPORT_DISTANCE_SQR || DroidEntity.this.stuckTicks > STUCK_TICKS) {
 					DroidEntity.this.teleportToOwner();
 				} else if (spot != null) {
-					DroidEntity.this.getNavigation().moveTo(spot.at().x, spot.at().y, spot.at().z, 1.0 + Math.min(0.6, distance / 200.0));
+					double speed = 1.0 + Math.min(0.6, distance / 200.0);
+					Vec3 at = spot.at();
+
+					// Phase 22: the last steps straight onto the place. A path ends within a block of
+					// its goal, so a place in the next block counted as reached at once, and the droid
+					// stood a step short of it, at the player's feet, for good.
+					if (DroidEntity.this.position().distanceTo(at) < 2.0 && clearTo(at)) {
+						DroidEntity.this.getNavigation().stop();
+						DroidEntity.this.getMoveControl().setWantedPosition(at.x, at.y, at.z, speed);
+					} else {
+						DroidEntity.this.getNavigation().moveTo(at.x, at.y, at.z, 0, speed);
+					}
 				} else {
 					DroidEntity.this.getNavigation().moveTo(this.target, 1.0 + Math.min(0.6, distance / 200.0));
 				}
 			}
 		}
+	}
+
+	/** Phase 22: whether the droid can roll straight to a place near it (no block in between). */
+	private boolean clearTo(Vec3 at) {
+		Vec3 from = this.position().add(0.0, 0.3, 0.0);
+		return this.level().clip(new net.minecraft.world.level.ClipContext(from, at.add(0.0, 0.3, 0.0), net.minecraft.world.level.ClipContext.Block.COLLIDER,
+				net.minecraft.world.level.ClipContext.Fluid.NONE, this)).getType() == net.minecraft.world.phys.HitResult.Type.MISS;
 	}
 }

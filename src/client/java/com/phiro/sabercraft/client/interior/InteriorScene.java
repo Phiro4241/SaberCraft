@@ -486,8 +486,18 @@ public final class InteriorScene {
 			case ANIM_FLICKER -> 0.78F + 0.12F * Mth.sin(seconds * 9.0F + (seed & 31)) + 0.1F * Mth.sin(seconds * 23.0F + (seed & 15));
 			case ANIM_PULSE -> 0.72F + 0.28F * Mth.sin(seconds * 1.7F);
 			case ANIM_SCREEN -> {
-				int step = Mth.floor(seconds / (1.6F + (seed & 3) * 0.7F)) + (seed & 63);
-				yield (step * 2654435761L & 0xFF) < 40 ? 0.35F : 1.0F;
+				// Phase 22: a screen now and then changes its picture, dimming softly for a moment;
+				// it used to drop to a third at once, which read as a broken, flickering terminal.
+				float period = 1.6F + (seed & 3) * 0.7F;
+				float steps = seconds / period;
+				int step = Mth.floor(steps) + (seed & 63);
+
+				if ((step * 2654435761L & 0xFF) >= 40) {
+					yield 1.0F;
+				}
+
+				float t = steps - Mth.floor(steps);
+				yield 1.0F - 0.25F * Mth.sin(t * Mth.PI);
 			}
 			case ANIM_SLOW -> 0.35F + 0.65F * (0.5F + 0.5F * Mth.sin(seconds * 1.2F + (seed & 7)));
 			case ANIM_SHIMMER -> 0.85F + 0.15F * Mth.sin(seconds * 3.0F + (seed & 15) * 0.4F);

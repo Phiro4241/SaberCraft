@@ -165,6 +165,415 @@ public final class MeshAudit {
 		return out;
 	}
 
+	/**
+	 * Phase 22: what {@link #report} does not see: lit surfaces (screens, strips, holograms) lying in
+	 * the plane of a surface they are drawn on, and the parts that move (doors, hatches, the parts
+	 * built every frame) lying in the plane of anything else. Both flicker as two opaque surfaces
+	 * do. Lists "x,y,z what" per place, at most {@code limit}, after the count; {@code plot} is a
+	 * plot of the plan in the level, for the doors and hatches as they stand there now.
+	 */
+	public static List<String> decals(String plan, InteriorVisuals.PlotView plot, int limit) {
+		InteriorVisuals visuals = InteriorScene.visuals(plan);
+		List<Quad> quads = new ArrayList<>();
+		java.util.Set<Quad> moving = java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>());
+		boolean[] animating = new boolean[1];
+		Map<Quad, String> sources = System.getProperty("sabercraft.audit.sources") != null ? new java.util.IdentityHashMap<>() : null;
+		MeshBuilder builder = new MeshBuilder((layer, xyzuv, nx, ny, nz, colours, lightMode, fixedLight, anim, samples) -> {
+			Vector3f[] p = new Vector3f[4];
+
+			for (int v = 0; v < 4; v++) {
+				p[v] = new Vector3f(xyzuv[v * 5], xyzuv[v * 5 + 1], xyzuv[v * 5 + 2]);
+			}
+
+			Vector3f n = new Vector3f(p[1]).sub(p[0]).cross(new Vector3f(p[2]).sub(p[0]));
+
+			if (n.lengthSquared() < 1.0E-10F) {
+				n = new Vector3f(p[2]).sub(p[0]).cross(new Vector3f(p[3]).sub(p[0]));
+			}
+
+			if (n.lengthSquared() < 1.0E-10F) {
+				return;
+			}
+
+			n.normalize();
+
+			if (n.x * nx + n.y * ny + n.z * nz < 0) {
+				n.negate();
+			}
+
+			Vector3f c = new Vector3f(p[0]).add(p[1]).add(p[2]).add(p[3]).mul(0.25F);
+			Quad q = new Quad(layer, p, n, n.dot(p[0]), c, false);
+			quads.add(q);
+
+			if (sources != null) {
+				sources.put(q, from());
+			}
+
+			if (animating[0]) {
+				moving.add(q);
+			}
+		});
+		visuals.build(builder);
+		animating[0] = true;
+		visuals.animate(builder, 0.0F);
+		com.phiro.sabercraft.interior.InteriorPlan of = com.phiro.sabercraft.interior.InteriorPlan.of(plan);
+
+		if (plot != null && of != null) {
+			builder.inside(true);
+			DoorModels.draw(builder, plot, of, InteriorAtlas.IMP_DOOR, InteriorAtlas.IMP_WALL_STRIP_GLOW);
+			HatchModels.draw(builder, plot, of);
+			builder.inside(false);
+		}
+
+		Map<Long, List<Quad>> buckets = new HashMap<>();
+
+		for (Quad q : quads) {
+			buckets.computeIfAbsent(key(q.n, q.d), unused -> new ArrayList<>()).add(q);
+		}
+
+		TreeMap<String, Integer> places = new TreeMap<>();
+
+		for (Quad a : quads) {
+			boolean lit = a.layer != Layer.SOLID;
+
+			if (!lit && !moving.contains(a)) {
+				continue;
+			}
+
+			for (int dd = -1; dd <= 1; dd++) {
+				List<Quad> list = buckets.get(key(a.n, a.d + dd * 0.01F));
+
+				if (list == null) {
+					continue;
+				}
+
+				for (Quad b : list) {
+					if (b == a || a.n.dot(b.n) < 0.9995F || Math.abs(a.d - b.d) > SAME_PLANE) {
+						continue;
+					}
+
+					// Two lit surfaces over each other only add up; a lit one counts against what it
+					// lies on, a moving one against anything.
+					boolean pair = lit ? b.layer == Layer.SOLID : true;
+
+					// Each pair once: a moving solid pair from the first of the two.
+					if (!pair || !lit && moving.contains(b) && b.layer == Layer.SOLID && System.identityHashCode(b) < System.identityHashCode(a)) {
+						continue;
+					}
+
+					if (overlap(a, b)) {
+						String what = (lit ? a.layer.name().toLowerCase(java.util.Locale.ROOT) : "moving") + "/" + (moving.contains(b) ? "moving " : "")
+								+ b.layer.name().toLowerCase(java.util.Locale.ROOT);
+						places.merge(place(a.centre) + " " + what + " n=" + fmt(a.n) + " " + size(a) + "&" + size(b)
+								+ (sources != null ? " from" + sources.get(a) + " &" + sources.get(b) : ""), 1, Integer::sum);
+					}
+				}
+			}
+		}
+
+		List<String> out = new ArrayList<>();
+		int total = places.values().stream().mapToInt(Integer::intValue).sum();
+		out.add(total + " fighting decal or moving quad pairs at " + places.size() + " places (" + quads.size() + " quads, " + moving.size() + " moving)");
+
+		for (Map.Entry<String, Integer> entry : places.entrySet()) {
+			if (out.size() > limit) {
+				break;
+			}
+
+			out.add(entry.getKey() + " x" + entry.getValue());
+		}
+
+		return out;
+	}
+
+	/**
+	 * Phase 22: the gaps one sees the outside through. From points all through the plan's rooms
+	 * (eye height, every couple of blocks, only where one could stand) looks out in many
+	 * directions; a look that meets neither a drawn surface facing it (solid or glass: a window is
+	 * meant to be seen through) nor a visible block within {@code reach} blocks ends in the empty
+	 * dimension outside: a gap in the walls. Lists "room x,y,z (the barrier cell the look leaves
+	 * by)" per place, at most {@code limit}, after the count.
+	 */
+	public static List<String> leaks(String plan, Blocks3 blocks, InteriorVisuals.PlotView plot, float reach, int looks, int spacing, int limit) {
+		InteriorVisuals visuals = InteriorScene.visuals(plan);
+		com.phiro.sabercraft.interior.InteriorPlan of = com.phiro.sabercraft.interior.InteriorPlan.of(plan);
+		Map<Long, List<Vector3f[]>> grid = new HashMap<>();
+		Map<Vector3f[], Vector3f> normals = new java.util.IdentityHashMap<>();
+		MeshBuilder builder = new MeshBuilder((layer, xyzuv, nx, ny, nz, colours, lightMode, fixedLight, anim, samples) -> {
+			if (layer != Layer.SOLID && layer != Layer.GLASS) {
+				return;
+			}
+
+			Vector3f[] p = new Vector3f[4];
+			Vector3f min = new Vector3f(Float.MAX_VALUE);
+			Vector3f max = new Vector3f(-Float.MAX_VALUE);
+
+			for (int v = 0; v < 4; v++) {
+				p[v] = new Vector3f(xyzuv[v * 5], xyzuv[v * 5 + 1], xyzuv[v * 5 + 2]);
+				min.min(p[v]);
+				max.max(p[v]);
+			}
+
+			normals.put(p, new Vector3f(nx, ny, nz));
+
+			for (int x = Mth.floor(min.x); x <= Mth.floor(max.x); x++) {
+				for (int y = Mth.floor(min.y); y <= Mth.floor(max.y); y++) {
+					for (int z = Mth.floor(min.z); z <= Mth.floor(max.z); z++) {
+						grid.computeIfAbsent(net.minecraft.core.BlockPos.asLong(x, y, z), unused -> new ArrayList<>()).add(p);
+					}
+				}
+			}
+		});
+		visuals.build(builder);
+		visuals.animate(builder, 0.0F);
+
+		if (plot != null && of != null) {
+			builder.inside(true);
+			DoorModels.draw(builder, plot, of, InteriorAtlas.IMP_DOOR, InteriorAtlas.IMP_WALL_STRIP_GLOW);
+			HatchModels.draw(builder, plot, of);
+			builder.inside(false);
+		}
+
+		// Directions spread evenly over the sphere.
+		int count = looks;
+		List<Vector3f> dirs = new ArrayList<>();
+
+		for (int i = 0; i < count; i++) {
+			float y = 1.0F - 2.0F * (i + 0.5F) / count;
+			float r = Mth.sqrt(1.0F - y * y);
+			float a = i * 2.3999632F;
+			dirs.add(new Vector3f(Mth.cos(a) * r, y, Mth.sin(a) * r));
+		}
+
+		TreeMap<String, Integer> places = new TreeMap<>();
+		Map<String, String> examples = new HashMap<>();
+		int points = 0;
+		int rays = 0;
+
+		// Only where one can get: standing places reached on foot from the entry and the rooms.
+		it.unimi.dsi.fastutil.longs.LongOpenHashSet reached = new it.unimi.dsi.fastutil.longs.LongOpenHashSet();
+		java.util.ArrayDeque<Long> queue = new java.util.ArrayDeque<>();
+		List<net.minecraft.world.phys.Vec3> seeds = new ArrayList<>();
+		seeds.add(of.entry());
+		of.rooms().forEach(room -> seeds.add(new net.minecraft.world.phys.Vec3(room.centre().x, room.area().minY, room.centre().z)));
+
+		for (net.minecraft.world.phys.Vec3 seed : seeds) {
+			for (int dy = 0; dy <= 2; dy++) {
+				int x = Mth.floor(seed.x);
+				int y = Mth.floor(seed.y) + dy;
+				int z = Mth.floor(seed.z);
+
+				if (stand(blocks, x, y, z) && reached.add(net.minecraft.core.BlockPos.asLong(x, y, z))) {
+					queue.add(net.minecraft.core.BlockPos.asLong(x, y, z));
+					break;
+				}
+			}
+		}
+
+		while (!queue.isEmpty() && reached.size() < 60_000) {
+			long key = queue.poll();
+			int x = net.minecraft.core.BlockPos.getX(key);
+			int y = net.minecraft.core.BlockPos.getY(key);
+			int z = net.minecraft.core.BlockPos.getZ(key);
+
+			for (int[] step : new int[][] {{1, 0}, {-1, 0}, {0, 1}, {0, -1}}) {
+				for (int dy = 1; dy >= -3; dy--) {
+					int nx = x + step[0];
+					int ny = y + dy;
+					int nz = z + step[1];
+
+					if (dy == 1 && blocks.get(x, y + 2, z).blocksMotion()) {
+						continue;
+					}
+
+					if (stand(blocks, nx, ny, nz)) {
+						if (reached.add(net.minecraft.core.BlockPos.asLong(nx, ny, nz))) {
+							queue.add(net.minecraft.core.BlockPos.asLong(nx, ny, nz));
+						}
+
+						break;
+					}
+
+					// Blocked at this height: no lower place through a wall.
+					if (blocks.get(nx, ny + 1, nz).blocksMotion()) {
+						break;
+					}
+				}
+			}
+		}
+
+		for (long key : reached) {
+			int x = net.minecraft.core.BlockPos.getX(key);
+			int y = net.minecraft.core.BlockPos.getY(key);
+			int z = net.minecraft.core.BlockPos.getZ(key);
+
+			if (Math.floorMod(x, spacing) != 0 || Math.floorMod(z, spacing) != 0) {
+				continue;
+			}
+
+			String roomId = "?";
+
+			for (com.phiro.sabercraft.interior.InteriorPlan.Room room : of.rooms()) {
+				if (room.area().contains(x + 0.5, y + 0.5, z + 0.5)) {
+					roomId = room.id();
+					break;
+				}
+			}
+
+			// The eye where one stands and, when asked, a little off it (a crack seen from one
+			// spot only).
+			float[][] offsets = spacing == 1 ? new float[][] {{0.5F, 0.5F}, {0.2F, 0.2F}, {0.8F, 0.8F}, {0.2F, 0.8F}, {0.8F, 0.2F}} : new float[][] {{0.5F, 0.5F}};
+
+			for (float[] off : offsets) {
+				Vector3f eye = new Vector3f(x + off[0], y + 1.6F, z + off[1]);
+				points++;
+
+				for (Vector3f d : dirs) {
+					rays++;
+					String exit = leak(grid, normals, blocks, eye, d, reach);
+
+					if (exit != null) {
+						String place = roomId + " " + exit;
+						places.merge(place, 1, Integer::sum);
+						examples.putIfAbsent(place, String.format(java.util.Locale.ROOT, "from %.1f,%.1f,%.1f looking %s", eye.x, eye.y, eye.z, fmt(d)));
+					}
+				}
+			}
+		}
+
+		List<String> out = new ArrayList<>();
+		int total = places.values().stream().mapToInt(Integer::intValue).sum();
+		out.add(total + " looks into the void at " + places.size() + " places (" + points + " points, " + rays + " looks)");
+		places.entrySet().stream().sorted((a, b) -> b.getValue() - a.getValue()).limit(limit).forEach(e -> out.add(e.getKey() + " x" + e.getValue() + " e.g. " + examples.get(e.getKey())));
+		return out;
+	}
+
+	/** Phase 22, for finding a gap: what one look passes, cell by cell (blocks, surfaces met, which way they face). */
+	public static List<String> probe(String plan, Blocks3 blocks, Vector3f o, Vector3f d, float reach) {
+		InteriorVisuals visuals = InteriorScene.visuals(plan);
+		List<String> out = new ArrayList<>();
+		d = new Vector3f(d).normalize();
+		Vector3f dir = d;
+		Map<Long, List<Vector3f[]>> grid = new HashMap<>();
+		Map<Vector3f[], Vector3f> normals = new java.util.IdentityHashMap<>();
+		MeshBuilder builder = new MeshBuilder((layer, xyzuv, nx, ny, nz, colours, lightMode, fixedLight, anim, samples) -> {
+			Vector3f[] p = new Vector3f[4];
+
+			for (int v = 0; v < 4; v++) {
+				p[v] = new Vector3f(xyzuv[v * 5], xyzuv[v * 5 + 1], xyzuv[v * 5 + 2]);
+			}
+
+			Vector3f mn = new Vector3f(Float.MAX_VALUE);
+			Vector3f mx = new Vector3f(-Float.MAX_VALUE);
+
+			for (Vector3f v : p) {
+				mn.min(v);
+				mx.max(v);
+			}
+
+			if (layer == Layer.SOLID || layer == Layer.GLASS) {
+				normals.put(p, new Vector3f(nx, ny, nz));
+
+				for (int x = Mth.floor(mn.x); x <= Mth.floor(mx.x); x++) {
+					for (int y = Mth.floor(mn.y); y <= Mth.floor(mx.y); y++) {
+						for (int z = Mth.floor(mn.z); z <= Mth.floor(mx.z); z++) {
+							grid.computeIfAbsent(net.minecraft.core.BlockPos.asLong(x, y, z), unused -> new ArrayList<>()).add(p);
+						}
+					}
+				}
+			}
+
+			if (hits(p, o, dir, reach)) {
+				Vector3f n = new Vector3f(nx, ny, nz);
+				out.add("quad " + layer + " n=" + fmt(n) + (n.dot(dir) < 0 ? " FRONT " : " back ") + sizeOf(p) + " from" + from());
+			}
+		});
+		visuals.build(builder);
+		visuals.animate(builder, 0.0F);
+
+		out.add("leak: " + leak(grid, normals, blocks, o, dir, reach));
+
+		for (float t = 0; t < reach; t += 0.25F) {
+			Vector3f at = new Vector3f(dir).mul(t).add(o);
+			BlockState state = blocks.get(Mth.floor(at.x), Mth.floor(at.y), Mth.floor(at.z));
+
+			if (!state.isAir()) {
+				out.add(String.format(java.util.Locale.ROOT, "t=%.2f %d,%d,%d %s visible=%s", t, Mth.floor(at.x), Mth.floor(at.y), Mth.floor(at.z), state,
+						visible(state)));
+			}
+		}
+
+		return out;
+	}
+
+	/** Whether one can stand in a cell: it and the one above free, something under it. */
+	private static boolean stand(Blocks3 blocks, int x, int y, int z) {
+		return !blocks.get(x, y, z).blocksMotion() && !blocks.get(x, y + 1, z).blocksMotion() && blocks.get(x, y - 1, z).blocksMotion();
+	}
+
+	/** One look: null if it meets something, else where it left the model (the last cell before the void). */
+	private static String leak(Map<Long, List<Vector3f[]>> grid, Map<Vector3f[], Vector3f> normals, Blocks3 blocks, Vector3f o,
+			Vector3f d, float reach) {
+		int x = Mth.floor(o.x);
+		int y = Mth.floor(o.y);
+		int z = Mth.floor(o.z);
+		int sx = d.x > 0 ? 1 : -1;
+		int sy = d.y > 0 ? 1 : -1;
+		int sz = d.z > 0 ? 1 : -1;
+		float tdx = Math.abs(1.0F / (Math.abs(d.x) < 1.0E-6F ? 1.0E-6F : d.x));
+		float tdy = Math.abs(1.0F / (Math.abs(d.y) < 1.0E-6F ? 1.0E-6F : d.y));
+		float tdz = Math.abs(1.0F / (Math.abs(d.z) < 1.0E-6F ? 1.0E-6F : d.z));
+		float tx = (sx > 0 ? x + 1 - o.x : o.x - x) * tdx;
+		float ty = (sy > 0 ? y + 1 - o.y : o.y - y) * tdy;
+		float tz = (sz > 0 ? z + 1 - o.z : o.z - z) * tdz;
+		String last = null;
+		java.util.Set<Vector3f[]> tried = java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>());
+
+		for (int step = 0; step < reach * 3; step++) {
+			List<Vector3f[]> here = grid.get(net.minecraft.core.BlockPos.asLong(x, y, z));
+
+			if (here != null) {
+				for (Vector3f[] q : here) {
+					if (tried.add(q) && normals.get(q).dot(d) < 0.0F && hits(q, o, d, reach)) {
+						return null;
+					}
+				}
+			}
+
+			BlockState state = blocks.get(x, y, z);
+
+			if (step > 0 && visible(state)) {
+				return null;
+			}
+
+			if (!state.isAir()) {
+				last = x + "," + y + "," + z;
+			}
+
+			float t;
+
+			if (tx < ty && tx < tz) {
+				t = tx;
+				x += sx;
+				tx += tdx;
+			} else if (ty < tz) {
+				t = ty;
+				y += sy;
+				ty += tdy;
+			} else {
+				t = tz;
+				z += sz;
+				tz += tdz;
+			}
+
+			if (t > reach) {
+				break;
+			}
+		}
+
+		return "near " + (last != null ? last : "?");
+	}
+
 	/** Phase 19: a surface of the model near a point: which point, how far, which way it faces, its bounds, where it was made. */
 	public record Near(int point, Layer layer, float distance, Vector3f normal, Vector3f min, Vector3f max, boolean front, String from) {
 		/** Whether the surface lies flat (floor or ceiling) and right over or under the point. */
@@ -579,6 +988,22 @@ public final class MeshAudit {
 
 		float t = e2.dot(qv) * inv;
 		return t > -1.0E-4F && t <= max;
+	}
+
+	/** Where the quad being made comes from (the interior classes in the stack). */
+	private static String from() {
+		StringBuilder from = new StringBuilder();
+
+		for (StackTraceElement e : Thread.currentThread().getStackTrace()) {
+			String cls = e.getClassName();
+
+			if (cls.startsWith("com.phiro.sabercraft.client.interior.") && !cls.endsWith("MeshBuilder") && !cls.endsWith("MeshAudit")) {
+				from.append(' ').append(cls.substring(cls.lastIndexOf('.') + 1)).append(':').append(e.getLineNumber());
+				break;
+			}
+		}
+
+		return from.toString();
 	}
 
 	private static String fmt(Vector3f n) {

@@ -79,9 +79,11 @@ public abstract class SaberMenuScreen extends Screen {
 		for (Tab tab : Tab.values()) {
 			Button button = Button.builder(tab.label(), b -> open(this.minecraft, tab)).bounds(tabsLeft, y, TAB_WIDTH, 20).build();
 			boolean sword = saberHand(this.minecraft) != null || plainSwordHand(this.minecraft) != null;
-			button.active = tab != this.tab() && (tab != Tab.SABER || sword) && !(tab == Tab.SABER && this instanceof SaberConvertScreen);
+			button.active = tab != this.tab() && (tab != Tab.SABER || sword) && !(tab == Tab.SABER && this instanceof SaberConvertScreen) && !lockedInStory(tab);
 
-			if (tab == Tab.SABER && !sword) {
+			if (lockedInStory(tab)) {
+				button.setTooltip(Tooltip.create(Component.translatable("sabercraft.menu.story.locked_tab")));
+			} else if (tab == Tab.SABER && !sword) {
 				button.setTooltip(Tooltip.create(Component.translatable("sabercraft.customize.no_saber")));
 			}
 
@@ -112,8 +114,23 @@ public abstract class SaberMenuScreen extends Screen {
 		client.gui.setScreen(create(client, tab));
 	}
 
+	/**
+	 * Phase 22: whether an area is locked because a story runs. In a story mission the menu is the
+	 * story's: only the story itself and the settings that change nothing in the world (music,
+	 * sound, graphics) are open; saber, blasters, droids, ships, combat, character and space are
+	 * not (the server refuses them too).
+	 */
+	public static boolean lockedInStory(Tab tab) {
+		return com.phiro.sabercraft.client.story.StoryClient.active() && tab != Tab.STORY && tab != Tab.MUSIC && tab != Tab.SOUND && tab != Tab.GRAPHICS;
+	}
+
 	/** The area to start with: the saber when one is held, the character otherwise. */
 	public static Screen create(Minecraft client, Tab tab) {
+		// Phase 22: in a story the menu opens on the story.
+		if (lockedInStory(tab)) {
+			return new StoryMenuScreen();
+		}
+
 		InteractionHand hand = saberHand(client);
 
 		// Phase 12: a plain sword in the hand can be chosen as a saber first.

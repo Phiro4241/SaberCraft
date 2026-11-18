@@ -253,6 +253,33 @@ public final class StoryTesting {
 		StoryStore.save(server, player, progress);
 	}
 
+	// --- Phase 22 ----------------------------------------------------------------------------------
+
+	/**
+	 * Phase 22: the player's file as the end of the chapter leaves it: every mission played, the
+	 * chapter finished, at the epilogue in the Falcon, and known to be over. Out of the story only.
+	 */
+	public static void finishedFile(net.minecraft.server.MinecraftServer server, java.util.UUID player) {
+		StoryProgress progress = StoryStore.load(server, player);
+
+		for (int i = 0; i < 6; i++) {
+			progress.completed.add(i);
+		}
+
+		progress.mission = 5;
+		progress.step = 0;
+		progress.stepId = "m6.epilogue";
+		progress.placeShip = "";
+		progress.finished = true;
+		progress.flags.add(Chapter1.CHAPTER_DONE);
+		StoryStore.save(server, player, progress);
+	}
+
+	/** Phase 22: how many blaster bolts were sent back to their shooter (and how many of those hit him). */
+	public static int returnedBolts() {
+		return Finale.returned;
+	}
+
 	/** Phase 21: a noise there (plot space) as M-31 makes it: who went to see, who looked, who did not care. */
 	public static int[] noise(StorySession s, Vec3 at) {
 		net.minecraft.server.level.ServerLevel level = Chapter1.interiors(s);

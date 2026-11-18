@@ -736,7 +736,9 @@ public final class Stealth {
 
 				// Close by and no nearer (their place is a seat, a bunk, a console in the way): they
 				// sit down or step into place.
-				if (distance < 0.35 || distance < 1.3 && figure.stuck > 8) {
+				// Phase 22: someone whose place is a seat sits down on it from a step away (the
+				// chair itself is in the way; they stood in it, upright, while they were watched).
+				if (distance < 0.35 || distance < 1.3 && figure.stuck > 8 || figure.seated() && distance < 1.6) {
 					settle(figure, at);
 				} else {
 					go(figure, home, WALK, level, corner, time);
@@ -918,7 +920,7 @@ public final class Stealth {
 	 * do not stand in each other). A step that takes them further apart is always fine, so two
 	 * who came to stand close can still part.
 	 */
-	private static boolean crowded(Figure figure, double x, double y, double z) {
+	static boolean crowded(Figure figure, double x, double y, double z) {
 		for (Figure other : crowd) {
 			if (other == figure || other.mode == Figure.DOWN || !other.ship.equals(figure.ship) || Math.abs(other.y - y) > 1.5) {
 				continue;
@@ -940,7 +942,7 @@ public final class Stealth {
 		crowd = figures;
 	}
 
-	private static boolean free(ServerLevel level, Vec3 corner, double x, double y, double z, double height) {
+	static boolean free(ServerLevel level, Vec3 corner, double x, double y, double z, double height) {
 		AABB box = new AABB(x - 0.28, y + 0.01, z - 0.28, x + 0.28, y + Math.min(height, 1.8), z + 0.28).move(corner);
 		return level.noBlockCollision(null, box);
 	}

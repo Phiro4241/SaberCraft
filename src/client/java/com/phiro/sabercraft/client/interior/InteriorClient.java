@@ -52,7 +52,24 @@ public final class InteriorClient {
 	}
 
 	private static final Map<BlockPos, Jump> JUMPS = new HashMap<>();
-	private static final Map<Long, float[]> DOORS = new HashMap<>();
+	/**
+	 * Phase 22: how far each door is open and when that was worked out. The time was kept in a
+	 * float before: on a computer that has run for a day or more {@code System.nanoTime()} is
+	 * beyond 10^14 and a float holds it only to some 10 to 70 milliseconds, so the time between
+	 * two frames came out as 0, twice as long or even negative, and every door shook back and forth
+	 * while it moved (tests, run right after the machine started, never saw it).
+	 */
+	private static final class DoorState {
+		float open;
+		long nanos;
+
+		DoorState(float open, long nanos) {
+			this.open = open;
+			this.nanos = nanos;
+		}
+	}
+
+	private static final Map<Long, DoorState> DOORS = new HashMap<>();
 	private static final Map<String, List<long[]>> LIGHTS = new HashMap<>();
 	private static int fired;
 
@@ -237,12 +254,13 @@ public final class InteriorClient {
 	public static float door(InteriorVisuals.PlotView plot, Door door) {
 		BlockPos cell = plot.origin().offset(door.x0(), door.y0(), door.z0());
 		boolean open = !plot.level().getBlockState(cell).is(Blocks.BARRIER);
-		float[] state = DOORS.computeIfAbsent(cell.asLong(), unused -> new float[] {open ? 1.0F : 0.0F, System.nanoTime()});
 		long now = System.nanoTime();
-		float seconds = Math.min(0.25F, (now - (long) state[1]) / 1.0E9F);
-		state[1] = now;
-		state[0] = Mth.clamp(state[0] + (open ? 1 : -1) * DOOR_SPEED * seconds, 0.0F, 1.0F);
-		return state[0];
+		DoorState state = DOORS.computeIfAbsent(cell.asLong(), unused -> new DoorState(open ? 1.0F : 0.0F, now));
+		// Exact to the nanosecond (a long), never backwards, at most a quarter second at once.
+		float seconds = Mth.clamp((now - state.nanos) / 1.0E9F, 0.0F, 0.25F);
+		state.nanos = now;
+		state.open = Mth.clamp(state.open + (open ? 1 : -1) * DOOR_SPEED * seconds, 0.0F, 1.0F);
+		return state.open;
 	}
 
 	// --- Guns --------------------------------------------------------------------------------------

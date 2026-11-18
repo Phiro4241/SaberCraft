@@ -246,8 +246,11 @@ public class Phase20GameTest implements FabricClientGameTest {
 		context.waitTicks(220);
 		check(this.hatchOpen(cell), "the hatch shuts on M-31 in its opening");
 		// M-31 along again; looking back at the hatch from inside, the use key shuts it.
-		this.server.runOnServer(s -> Droids.place(me(s), DroidType.MOUSE, me(s).position().add(-1.2, 0.0, 0.0), -90.0F, false));
+		// (Phase 22: the player first, then M-31 behind them: put the other way round, M-31 was
+		// put behind where the player had been, and the player then landed on M-31's way and
+		// pushed it in front, into the hatch's opening.)
 		this.place(new Vec3(hx - 1.6, h, hz), -90.0F, 4.0F);
+		this.server.runOnServer(s -> Droids.place(me(s), DroidType.MOUSE, me(s).position().add(-1.2, 0.0, 0.0), -90.0F, false));
 		context.waitTicks(10);
 		int shut = context.computeOnClient(client -> InteriorClient.hatchesForTest());
 		context.getInput().pressKey(options -> options.keyUse);
@@ -255,12 +258,28 @@ public class Phase20GameTest implements FabricClientGameTest {
 		check(!this.hatchOpen(cell), "the use key does not shut the open hatch from inside");
 		check(context.computeOnClient(client -> InteriorClient.hatchesForTest()) == shut + 1, "the use key on the open hatch was not taken as shutting it");
 		context.takeScreenshot("phase20_vent_hatch_inside");
+		// Phase 22: the client must know the hatch is shut before the key is pressed again (it
+		// decides from its own world whether the key shuts an open hatch or uses the shut one);
+		// on a slow machine the change could still be on its way.
+		this.clientSees(cell, false);
+		// What the key will meet (logged, to tell a failure's cause).
+		String aimed = context.computeOnClient(client -> {
+			var hit = client.hitResult;
+			String what = hit == null ? "nothing" : hit.getType() + (hit instanceof net.minecraft.world.phys.BlockHitResult block ? " " + block.getBlockPos().toShortString()
+					+ " " + client.level.getBlockState(block.getBlockPos()) : hit instanceof net.minecraft.world.phys.EntityHitResult entity ? " " + entity.getEntity() : "");
+			return what + ", pose " + client.player.getPose() + " at " + client.player.position() + ", eye " + client.player.getEyePosition();
+		});
+		String mouseAt = this.on(s -> {
+			var droid = Droids.droid(me(s), DroidType.MOUSE);
+			return droid == null ? "-" : String.valueOf(droid.position());
+		});
+		SaberCraft.LOGGER.info("PHASE20: hatch from inside, before opening: aimed at {}; M-31 at {}; hatch at {}", aimed, mouseAt, this.on(s -> this.world(s, cell)));
 		// And opens it again from inside; out into the corridor, standing up.
 		context.getInput().pressKey(options -> options.keyUse);
 		context.waitTicks(8);
 
 		if (!this.hatchOpen(cell)) {
-			problem("the use key does not open the hatch from inside");
+			problem("the use key does not open the hatch from inside (aimed at " + aimed + "; M-31 at " + mouseAt + ")");
 			this.server.runOnServer(s -> InteriorSystems.useForTest(me(s), this.world(s, cell)));
 			context.waitTicks(5);
 		}
@@ -276,6 +295,15 @@ public class Phase20GameTest implements FabricClientGameTest {
 		context.waitTicks(220);
 		check(!this.hatchOpen(cell), "the hatch does not shut by itself once nobody is near");
 		SaberCraft.LOGGER.info("PHASE20: crawl way: in at {}, past M-31 to {}, out at {}", in, past, out);
+	}
+
+	/** Phase 22: waits (a second at most) until the client's world shows the hatch open or shut. */
+	private void clientSees(BlockPos cell, boolean open) {
+		BlockPos at = this.on(s -> this.world(s, cell));
+
+		for (int i = 0; i < 20 && this.context.computeOnClient(client -> client.level.getBlockState(at).isAir()) != open; i++) {
+			this.context.waitTicks(1);
+		}
 	}
 
 	private boolean hatchOpen(BlockPos cell) {

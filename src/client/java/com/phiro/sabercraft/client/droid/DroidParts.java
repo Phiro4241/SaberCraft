@@ -54,6 +54,10 @@ public final class DroidParts {
 				new Part("leg_r", "sabercraft:droid/k2so_leg_r", -0.1187F, 1.0500F, 0.0000F),
 				new Part("leg_l", "sabercraft:droid/k2so_leg_l", 0.1187F, 1.0500F, 0.0000F),
 				new Part("head", "sabercraft:droid/k2so_head", 0.0000F, 1.8500F, 0.0000F)
+			),
+			"r2v7", List.of(
+				new Part("body", "sabercraft:droid/r2v7_body", 0.0000F, 0.0000F, 0.0000F),
+				new Part("head", "sabercraft:droid/r2v7_head", 0.0000F, 0.8375F, 0.0000F)
 			)
 	);
 

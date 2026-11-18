@@ -124,7 +124,12 @@ public final class Blasters {
 				ServerPlayNetworking.send(handler.getPlayer(), new BlasterSettingsPayload(config.blasterAmmo, config.blasterInfinity));
 			}
 		});
-		ServerPlayNetworking.registerGlobalReceiver(SelectBlasterPayload.TYPE, (payload, context) -> select(context.player(), payload));
+		ServerPlayNetworking.registerGlobalReceiver(SelectBlasterPayload.TYPE, (payload, context) -> {
+			// Phase 22: not while a story runs.
+			if (!com.phiro.sabercraft.story.Story.refuse(context.player())) {
+				select(context.player(), payload);
+			}
+		});
 	}
 
 	/** Fires one shot if the blaster is ready and there is ammunition. Returns whether it fired. */

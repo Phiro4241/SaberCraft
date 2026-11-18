@@ -35,7 +35,12 @@ public final class OutfitSync {
 
 	public static void init() {
 		ServerLifecycleEvents.SERVER_STOPPED.register(server -> clear());
-		ServerPlayNetworking.registerGlobalReceiver(ChooseOutfitPayload.TYPE, (payload, context) -> choose(context.player(), payload.outfit()));
+		ServerPlayNetworking.registerGlobalReceiver(ChooseOutfitPayload.TYPE, (payload, context) -> {
+			// Phase 22: no other skin while a story runs (the story dresses the player itself).
+			if (!com.phiro.sabercraft.story.Story.refuse(context.player())) {
+				choose(context.player(), payload.outfit());
+			}
+		});
 		ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> {
 			if (ServerPlayNetworking.canSend(handler.getPlayer(), OutfitSyncPayload.TYPE)) {
 				List<OutfitSyncPayload.Entry> entries = new ArrayList<>();

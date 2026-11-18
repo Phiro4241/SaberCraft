@@ -53,10 +53,22 @@ public final class DroidModels {
 		return DroidParts.PARTS.getOrDefault(droid.id(), List.of());
 	}
 
+	/** Phase 22: the parts of a droid's own look ({@code r2v7}: the story's astromech), else of its type. */
+	public static List<DroidParts.Part> parts(DroidType droid, @Nullable String look) {
+		List<DroidParts.Part> own = look != null ? DroidParts.PARTS.get(look) : null;
+		return own != null ? own : parts(droid);
+	}
+
 	/** Resolves the part models of a droid into {@code into} (reused if it has the right size). */
 	public static List<ItemStackRenderState> resolve(DroidType droid, @Nullable List<ItemStackRenderState> into, @Nullable Level level,
 			@Nullable Entity owner, int seed) {
-		List<DroidParts.Part> parts = parts(droid);
+		return resolve(droid, null, into, level, owner, seed);
+	}
+
+	/** Phase 22: as above, in the droid's own look if it has one. */
+	public static List<ItemStackRenderState> resolve(DroidType droid, @Nullable String look, @Nullable List<ItemStackRenderState> into,
+			@Nullable Level level, @Nullable Entity owner, int seed) {
+		List<DroidParts.Part> parts = parts(droid, look);
 		List<ItemStackRenderState> states = into != null && into.size() == parts.size() ? into : new ArrayList<>(parts.size());
 		ItemModelResolver resolver = Minecraft.getInstance().getItemModelResolver();
 
@@ -74,7 +86,13 @@ public final class DroidModels {
 	/** Draws a droid standing at the origin, its face to -z, in blocks. */
 	public static void submit(PoseStack poseStack, SubmitNodeCollector collector, DroidType droid, DroidPose pose, List<ItemStackRenderState> states,
 			int light, int outline) {
-		List<DroidParts.Part> parts = parts(droid);
+		submit(poseStack, collector, droid, null, pose, states, light, outline);
+	}
+
+	/** Phase 22: as above, in the droid's own look if it has one. */
+	public static void submit(PoseStack poseStack, SubmitNodeCollector collector, DroidType droid, @Nullable String look, DroidPose pose,
+			List<ItemStackRenderState> states, int light, int outline) {
+		List<DroidParts.Part> parts = parts(droid, look);
 		poseStack.pushPose();
 		pose.root(poseStack, droid);
 

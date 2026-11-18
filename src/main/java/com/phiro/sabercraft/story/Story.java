@@ -216,6 +216,13 @@ public final class Story {
 
 		progress.mission = Math.max(0, Math.min(progress.mission, missions - 1));
 		resolveStep(chapter, progress);
+		// Phase 22: a save that ended the chapter before Phase 22 (finished, still at the epilogue
+		// after it was spoken) knows it is over too.
+		if (start == Start.CONTINUE && progress.format < 3 && progress.finished && progress.mission == missions - 1 && chapter instanceof Chapter1
+				&& "m6.epilogue".equals(progress.stepId) && progress.completed.contains(missions - 1) && !progress.flags.contains(Chapter1.CHAPTER_DONE)) {
+			progress.flags.add(Chapter1.CHAPTER_DONE);
+		}
+
 		progress.missionStart.putIfAbsent(progress.mission, List.copyOf(progress.flags));
 		UUID owner = storyOwner(player.getUUID());
 		BlockPos falcon = ShipInteriors.storyPlot(server, owner, FALCON);
@@ -418,6 +425,34 @@ public final class Story {
 	}
 
 	/**
+	 * Phase 22: who of the story's people sits on a seat (its sitting place in world space), for
+	 * the seat to stay theirs: a player cannot sit down in someone. {@code null} if nobody.
+	 */
+	public static @Nullable Component sitterAt(BlockPos origin, Vec3 at) {
+		StorySession session = at(origin);
+
+		if (session == null) {
+			return null;
+		}
+
+		String ship = origin.equals(session.falcon) ? FALCON : DESTROYER;
+		Vec3 corner = Vec3.atLowerCornerOf(origin);
+
+		for (Figure figure : session.figures) {
+			if (ship.equals(figure.ship) && figure.mode != Figure.DOWN && figure.onSeat()) {
+				Vec3 where = figure.position().add(corner);
+
+				if (Math.abs(where.x - at.x) < 0.6 && Math.abs(where.z - at.z) < 0.6 && Math.abs(where.y - at.y) < 1.2) {
+					String name = figure.speaker.isEmpty() ? figure.kind() : figure.speaker;
+					return Component.translatableWithFallback("sabercraft.story.name." + name, name);
+				}
+			}
+		}
+
+		return null;
+	}
+
+	/**
 	 * A player of a story stepped into an exit of a story ship (the Falcon's ramp, below the
 	 * hangar). Returns whether the story took care of it (always, for story ships).
 	 */
@@ -533,22 +568,54 @@ public final class Story {
 				sendState(session);
 			}
 
-			if (server.getTickCount() % 20 == 0) {
+			// Phase 22: often, so that a droid brought anew never shows as the normal one.
+			if (server.getTickCount() % 4 == 0) {
 				nameDroids(session, player);
 			}
 		}
 	}
 
-	/** The story's droids carry their names. */
+	/**
+	 * The story's droids carry their names. Phase 22: and their marks (every client knows from it
+	 * that R2-V7 is the story's own astromech: its look, its name, its key labels).
+	 */
 	private static void nameDroids(StorySession session, ServerPlayer player) {
 		for (DroidType type : storyDroids(session)) {
 			DroidEntity droid = Droids.droid(player, type);
 			String name = type == DroidType.MOUSE ? "M-31" : "R2-V7";
+			String mark = type == DroidType.MOUSE ? "m31" : "r2v7";
 
 			if (droid != null && (droid.getCustomName() == null || !droid.getCustomName().getString().equals(name))) {
 				droid.setCustomName(Component.literal(name));
 			}
+
+			if (droid != null && !mark.equals(com.phiro.sabercraft.droid.DroidMarker.story(droid))) {
+				droid.setItemSlot(net.minecraft.world.entity.EquipmentSlot.HEAD, com.phiro.sabercraft.droid.DroidMarker.item(type, mark));
+			}
 		}
+	}
+
+	/** Phase 22: the name of the story's droid of that type (R2-V7, M-31), or null for another type. */
+	public static @Nullable Component droidName(DroidType type) {
+		return type == DroidType.MOUSE ? Component.literal("M-31") : type == DroidType.R2D2 ? Component.literal("R2-V7") : null;
+	}
+
+	/**
+	 * Phase 22: refuses a normal SaberCraft function (saber, blaster, skin, ship) while the player
+	 * is in a story, and tells them so. Returns whether it was refused.
+	 */
+	public static boolean refuse(ServerPlayer player) {
+		if (!playing(player)) {
+			return false;
+		}
+
+		player.sendOverlayMessage(lockedMessage());
+		return true;
+	}
+
+	/** Phase 22: what the normal SaberCraft functions answer while a story runs. */
+	public static Component lockedMessage() {
+		return Component.translatableWithFallback("sabercraft.story.locked", "Not available during a story mission.");
 	}
 
 	/** On to the next step, the next mission, or the chapter's end. */
@@ -577,6 +644,10 @@ public final class Story {
 		} else {
 			// The end of the chapter (a checkpoint where one is, in the Falcon's lounge).
 			progress.finished = true;
+			// Phase 22: from now on everyone knows it is over (their lines, no objective), also
+			// after leaving, a restart of the game or continuing the save.
+			session.set(Chapter1.CHAPTER_DONE);
+			session.rebuildFigures();
 			Mission.Place place = session.chapter.place(session, session.step());
 			session.checkpoint(place.ship(), place.at(), place.yaw());
 			session.dirty = true;
@@ -1109,7 +1180,8 @@ public final class Story {
 
 		if (session != null) {
 			Mission.Step step = session.step();
-			objective = step.objective();
+			// Phase 22: after the chapter no objective is left: the client shows that it is over.
+			objective = session.has(Chapter1.CHAPTER_DONE) ? "sabercraft.story.obj.chapter_done" : step.objective();
 
 			for (Mission.Optional opt : mission.optional()) {
 				if (opt.shown().test(session) || session.has(opt.flag())) {
