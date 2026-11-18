@@ -1267,6 +1267,15 @@ public final class Chapter1 implements Chapter {
 					s.hear("intercom", "sabercraft.story.shout.lights_on");
 				}
 
+				// Phase 24: the intercom on the reactor (once the lights are announced), then: evacuate.
+				if (id.equals("m6.escape1")) {
+					s.timer("intercom_reactor", 90);
+				} else if (id.equals("m6.escape2")) {
+					s.timer("intercom_evacuate", 50);
+				}
+
+				s.timer("shudder", 60);
+
 				if (id.equals("m6.escape1")) {
 					// Phase 23: the bridge whole again (ship() put it back), nothing of its fall begun.
 					s.unset("tmp.bridge_creak");
@@ -1277,6 +1286,12 @@ public final class Chapter1 implements Chapter {
 				s.fighting = true;
 				s.unset("tmp.film");
 				s.unset("tmp.duel_end");
+				// Phase 24: her TIE stands in the hangar (she escapes in it).
+				s.set("tie.parked");
+				s.unset(Finale.BOSS_SCENE);
+				s.unset(Finale.BOSS_DONE);
+				s.unset("tmp.boss_reveal");
+				s.timers.remove("boss_mid");
 				// Phase 23: the duel is between the two of them: troopers still about from the
 				// escape (drawn in, or come as help) fall back.
 				s.figures.removeIf(figure -> figure.engaged || figure.key.startsWith(Stealth.REINFORCEMENT));
@@ -1540,6 +1555,11 @@ public final class Chapter1 implements Chapter {
 			guardTick(s, player, level);
 		}
 
+		// Phase 24: from the moment the saber is taken the reactor fails, worse and worse.
+		if (s.mission == 5 && s.has("saber.taken")) {
+			instability(s, player, level);
+		}
+
 		// A step said in a dialog: done once the dialog is closed.
 		if (s.pending != null && s.dialog == null) {
 			if (s.at(s.pending)) {
@@ -1708,17 +1728,42 @@ public final class Chapter1 implements Chapter {
 			case "m6.duel" -> duelTick(s, player);
 			case "m6.jump" -> {
 				if (s.has("tmp.jump_go") && s.dialog == null && !s.has("tmp.jumping")) {
+					// Phase 24: the escape seen from outside (the Tenebris goes up behind the Falcon);
+					// the jump inside the Falcon begins as it jumps in the film, and goes on after it.
 					s.set("tmp.jumping");
-					s.timer("jump", InteriorJump.length());
-					InteriorJump.story(level, s.falcon);
-				} else if (s.has("tmp.jumping") && !s.timer("jump")) {
-					s.unset("tmp.jumping");
-					s.unset("tmp.jump_go");
-					s.complete();
+					s.set("tmp.film");
+					s.timer("escape_film", ESCAPE_FILM);
+					s.timer("jump", ESCAPE_JUMP_AT + InteriorJump.length());
+					Story.cue(s, Story.CUE_CINEMA, "escape", "", ESCAPE_FILM);
+					escapes++;
+				} else if (s.has("tmp.jumping")) {
+					int left = s.timers.getOrDefault("jump", 0);
+
+					if (!s.has("tmp.interior_jump") && left <= InteriorJump.length()) {
+						s.set("tmp.interior_jump");
+						InteriorJump.story(level, s.falcon);
+					}
+
+					if (s.has("tmp.film") && !s.timer("escape_film")) {
+						s.unset("tmp.film");
+					}
+
+					if (!s.timer("jump")) {
+						s.unset("tmp.jumping");
+						s.unset("tmp.jump_go");
+						s.unset("tmp.interior_jump");
+						s.unset("tmp.film");
+						s.complete();
+					}
 				}
 			}
 			default -> {
 			}
+		}
+
+		// Phase 24: the blade lock's scene (the fight waits meanwhile).
+		if (s.has(Finale.BOSS_SCENE)) {
+			Finale.bossScene(s, player, level);
 		}
 
 		// Nobody fights while someone speaks (the player cannot move then).
@@ -2097,11 +2142,40 @@ public final class Chapter1 implements Chapter {
 			// Phase 24: skipped: he is down at once (the story goes on as after the whole scene).
 			s.timer("takedown", 1);
 		}
+
+		if ("boss_mid".equals(film) && s.has(Finale.BOSS_SCENE)) {
+			// Phase 24: skipped: the burst, her second blade, the second phase at once.
+			ServerPlayer player = s.player();
+			Figure shadow = s.figure("shadow");
+
+			if (player != null) {
+				Finale.endBossScene(s, shadow, player);
+			}
+		}
+
+		if ("escape".equals(film) && s.at("m6.jump") && s.has("tmp.jumping")) {
+			// Phase 24: skipped: the jump inside the Falcon at once (then the epilogue, as after the film).
+			s.timers.remove("escape_film");
+			s.unset("tmp.film");
+			s.timer("jump", Math.min(s.timers.getOrDefault("jump", 0), InteriorJump.length()));
+		}
+	}
+
+	/** Phase 24: the end of the Tenebris from outside (as the client's {@code EscapeFilm}), and when the Falcon jumps in it. */
+	static final int ESCAPE_FILM = 440;
+	static final int ESCAPE_JUMP_AT = 330;
+	private static int escapes;
+
+	static int escapesForTest() {
+		return escapes;
 	}
 
 	/** Phase 21: how long the film before the duel and the one of his flight are (as the client's {@code DuelFilm}). */
 	static final int DUEL_FILM = 220;
-	static final int DUEL_END_FILM = 170;
+	static final int DUEL_END_FILM = 346;
+	/** Phase 24: her flight's moments (as the client's {@code DuelFilm}): she leaps up into the TIE, is in it. */
+	static final int BOARD = 172;
+	static final int IN_TIE = 184;
 	/** Where the player stands in the film before the duel (facing him), and his way out (to the flight control door). */
 	static final Vec3 DUEL_PLAYER = new Vec3(40.5, H, -21.0);
 
@@ -2139,8 +2213,30 @@ public final class Chapter1 implements Chapter {
 					shadow.react = 0;
 					shadow.reactTicks = 0;
 					shadow.scriptSpeed = 6.5;
-					walk(shadow, new Vec3(32.0, H, -31.0), new Vec3(22.0, H, -38.0), new Vec3(18.6, H, -39.0), new Vec3(15.5, H, -39.0));
+					// Phase 24: to the TIE fighter parked by the field (she ran out of the door before).
+					// (Round the south wing to the front of the ball, between the wings.)
+					walk(shadow, new Vec3(30.0, H, -33.0), new Vec3(29.2, H, -41.0), DestroyerInterior.ESCAPE_TIE_FOOT);
 					s.set("tmp.leave.shadow");
+				} else if (t >= BOARD && t < IN_TIE) {
+					// Up into its ball in one leap.
+					Vec3 foot = DestroyerInterior.ESCAPE_TIE_FOOT;
+					Vec3 hatch = DestroyerInterior.ESCAPE_TIE.add(0.0, 0.9, 0.0);
+
+					if (t == BOARD) {
+						shadow.mode = Figure.HELD;
+						shadow.way = List.of();
+						shadow.x = foot.x;
+						shadow.z = foot.z;
+						shadow.y = foot.y;
+					}
+
+					float u = (t - BOARD + 1) / (float) (IN_TIE - BOARD);
+					shadow.x = Mth.lerp(u, foot.x, hatch.x);
+					shadow.z = Mth.lerp(u, foot.z, hatch.z);
+					shadow.y = foot.y + (hatch.y - foot.y) * u + Math.sin(u * Math.PI) * 0.8;
+					shadow.speed = 0.0F;
+				} else if (t == IN_TIE) {
+					s.figures.removeIf(figure -> figure.key.equals("shadow"));
 				}
 			}
 
@@ -2150,6 +2246,8 @@ public final class Chapter1 implements Chapter {
 				s.unset("tmp.duel_end");
 				s.unset("tmp.leave.shadow");
 				s.set("gone.shadow");
+				// Phase 24: her TIE is gone with her.
+				s.unset("tie.parked");
 				s.figures.removeIf(figure -> figure.key.equals("shadow"));
 
 				// His last words are in the film; Dax calls when it is over (seen with the HUD again).
@@ -2161,6 +2259,9 @@ public final class Chapter1 implements Chapter {
 
 			return;
 		}
+
+		// Phase 24: nobody walks through the parked TIE's wings.
+		tieWings(s, player);
 
 		if (shadow == null || shadow.hostile || s.has("tmp.duel") || s.dialog != null) {
 			return;
@@ -2215,7 +2316,51 @@ public final class Chapter1 implements Chapter {
 		s.set("tmp.duel_end");
 		s.timer("film", DUEL_END_FILM);
 		shadow.mode = Figure.HELD;
-		Story.cue(s, Story.CUE_CINEMA, "duel_end", "", DUEL_END_FILM);
+		// Phase 24: her TIE is where the film shows it (the client draws it from this point).
+		s.set("tie.parked");
+		Vec3 tie = DestroyerInterior.ESCAPE_TIE.add(Vec3.atLowerCornerOf(s.destroyer));
+		Story.cue(s, Story.CUE_CINEMA, "duel_end", "", DUEL_END_FILM, List.of(tie));
+	}
+
+	/**
+	 * Phase 24: the parked TIE's wings stand on the hangar floor (drawn only): whoever walks into
+	 * one is set back out on the side they came from. Under the ball between them one can walk.
+	 */
+	private static void tieWings(StorySession s, ServerPlayer player) {
+		if (!s.has("tie.parked") || !D.equals(s.here) || s.has("tmp.film")) {
+			return;
+		}
+
+		Vec3 me = s.local(D);
+		Vec3 tie = DestroyerInterior.ESCAPE_TIE;
+
+		// (It faces east, over the field: its wings stand north and south of the ball, across z.)
+		if (me.y > tie.y + 3.3 || me.y < H - 0.5 || Math.abs(me.x - tie.x) > TIE_WING_HALF + 0.3) {
+			return;
+		}
+
+		for (int side = -1; side <= 1; side += 2) {
+			double wing = tie.z + side * TIE_WING_X;
+			double off = me.z - wing;
+
+			if (Math.abs(off) < TIE_WING_GAP) {
+				double out = wing + (off >= 0.0 ? TIE_WING_GAP : -TIE_WING_GAP);
+				Vec3 corner = Vec3.atLowerCornerOf(s.destroyer);
+				player.connection.teleport(player.getX(), player.getY(), corner.z + out, player.getYRot(), player.getXRot());
+				wingsBlocked++;
+				return;
+			}
+		}
+	}
+
+	/** Phase 24: where the parked TIE's wings stand (from its middle, across z), how far they reach along x, how close one gets. */
+	static final double TIE_WING_X = 3.08;
+	static final double TIE_WING_HALF = 3.3;
+	static final double TIE_WING_GAP = 0.45;
+	private static int wingsBlocked;
+
+	static int wingsBlockedForTest() {
+		return wingsBlocked;
 	}
 
 	/** Mission 1: M-31, stuck behind the crates, comes with the player. */
@@ -2590,9 +2735,137 @@ public final class Chapter1 implements Chapter {
 		// Phase 23: the chasers from the reactor (and anyone searching) fight from this moment.
 		Finale.engageAll(s);
 		Story.cue(s, Story.CUE_SOUND, "", "story.alarm", 0);
+		// Phase 24: the containment field drew on the reactor's core: torn open, it overloads it.
+		// A blast out of the field's emitter, the core's arcs, the whole ship shudders.
+		ServerLevel level = interiors(s);
+
+		if (level != null) {
+			Vec3 field = Vec3.atCenterOf(DestroyerInterior.SABER_FIELD).add(Vec3.atLowerCornerOf(s.destroyer));
+			level.sendParticles(net.minecraft.core.particles.ParticleTypes.EXPLOSION, field.x, field.y + 0.6, field.z, 1, 0.0, 0.0, 0.0, 0.0);
+			level.sendParticles(net.minecraft.core.particles.ParticleTypes.ELECTRIC_SPARK, field.x, field.y + 0.8, field.z, 50, 0.4, 0.5, 0.4, 0.5);
+			level.sendParticles(net.minecraft.core.particles.ParticleTypes.LARGE_SMOKE, field.x, field.y + 1.0, field.z, 10, 0.3, 0.4, 0.3, 0.03);
+			level.playSound(null, field.x, field.y, field.z, ShipInteriors.sound("story.reactor_arc"), SoundSource.BLOCKS, 1.4F, 0.8F);
+			level.playSound(null, field.x, field.y, field.z, ShipInteriors.sound("ship.small_blast"), SoundSource.BLOCKS, 1.1F, 0.9F);
+		}
+
+		Story.cue(s, Story.CUE_DUEL, "quake", "", 22);
+		s.timer("intercom_reactor", 70);
 		s.radio("kestrel", "sabercraft.story.radio.saber_taken");
 		learnFocus(s, true);
 		done(s, "m6.saber");
+	}
+
+	// --- Phase 24: the reactor fails --------------------------------------------------------------
+
+	/** How bad it is by step (0: nothing yet). */
+	static int instabilityLevel(StorySession s) {
+		if (s.mission != 5 || !s.has("saber.taken")) {
+			return 0;
+		}
+
+		return switch (s.step().id()) {
+			case "m6.saber", "m6.escape1" -> 1;
+			case "m6.escape2" -> 2;
+			case "m6.duel" -> 3;
+			case "m6.falcon", "m6.jump" -> 4;
+			default -> 0;
+		};
+	}
+
+	/** How long between two shudders (ticks) by how bad it is. */
+	private static final int[] SHUDDER_EVERY = {0, 170, 130, 100, 70};
+	/** Where it burns and sparks along the way out (plot space), by step: the reactor, the corridor, the hangar. */
+	private static final List<Vec3> DAMAGE = List.of(new Vec3(DestroyerInterior.REACTOR_X - 2.0, R + 6.0, DestroyerInterior.REACTOR_Z + 1.0),
+			new Vec3(DestroyerInterior.REACTOR_X + 2.5, R + 11.0, DestroyerInterior.REACTOR_Z - 1.5), new Vec3(48.0, H + 3.2, 6.0),
+			new Vec3(47.5, H + 3.2, 0.5), new Vec3(40.5, H + 3.4, -6.0), new Vec3(38.5, H + 3.4, -12.0), new Vec3(35.0, H + 5.0, -22.0),
+			new Vec3(47.0, H + 5.0, -31.0));
+	private static int shudders;
+
+	static int shuddersForTest() {
+		return shudders;
+	}
+
+	/**
+	 * Phase 24: the reactor, overloaded when the saber was torn out of its field, fails more and
+	 * more on the way out: the ship shudders now and then (sooner and harder from section to
+	 * section), sparks, smoke and small blasts break out near the player (never hurting), the lights
+	 * flicker, the intercom warns and calls to evacuate, sirens; where it is worst it burns on.
+	 * Nothing of it happens during a film or a dialog (it waits); in the Falcon only the booms and
+	 * the shaking are felt.
+	 */
+	private void instability(StorySession s, ServerPlayer player, ServerLevel level) {
+		int stage = instabilityLevel(s);
+
+		if (fired(s, "intercom_reactor")) {
+			s.hear("intercom", "sabercraft.story.shout.reactor_critical");
+		}
+
+		if (fired(s, "intercom_evacuate")) {
+			s.hear("intercom", "sabercraft.story.shout.evacuate");
+		}
+
+		if (stage == 0 || s.has("tmp.film") || s.dialog != null || s.completing()) {
+			return;
+		}
+
+		boolean aboard = D.equals(s.here);
+		Vec3 corner = Vec3.atLowerCornerOf(s.origin(s.here != null ? s.here : D));
+
+		// The fires where it is worst, on all the time near the player.
+		if (aboard && s.stepTicks % 8 == 0) {
+			for (Vec3 spot : DAMAGE) {
+				Vec3 at = spot.add(corner);
+
+				if (at.distanceToSqr(player.position()) < 24.0 * 24.0) {
+					level.sendParticles(net.minecraft.core.particles.ParticleTypes.ELECTRIC_SPARK, at.x, at.y, at.z, 3 + stage, 0.25, 0.1, 0.25, 0.2);
+					level.sendParticles(net.minecraft.core.particles.ParticleTypes.SMOKE, at.x, at.y, at.z, 2, 0.2, 0.1, 0.2, 0.01);
+				}
+			}
+		}
+
+		if (aboard && stage >= 2 && s.stepTicks % 140 == 0) {
+			Story.cue(s, Story.CUE_SOUND, "", "story.siren", 0);
+		}
+
+		if (s.timer("shudder")) {
+			return;
+		}
+
+		s.timer("shudder", SHUDDER_EVERY[stage] + player.getRandom().nextInt(40));
+		shudders++;
+		Story.cue(s, Story.CUE_DUEL, "rumble", "", stage);
+
+		if (!aboard) {
+			// In the Falcon: the Tenebris shakes it where it lies, a boom through the hull.
+			Story.cue(s, Story.CUE_SOUND, "", "ship.explode", 0);
+			return;
+		}
+
+		// A blast somewhere near (where one sees it), sparks, smoke, the core's arcs.
+		Vec3 eye = player.getEyePosition();
+		net.minecraft.util.RandomSource random = player.getRandom();
+
+		for (int attempt = 0; attempt < 5; attempt++) {
+			double angle = random.nextDouble() * Math.PI * 2.0;
+			double reach = 4.0 + random.nextDouble() * 8.0;
+			Vec3 at = eye.add(Math.cos(angle) * reach, -0.5 + random.nextDouble() * 2.5, Math.sin(angle) * reach);
+
+			if (!Stealth.clear(level, eye, at)) {
+				continue;
+			}
+
+			level.sendParticles(net.minecraft.core.particles.ParticleTypes.EXPLOSION, at.x, at.y, at.z, 1, 0.0, 0.0, 0.0, 0.0);
+			level.sendParticles(net.minecraft.core.particles.ParticleTypes.ELECTRIC_SPARK, at.x, at.y, at.z, 16 + stage * 6, 0.3, 0.3, 0.3, 0.35);
+			level.sendParticles(net.minecraft.core.particles.ParticleTypes.LARGE_SMOKE, at.x, at.y, at.z, 4 + stage, 0.4, 0.3, 0.4, 0.02);
+			level.sendParticles(net.minecraft.core.particles.ParticleTypes.LAVA, at.x, at.y, at.z, 2 + stage, 0.2, 0.2, 0.2, 0.0);
+			level.playSound(null, at.x, at.y, at.z, ShipInteriors.sound(stage >= 3 ? "ship.explode" : "ship.small_blast"), SoundSource.BLOCKS,
+					0.45F + 0.12F * stage, 0.8F + random.nextFloat() * 0.3F);
+			break;
+		}
+
+		if (shudders % 2 == 0) {
+			level.playSound(null, eye.x, eye.y + 3.0, eye.z, ShipInteriors.sound("story.reactor_arc"), SoundSource.BLOCKS, 0.4F + 0.1F * stage, 0.6F);
+		}
 	}
 
 	/**

@@ -392,6 +392,13 @@ public final class DestroyerInterior extends InteriorPlan {
 	public static final int FIELD_X1 = 49;
 	public static final int FIELD_Z0 = -54;
 	public static final int FIELD_Z1 = -36;
+	/**
+	 * Phase 24: the TIE fighter the Schattenklinge escapes in: standing on its wings on the hangar
+	 * floor west of the field (its ball's middle; only drawn while the story has it there).
+	 */
+	public static final Vec3 ESCAPE_TIE = new Vec3(23.5, HANGAR + 1 + 3.3, -46.5);
+	/** Phase 24: where she stands before its ball (it faces east; between its wings) before she leaps up into it. */
+	public static final Vec3 ESCAPE_TIE_FOOT = new Vec3(26.2, HANGAR + 1, -46.5);
 	/** The flight control room on the west side. */
 	public static final int CONTROL_X0 = 5;
 	/** The corridor and the lift lobby behind the hangar. */

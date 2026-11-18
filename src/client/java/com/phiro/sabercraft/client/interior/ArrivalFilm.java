@@ -83,8 +83,8 @@ public final class ArrivalFilm {
 	/** The Falcon's nose (model z), the streak out of hyperspace grows behind it. */
 	private static final float NOSE = -5.9F;
 
-	private static final Mesh STARS = new Mesh();
-	private static final Mesh HULL_LIGHTS = new Mesh();
+	static final Mesh STARS = new Mesh();
+	static final Mesh HULL_LIGHTS = new Mesh();
 	private static final Mesh MOVING = new Mesh();
 	private static final Mesh ENGINES = new Mesh();
 	private static final Mesh MOVING_HOLO = new Mesh();
@@ -388,7 +388,7 @@ public final class ArrivalFilm {
 
 	// --- Built once ------------------------------------------------------------------------------
 
-	private static void build() {
+	static void build() {
 		if (built) {
 			return;
 		}
@@ -486,12 +486,12 @@ public final class ArrivalFilm {
 
 	// --- Helpers ---------------------------------------------------------------------------------
 
-	private static MeshBuilder builder(Mesh mesh) {
+	static MeshBuilder builder(Mesh mesh) {
 		return new MeshBuilder((layer, xyzuv, nx, ny, nz, colours, lightMode, fixedLight, anim, samples) -> mesh.add(xyzuv, nx, ny, nz, colours,
 				lightMode, fixedLight, anim, samples));
 	}
 
-	private static void submit(SubmitNodeCollector collector, PoseStack poseStack, Layer layer, Mesh mesh) {
+	static void submit(SubmitNodeCollector collector, PoseStack poseStack, Layer layer, Mesh mesh) {
 		if (mesh.isEmpty()) {
 			return;
 		}
@@ -509,7 +509,7 @@ public final class ArrivalFilm {
 		};
 	}
 
-	private static int argb(float a, float r, float g, float b) {
+	static int argb(float a, float r, float g, float b) {
 		return Math.round(Mth.clamp(a, 0.0F, 1.0F) * 255.0F) << 24 | Math.round(Mth.clamp(r, 0.0F, 1.0F) * 255.0F) << 16
 				| Math.round(Mth.clamp(g, 0.0F, 1.0F) * 255.0F) << 8 | Math.round(Mth.clamp(b, 0.0F, 1.0F) * 255.0F);
 	}

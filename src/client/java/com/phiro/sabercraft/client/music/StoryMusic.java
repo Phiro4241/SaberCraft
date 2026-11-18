@@ -125,9 +125,12 @@ public final class StoryMusic {
 	 */
 	private static @Nullable String wantedPiece() {
 		// Phase 20: a film has its own music.
-		if (com.phiro.sabercraft.client.story.StoryCinema.active()) {
+		// (Phase 24: a short scene without music of its own keeps the piece playing.)
+		String film = com.phiro.sabercraft.client.story.StoryCinema.active() ? com.phiro.sabercraft.client.story.StoryCinema.music() : null;
+
+		if (film != null) {
 			mood = "film";
-			return com.phiro.sabercraft.client.story.StoryCinema.music();
+			return film;
 		}
 
 		String chosen = StoryClient.music();
@@ -163,7 +166,10 @@ public final class StoryMusic {
 			return AFTERMATH;
 		}
 
-		if (!HIDEOUT.equals(chosen) && StoryClient.wariness(TENSION_RANGE) >= 1) {
+		if (HIDEOUT.equals(chosen)) {
+			// Safe in the hideout: the suspicion left outside does not follow in.
+			suspectAt = Long.MIN_VALUE / 2;
+		} else if (StoryClient.wariness(TENSION_RANGE) >= 1) {
 			suspectAt = ticks;
 		}
 

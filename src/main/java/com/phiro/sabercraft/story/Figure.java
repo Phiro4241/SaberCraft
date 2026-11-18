@@ -173,6 +173,8 @@ public final class Figure {
 	 * ready, until it sees the player, the player comes close, or it is hit; then it fights.
 	 */
 	public boolean post;
+	/** Phase 24: her blade lock runs as a scene (its words and the second phase come with it). */
+	public boolean lockScene;
 	/** Phase 23: what the body does now (a kind above, 0 = nothing), ticks left of it and its whole length. */
 	public int react;
 	public int reactTicks;

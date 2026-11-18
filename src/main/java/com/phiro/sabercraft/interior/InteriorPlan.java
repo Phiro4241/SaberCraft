@@ -234,6 +234,29 @@ public abstract class InteriorPlan {
 		return null;
 	}
 
+	/**
+	 * Phase 24: whether one standing there would be on top of a room: outside every room, over the
+	 * ceiling of one (in its footprint, or right beside it on its walls), at most a few blocks above
+	 * it. Nobody is meant to walk there (the bridge's roof, a wall's top between two rooms).
+	 */
+	public boolean onRoof(Vec3 local) {
+		// (Also a little higher up: feet a hair under a room's floor, 6.9999 for 7, still stand in it.)
+		if (this.room(local) != null || this.room(local.add(0.0, 0.5, 0.0)) != null) {
+			return false;
+		}
+
+		for (Room room : this.rooms()) {
+			AABB area = room.area();
+
+			if (local.x > area.minX - 1.5 && local.x < area.maxX + 1.5 && local.z > area.minZ - 1.5 && local.z < area.maxZ + 1.5 && local.y >= area.maxY - 0.01
+					&& local.y <= area.maxY + 4.0) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
 	public static final List<InteriorPlan> ALL = List.of(new FalconInterior(), new DestroyerInterior());
 
 	/** The plan with that id, or {@code null}. */

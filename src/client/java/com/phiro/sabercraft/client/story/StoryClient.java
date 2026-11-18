@@ -81,6 +81,12 @@ public final class StoryClient {
 	/** Phase 23: the blade lock (how long it lasts, its age; the view closes in while it holds). */
 	private static int lockTicks;
 	private static int lockAge = 1000;
+	/** Phase 24: how bad the reactor is (last heard), when; the lights' flicker. */
+	private static int reactorLevel;
+	private static long reactorAt = -10000L;
+	private static int flickerAge = 1000;
+	private static int flickerTicks = 1;
+	private static int rumbles;
 	/** Phase 23: the reactor's bridge groaning under the player (ticks it lasts, how long since it began). */
 	private static int creakTicks = 1;
 	private static int creakAge = 1000;
@@ -340,7 +346,7 @@ static final int CHECKPOINT_TICKS = 60;
 				// Phase 24: a new section: what was shouted before it is over.
 				dropBefore(clientTicks, true);
 			}
-			case CUE_CINEMA -> StoryCinema.start(client, payload.who(), payload.value());
+			case CUE_CINEMA -> StoryCinema.start(client, payload.who(), payload.value(), payload.points());
 			case CUE_END -> {
 				ended = true;
 				endAge = 0;
@@ -457,6 +463,15 @@ static final int CHECKPOINT_TICKS = 60;
 				flash(0x00FFE0D0, 0);
 			}
 			case "lock_push" -> shake(0.55F, 5);
+			case "rumble" -> {
+				// Phase 24: the failing reactor shakes the ship (harder from section to section), the lights flicker.
+				shake(0.3F + 0.22F * value, 10 + 4 * value);
+				reactorLevel = value;
+				reactorAt = clientTicks;
+				flickerAge = 0;
+				flickerTicks = 8 + 3 * value;
+				rumbles++;
+			}
 			case "creak" -> {
 				// Phase 23: the reactor's bridge groans: it trembles (drawn, see StoryRooms), so does the view.
 				creakTicks = Math.max(20, value);
@@ -737,6 +752,45 @@ static final int CHECKPOINT_TICKS = 60;
 		return stunAge;
 	}
 
+	/**
+	 * Phase 24: how dark the flickering lights make it now (0 none .. 1): a few hard dips while the
+	 * ship shudders; and how strongly the alarm's red pulses at the screen's edge (the reactor critical).
+	 */
+	static float flicker(float partial) {
+		if (flickerAge >= flickerTicks) {
+			return 0.0F;
+		}
+
+		float age = flickerAge + partial;
+		// Out, on, out, a stutter, on.
+		float wave = Mth.sin(age * 2.3F) * Mth.sin(age * 0.9F + 1.0F);
+		float fall = 1.0F - age / flickerTicks;
+		return Mth.clamp(wave * 0.75F * fall + (age < 2.0F ? 0.35F : 0.0F), 0.0F, 0.7F);
+	}
+
+	static float reactorPulse(float partial) {
+		if (reactorLevel < 2 || clientTicks - reactorAt > 400L) {
+			return 0.0F;
+		}
+
+		float t = clientTicks + partial;
+		return (0.5F + 0.5F * Mth.sin(t * 0.21F)) * (0.08F + 0.04F * reactorLevel);
+	}
+
+	/** Only for tests: how often the ship shuddered, how bad the reactor is. */
+	public static int rumblesForTest() {
+		return rumbles;
+	}
+
+	public static int reactorLevelForTest() {
+		return reactorLevel;
+	}
+
+	/** Phase 24: whether her saber is a staff now (the second phase of the duel: its second blade). */
+	public static boolean twinBlade() {
+		return duelPhase >= 2;
+	}
+
 	static int duelPhase() {
 		return duelPhase;
 	}
@@ -783,6 +837,7 @@ static final int CHECKPOINT_TICKS = 60;
 		zoomAge++;
 		lockAge++;
 		creakAge++;
+		flickerAge++;
 		flashAge++;
 		hurtFromAge++;
 

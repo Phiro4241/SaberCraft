@@ -202,6 +202,12 @@ public final class ImmersionConfig {
 	/** Phase 19: how fast the story's texts appear (0 at once, 1 normal, 2 slow). */
 	@SerializedName("story_text_speed")
 	public int storyTextSpeed = 1;
+	/**
+	 * Phase 24: the title screen and the menus before a world in SaberCraft's style: the space
+	 * background, the sayings next to the logo and the buttons. Off: the vanilla menus.
+	 */
+	@SerializedName("title_screen")
+	public boolean titleScreen = true;
 
 	public static final String CAMERA_COCKPIT = "cockpit";
 	public static final String CAMERA_CHASE = "chase";
