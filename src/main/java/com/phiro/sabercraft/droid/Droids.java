@@ -255,7 +255,7 @@ public final class Droids {
 
 					// Phase 12: brought back after a chunk reload, a join or a dimension change: quietly.
 					changed |= spawn(player, type, true) != null;
-				} else if (droid.distanceToSqr(player) > (droid.isStaying() ? STAY_LIMIT_SQR : DroidEntity.TELEPORT_DISTANCE_SQR * 4.0)) {
+				} else if (droid.distanceToSqr(player) > (droid.isStaying() ? STAY_LIMIT_SQR : DroidEntity.TELEPORT_DISTANCE_SQR * 4.0) && !droid.waitsForOwner()) {
 					// Left far behind (a /tp, an ender pearl): back to the owner.
 					droid.setStaying(false);
 					changed |= droid.teleportToOwner();

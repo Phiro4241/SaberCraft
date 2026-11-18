@@ -1494,5 +1494,68 @@
         "name": "sabercraft:story/focus_out"
       }
     ]
+  },
+  "story.armour_hit": {
+    "sounds": [
+      {
+        "name": "sabercraft:story/armour_hit"
+      }
+    ]
+  },
+  "story.body_fall": {
+    "sounds": [
+      {
+        "name": "sabercraft:story/body_fall"
+      }
+    ]
+  },
+  "story.clash_big": {
+    "sounds": [
+      {
+        "name": "sabercraft:story/clash_big"
+      }
+    ]
+  },
+  "story.blade_lock": {
+    "sounds": [
+      {
+        "name": "sabercraft:story/blade_lock"
+      }
+    ]
+  },
+  "story.saber_drop": {
+    "sounds": [
+      {
+        "name": "sabercraft:story/saber_drop"
+      }
+    ]
+  },
+  "story.bridge_creak": {
+    "sounds": [
+      {
+        "name": "sabercraft:story/bridge_creak"
+      }
+    ]
+  },
+  "story.bridge_snap": {
+    "sounds": [
+      {
+        "name": "sabercraft:story/bridge_snap"
+      }
+    ]
+  },
+  "story.bridge_fall": {
+    "sounds": [
+      {
+        "name": "sabercraft:story/bridge_fall"
+      }
+    ]
+  },
+  "story.reactor_arc": {
+    "sounds": [
+      {
+        "name": "sabercraft:story/reactor_arc"
+      }
+    ]
   }
 }

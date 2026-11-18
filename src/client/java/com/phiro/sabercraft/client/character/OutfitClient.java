@@ -123,7 +123,8 @@ public final class OutfitClient {
 
 			for (OutfitSyncPayload.Entry entry : payload.entries()) {
 				// Phase 19: also the story's outfits (the disguise), which nobody chooses.
-				if (entry.outfit().isPresent() && Outfit.byAnyId(entry.outfit().get()).isPresent()) {
+				// Phase 23: and the story's plain skin.
+				if (entry.outfit().isPresent() && (Outfit.byAnyId(entry.outfit().get()).isPresent() || entry.outfit().get().equals(Outfit.PLAIN))) {
 					OTHERS.put(entry.player(), entry.outfit().get());
 				} else {
 					OTHERS.remove(entry.player());
@@ -285,7 +286,13 @@ public final class OutfitClient {
 
 		if (client.player != null && client.player.getUUID().equals(player)) {
 			// Phase 19: the story's disguise (put on by the server) over one's own choice.
+			// Phase 23: before the disguise the story puts on the plain skin, so neither a chosen
+			// character nor a skin file of one's own carries into the story.
 			Identifier forced = OTHERS.get(player);
+
+			if (forced != null && forced.equals(Outfit.PLAIN)) {
+				return null;
+			}
 
 			if (forced != null && Outfit.STORY.stream().anyMatch(outfit -> outfit.id().equals(forced))) {
 				return Outfit.byAnyId(forced).map(OutfitClient::lookOf).orElse(null);
@@ -305,12 +312,20 @@ public final class OutfitClient {
 			return builtIn(choice).map(OutfitClient::lookOf).orElse(null);
 		}
 
-		if (!CharacterConfig.get().showOtherOutfits) {
+		Identifier other = OTHERS.get(player);
+
+		if (other == null || other.equals(Outfit.PLAIN)) {
 			return null;
 		}
 
-		Identifier other = OTHERS.get(player);
-		return other == null ? null : Outfit.byAnyId(other).map(OutfitClient::lookOf).orElse(null);
+		// Phase 23: the story's armour is part of the game, not a look one chooses: always shown.
+		boolean story = Outfit.STORY.stream().anyMatch(outfit -> outfit.id().equals(other));
+
+		if (!story && !CharacterConfig.get().showOtherOutfits) {
+			return null;
+		}
+
+		return Outfit.byAnyId(other).map(OutfitClient::lookOf).orElse(null);
 	}
 
 	public static Look lookOf(Outfit outfit) {

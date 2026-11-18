@@ -1502,6 +1502,128 @@ def phase21():
     write_ogg("focus_out", story_focus(rng, 0.7, False), STORY_OUT)
 
 
+# Phase 23: hits, the duel's clashes, the struck saber, the reactor's bridge ----------------------
+
+
+def story_armour_hit(rng, seconds=0.5):
+    """A blade burning across armour: a dull plastic knock and a short hissing sizzle."""
+    t = t_axis(seconds)
+    knock = (np.sin(2 * np.pi * 140 * t) * np.exp(-t * 30) + bandpass_noise(seconds, 300, 1800, rng) * np.exp(-t * 45) * 0.8) * np.minimum(1.0, t / 0.002)
+    sizzle = bandpass_noise(seconds, 2500, 8000, rng) * np.exp(-t * 9) * np.clip(t / 0.01, 0, 1) * 0.45
+    return normalize(lowpass(knock, 4000) + sizzle, 0.5)
+
+
+def story_body_fall(rng, seconds=0.85):
+    """An armoured body hitting the deck: a heavy thud, plates clattering, a last knock."""
+    t = t_axis(seconds)
+    thud = (np.sin(2 * np.pi * 62 * t) * np.exp(-t * 11) + bandpass_noise(seconds, 80, 900, rng) * np.exp(-t * 22)) * np.minimum(1.0, t / 0.004)
+    clatter = np.zeros_like(t)
+    for k, at in enumerate((0.04, 0.09, 0.16, 0.38)):
+        ct = np.clip(t - at, 0, None)
+        clatter += bandpass_noise(seconds, 900, 4500, rng) * np.exp(-ct * 55) * (t >= at) * (0.55 / (1 + k * 0.6))
+    return normalize(lowpass(thud + clatter * 0.6, 5000), 0.5)
+
+
+def story_clash_big(rng, seconds=1.1):
+    """Two blades meeting hard: a bright crack, a low boom under it, and a ringing, wavering hum that dies away."""
+    t = t_axis(seconds)
+    crack = bandpass_noise(seconds, 1200, 9000, rng) * np.exp(-t * 26) * np.minimum(1.0, t / 0.001)
+    sputter = bandpass_noise(seconds, 2500, 7000, rng) * (rng.random(len(t)) < 0.01) * 5.0
+    sputter = np.convolve(sputter, np.ones(40) / 40, mode="same") * np.exp(-t * 5)
+    boom = np.sin(2 * np.pi * (70 + 30 * np.exp(-t * 8)) * t) * np.exp(-t * 7) * 0.9
+    f = 160 + 40 * np.exp(-t * 4) + 6 * np.sin(2 * np.pi * 9 * t)
+    ring = (np.sin(2 * np.pi * np.cumsum(f) / RATE) + 0.5 * np.sin(4 * np.pi * np.cumsum(f) / RATE)) * np.exp(-t * 3.2) * 0.5
+    return normalize(crack + sputter * 0.6 + lowpass(boom + ring, 1800), 0.55)
+
+
+def story_blade_lock(rng, seconds=1.8):
+    """Two blades pressed together: a grinding, crackling buzz that swells and wavers, then eases off."""
+    t = t_axis(seconds)
+    f = 118 + 10 * np.sin(2 * np.pi * 2.5 * t) + 4 * np.sin(2 * np.pi * 11 * t)
+    buzz = sum(np.sin(2 * k * np.pi * np.cumsum(f) / RATE) / k for k in range(1, 7))
+    grind = bandpass_noise(seconds, 900, 6000, rng) * (0.5 + 0.5 * np.abs(np.sin(2 * np.pi * 17 * t)))
+    crackle = bandpass_noise(seconds, 2000, 8000, rng) * (rng.random(len(t)) < 0.006) * 4.0
+    crackle = np.convolve(crackle, np.ones(30) / 30, mode="same")
+    env = np.minimum(1.0, t / 0.12) * np.minimum(1.0, (seconds - t) / 0.45)
+    return normalize((lowpass(buzz, 2200) * 0.7 + grind * 0.35 + crackle * 0.5) * env, 0.5)
+
+
+def story_saber_drop(rng, seconds=1.5):
+    """A struck saber hilt landing on the deck: two metal bounces, a rolling clink, and a dying electric sputter."""
+    t = t_axis(seconds)
+    out = np.zeros_like(t)
+    for at, level in ((0.0, 1.0), (0.16, 0.55), (0.27, 0.3)):
+        ct = np.clip(t - at, 0, None)
+        hit = bandpass_noise(seconds, 1500, 7000, rng) * np.exp(-ct * 60) + sum(np.sin(2 * np.pi * f0 * ct) * np.exp(-ct * d) for f0, d in ((2310.0, 14.0), (3570.0, 18.0), (5120.0, 24.0))) * 0.4
+        out += hit * (t >= at) * level
+    roll = bandpass_noise(seconds, 2500, 6000, rng) * np.clip((t - 0.3) / 0.05, 0, 1) * np.exp(-np.clip(t - 0.3, 0, None) * 6) * 0.12
+    sputter = bandpass_noise(seconds, 1800, 6500, rng) * (rng.random(len(t)) < 0.004) * 4.0
+    sputter = np.convolve(sputter, np.ones(50) / 50, mode="same") * np.clip((t - 0.05) / 0.05, 0, 1) * np.exp(-t * 1.8)
+    f = 150 * np.exp(-t * 1.5) + 40
+    dying = np.sin(2 * np.pi * np.cumsum(f) / RATE) * np.exp(-t * 2.4) * (0.5 + 0.5 * (rng.random(len(t)) < 0.7)) * 0.25
+    return normalize(out * 0.7 + roll + sputter * 0.5 + lowpass(dying, 900), 0.5)
+
+
+def story_bridge_creak(rng, seconds=1.7):
+    """A long steel bridge straining: a low groan bending in pitch, metal ticking under the load."""
+    t = t_axis(seconds)
+    f = 58 + 22 * np.sin(np.pi * t / seconds) + 5 * np.sin(2 * np.pi * 3 * t)
+    groan = sum(np.sin(2 * k * np.pi * np.cumsum(f) / RATE) * (0.6 ** k) for k in range(1, 6))
+    ticks = np.zeros_like(t)
+    for at in (0.2, 0.55, 0.7, 1.1, 1.35):
+        ct = np.clip(t - at, 0, None)
+        ticks += bandpass_noise(seconds, 1200, 5000, rng) * np.exp(-ct * 80) * (t >= at) * 0.5
+    env = np.minimum(1.0, t / 0.3) * np.minimum(1.0, (seconds - t) / 0.4)
+    return normalize(lowpass(groan * env, 900) + ticks, 0.5)
+
+
+def story_bridge_snap(rng, seconds=1.0):
+    """The bridge giving way: a sharp bolt snap, steel tearing, a deep shudder."""
+    t = t_axis(seconds)
+    snap = bandpass_noise(seconds, 1500, 9000, rng) * np.exp(-t * 40) * np.minimum(1.0, t / 0.0008)
+    tear_t = np.clip(t - 0.06, 0, None)
+    tear = bandpass_noise(seconds, 600, 4000, rng) * np.exp(-tear_t * 6) * (t >= 0.06) * (0.6 + 0.4 * np.sin(2 * np.pi * 23 * t))
+    shudder = np.sin(2 * np.pi * (45 + 20 * np.exp(-t * 5)) * t) * np.exp(-t * 4) * 0.9
+    return normalize(snap + tear * 0.5 + lowpass(shudder, 600), 0.6)
+
+
+def story_bridge_fall(rng, seconds=3.2):
+    """The bridge falling into the shaft: a clatter that falls away, then a deep, distant crash with an echo."""
+    t = t_axis(seconds)
+    fall = bandpass_noise(seconds, 400, 3500, rng) * np.exp(-t * 1.6) * (0.5 + 0.5 * np.sin(2 * np.pi * 7 * t) ** 2)
+    fall = lowpass(fall, 2500) * np.clip((2.2 - t) / 0.4, 0, 1)
+    at = 2.1
+    ct = np.clip(t - at, 0, None)
+    crash = (np.sin(2 * np.pi * 40 * ct) * np.exp(-ct * 3) + bandpass_noise(seconds, 60, 700, rng) * np.exp(-ct * 5)) * (t >= at)
+    out = fall * 0.5 + lowpass(crash, 700)
+    echo = np.zeros_like(out)
+    delay = int(0.23 * RATE)
+    echo[delay:] = out[:-delay] * 0.4
+    return normalize(out + echo, 0.55)
+
+
+def story_reactor_arc(rng, seconds=0.8):
+    """An energy arc jumping across the reactor: a snapping zap with a buzzing tail."""
+    t = t_axis(seconds)
+    zap = bandpass_noise(seconds, 2000, 10000, rng) * np.exp(-t * 18) * (0.4 + 0.6 * (rng.random(len(t)) < 0.3))
+    buzz = np.sign(np.sin(2 * np.pi * 120 * t)) * np.exp(-t * 7) * 0.3
+    return normalize(zap + lowpass(buzz, 1500), 0.45)
+
+
+def phase23():
+    """Phase 23: hits on armour, a body falling, the duel's clashes and blade lock, the struck saber, the reactor bridge. Own random stream."""
+    rng = np.random.default_rng(1977_23)
+    write_ogg("armour_hit", story_armour_hit(rng), STORY_OUT)
+    write_ogg("body_fall", story_body_fall(rng), STORY_OUT)
+    write_ogg("clash_big", story_clash_big(rng), STORY_OUT)
+    write_ogg("blade_lock", story_blade_lock(rng), STORY_OUT)
+    write_ogg("saber_drop", story_saber_drop(rng), STORY_OUT)
+    write_ogg("bridge_creak", story_bridge_creak(rng), STORY_OUT)
+    write_ogg("bridge_snap", story_bridge_snap(rng), STORY_OUT)
+    write_ogg("bridge_fall", story_bridge_fall(rng), STORY_OUT)
+    write_ogg("reactor_arc", story_reactor_arc(rng), STORY_OUT)
+
+
 # Planet ambiences (Phase 10) ---------------------------------------------------------------------
 # Loops of AMBIENT_SECONDS. Every slow modulation runs a whole number of times per loop, and every
 # event (a gust, a bird, a crackle) that runs over the end wraps to the start, so they loop
@@ -1708,6 +1830,10 @@ def main():
 
     if "--phase21" in sys.argv:
         phase21()
+        return
+
+    if "--phase23" in sys.argv:
+        phase23()
         return
 
     if "--phase18" in sys.argv:

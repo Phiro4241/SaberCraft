@@ -110,6 +110,11 @@ public record Outfit(Identifier id, SaberVariant suggested, boolean character, S
 			new SaberVariant(SaberVariant.STANDARD, SaberVariant.BLUE, SaberVariant.AGILE));
 	/** Phase 19: outfits only the server gives (the story's). */
 	public static final List<Outfit> STORY = List.of(STORMTROOPER);
+	/**
+	 * Phase 23: what the story puts on a player who is not in disguise: their plain Minecraft
+	 * skin, whatever SaberCraft outfit they chose (it comes back when the story ends).
+	 */
+	public static final Identifier PLAIN = SaberCraft.id("plain");
 
 	public static Optional<Outfit> byId(Identifier id) {
 		return ALL.stream().filter(outfit -> outfit.id().equals(id)).findFirst();

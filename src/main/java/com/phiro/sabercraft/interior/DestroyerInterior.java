@@ -44,31 +44,32 @@ public final class DestroyerInterior extends InteriorPlan {
 	/** Half the width at the stern. */
 	public static final int HALF_WIDTH = 190;
 
-	/** Phase 18: the shaft floor: the core's base, the converters and consoles collide as drawn. */
-	private static void reactorFloor(InteriorBuilder b) {
-		int x0 = (int) (REACTOR_X - REACTOR_R);
-		int x1 = (int) (REACTOR_X + REACTOR_R);
-		int z0 = (int) (REACTOR_Z - REACTOR_R);
-		int z1 = (int) (REACTOR_Z + REACTOR_R);
-
-		for (int y = REACTOR_BOTTOM; y < HANGAR; y++) {
-			// Phase 19: the converters collide as drawn: the wide base and collar, the slimmer body
-			// (it collided a quarter block round the body before).
-			int level = y;
-			b.spans(x0, z0, x1, z1, y, (x, z) -> converterSpan(x, z, level), java.util.Set.of());
-			// The core's base collides as drawn, a cone (it stood in steps of a block before: one
-			// climbed them and stood in the air beside the drawn cone).
-			int row = y - REACTOR_BOTTOM;
-			b.spans(x0, z0, x1, z1, y, (x, z) -> {
-				double d = Math.hypot(x - REACTOR_X, z - REACTOR_Z);
-
-				if (d < CORE_TOP_R) {
-					return new double[] {0.0, 1.0};
+	/**
+	 * Phase 23: the reactor's steelwork, after Phiro's wish for a deep, open shaft like in the films:
+	 * small platforms at the wall on two levels, narrow steel bridges without railings over the
+	 * drop, the core rising out of the depth. Each piece ({@link #GANTRIES}) is a row of barriers
+	 * exactly where it is drawn; under and between them the shaft is open far down (one who falls
+	 * is caught and set back where they last stood, see {@link #pit}).
+	 */
+	private static void reactorWorks(InteriorBuilder b) {
+		for (Gantry g : GANTRIES) {
+			for (int x = g.x0(); x <= g.x1(); x++) {
+				for (int z = g.z0(); z <= g.z1(); z++) {
+					if (b.isAir(x, g.y() - 1, z)) {
+						b.set(x, g.y() - 1, z, PROXY);
+					}
 				}
+			}
+		}
 
-				double top = (CORE_BASE_R - d) / (CORE_BASE_R - CORE_TOP_R) * CORE_CONE - row;
-				return top <= 0.0 ? null : new double[] {0.0, Math.min(1.0, top)};
-			}, java.util.Set.of());
+		// The core: a column from the depth to the top; nobody walks (or jumps) into its light.
+		int k0 = (int) Math.floor(REACTOR_X - CORE_R - 1);
+		int k1 = (int) Math.ceil(REACTOR_X + CORE_R + 1);
+		int q0 = (int) Math.floor(REACTOR_Z - CORE_R - 1);
+		int q1 = (int) Math.ceil(REACTOR_Z + CORE_R + 1);
+
+		for (int y = PIT_FLOOR + 1; y < REACTOR_TOP; y++) {
+			b.solid(k0, q0, k1, q1, y, (x, z) -> Math.hypot(x - REACTOR_X, z - REACTOR_Z) < CORE_R, 1.0, java.util.Set.of());
 		}
 
 		for (BlockPos console : REACTOR_CONSOLES) {
@@ -77,26 +78,10 @@ public final class DestroyerInterior extends InteriorPlan {
 			b.ghost(console.getX(), console.getY() + 1, console.getZ(), net.minecraft.world.phys.shapes.Shapes.box(0.0, 0.0, 0.0, 1.0, 0.5, 1.0));
 		}
 
-		// A railing round the core's foot: the core is no stair (people climbed its cone into the
-		// pipes and the glowing column). A rail a block high, a cap half a block over it (collision
-		// only) so nobody jumps over.
-		ProxyShapes.Span rail = (x, z) -> Math.abs(Math.hypot(x - REACTOR_X, z - REACTOR_Z) - CORE_RAIL_R) <= CORE_RAIL_HALF ? new double[] {0.0, 1.0} : null;
-		ProxyShapes.Span railCap = (x, z) -> rail.at(x, z) == null ? null : new double[] {0.0, 0.5};
-		int r0 = (int) Math.floor(REACTOR_X - CORE_RAIL_R - 1);
-		int r1 = (int) Math.ceil(REACTOR_X + CORE_RAIL_R + 1);
-		int q0 = (int) Math.floor(REACTOR_Z - CORE_RAIL_R - 1);
-		int q1 = (int) Math.ceil(REACTOR_Z + CORE_RAIL_R + 1);
-		b.spans(r0, q0, r1, q1, REACTOR_BOTTOM, rail, java.util.Set.of());
-
-		for (int x = r0; x <= r1; x++) {
-			for (int z = q0; z <= q1; z++) {
-				net.minecraft.world.phys.shapes.VoxelShape cap = ProxyShapes.spans(x, z, 16, railCap);
-
-				if (!cap.isEmpty() && b.isAir(x, REACTOR_BOTTOM + 1, z)) {
-					b.ghost(x, REACTOR_BOTTOM + 1, z, cap);
-				}
-			}
-		}
+		// Phase 20: the console up on the deck level collides as drawn, nobody climbs onto it.
+		b.shaped(CATWALK_DESK.getX(), CATWALK_DESK.getY(), CATWALK_DESK.getZ(), net.minecraft.world.phys.shapes.Shapes.box(0.0, 0.0, 0.1, 1.0, 1.0, 1.0),
+				false);
+		b.ghost(CATWALK_DESK.getX(), CATWALK_DESK.getY() + 1, CATWALK_DESK.getZ(), net.minecraft.world.phys.shapes.Shapes.box(0.0, 0.0, 0.1, 1.0, 0.5, 1.0));
 
 		// The lift's four posts and the ribs up the shaft wall collide as drawn (one walked into them).
 		for (int y = REACTOR_BOTTOM; y < HANGAR; y++) {
@@ -109,58 +94,160 @@ public final class DestroyerInterior extends InteriorPlan {
 			double rz = REACTOR_Z + Math.sin(Math.toRadians(angle)) * RIB_R;
 			ProxyShapes.Solid rib = (x, z) -> (x - rx) * (x - rx) + (z - rz) * (z - rz) < RIB_SIZE * RIB_SIZE;
 
-			for (int y = REACTOR_BOTTOM; y < REACTOR_TOP; y++) {
-				b.solid((int) Math.floor(rx - 1), (int) Math.floor(rz - 1), (int) Math.floor(rx + 1), (int) Math.floor(rz + 1), y, rib, 1.0,
+			for (int y = PIT_FLOOR + 1; y < REACTOR_TOP; y++) {
+				// Phase 23: a rib's cells also hold the wall's curve (the round shell skips cells
+				// already shaped): one walked into the wall beside every rib.
+				final int row = y;
+				ProxyShapes.Solid shape = (x, z) -> rib.at(x, z) || !openReactor(x, z, row) && !inGallery(x, z, row) && !inLabWay(x, z, row);
+				b.solid((int) Math.floor(rx - 1), (int) Math.floor(rz - 1), (int) Math.floor(rx + 1), (int) Math.floor(rz + 1), y, shape, 1.0,
 						java.util.Set.of());
 			}
 		}
 
-		b.light((int) REACTOR_X - 9, REACTOR_BOTTOM + 2, (int) REACTOR_Z, 12);
-		b.light((int) REACTOR_X + 9, REACTOR_BOTTOM + 2, (int) REACTOR_Z, 12);
-		b.light((int) REACTOR_X, REACTOR_BOTTOM + 2, (int) REACTOR_Z - 9, 12);
-		b.light((int) REACTOR_X, REACTOR_BOTTOM + 2, (int) REACTOR_Z + 9, 12);
-	}
-
-	/** Phase 18: whether a point (plot space) is inside one of the energy converters on the shaft floor. */
-	/** Phase 19: the solid part of a converter's column in a row (shares of the block), or {@code null}. */
-	static double @org.jspecify.annotations.Nullable [] converterSpan(double x, double z, int y) {
-		double d = Double.MAX_VALUE;
-
-		for (double angle : CONVERTER_ANGLES) {
-			double a = Math.toRadians(angle);
-			d = Math.min(d, Math.hypot(x - (REACTOR_X + Math.cos(a) * CONVERTER_R), z - (REACTOR_Z + Math.sin(a) * CONVERTER_R)));
-		}
-
-		double body = CONVERTER_SIZE - 0.25;
-		double row = y - REACTOR_BOTTOM;
-		double top = HANGAR - 0.1 - REACTOR_BOTTOM;
-
-		if (d < body) {
-			return new double[] {0.0, 1.0};
-		}
-
-		if (d >= CONVERTER_SIZE) {
-			return null;
-		}
-
-		// The base half a block high, the collar from 0.7 under the top.
-		double from = Math.max(0.0, top - 0.7 - row);
-		double lo = row < 0.5 ? 0.0 : from;
-		double hi = row < 0.5 ? 0.5 : Math.min(1.0, top - row);
-		return lo < 1.0 && hi > lo ? new double[] {lo, hi} : null;
-	}
-
-	public static boolean converterAt(double x, double z) {
-		for (double angle : CONVERTER_ANGLES) {
-			double a = Math.toRadians(angle);
-
-			if (Math.hypot(x - (REACTOR_X + Math.cos(a) * CONVERTER_R), z - (REACTOR_Z + Math.sin(a) * CONVERTER_R)) < CONVERTER_SIZE) {
-				return true;
+		// Phase 23: the coolant valve by the wall (drawn with the story's rooms) stands on the lab's
+		// platform now: its arm and wheel at the waist collide (one walked through them).
+		for (int x = (int) VALVE_X - 1; x <= (int) VALVE_X + 1; x++) {
+			for (int z = (int) VALVE_Z - 1; z <= (int) VALVE_Z + 1; z++) {
+				b.solid(x, z, x, z, REACTOR_BOTTOM, DestroyerInterior::valveAt, 1.0, java.util.Set.of());
 			}
 		}
 
-		return false;
+		// Light on the platforms (under the deck level too), round the core up the shaft.
+		int r = REACTOR_BOTTOM;
+		int[][] lamps = {{29, r + 3, 22, 12}, {29, r + 3, 27, 12}, {51, r + 3, 22, 12}, {51, r + 3, 28, 12}, {40, r + 3, 34, 12}, {46, r + 3, 35, 11},
+				{41, r + 3, 12, 11}, {46, HANGAR + 3, 15, 12}, {30, HANGAR + 3, 23, 12}, {37, HANGAR + 3, 17, 11}, {36, r - 6, 24, 13}, {45, r - 6, 24, 13},
+				{36, r + 2, 24, 14}, {45, r + 2, 24, 14}, {40, r + 9, 20, 13}, {40, r + 9, 29, 13}, {40, REACTOR_TOP - 3, 20, 14}};
+
+		for (int[] lamp : lamps) {
+			if (b.isAir(lamp[0], lamp[1], lamp[2])) {
+				b.light(lamp[0], lamp[1], lamp[2], lamp[3]);
+			}
+		}
 	}
+
+	/**
+	 * Phase 23: a piece of the reactor's steelwork one walks on: the cells from (x0, z0) to (x1, z1)
+	 * (both included), people standing at y; a bridge (narrow, no railing) or a platform.
+	 */
+	public record Gantry(String id, int x0, int z0, int x1, int z1, int y, boolean bridge) {
+		/** Whether a point (plot space) is over this piece. */
+		public boolean contains(double x, double z) {
+			return x >= this.x0 && x < this.x1 + 1 && z >= this.z0 && z < this.z1 + 1;
+		}
+
+		/** Whether one stands on it there (plot space). */
+		public boolean on(double x, double y, double z) {
+			return this.contains(x, z) && Math.abs(y - this.y) < 0.9;
+		}
+
+		public Vec3 centre() {
+			return new Vec3((this.x0 + this.x1 + 1) / 2.0, this.y, (this.z0 + this.z1 + 1) / 2.0);
+		}
+	}
+
+	/**
+	 * Phase 23: the steelwork. On the working level (where the consoles are): the lift's platform
+	 * by the west wall, the main console's in the east, the lab's in the south (its way out to the
+	 * lab), a small one by the north console; narrow bridges between them round the open middle:
+	 * the long one from the lift's platform to the lab's ({@code collapse}, it breaks in the
+	 * escape: then the lab's side, with the east, is cut off from the lift), a short one from the
+	 * lab's to the east platform, one from the lift's up to the north. On the deck level: the
+	 * gallery's landing, a long bridge west over the shaft (the console on a bit of platform by it),
+	 * and down south to the platform round the lift's top.
+	 */
+	public static final List<Gantry> GANTRIES = List.of(
+			new Gantry("west", 27, 21, 34, 28, DestroyerInterior.REACTOR_BOTTOM, false),
+			new Gantry("east", 48, 20, 53, 29, DestroyerInterior.REACTOR_BOTTOM, false),
+			new Gantry("south", 37, 33, 49, 37, DestroyerInterior.REACTOR_BOTTOM, false),
+			new Gantry("north", 37, 11, 44, 15, DestroyerInterior.REACTOR_BOTTOM, false),
+			new Gantry("collapse_long", 33, 29, 34, 34, DestroyerInterior.REACTOR_BOTTOM, true),
+			new Gantry("collapse_end", 35, 33, 36, 34, DestroyerInterior.REACTOR_BOTTOM, true),
+			new Gantry("east_bridge", 48, 30, 49, 32, DestroyerInterior.REACTOR_BOTTOM, true),
+			new Gantry("north_bridge", 33, 16, 34, 20, DestroyerInterior.REACTOR_BOTTOM, true),
+			new Gantry("north_bridge_end", 33, 14, 36, 15, DestroyerInterior.REACTOR_BOTTOM, true),
+			new Gantry("gallery", 44, 13, 49, 17, DestroyerInterior.HANGAR + 1, false),
+			new Gantry("desk", 39, 14, 41, 15, DestroyerInterior.HANGAR + 1, false),
+			new Gantry("deck_bridge", 33, 16, 43, 17, DestroyerInterior.HANGAR + 1, true),
+			new Gantry("deck_bridge_end", 33, 18, 34, 21, DestroyerInterior.HANGAR + 1, true),
+			new Gantry("lift_top", 28, 22, 34, 27, DestroyerInterior.HANGAR + 1, false));
+
+	/** Phase 23: the bridge that breaks behind the player in the escape (from the lab's platform to the lift's). */
+	public static final List<Gantry> COLLAPSE = GANTRIES.stream().filter(g -> g.id().startsWith("collapse")).toList();
+
+	/** Phase 23: the core's column (it collides from the depth to the top). */
+	public static final double CORE_R = 2.8;
+	/** Phase 23: the shaft's floor far down (an invisible one; nobody gets there, see {@link #pit}). */
+	public static final int PIT_FLOOR = 4;
+	/** Phase 23: how deep the shaft is drawn (it seems to have no bottom, only a glow far down). */
+	public static final int PIT_DRAWN = DestroyerInterior.REACTOR_BOTTOM - 30;
+	/** Phase 23: how far one may drop in the shaft before being caught (from the deck level onto a platform is further). */
+	public static final double PIT_FALL = 4.5;
+
+	/** Phase 23: whether one stands on the bridge that breaks (plot space). */
+	public static boolean onCollapse(double x, double y, double z) {
+		return COLLAPSE.stream().anyMatch(g -> g.on(x, y, z));
+	}
+
+	/** Phase 23: whether the bridge that breaks stands in the plot with that corner. */
+	public static boolean collapseStands(net.minecraft.world.level.BlockGetter level, BlockPos origin) {
+		Gantry g = COLLAPSE.getFirst();
+		return level.getBlockState(origin.offset(g.x0(), g.y() - 1, g.z1())).is(net.minecraft.world.level.block.Blocks.BARRIER);
+	}
+
+	/** Phase 23: puts the bridge that breaks back, or takes it away (it fell). */
+	public static void setCollapse(net.minecraft.server.level.ServerLevel level, BlockPos origin, boolean standing) {
+		net.minecraft.world.level.block.state.BlockState state = standing ? net.minecraft.world.level.block.Blocks.BARRIER.defaultBlockState()
+				: net.minecraft.world.level.block.Blocks.AIR.defaultBlockState();
+
+		for (Gantry g : COLLAPSE) {
+			for (int x = g.x0(); x <= g.x1(); x++) {
+				for (int z = g.z0(); z <= g.z1(); z++) {
+					BlockPos pos = origin.offset(x, g.y() - 1, z);
+
+					if (!level.getBlockState(pos).equals(state)) {
+						level.setBlock(pos, state, net.minecraft.world.level.block.Block.UPDATE_CLIENTS);
+					}
+				}
+			}
+		}
+	}
+
+	@Override
+	public boolean pit(Vec3 local, double fallen) {
+		double dx = local.x - REACTOR_X;
+		double dz = local.z - REACTOR_Z;
+
+		if (dx * dx + dz * dz > REACTOR_WALL * REACTOR_WALL || local.y > REACTOR_TOP || local.y < PIT_FLOOR - 2) {
+			return false;
+		}
+
+		return local.y < REACTOR_BOTTOM - 1.5 || fallen > PIT_FALL;
+	}
+
+	@Override
+	public Vec3 pitRescue(Vec3 local) {
+		Vec3 best = REACTOR_LIFT_ARRIVAL;
+		double bestScore = Double.MAX_VALUE;
+
+		for (Gantry g : GANTRIES) {
+			if (g.bridge() || g.id().equals("desk")) {
+				continue;
+			}
+
+			Vec3 c = g.centre();
+			double score = Math.hypot(c.x - local.x, c.z - local.z) + Math.max(0.0, c.y - local.y - 1.0) * 0.5;
+
+			if (score < bestScore) {
+				bestScore = score;
+				best = c;
+			}
+		}
+
+		return best;
+	}
+
+	/** Phase 23: where the reactor's lift lets one out below. */
+	public static final Vec3 REACTOR_LIFT_ARRIVAL = new Vec3(28.8, DestroyerInterior.REACTOR_BOTTOM, 25.0);
 
 	// --- Bridge deck ---------------------------------------------------------------------------
 
@@ -310,6 +397,12 @@ public final class DestroyerInterior extends InteriorPlan {
 	/** The corridor and the lift lobby behind the hangar. */
 	public static final int LOBBY_Z0 = -2;
 	public static final int LOBBY_Z1 = 6;
+	/**
+	 * Phase 23: the turbolift stands back in a bay of its own behind the lobby (floor z 7..9), so
+	 * the detention block's door is no longer right beside it at the corridor's end.
+	 */
+	public static final int LIFT_Z0 = LOBBY_Z1 + 1;
+	public static final int LIFT_Z1 = LOBBY_Z1 + 3;
 	/** The reactor room: a round shaft. */
 	public static final double REACTOR_X = 40.5;
 	public static final double REACTOR_Z = 24.5;
@@ -604,8 +697,10 @@ public final class DestroyerInterior extends InteriorPlan {
 		// converters as drawn, lower caps over the pits' consoles. 8 (Phase 19): the story's rooms
 		// (maintenance room and airlock, armory, detention block, lab under the reactor) and
 		// Kestrel's crawl way. 9 (Phase 22): the detention door two wide, away from the corner;
-		// the way to the lab collides where its walls are drawn.
-		return 9;
+		// the way to the lab collides where its walls are drawn. 10 (Phase 23): the turbolift back in
+		// a bay of its own behind the lobby (the detention door no longer beside it); the reactor an
+		// open shaft far down, platforms and narrow bridges instead of the floor and the catwalk.
+		return 10;
 	}
 
 	@Override
@@ -615,13 +710,17 @@ public final class DestroyerInterior extends InteriorPlan {
 
 	@Override
 	public List<BoundingBox> volumes() {
-		return List.of(new BoundingBox(1, 10, -70, 79, 46, 54), new BoundingBox(1, 143, 62, 79, 165, 120));
+		// Phase 23: and the reactor's shaft, deeper now.
+		return List.of(new BoundingBox(1, 10, -70, 79, 46, 54), new BoundingBox(1, 143, 62, 79, 165, 120), PIT_VOLUME);
 	}
+
+	/** Phase 23: the depth of the reactor's shaft (under the rest of the ship's rooms). */
+	private static final BoundingBox PIT_VOLUME = new BoundingBox(25, PIT_FLOOR, 9, 56, 9, 40);
 
 	@Override
 	public List<BoundingBox> clearVolumes() {
 		// The Phase 14 rooms stood from the plot corner up to (45, 44, 50).
-		return List.of(new BoundingBox(0, 0, 0, 46, 45, 51), new BoundingBox(1, 10, -70, 79, 46, 54), new BoundingBox(1, 143, 62, 79, 165, 120));
+		return List.of(new BoundingBox(0, 0, 0, 46, 45, 51), new BoundingBox(1, 10, -70, 79, 46, 54), new BoundingBox(1, 143, 62, 79, 165, 120), PIT_VOLUME);
 	}
 
 	@Override
@@ -642,41 +741,30 @@ public final class DestroyerInterior extends InteriorPlan {
 	@Override
 	public List<Lift> lifts() {
 		return List.of(
-				new Lift(new AABB(CX - 2, HANGAR + 1, LOBBY_Z1 - 2, CX + 3, HANGAR + 4, LOBBY_Z1 + 1), new Vec3(CX + 0.5, DECK + 1, COMMAND_BACK - 3.5), 180.0F),
-				new Lift(new AABB(CX - 2, DECK + 1, COMMAND_BACK - 2, CX + 3, DECK + 4, COMMAND_BACK), new Vec3(CX + 0.5, HANGAR + 1, LOBBY_Z1 - 4.5), 0.0F),
+				new Lift(new AABB(CX - 2, HANGAR + 1, LIFT_Z0, CX + 3, HANGAR + 4, LIFT_Z1 + 1), new Vec3(CX + 0.5, DECK + 1, COMMAND_BACK - 3.5), 180.0F),
+				// Phase 23: out of the bay into the lobby, facing the corridor.
+				new Lift(new AABB(CX - 2, DECK + 1, COMMAND_BACK - 2, CX + 3, DECK + 4, COMMAND_BACK), new Vec3(CX + 0.5, HANGAR + 1, LIFT_Z0 - 2.5), 180.0F),
 				// Phase 18: the reactor's maintenance lift, from the catwalk down to the shaft floor and back.
 				new Lift(REACTOR_LIFT.move(0, HANGAR + 1 - REACTOR_BOTTOM, 0), new Vec3(REACTOR_LIFT.minX - 1.2, REACTOR_BOTTOM, REACTOR_LIFT.getCenter().z), 0.0F),
 				new Lift(REACTOR_LIFT, new Vec3(REACTOR_LIFT.minX - 1.2, HANGAR + 1, REACTOR_LIFT.getCenter().z), 180.0F));
 	}
 
 	/**
-	 * Phase 18: the reactor's lower level, on the shaft floor round the core's base: four energy
-	 * converters (tall machines), control consoles along the wall, a lift pad (here at the bottom;
-	 * its twin is on the catwalk right above). Angles from east, clockwise seen from above.
+	 * Phase 18: the reactor's maintenance lift (its pad on the lift's platform; its twin right above
+	 * on the deck level). Phase 23: the energy converters stand in the depth of the open shaft, up
+	 * to just under the working level (drawn only: nobody gets near them). Angles from east,
+	 * clockwise seen from above.
 	 */
 	public static final AABB REACTOR_LIFT = new AABB(30, REACTOR_BOTTOM, 24, 32, REACTOR_BOTTOM + 2, 26);
-	public static final double CONVERTER_R = 10.2;
+	public static final double CONVERTER_R = 9.0;
 	public static final double CONVERTER_SIZE = 1.3;
 	public static final double[] CONVERTER_ANGLES = {45.0, 135.0, 225.0, 315.0};
-	/** The consoles of the lower level: cells (at the wall, facing the core). */
+	/** The consoles of the working level: cells (on the platforms by the wall, facing the core). */
 	public static final List<BlockPos> REACTOR_CONSOLES = List.of(new BlockPos(52, REACTOR_BOTTOM, 24), new BlockPos(40, REACTOR_BOTTOM, 36),
 			new BlockPos(40, REACTOR_BOTTOM, 12));
-
-	/** The radius of the core's housing at the shaft floor, up the cone (row y). */
-	public static double coreBase(int y) {
-		return y >= REACTOR_BOTTOM + 5 ? 2.8 : 5.5 - (y - REACTOR_BOTTOM) * (5.5 - 2.8) / 5.0;
-	}
-
-	/** Phase 18: the cone at the core's foot as drawn: its radius at the floor and at its top, its height. */
-	static final double CORE_BASE_R = 5.5;
-	static final double CORE_TOP_R = 2.8;
-	static final double CORE_CONE = 5.0;
-	/** Phase 18: the railing round the core's foot on the lower level: its radius, half its thickness. */
-	public static final double CORE_RAIL_R = 6.3;
-	public static final double CORE_RAIL_HALF = 0.08;
-	/** Phase 19: the railing round the shaft on the catwalk (drawn at this radius), half its thickness. */
-	public static final double CATWALK_RAIL_R = 8.6;
+	/** Phase 19: half the thickness of a railing (the stairs' and walkways' rails collide as drawn). */
 	public static final double RAIL_HALF = 0.08;
+
 	/** Phase 19: the conference table as drawn: its sides (z) and its top over the deck row. */
 	public static final double TABLE_Z0 = 106.05;
 	public static final double TABLE_Z1 = 108.95;
@@ -686,6 +774,25 @@ public final class DestroyerInterior extends InteriorPlan {
 	/** Phase 18: the ribs up the shaft wall (they collide as drawn): their angles, where they stand, how thick. */
 	// Phase 20: the rib at 75 degrees stood in the way to the lab (a pipe across the doorway, solid
 	// besides); it stands beside the doorway now, at 61 degrees.
+	/** The coolant valve on the reactor's wall (plot space): its wheel's middle; its pipe rises 0.45 further out on both axes. */
+	public static final double VALVE_X = 49.2;
+	public static final double VALVE_Z = 33.2;
+
+	/**
+	 * Phase 23: whether a point (plot space) is in the coolant valve's arm (from its pipe to the
+	 * wheel, a little thicker than drawn) or its wheel (across the arm, 0.3 either side).
+	 */
+	static boolean valveAt(double x, double z) {
+		double px = x - VALVE_X;
+		double pz = z - VALVE_Z;
+		// Along the arm (out to the pipe) and across it.
+		double along = (px + pz) / Math.sqrt(2.0);
+		double across = (px - pz) / Math.sqrt(2.0);
+		boolean arm = along > -0.05 && along < 0.64 && Math.abs(across) < 0.1;
+		boolean wheel = Math.abs(along) < 0.06 && Math.abs(across) < 0.31;
+		return arm || wheel;
+	}
+
 	public static final float[] RIB_ANGLES = {15, 45, 61, 105, 135, 165, 195, 225, 255, 285, 345};
 	public static final double RIB_R = REACTOR_WALL - 0.25;
 	public static final double RIB_SIZE = 0.21;
@@ -716,11 +823,11 @@ public final class DestroyerInterior extends InteriorPlan {
 	@Override
 	public List<Room> rooms() {
 		return List.of(
-				new Room("lift", new AABB(CX - 2, HANGAR + 1, LOBBY_Z1 - 2, CX + 3, HANGAR + 4, LOBBY_Z1 + 1)),
+				new Room("lift", new AABB(CX - 2, HANGAR + 1, LIFT_Z0, CX + 3, HANGAR + 4, LIFT_Z1 + 1)),
 				new Room("lift", new AABB(CX - 2, DECK + 1, COMMAND_BACK - 2, CX + 3, DECK + 4, COMMAND_BACK)),
 				new Room("flight_control", new AABB(CONTROL_X0 + 1, HANGAR + 1, -58, HANGAR_X0, HANGAR + 6, -36)),
 				new Room("hangar", new AABB(HANGAR_X0 + 1, HANGAR + 1, HANGAR_Z0 + 1, HANGAR_X1, HANGAR_TOP, HANGAR_Z1)),
-				new Room("reactor", new AABB(REACTOR_X - REACTOR_R, REACTOR_BOTTOM, REACTOR_Z - REACTOR_R, REACTOR_X + REACTOR_R, REACTOR_TOP,
+				new Room("reactor", new AABB(REACTOR_X - REACTOR_R, PIT_FLOOR, REACTOR_Z - REACTOR_R, REACTOR_X + REACTOR_R, REACTOR_TOP,
 						REACTOR_Z + REACTOR_R)),
 				new Room("hangar_corridor", new AABB(CX - 3, HANGAR + 1, HANGAR_Z1, CX + 4, HANGAR + 5, LOBBY_Z1 + 1)),
 				new Room("conference", new AABB(SIDE_WEST + 1, DECK + 1, SIDE_Z0 + 1, CX - 4, COMMAND_TOP, SIDE_Z1)),
@@ -747,6 +854,8 @@ public final class DestroyerInterior extends InteriorPlan {
 		flightControl(b);
 		corridor(b);
 		reactor(b);
+		// Phase 23: after the reactor (the bay's back wall is where the shaft's wall ring begins).
+		liftBay(b);
 		bridge(b);
 		commandDeck(b);
 		// Phase 19: the story's rooms (before the crawl ways, whose hatches go through their walls).
@@ -969,8 +1078,7 @@ public final class DestroyerInterior extends InteriorPlan {
 		b.room(CX - 4, HANGAR, HANGAR_Z1, CX + 4, HANGAR + 6, LOBBY_Z1 + 1, DARK);
 		b.box(CX - 3, HANGAR, HANGAR_Z1, CX + 3, HANGAR, LOBBY_Z1, FLOOR);
 		b.clear(CX - 2, HANGAR + 1, HANGAR_Z1, CX + 2, HANGAR + 4, HANGAR_Z1);
-		// The lift at the end of the lobby (a lit floor).
-		b.box(CX - 2, HANGAR, LOBBY_Z1 - 2, CX + 2, HANGAR, LOBBY_Z1, "white_concrete");
+		// (Phase 23: the lift is no longer at the end of the lobby but in its bay behind it.)
 
 		for (int z = HANGAR_Z1 + 2; z <= LOBBY_Z1 - 2; z += 4) {
 			b.light(CX, HANGAR + 4, z, 12);
@@ -984,14 +1092,33 @@ public final class DestroyerInterior extends InteriorPlan {
 		b.light(CX + 7, HANGAR + 3, LOBBY_Z0 + 1, 11);
 	}
 
+	/**
+	 * Phase 23: the turbolift's bay behind the lobby: as wide as the lift, three deep, its mouth in
+	 * the lobby's end wall, the lit floor of the lift in it.
+	 */
+	private static void liftBay(InteriorBuilder b) {
+		b.room(CX - 3, HANGAR, LIFT_Z0, CX + 3, HANGAR + 6, LIFT_Z1 + 1, DARK);
+		b.clear(CX - 2, HANGAR + 1, LIFT_Z0, CX + 2, HANGAR + 4, LIFT_Z0);
+		b.box(CX - 2, HANGAR, LIFT_Z0, CX + 2, HANGAR, LIFT_Z1, "white_concrete");
+		b.light(CX, HANGAR + 5, LIFT_Z0 + 1, 12);
+
+		// The lift's frame stands 0.3 into the bay on both sides (as drawn): one walked into it.
+		for (int y = HANGAR + 1; y <= HANGAR + 4; y++) {
+			for (int z = LIFT_Z0; z <= LIFT_Z1; z++) {
+				double z0 = z == LIFT_Z0 ? 0.8 : 0.0;
+				b.shaped(CX - 2, y, z, net.minecraft.world.phys.shapes.Shapes.box(0.0, 0.0, z0, 0.3, 1.0, 1.0), false);
+				b.shaped(CX + 2, y, z, net.minecraft.world.phys.shapes.Shapes.box(0.7, 0.0, z0, 1.0, 1.0, 1.0), false);
+			}
+		}
+	}
+
 	/** The gallery from the side room to the reactor's catwalk. */
 	public static final int GALLERY_X0 = CX + 6;
 	public static final int GALLERY_X1 = CX + 10;
 	public static final int GALLERY_Z0 = LOBBY_Z0 + 3;
 	public static final int GALLERY_Z1 = 11;
 
-	/** The reactor: a round shaft with the core in the middle and a catwalk ring around it. */
-	/** Phase 16: the gallery's way through the shaft wall. */
+	/** Phase 16: the gallery's way through the shaft wall (Phase 23: onto its landing over the open shaft). */
 	public static final Doorway GALLERY = new Doorway(GALLERY_X0 + 1, HANGAR + 1, GALLERY_Z1, GALLERY_X1 - 1, HANGAR + 3, GALLERY_Z1 + 3, false);
 
 	/**
@@ -1007,7 +1134,7 @@ public final class DestroyerInterior extends InteriorPlan {
 	public static boolean openReactor(double x, double z, int y) {
 		double dx = x - REACTOR_X;
 		double dz = z - REACTOR_Z;
-		return y >= REACTOR_BOTTOM && y < REACTOR_TOP && dx * dx + dz * dz < REACTOR_WALL * REACTOR_WALL;
+		return y > PIT_FLOOR && y < REACTOR_TOP && dx * dx + dz * dz < REACTOR_WALL * REACTOR_WALL;
 	}
 
 	/** Phase 19: the way from the shaft floor through its wall to the lab's blast door. */
@@ -1030,55 +1157,29 @@ public final class DestroyerInterior extends InteriorPlan {
 
 	private static void reactor(InteriorBuilder b) {
 		double r = REACTOR_R;
-		b.ringWall(REACTOR_X, REACTOR_BOTTOM - 1, REACTOR_TOP, REACTOR_Z, r - 0.5, r + 1.0, DARK);
-		b.disc(REACTOR_X, REACTOR_BOTTOM - 1, REACTOR_Z, r, DARK);
+		// Phase 23: the shaft goes far down under the platforms (it was a floor round the core).
+		b.ringWall(REACTOR_X, PIT_FLOOR, REACTOR_TOP, REACTOR_Z, r - 0.5, r + 1.0, DARK);
+		b.disc(REACTOR_X, PIT_FLOOR, REACTOR_Z, r, PROXY);
 		b.disc(REACTOR_X, REACTOR_TOP, REACTOR_Z, r, DARK);
 
-		for (int y = REACTOR_BOTTOM; y < REACTOR_TOP; y++) {
+		for (int y = PIT_FLOOR + 1; y < REACTOR_TOP; y++) {
 			b.disc(REACTOR_X, y, REACTOR_Z, r - 0.5, "air");
 		}
 
-		// The catwalk ring at deck height.
-		b.ring(REACTOR_X, HANGAR, REACTOR_Z, 8.5, r - 0.5, FLOOR);
-		// The gallery from the lobby's side room, through the shaft wall onto the catwalk.
+		// The gallery from the lobby's side room, through the shaft wall onto its landing.
 		b.room(GALLERY_X0, HANGAR, GALLERY_Z0, GALLERY_X1, HANGAR + 4, GALLERY_Z1, DARK);
 		b.box(GALLERY_X0 + 1, HANGAR, GALLERY_Z0, GALLERY_X1 - 1, HANGAR, GALLERY_Z1 + 3, FLOOR);
 		b.clear(GALLERY_X0 + 1, HANGAR + 1, GALLERY_Z0, GALLERY_X1 - 1, HANGAR + 3, GALLERY_Z1 + 3);
 		b.light(CX + 8, HANGAR + 3, 6, 11);
-		// The railing round the shaft (drawn by the client). Phase 19: it collides as drawn, a slim
-		// ring a block high with half a block more over it like a fence (it was a ring of whole
-		// blocks two high: one stopped up to a block before the railing).
-		ProxyShapes.Span catwalkRail = (x, z) -> Math.abs(Math.hypot(x - REACTOR_X, z - REACTOR_Z) - CATWALK_RAIL_R) <= RAIL_HALF ? new double[] {0.0, 1.0}
-				: null;
-		ProxyShapes.Span catwalkCap = (x, z) -> catwalkRail.at(x, z) == null ? null : new double[] {0.0, 0.5};
-		int c0 = (int) Math.floor(REACTOR_X - CATWALK_RAIL_R - 1);
-		int c1 = (int) Math.ceil(REACTOR_X + CATWALK_RAIL_R + 1);
-		int d0 = (int) Math.floor(REACTOR_Z - CATWALK_RAIL_R - 1);
-		int d1 = (int) Math.ceil(REACTOR_Z + CATWALK_RAIL_R + 1);
-		b.spans(c0, d0, c1, d1, HANGAR + 1, catwalkRail, java.util.Set.of());
-
-		for (int x = c0; x <= c1; x++) {
-			for (int z = d0; z <= d1; z++) {
-				net.minecraft.world.phys.shapes.VoxelShape cap = ProxyShapes.spans(x, z, 16, catwalkCap);
-
-				if (!cap.isEmpty() && b.isAir(x, HANGAR + 2, z)) {
-					b.ghost(x, HANGAR + 2, z, cap);
-				}
-			}
-		}
-
-		// Phase 20: the console on the catwalk collides as drawn, nobody climbs onto it.
-		b.shaped(CATWALK_DESK.getX(), CATWALK_DESK.getY(), CATWALK_DESK.getZ(), net.minecraft.world.phys.shapes.Shapes.box(0.0, 0.0, 0.1, 1.0, 1.0, 1.0),
-				false);
-		b.ghost(CATWALK_DESK.getX(), CATWALK_DESK.getY() + 1, CATWALK_DESK.getZ(), net.minecraft.world.phys.shapes.Shapes.box(0.0, 0.0, 0.1, 1.0, 0.5, 1.0));
-		b.clear(GALLERY_X0 + 1, HANGAR + 1, GALLERY_Z0, GALLERY_X1 - 1, HANGAR + 3, GALLERY_Z1 + 3);
 		// Phase 19: the way through the shaft wall to the lab (its blast door is in the lab's wall).
 		b.clear(LAB_DOOR_X0, REACTOR_BOTTOM, LAB_WALL - 3, LAB_DOOR_X0 + 2, REACTOR_BOTTOM + 2, LAB_WALL - 1);
 		b.box(LAB_DOOR_X0, REACTOR_BOTTOM - 1, LAB_WALL - 3, LAB_DOOR_X0 + 2, REACTOR_BOTTOM - 1, LAB_WALL - 1, FLOOR);
+		reactorWorks(b);
 		// Phase 16: the wall collides where it is drawn (no more barriers a step in front of it).
-		b.roundShell(REACTOR_X, REACTOR_Z, new double[] {REACTOR_WALL}, (int) (REACTOR_X - r - 2), REACTOR_BOTTOM, (int) (REACTOR_Z - r - 2),
+		// Phase 23: from the depth up (the steelwork's barriers are left as they are).
+		b.roundShell(REACTOR_X, REACTOR_Z, new double[] {REACTOR_WALL}, (int) (REACTOR_X - r - 2), PIT_FLOOR + 1, (int) (REACTOR_Z - r - 2),
 				(int) (REACTOR_X + r + 2), REACTOR_TOP - 1, (int) (REACTOR_Z + r + 2), java.util.Set.of(InteriorBuilder.state(DARK).getBlock()),
-				DestroyerInterior::openReactor, (x, z, y) -> y == HANGAR || inGallery(x, z, y) || inLabWay(x, z, y));
+				DestroyerInterior::openReactor, (x, z, y) -> inGallery(x, z, y) || inLabWay(x, z, y));
 		// Phase 22: beside the way to the lab, between the shaft's wall and the lab's, there were
 		// empty cells behind the drawn walls: one walked into the wall there. Now they collide.
 		for (int x : new int[] {LAB_DOOR_X0 - 1, LAB_DOOR_X0 + 3}) {
@@ -1098,14 +1199,30 @@ public final class DestroyerInterior extends InteriorPlan {
 			}
 		}
 
-		reactorFloor(b);
+		// Phase 23: beside the gallery's way through the shaft wall, past the curve, the cells behind
+		// its drawn side walls were empty: one walked into the wall there. Now they collide.
+		for (int x : new int[] {GALLERY_X0, GALLERY_X1}) {
+			for (int z = GALLERY_Z1; z <= GALLERY_Z1 + 3; z++) {
+				double nx = net.minecraft.util.Mth.clamp(REACTOR_X, x, x + 1) - REACTOR_X;
+				double nz = net.minecraft.util.Mth.clamp(REACTOR_Z, z, z + 1) - REACTOR_Z;
+
+				if (Math.sqrt(nx * nx + nz * nz) < REACTOR_WALL) {
+					continue;
+				}
+
+				for (int y = HANGAR + 1; y <= HANGAR + 3; y++) {
+					if (b.isAir(x, y, z)) {
+						b.set(x, y, z, PROXY);
+					}
+				}
+			}
+		}
+
 		// The core gives off light.
-		b.light((int) REACTOR_X, REACTOR_BOTTOM + 4, (int) REACTOR_Z, 15);
 		b.light((int) REACTOR_X, HANGAR + 3, (int) (REACTOR_Z - 11), 13);
 		b.light((int) REACTOR_X, HANGAR + 3, (int) (REACTOR_Z + 11), 13);
 		b.light((int) (REACTOR_X - 11), HANGAR + 3, (int) REACTOR_Z, 13);
 		b.light((int) (REACTOR_X + 11), HANGAR + 3, (int) REACTOR_Z, 13);
-		b.light((int) REACTOR_X, REACTOR_TOP - 3, (int) REACTOR_Z, 14);
 	}
 
 	// --- Bridge deck ---------------------------------------------------------------------------

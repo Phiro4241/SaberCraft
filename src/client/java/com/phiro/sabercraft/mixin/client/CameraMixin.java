@@ -9,6 +9,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.ModifyArg;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import net.minecraft.client.Camera;
 import net.minecraft.world.entity.Entity;
@@ -26,6 +27,9 @@ import com.phiro.sabercraft.client.ship.ShipClient;
  * and banked with it (see {@link CockpitView}). Only the camera of this client changes.
  *
  * <p>Phase 20: during a story film the camera follows the film's shots instead.
+ *
+ * <p>Phase 23: in a story fight the view closes in a little for a clash and while the blades are
+ * locked (scaled by the game's FOV effects setting).
  */
 @Mixin(Camera.class)
 public abstract class CameraMixin {
@@ -51,6 +55,16 @@ public abstract class CameraMixin {
 
 	@Shadow
 	protected abstract void setPosition(Vec3 position);
+
+	@Inject(method = "calculateFov", at = @At("RETURN"), cancellable = true)
+	private void sabercraft$storyZoom(float partialTicks, CallbackInfoReturnable<Float> cir) {
+		float scale = com.phiro.sabercraft.client.story.StoryClient.fovScale(partialTicks);
+
+		if (scale != 1.0F) {
+			float effect = net.minecraft.client.Minecraft.getInstance().options.fovEffectScale().get().floatValue();
+			cir.setReturnValue(cir.getReturnValueF() * (1.0F + (scale - 1.0F) * effect));
+		}
+	}
 
 	@ModifyArg(method = "alignWithEntity", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/Camera;getMaxZoom(F)F"))
 	private float sabercraft$shipCamera(float distance) {

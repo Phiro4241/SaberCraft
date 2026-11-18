@@ -365,8 +365,10 @@ public final class Chapter1 implements Chapter {
 				}
 			} else if (bottom && Crew.OFFICER_OLIVE.equals(c.kind())) {
 				if ("m4.download".equals(step)) {
-					// Walks the south of the floor, back and forth (round the converters).
-					routine = Crew.patrol(Crew.OFFICER_OLIVE, 0.7, 0.0, ring(150), ring(120), ring(90), ring(60), ring(90), ring(120));
+					// Walks the south of the floor, back and forth (Phase 23: the lab's platform,
+					// along its edge over the open shaft).
+					routine = Crew.patrol(Crew.OFFICER_OLIVE, 0.7, 0.0, new Vec3(38.5, R, 33.8), new Vec3(42.5, R, 33.6), new Vec3(47.0, R, 34.0),
+							new Vec3(42.5, R, 33.6));
 				}
 			} else if (bottom && Crew.TROOPER.equals(c.kind())) {
 				// The guard by the lift went searching after the download (Phase 20: one sees him go,
@@ -384,12 +386,6 @@ public final class Chapter1 implements Chapter {
 			figure.lamp = m == 4 && Crew.TROOPER.equals(c.kind());
 			list.add(figure);
 		}
-	}
-
-	/** A point on the reactor floor's walking ring (radius 8 round the core), at that angle (degrees). */
-	private static Vec3 ring(double angle) {
-		double a = Math.toRadians(angle);
-		return new Vec3(DestroyerInterior.REACTOR_X + Math.cos(a) * 8.0, R, DestroyerInterior.REACTOR_Z + Math.sin(a) * 8.0);
 	}
 
 	/** The people of the story aboard the Star Destroyer. */
@@ -436,8 +432,12 @@ public final class Chapter1 implements Chapter {
 				list.add(quartermaster);
 
 				if ("m3.hale".equals(step)) {
-					Figure hale = person("hale", "hale", Crew.at(Crew.OFFICER_BLACK, Crew.STAND, 45.5, H, -13.0, 270.0F), D);
+					// Phase 23: Hale waits in the corridor outside until the armory is empty, then
+					// comes in himself (through the door).
+					Figure hale = person("hale", "hale", Crew.at(Crew.OFFICER_BLACK, Crew.STAND, HALE_WAITS.x, H, HALE_WAITS.z, 210.0F), D);
 					hale.talks = false;
+					// He knows whom he comes to see: on his way in he does not stop at the sight of them.
+					hale.blind = true;
 					list.add(hale);
 				}
 			}
@@ -489,7 +489,13 @@ public final class Chapter1 implements Chapter {
 				}
 			}
 			case 5 -> {
-				if (!s.has("saber.taken") && (step.equals("m6.reactor") || step.equals("m6.door"))) {
+				// Phase 23: once he hunts the player (seen in the reactor) he does not vanish as they
+				// go on into the lab: he comes after them, and when the saber is taken he fights.
+				Figure guard = s.figure("lab_guard");
+				boolean hunts = guard != null && !guard.hostile && guard.mode != Figure.ROUTINE && guard.mode != Figure.DOWN
+						&& (step.equals("m6.lab") || step.equals("m6.saber"));
+
+				if (!s.has("saber.taken") && (step.equals("m6.reactor") || step.equals("m6.door") || hunts)) {
 					list.add(guard("lab_guard", Crew.at(Crew.TROOPER, Crew.STAND, 44.5, R, 35.5, 180.0F)));
 				}
 
@@ -537,7 +543,8 @@ public final class Chapter1 implements Chapter {
 	private static void hostiles(StorySession s, List<Figure> list, String step) {
 		switch (step) {
 			case "m6.escape1" -> {
-				list.add(fighter("h1", 37.0, R, 33.5, 180.0F));
+				// (Phase 23: by the console, not at the end of the bridge to the lift.)
+				list.add(fighter("h1", 40.0, R, 34.4, 180.0F));
 				list.add(fighter("h2", 48.5, R, 28.5, 120.0F));
 				list.add(fighter("lab_guard", 44.5, R, 35.5, 0.0F));
 
@@ -1110,15 +1117,18 @@ public final class Chapter1 implements Chapter {
 				}
 			}
 			case "m3.hale" -> {
-				// Phase 20: Hale comes in; if the quartermaster is still here, Hale sends him out
-				// first, then shuts the door behind him (the talk is between the two of them).
+				// Phase 23: the armory is to be empty when Hale comes: if the quartermaster is still
+				// here, the security desk pages him to the hangar now (Hale's doing); Hale waits
+				// outside until he is well away (haleScene), then comes in alone.
+				if (!s.has("qm.away")) {
+					pageQuartermaster(s);
+				}
+
 				Figure hale = s.figure("hale");
 
 				if (hale != null) {
-					Vec3 me = s.local(D);
-					Vec3 door = new Vec3(45.5, H, -13.0);
-					Vec3 front = me.distanceTo(door) > 2.5 ? me.add(door.subtract(me).normalize().scale(1.6)) : new Vec3(47.6, H, -10.0);
-					walk(hale, new Vec3(46.6, H, -11.2), new Vec3(front.x, H, front.z));
+					hale.mode = Figure.HELD;
+					hale.target = null;
 				}
 			}
 			case "m5.escape" -> {
@@ -1167,16 +1177,28 @@ public final class Chapter1 implements Chapter {
 			case "m6.escape1", "m6.escape2", "m6.falcon" -> {
 				s.fighting = true;
 				Finale.arm(s);
+				// Phase 23: who still hunted the player from before (a chase in the reactor, a
+				// search) fights now too, at once.
+				Finale.engageAll(s);
 
 				if (id.equals("m6.escape1") && !again) {
 					// Phase 20: the main lights back on: they want to see whom they shoot at.
 					s.hear("intercom", "sabercraft.story.shout.lights_on");
+				}
+
+				if (id.equals("m6.escape1")) {
+					// Phase 23: the bridge whole again (ship() put it back), nothing of its fall begun.
+					s.unset("tmp.bridge_creak");
+					s.unset("tmp.bridge_down");
 				}
 			}
 			case "m6.duel" -> {
 				s.fighting = true;
 				s.unset("tmp.film");
 				s.unset("tmp.duel_end");
+				// Phase 23: the duel is between the two of them: troopers still about from the
+				// escape (drawn in, or come as help) fall back.
+				s.figures.removeIf(figure -> figure.engaged || figure.key.startsWith(Stealth.REINFORCEMENT));
 				Figure shadow = s.figure("shadow");
 
 				if (shadow != null) {
@@ -1235,7 +1257,124 @@ public final class Chapter1 implements Chapter {
 		field(s, 0, s.has("cell1.open"));
 		field(s, 1, s.has("cell2.open"));
 		field(s, 2, s.has("cell3.open"));
+
+		// Phase 23: the reactor's long bridge stands until it breaks behind the player in the
+		// escape, and is down from then on (a checkpoint before that finds it whole again).
+		boolean down = s.mission == 5 && BRIDGE_DOWN.contains(s.step().id());
+
+		if (DestroyerInterior.collapseStands(level, s.destroyer) == down) {
+			DestroyerInterior.setCollapse(level, s.destroyer, !down);
+		}
 	}
+
+	/**
+	 * Phase 23, the escape over the reactor: the long bridge from the lab's platform to the lift's
+	 * groans under the fire as one runs over it (a crack, sparks, the view trembles) and breaks
+	 * behind one once one is across, off it on the lift's platform: a snap, its pieces fall into the
+	 * depth, whoever was on it falls with it; the chasers are left on the far side, cut off (they
+	 * come to the broken edge and shoot from there). Never under the player.
+	 */
+	private static void bridge(StorySession s, ServerLevel level) {
+		Vec3 corner = Vec3.atLowerCornerOf(s.destroyer);
+
+		if (s.has("tmp.bridge_down")) {
+			// Those who fell with it, down into the depth.
+			for (Figure figure : List.copyOf(s.figures)) {
+				if (figure.drop > 0.0) {
+					figure.y -= figure.drop;
+					figure.drop = Math.min(1.2, figure.drop + 0.06);
+
+					if (figure.y < DestroyerInterior.PIT_FLOOR) {
+						s.set("gone." + figure.key);
+						s.figures.remove(figure);
+					}
+				}
+			}
+
+			return;
+		}
+
+		Vec3 me = s.local(D);
+
+		if (!D.equals(s.here)) {
+			return;
+		}
+
+		boolean on = DestroyerInterior.onCollapse(me.x, me.y, me.z);
+
+		if (on && !s.has("tmp.bridge_creak")) {
+			s.set("tmp.bridge_creak");
+			Vec3 mid = corner.add(34.0, R - 0.3, 32.0);
+			level.playSound(null, mid.x, mid.y, mid.z, ShipInteriors.sound("story.bridge_creak"), net.minecraft.sounds.SoundSource.BLOCKS, 1.3F, 1.0F);
+
+			for (Vec3 at : List.of(new Vec3(33.0, R - 0.4, 29.0), new Vec3(37.0, R - 0.4, 33.0), new Vec3(35.0, R - 0.4, 33.0))) {
+				Vec3 w = corner.add(at);
+				level.sendParticles(net.minecraft.core.particles.ParticleTypes.ELECTRIC_SPARK, w.x, w.y, w.z, 16, 0.3, 0.05, 0.3, 0.25);
+			}
+
+			Story.cue(s, Story.CUE_DUEL, "creak", "", 40);
+			s.hint("sabercraft.story.hint.bridge_creak");
+			return;
+		}
+
+		DestroyerInterior.Gantry west = DestroyerInterior.GANTRIES.getFirst();
+
+		if (!s.has("tmp.bridge_creak") || on || !west.on(me.x, me.y, me.z)) {
+			return;
+		}
+
+		// Across: it goes.
+		s.set("tmp.bridge_down");
+		DestroyerInterior.setCollapse(level, s.destroyer, false);
+		Vec3 snap = corner.add(34.0, R - 0.3, 29.5);
+		Vec3 mid = corner.add(34.0, R - 0.3, 32.5);
+		level.playSound(null, snap.x, snap.y, snap.z, ShipInteriors.sound("story.bridge_snap"), net.minecraft.sounds.SoundSource.BLOCKS, 1.6F, 1.0F);
+		level.playSound(null, mid.x, mid.y - 2.0, mid.z, ShipInteriors.sound("story.bridge_fall"), net.minecraft.sounds.SoundSource.BLOCKS, 1.5F, 1.0F);
+
+		for (DestroyerInterior.Gantry g : DestroyerInterior.COLLAPSE) {
+			for (int x = g.x0(); x <= g.x1(); x++) {
+				for (int z = g.z0(); z <= g.z1(); z++) {
+					Vec3 w = corner.add(x + 0.5, g.y() - 0.4, z + 0.5);
+					level.sendParticles(net.minecraft.core.particles.ParticleTypes.ELECTRIC_SPARK, w.x, w.y, w.z, 10, 0.4, 0.1, 0.4, 0.35);
+					level.sendParticles(net.minecraft.core.particles.ParticleTypes.LARGE_SMOKE, w.x, w.y - 0.3, w.z, 3, 0.3, 0.1, 0.3, 0.02);
+				}
+			}
+		}
+
+		for (Vec3 at : List.of(new Vec3(34.0, R - 0.5, 29.0), new Vec3(37.0, R - 0.5, 34.0))) {
+			Vec3 w = corner.add(at);
+			level.sendParticles(net.minecraft.core.particles.ParticleTypes.LAVA, w.x, w.y, w.z, 12, 0.4, 0.1, 0.4, 0.2);
+			level.sendParticles(net.minecraft.core.particles.ParticleTypes.EXPLOSION, w.x, w.y, w.z, 1, 0.0, 0.0, 0.0, 0.0);
+		}
+
+		Story.cue(s, Story.CUE_DUEL, "quake", "", 18);
+		Figure shouter = null;
+
+		for (Figure figure : s.figures) {
+			if (!D.equals(figure.ship) || figure.mode == Figure.DOWN) {
+				continue;
+			}
+
+			if (DestroyerInterior.onCollapse(figure.x, figure.y, figure.z)) {
+				// On it: down with it.
+				figure.mode = Figure.DOWN;
+				figure.react(Figure.FALL, 40);
+				figure.drop = 0.08;
+				figure.speed = 0.0F;
+			} else if (figure.hostile && shouter == null && figure.y < H - 1) {
+				shouter = figure;
+			}
+		}
+
+		if (shouter != null) {
+			s.hear("trooper", "sabercraft.story.shout.bridge_gone");
+		}
+
+		s.radio("kestrel", "sabercraft.story.radio.bridge_down");
+	}
+
+	/** Phase 23: the steps after the reactor's bridge broke (it stays down). */
+	static final java.util.Set<String> BRIDGE_DOWN = java.util.Set.of("m6.escape2", "m6.duel", "m6.falcon", "m6.jump", "m6.epilogue");
 
 	/** Switches a cell's force field off (open) or on. */
 	static void field(StorySession s, int cell, boolean open) {
@@ -1274,7 +1413,8 @@ public final class Chapter1 implements Chapter {
 		}
 
 		player.containerMenu.broadcastChanges();
-		OutfitSync.override(player, s.disguised ? Outfit.STORMTROOPER.id() : null);
+		// Phase 23: the plain skin until the disguise (no chosen character in the story).
+		OutfitSync.override(player, s.disguised ? Outfit.STORMTROOPER.id() : Outfit.PLAIN);
 	}
 
 	/**
@@ -1335,6 +1475,17 @@ public final class Chapter1 implements Chapter {
 			Story.cue(s, Story.CUE_HINT, "progress", "sabercraft.story.hint.hacking", Math.max(0, HACK - left) * 100 / HACK);
 		}
 
+		if (s.has("tmp.qm_leaving")) {
+			Figure quartermaster = s.figure("quartermaster");
+
+			if (quartermaster == null || quartermaster.mode != Figure.HELD) {
+				s.unset("tmp.qm_leaving");
+			} else if (s.dialog == null && --quartermaster.timer <= 0) {
+				s.unset("tmp.qm_leaving");
+				quartermasterGoes(s);
+			}
+		}
+
 		// Those walking off: gone at the end of their way (Phase 20: out of a door, into a lift).
 		// Those sent somewhere: at the end of their way, that is their place from now on.
 		for (Figure figure : List.copyOf(s.figures)) {
@@ -1342,7 +1493,10 @@ public final class Chapter1 implements Chapter {
 				s.unset("tmp.leave." + figure.key);
 				s.set("gone." + figure.key);
 				s.figures.remove(figure);
-			} else if (figure.mode == Figure.HELD && s.has("tmp.rehome." + figure.key) && s.partner != figure) {
+			} else if (figure.mode != Figure.SCRIPTED && s.has("tmp.rehome." + figure.key) && s.partner != figure
+					&& !(figure.key.equals("quartermaster") && s.has("tmp.qm_leaving"))) {
+				// (Phase 23: also when they broke off the way, having seen the player: they keep
+				// looking or chasing, and go back to the new place afterwards.)
 				s.unset("tmp.rehome." + figure.key);
 				rehome(s, figure);
 			}
@@ -1404,7 +1558,8 @@ public final class Chapter1 implements Chapter {
 			case "m4.lift", "m6.reactor" -> {
 				Vec3 me = s.local(D);
 
-				if (D.equals(s.here) && me.y < R + 1.5 && shaft(me) < DestroyerInterior.REACTOR_R) {
+				// (Phase 23: standing there: one dropping from the deck level is caught and set back.)
+				if (D.equals(s.here) && me.y < R + 0.6 && me.y > R - 0.5 && shaft(me) < DestroyerInterior.REACTOR_R) {
 					s.complete();
 				}
 			}
@@ -1446,6 +1601,7 @@ public final class Chapter1 implements Chapter {
 				}
 			}
 			case "m6.escape1" -> {
+				bridge(s, level);
 				Vec3 me = s.local(D);
 
 				if (D.equals(s.here) && me.y > H - 0.5 && shaft(me) < DestroyerInterior.REACTOR_R + 0.5) {
@@ -1482,9 +1638,11 @@ public final class Chapter1 implements Chapter {
 	}
 
 	/**
-	 * Phase 20, Mission 3: Hale in the armory. He comes in; if the quartermaster is still there, he
-	 * sends him to the hangar and waits until he is out; then he shuts and bolts the door ("so that
-	 * nobody disturbs us"), they talk (both answers as before), he unbolts it and goes.
+	 * Phase 20, Mission 3: Hale in the armory. Phase 23: the room is empty when he comes: he waits
+	 * in the corridor until the quartermaster (paged to the hangar) is out of the room and well
+	 * away, then he comes in himself, through the door, up to the player; he shuts and bolts the
+	 * door behind him ("so that nobody disturbs us"), they talk (both answers as before, nobody
+	 * passes), he unbolts it and goes as he came.
 	 */
 	private static void haleScene(StorySession s) {
 		Figure hale = s.figure("hale");
@@ -1494,45 +1652,67 @@ public final class Chapter1 implements Chapter {
 			return;
 		}
 
-		if (s.dialog != null || hale.mode != Figure.HELD) {
+		Vec3 me = s.local(D);
+
+		if (s.dialog != null) {
 			return;
 		}
 
-		if (!s.has("tmp.hale_alone")) {
+		if (!s.has("tmp.hale_in")) {
 			Figure quartermaster = s.figure("quartermaster");
 
-			if (quartermaster != null && !s.has("qm.away")) {
-				if (!s.has("tmp.hale_sent") && hale.position().distanceTo(s.local(D)) < 7.0) {
-					s.set("tmp.hale_sent");
-					s.talk("m3_hale_qm", hale);
-				}
-			} else if (quartermaster == null || !DestroyerInterior.ARMORY.contains(quartermaster.position().add(0.0, 0.5, 0.0))) {
-				// Alone: he shuts the door.
-				s.set("tmp.hale_alone");
-				s.set("tmp.hale_door");
-				Story.cue(s, Story.CUE_SOUND, "", "story.door_lock", 0);
+			if (quartermaster == null || quartermaster.position().distanceTo(ARMORY_DOOR) > HALE_CLEAR
+					&& !DestroyerInterior.ARMORY.contains(quartermaster.position().add(0.0, 0.5, 0.0))) {
+				// The room is empty: he comes in, up to the player (a step short of them).
+				s.set("tmp.hale_in");
+				Vec3 front = me.distanceTo(ARMORY_DOOR) > 2.5 ? me.add(ARMORY_DOOR.subtract(me).normalize().scale(1.6)) : new Vec3(47.6, H, -10.0);
+				walk(hale, new Vec3(43.0, H, -13.0), new Vec3(45.6, H, -12.9), new Vec3(46.6, H, -11.2), new Vec3(front.x, H, front.z));
 			}
 
 			return;
 		}
 
+		if (hale.mode != Figure.HELD) {
+			return;
+		}
+
+		if (!s.has("tmp.hale_alone")) {
+			// In: he shuts the door behind him and bolts it.
+			s.set("tmp.hale_alone");
+			s.set("tmp.hale_door");
+			Story.cue(s, Story.CUE_SOUND, "", "story.door_lock", 0);
+			hale.target = me;
+			return;
+		}
+
 		if (!s.has("tmp.hale_talked")) {
-			if (hale.position().distanceTo(s.local(D)) < 7.0) {
+			if (hale.position().distanceTo(me) < 7.0) {
 				s.set("tmp.hale_talked");
 				s.talk("m3_hale", hale);
+			} else {
+				// The player stepped away: he comes over.
+				hale.target = me;
+				walk(hale, me.add(hale.position().subtract(me).normalize().scale(1.6)));
 			}
 		} else if (s.has("tmp.hale_gone")) {
 			// He unbolts the door and goes as he came; then the way is free.
 			if (!s.has("tmp.hale_walk")) {
 				s.set("tmp.hale_walk");
 				s.unset("tmp.hale_door");
-				walk(hale, new Vec3(46.6, H, -11.2), new Vec3(45.6, H, -12.9), new Vec3(43.0, H, -13.0), new Vec3(40.8, H, -14.6));
+				walk(hale, new Vec3(46.6, H, -11.2), new Vec3(45.6, H, -12.9), new Vec3(43.0, H, -13.0), HALE_WAITS);
 			} else {
 				s.figures.remove(hale);
 				s.complete();
 			}
 		}
 	}
+
+	/** Phase 23: where Hale waits in the corridor (and goes again), the armory's door, how far the quartermaster is to be gone. */
+	// (Beside the armory's door, north of it: out of the paged quartermaster's way to the hangar,
+	// who stood stuck in front of him otherwise.)
+	static final Vec3 HALE_WAITS = new Vec3(42.6, H, -10.6);
+	static final Vec3 ARMORY_DOOR = new Vec3(45.5, H, -13.0);
+	static final double HALE_CLEAR = 9.0;
 
 	/** Phase 20, Mission 3: the quartermaster is called away (a page, or Hale sends him): to the freight at the hangar's crates. */
 	static void sendQuartermaster(StorySession s) {
@@ -1544,9 +1724,28 @@ public final class Chapter1 implements Chapter {
 		Figure quartermaster = s.figure("quartermaster");
 
 		if (quartermaster != null) {
+			// Phase 23: he finishes what he was doing first (a few seconds; he looks round as he
+			// goes, so one has time to get out of his way), then goes.
+			quartermaster.mode = Figure.HELD;
+			quartermaster.speed = 0.0F;
+			quartermaster.target = null;
+			quartermaster.timer = QM_DELAY;
+			s.set("tmp.qm_leaving");
+			s.set("tmp.rehome.quartermaster");
+			s.hint("sabercraft.story.hint.qm_leaving");
+		}
+	}
+
+	/** Phase 23: how long the paged quartermaster takes before he goes (ticks). */
+	static final int QM_DELAY = 60;
+
+	/** Phase 23: the paged quartermaster sets off: out of the armory, to the hangar's crates. */
+	private static void quartermasterGoes(StorySession s) {
+		Figure quartermaster = s.figure("quartermaster");
+
+		if (quartermaster != null && quartermaster.mode == Figure.HELD) {
 			walk(quartermaster, new Vec3(46.2, H, -12.6), new Vec3(43.0, H, -13.0), new Vec3(40.6, H, -15.0), new Vec3(40.6, H, -18.5), new Vec3(50.0, H, -23.5),
 					new Vec3(HANGAR_CRATES.x, H, HANGAR_CRATES.z));
-			s.set("tmp.rehome.quartermaster");
 		}
 	}
 
@@ -1614,8 +1813,13 @@ public final class Chapter1 implements Chapter {
 		for (Figure wanted : s.chapter.figures(s)) {
 			if (wanted.key.equals(figure.key)) {
 				figure.crew = wanted.crew;
-				figure.mode = Figure.RETURN;
-				figure.target = null;
+
+				// Phase 23: one who broke off the way to look or chase goes on with that first.
+				if (figure.mode == Figure.HELD || figure.mode == Figure.ROUTINE) {
+					figure.mode = Figure.RETURN;
+					figure.target = null;
+				}
+
 				return;
 			}
 		}
@@ -1802,7 +2006,7 @@ public final class Chapter1 implements Chapter {
 
 	/** Phase 21: how long the film before the duel and the one of his flight are (as the client's {@code DuelFilm}). */
 	static final int DUEL_FILM = 220;
-	static final int DUEL_END_FILM = 130;
+	static final int DUEL_END_FILM = 170;
 	/** Where the player stands in the film before the duel (facing him), and his way out (to the flight control door). */
 	static final Vec3 DUEL_PLAYER = new Vec3(40.5, H, -21.0);
 
@@ -1814,12 +2018,31 @@ public final class Chapter1 implements Chapter {
 		if (s.has("tmp.duel_end")) {
 			int left = s.timers.getOrDefault("film", 0);
 			int t = DUEL_END_FILM - left;
+			ServerLevel level = interiors(s);
+
+			// Phase 23: her saber lands, sputters and dies (it is broken: it stays where it fell).
+			if (fired(s, "saber_lands") && level != null && s.dropped != null) {
+				Vec3 at = s.dropped.add(Vec3.atLowerCornerOf(s.destroyer));
+				level.sendParticles(net.minecraft.core.particles.ParticleTypes.ELECTRIC_SPARK, at.x, at.y + 0.1, at.z, 24, 0.15, 0.05, 0.15, 0.4);
+				level.sendParticles(net.minecraft.core.particles.ParticleTypes.SMOKE, at.x, at.y + 0.1, at.z, 8, 0.1, 0.05, 0.1, 0.01);
+				level.playSound(null, at.x, at.y, at.z, ShipInteriors.sound("story.saber_drop"), net.minecraft.sounds.SoundSource.HOSTILE, 1.0F, 1.0F);
+			} else if (level != null && s.dropped != null && t > Finale.SABER_FLIGHT && t < 90 && t % 9 == 0) {
+				Vec3 at = s.dropped.add(Vec3.atLowerCornerOf(s.destroyer));
+				level.sendParticles(net.minecraft.core.particles.ParticleTypes.ELECTRIC_SPARK, at.x, at.y + 0.1, at.z, 3, 0.06, 0.02, 0.06, 0.2);
+			}
 
 			if (shadow != null) {
-				if (t == 18) {
-					shadow.lit = false;
-					Story.cue(s, Story.CUE_SOUND, "", "saber.retract", shadow.id);
-				} else if (t == 40) {
+				// Her stagger as the saber flies off, and the stare at her empty hand, run their course.
+				if (level != null && shadow.reactTicks > 0 && t < 96) {
+					Hits.tick(shadow, level, Vec3.atLowerCornerOf(s.destroyer));
+				}
+
+				if (t == 62) {
+					// She looks from her empty hand to the player: she has lost.
+					s.hear("shadow", "sabercraft.story.shout.shadow_defeat");
+				} else if (t == 96) {
+					shadow.react = 0;
+					shadow.reactTicks = 0;
 					shadow.scriptSpeed = 6.5;
 					walk(shadow, new Vec3(32.0, H, -31.0), new Vec3(22.0, H, -38.0), new Vec3(18.6, H, -39.0), new Vec3(15.5, H, -39.0));
 					s.set("tmp.leave.shadow");
@@ -1891,7 +2114,7 @@ public final class Chapter1 implements Chapter {
 		}
 	}
 
-	/** Phase 21: he breaks off ({@link Finale}): the film of his flight, then the Falcon. */
+	/** Phase 21: he breaks off ({@link Finale}): the film of his flight, then the Falcon. Phase 23: disarmed first. */
 	static void duelEnds(StorySession s, Figure shadow) {
 		s.set("tmp.film");
 		s.set("tmp.duel_end");
@@ -2007,6 +2230,8 @@ public final class Chapter1 implements Chapter {
 				figure.z = key.equals("hale") ? 3.6 : 4.8;
 				// Phase 22: through the middle of the door (two wide now, z 4 to 6).
 				walk(figure, new Vec3(35.0, H, 4.8), new Vec3(37.6, H, 4.8), new Vec3(39.4, H, 1.6));
+				// Phase 23: they leave the prisoner behind them (nobody raises the alarm about him).
+				figure.blind = true;
 				s.set("tmp.leave." + key);
 			}
 		}
@@ -2058,6 +2283,8 @@ public final class Chapter1 implements Chapter {
 
 		s.fighting = true;
 		s.raiseAlarm(Stealth.SEARCH + Stealth.LOSE);
+		// Phase 23: the chasers from the reactor (and anyone searching) fight from this moment.
+		Finale.engageAll(s);
 		Story.cue(s, Story.CUE_SOUND, "", "story.alarm", 0);
 		s.radio("kestrel", "sabercraft.story.radio.saber_taken");
 		learnFocus(s, true);
@@ -2355,7 +2582,7 @@ public final class Chapter1 implements Chapter {
 			new Vec3(36.5, H, -18.5), REACTOR_COMM, new Vec3(50.9, R, 29.0), new Vec3(31.0, H, 21.5));
 
 	/** Phase 20: where troopers come in after an alarm: the lifts, the hangar's door, the corridor by the detention block and the armory. */
-	static final List<Vec3> ENTRIES = List.of(new Vec3(40.5, H, 5.0), new Vec3(40.5, H, -15.0), new Vec3(28.8, R, 25.0), new Vec3(28.8, H, 25.0),
+	static final List<Vec3> ENTRIES = List.of(new Vec3(40.5, H, DestroyerInterior.LIFT_Z0 + 1.5), new Vec3(40.5, H, -15.0), new Vec3(28.8, R, 25.0), new Vec3(28.8, H, 25.0),
 			new Vec3(38.0, H, 4.0), new Vec3(43.0, H, -13.0));
 
 	@Override

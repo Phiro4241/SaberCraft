@@ -320,6 +320,35 @@ final class StoryHud implements HudElement {
 		}
 	}
 
+	/**
+	 * Phase 23: where a hurt came from: a red arc round the crosshair on that side (ahead, to a
+	 * side, behind), fading in a second.
+	 */
+	private static void hurtFrom(GuiGraphicsExtractor graphics, Minecraft client, float partial, int width, int height) {
+		double[] from = StoryClient.hurtFrom();
+
+		if (from == null || client.player == null || from[0] * from[0] + from[1] * from[1] < 1.0E-4) {
+			return;
+		}
+
+		float yaw = client.player.getViewYRot(partial) * Mth.DEG_TO_RAD;
+		double forward = -Mth.sin(yaw) * from[0] + Mth.cos(yaw) * from[1];
+		double right = -Mth.cos(yaw) * from[0] - Mth.sin(yaw) * from[1];
+		float angle = (float) Math.toDegrees(Math.atan2(right, forward));
+		float fade = 1.0F - (float) (from[2] + partial) / 24.0F;
+		int alpha = Math.round(Mth.clamp(fade, 0.0F, 1.0F) * 220.0F);
+
+		if (alpha <= 8) {
+			return;
+		}
+
+		int colour = alpha << 24 | 0xE0281C;
+
+		for (int r = 0; r < 3; r++) {
+			arc(graphics, width / 2, height / 2, 34 + r * 2, angle, 1.0F, colour);
+		}
+	}
+
 	// --- The alarm ------------------------------------------------------------------------------------
 
 	private static void alarm(GuiGraphicsExtractor graphics, StoryStatePayload state, int width, int height) {
@@ -340,14 +369,23 @@ final class StoryHud implements HudElement {
 
 	// --- Phase 21: the fight ----------------------------------------------------------------------
 
-	/** The phase marks on his bar (where he changes his way, where he breaks off). */
-	static final float[] PHASE_MARKS = {0.65F, 0.35F, 0.15F};
+	/** Phase 23: the one mark on her bar: where the second phase begins (after the blade lock). */
+	static final float[] PHASE_MARKS = {0.5F};
 
 	/**
 	 * The fight: his strength at the top (with the marks where he changes and where he breaks off),
 	 * the Focus over the hotbar, a cold tint while it runs, red edges when hurt, the stun hits.
 	 */
 	private static void duel(GuiGraphicsExtractor graphics, Minecraft client, int width, int height) {
+		float partial = client.getDeltaTracker().getGameTimeDeltaPartialTick(false);
+		// Phase 23: a clash flashes over the view for a moment.
+		int flash = StoryClient.flash(partial);
+
+		if (flash != 0) {
+			graphics.fill(0, 0, width, height, flash);
+		}
+
+		hurtFrom(graphics, client, partial, width, height);
 		int hurt = StoryClient.hurtAge();
 
 		if (hurt < 12) {
@@ -388,7 +426,7 @@ final class StoryHud implements HudElement {
 
 			for (float mark : PHASE_MARKS) {
 				int mx = x + Math.round(barWidth * mark);
-				graphics.fill(mx, y - 2, mx + 1, y + 7, mark == PHASE_MARKS[2] ? 0xFFFFE08A : 0xFFE8EEF6);
+				graphics.fill(mx, y - 2, mx + 1, y + 7, 0xFFE8EEF6);
 			}
 
 			// What he is about to do (the name of his move, never how to answer it).

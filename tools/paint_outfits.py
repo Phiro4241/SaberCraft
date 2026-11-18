@@ -785,77 +785,69 @@ def capes():
 
 
 # ---------------- Phase 19: the story's disguise ----------------
+# Phase 23: the disguise is the very armour the ship's troopers wear. It is no longer painted on
+# its own: every face is cut from the same tiles the client draws the trooper figures with
+# (tools/gen_interior_textures.py), at their full detail, so the player's stolen armour and the
+# troopers around them look alike. The texture is 8 times the size of a normal skin (512 x 512,
+# same layout): the player model takes its pictures by position, so a finer skin simply shows
+# finer, and a head's face gets the 64 x 64 pixels the troopers' helmets have.
+
+SCALE = 8
+
 
 def stormtrooper():
-    """A trooper's armour for the story's disguise: white plates over a black undersuit, grey
-    seams, a white helmet with dark eye lenses, a grey breathing grille and a black brow band.
-    Matches the troopers of the ships' crew (drawn by the client)."""
-    o = Outfit(1919)
-    white, shadow, seam, black, grey = "#e9eaec", "#c9cbd0", "#8d9097", "#141518", "#5c6068"
-    o.fill("body", False, black)
-    o.fill(ARMS, False, black)
-    o.fill(LEGS, False, black)
+    """The trooper armour of the story's disguise, from the troopers' own tiles."""
+    import sys as _sys
+    _sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    import gen_interior_textures as interior
 
-    def chest(f, x, y, w, h):
-        if f == "bottom":
-            return None
-        if y in (6, 7):
-            # The black belly band between chest plate and belt; the belt with its pouches.
-            return black if y == 6 else (white if f == "front" and x in (1, 2, 5, 6) else shadow)
-        if f == "front" and y in (2, 3) and x in (1, 6):
-            return grey
-        if f == "front" and x in (3, 4) and y < 5:
-            return shadow if y % 2 else white
-        if y >= 8:
-            return white if y < 11 else shadow
-        return white if (x + y) % 7 else shadow
-    o.paint("body", True, chest)
+    tiles = {name: np.clip(fn(), 0, 1) for name, fn, _ in interior.TILES
+             if name.startswith("crew_trooper")}
 
-    def arm(f, x, y, w, h):
-        if f == "bottom":
-            return black
-        if f == "top":
-            return white
-        if y in (4, 5):
-            return black
-        if y >= 10:
-            return black
-        return white if y < 4 or y < 10 else seam
-    o.paint(ARMS, True, arm)
+    def crop(name, u0=0.0, v0=0.0, u1=1.0, v1=1.0):
+        t = tiles[name]
+        n = t.shape[0]
+        a = t[int(round(v0 * n)):max(int(round(v0 * n)) + 1, int(round(v1 * n))),
+              int(round(u0 * n)):max(int(round(u0 * n)) + 1, int(round(u1 * n)))]
+        return Image.fromarray((a * 255 + 0.5).astype(np.uint8), "RGBA")
 
-    def leg(f, x, y, w, h):
-        if f in ("top",):
-            return None
-        if f == "bottom":
-            return black
-        if y in (5,):
-            return black
-        if y == 6 and f == "front":
-            return grey
-        return white if y < 11 else seam
-    o.paint(LEGS, True, leg)
+    img = Image.new("RGBA", (64 * SCALE, 64 * SCALE), (0, 0, 0, 0))
+    geometry = Outfit(0)
 
-    # The helmet: white, dark lenses, the grille, a black band over the brow and grey sides.
-    layout = {
-        "_": {"W": white, "S": shadow, "B": black, "G": grey, "s": seam},
-        "front": [
-            "WWWWWWWW",
-            "WSSSSSSW",
-            "WBBWWBBW",
-            "WBBWWBBW",
-            "WWWSSWWW",
-            "WsGWWGsW",
-            "WGsGGsGW",
-            "SWWWWWWS",
-        ],
-        "right": ["WWWWWWWW", "WWWWWWWW", "WWWWWWWW", "SSWWWWWW", "GSWWWWWW", "SSWWWWWW", "WWWWWWWW", "SSSSSSSS"],
-        "left": ["WWWWWWWW", "WWWWWWWW", "WWWWWWWW", "WWWWWWSS", "WWWWWWSG", "WWWWWWSS", "WWWWWWWW", "SSSSSSSS"],
-        "back": ["WWWWWWWW", "WWWWWWWW", "WWWSSWWW", "WWWWWWWW", "SSSSSSSS", "WWWWWWWW", "WWWWWWWW", "SSSSSSSS"],
-        "top": ["WWWWWWWW", "WWWWWWWW", "WWWSSWWW", "WWWWWWWW", "WWWWWWWW", "WWWSSWWW", "WWWWWWWW", "WWWWWWWW"],
-        "bottom": ["BBBBBBBB"] * 8,
-    }
-    head_from(o, False, layout)
-    o.save("stormtrooper")
+    def put(part, face, picture):
+        x0, y0, w, h = geometry.faces(part, False)[face]
+        picture = picture.convert("RGBA").resize((w * SCALE, h * SCALE), Image.LANCZOS)
+        # Opaque, like every base layer of a skin.
+        picture.putalpha(255)
+        img.paste(picture, (x0 * SCALE, y0 * SCALE))
+
+    # The helmet: its face in front, the side tile round it (the troopers' back of the head is
+    # the side tile too), the dome on top, the chin underneath (the lowest part of the side).
+    put("head", "front", crop("crew_trooper_helmet"))
+    for face in ("right", "left", "back"):
+        put("head", face, crop("crew_trooper_helmet_side"))
+    put("head", "top", crop("crew_trooper_helmet_top"))
+    put("head", "bottom", crop("crew_trooper_helmet_side", 0.0, 0.85, 1.0, 1.0))
+
+    # The body: the chest in front; sides, back, shoulders and underneath from the tile's edge
+    # (its belt line goes round, the buttons stay in front), as the figures have it.
+    put("body", "front", crop("crew_trooper_torso"))
+    for face in ("right", "left", "back", "top", "bottom"):
+        put("body", face, crop("crew_trooper_torso", 0.0, 0.0, 0.14, 1.0))
+
+    # Arms and legs: the limb tile round them (upper plate, the joint, lower plate, cuff or boot),
+    # the top from its upper plate, the hand or sole from its lowest row.
+    for part in ARMS + LEGS:
+        for face in ("right", "front", "left", "back"):
+            put(part, face, crop("crew_trooper_limb"))
+        put(part, "top", crop("crew_trooper_limb", 0.1, 0.03, 0.9, 0.3))
+        put(part, "bottom", crop("crew_trooper_limb", 0.1, 0.92, 0.9, 1.0) if part in LEGS
+            else crop("crew_trooper_torso", 0.02, 0.6, 0.12, 0.7))
+
+    os.makedirs(OUT, exist_ok=True)
+    path = os.path.join(OUT, "stormtrooper.png")
+    img.save(path, optimize=True)
+    print(path)
 
 
 if __name__ == "__main__":

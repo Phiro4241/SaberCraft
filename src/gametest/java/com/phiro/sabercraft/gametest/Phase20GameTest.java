@@ -139,7 +139,8 @@ public class Phase20GameTest implements FabricClientGameTest {
 		double middle = DestroyerInterior.LAB_DOOR_X0 + 1.5;
 		double door = DestroyerInterior.LAB_WALL;
 		// There first (the server's collision sees only loaded chunks: from the Falcon all was free).
-		this.place(new Vec3(middle, floor, door - 10.5), 0.0F, 8.0F);
+		// (Phase 23: on the lab's platform; the shaft is open in front of it.)
+		this.place(new Vec3(middle, floor, door - 5.0), 0.0F, 8.0F);
 		this.context.waitTicks(30);
 
 		// Along the way to the door: room for the whole body all the way.
@@ -177,7 +178,7 @@ public class Phase20GameTest implements FabricClientGameTest {
 		this.context.waitTicks(10);
 		this.context.takeScreenshot("phase20_reactor_lab_door");
 		BlockPos desk = DestroyerInterior.CATWALK_DESK;
-		this.place(new Vec3(desk.getX() + 1.6, desk.getY(), desk.getZ() - 2.6), 25.0F, 22.0F);
+		this.place(new Vec3(desk.getX() + 1.4, desk.getY(), desk.getZ() - 0.8), 25.0F, 22.0F);
 		this.context.waitTicks(10);
 		this.context.takeScreenshot("phase20_reactor_catwalk_console");
 		check(!this.on(s -> this.free(s, new Vec3(desk.getX() + 0.5, desk.getY() + 0.1, desk.getZ() + 0.5), 0.2, 0.5)),

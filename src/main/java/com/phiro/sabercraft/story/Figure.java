@@ -102,6 +102,8 @@ public final class Figure {
 	public int pathIndex;
 	public long pathAt = -1000L;
 	public @Nullable Vec3 pathGoal;
+	/** Phase 23: whether the way found reaches its goal (else they stop at its end, not at the wall). */
+	public boolean pathReaches = true;
 	/** Phase 20: how many more places they search after losing the player. */
 	public int searches;
 	/** Phase 20: ticks they found no way on (going back: then they slip into place, unseen). */
@@ -135,6 +137,73 @@ public final class Figure {
 	public long hurtAt = -1000L;
 	/** Phase 21: how fast they walk a scripted way (blocks a second; 0 = walking). */
 	public double scriptSpeed;
+
+	// Phase 23: what the body does beyond walking (the client shows it), so that every hit, block
+	// and call is seen and not only a bar that sinks.
+	/** A light hit: a jolt, a short step back. */
+	public static final int FLINCH = 1;
+	/** A heavy hit: thrown back, arms out, a moment off balance. */
+	public static final int HEAVY = 2;
+	/** Off balance: stumbling back, the weapon low (after a heavy hit or several quick ones). */
+	public static final int STUMBLE = 3;
+	/** Falling (then lying {@link #DOWN}). */
+	public static final int FALL = 4;
+	/** A hand at the helmet or the ear: calling over the comlink. */
+	public static final int COMLINK = 5;
+	/** The duel: the blades met (both strokes at once): thrown apart a little. */
+	public static final int CLASH = 6;
+	/** The duel's end: the saber struck from the hand. */
+	public static final int DISARMED = 7;
+	/** The duel: a stroke of the player turned aside, the blade across. */
+	public static final int PARRY = 8;
+	/** The duel: a quick step aside. */
+	public static final int DODGE = 9;
+	/** The duel: the blades locked (between the two phases): pressing against each other. */
+	public static final int LOCK = 10;
+
+	/** Phase 23: drawn into a fight (they hunted the player when it began): a fighter until it ends. */
+	public boolean engaged;
+	/**
+	 * Phase 23: does not look while on a scripted way (a guard leaving a prisoner locked in). Anyone
+	 * else of the Empire sent somewhere still sees the player on the way, and stops for it.
+	 */
+	public boolean blind;
+	/** Phase 23: what the body does now (a kind above, 0 = nothing), ticks left of it and its whole length. */
+	public int react;
+	public int reactTicks;
+	public int reactLength;
+	/** Phase 23: being driven back by a blow (blocks a tick; it slows down). */
+	public double pushX;
+	public double pushZ;
+	/** Phase 23: falling (blocks a tick down; 0 while on their feet): with the reactor's bridge into the depth. */
+	public double drop;
+	/** Phase 23: the duel: which of her combos she is in (-1: a single blow), and whether her saber was struck from her hand. */
+	public int pattern = -1;
+	public boolean disarmed;
+	/** Phase 23: quick hits in a row (several light hits throw one off balance too). */
+	public int strokes;
+	public long strokeAt = -1000L;
+
+	/** Phase 23: starts a reaction of that kind for that many ticks. */
+	public void react(int kind, int ticks) {
+		this.react = kind;
+		this.reactTicks = Math.max(1, ticks);
+		this.reactLength = this.reactTicks;
+	}
+
+	/** Phase 23: how far along the reaction is (0 just begun, 1 over). */
+	public float reactProgress() {
+		return this.reactLength <= 0 ? 1.0F : 1.0F - (float) this.reactTicks / this.reactLength;
+	}
+
+	/** Phase 23: what the client is shown of it: the kind in the top bits, how far along (0..255) in the low byte. */
+	public int reactShown() {
+		if (this.react == 0) {
+			return 0;
+		}
+
+		return this.react << 8 | Math.round(Mth.clamp(this.reactProgress(), 0.0F, 1.0F) * 255.0F);
+	}
 
 	public Figure(int id, String key, Crew crew) {
 		this.id = id;
@@ -222,6 +291,7 @@ public final class Figure {
 		this.timer = 0;
 		this.path = java.util.List.of();
 		this.pathGoal = null;
+		this.pathReaches = true;
 		this.searches = 0;
 		this.stuck = 0;
 		this.closest = Double.MAX_VALUE;
@@ -230,6 +300,10 @@ public final class Figure {
 		this.windup = 0;
 		this.burst = 0;
 		this.lure = null;
+		this.react = 0;
+		this.reactTicks = 0;
+		this.pushX = 0.0;
+		this.pushZ = 0.0;
 	}
 
 	/**

@@ -141,6 +141,8 @@ public final class ShipInteriors {
 		/** Exits and lifts only work once the player stepped off the one they arrived on. */
 		boolean armed;
 		@Nullable String room;
+		/** Phase 23: where the player last stood on firm ground (plot space): one caught in a shaft is set back there. */
+		@Nullable Vec3 safe;
 
 		Aboard(UUID owner, String type, InteriorPlan plan, BlockPos origin) {
 			this.owner = owner;
@@ -692,6 +694,37 @@ public final class ShipInteriors {
 		}
 	}
 
+	/** Phase 23: one who fell into a shaft is set back where they last stood (or on the nearest platform). */
+	static void catchFall(ServerPlayer player, Aboard aboard, Vec3 local) {
+		ServerLevel level = (ServerLevel) player.level();
+		Vec3 back = aboard.safe;
+
+		if (back == null || !standsFirm(level, aboard.world(back))) {
+			back = aboard.plan.pitRescue(local);
+		}
+
+		teleport(player, level, aboard.world(back), player.getYRot());
+		player.setDeltaMovement(Vec3.ZERO);
+		player.hurtMarked = true;
+		player.resetFallDistance();
+		aboard.safe = back;
+		player.connection.send(new ClientboundSoundPacket(sound("ship.lift"), SoundSource.NEUTRAL, player.getX(), player.getY(), player.getZ(), 0.7F, 1.35F,
+				player.getRandom().nextLong()));
+		player.sendOverlayMessage(net.minecraft.network.chat.Component.translatable("sabercraft.interior.caught"));
+	}
+
+	/** Phase 23: whether there is something firm under the feet at that spot (world space). */
+	static boolean standsFirm(ServerLevel level, Vec3 at) {
+		AABB under = new AABB(at.x - 0.25, at.y - 0.2, at.z - 0.25, at.x + 0.25, at.y - 0.01, at.z + 0.25);
+		AABB body = new AABB(at.x - 0.3, at.y + 0.01, at.z - 0.3, at.x + 0.3, at.y + 1.8, at.z + 0.3);
+		return !level.noBlockCollision(null, under) && level.noBlockCollision(null, body);
+	}
+
+	/** Phase 23: whether the middle of the feet is over something firm (not only the edge of the body). */
+	static boolean overFloor(ServerLevel level, Vec3 at) {
+		return !level.noBlockCollision(null, new AABB(at.x - 0.05, at.y - 0.2, at.z - 0.05, at.x + 0.05, at.y - 0.01, at.z + 0.05));
+	}
+
 	/** Exits, lifts, room names and the safety net under the rooms. */
 	private static void walk(ServerPlayer player, Aboard aboard) {
 		Vec3 local = aboard.local(player.position());
@@ -701,6 +734,18 @@ public final class ShipInteriors {
 			teleport(player, (ServerLevel) player.level(), aboard.world(aboard.plan.entry()), aboard.plan.entryYaw());
 			player.resetFallDistance();
 			return;
+		}
+
+		// Phase 23: fell into an open shaft (the reactor's, off a bridge without a railing): caught by a
+		// repulsor field and set back, unhurt, where one last stood (a fall there is never the end).
+		if (!player.isSpectator() && !player.isCreative() && aboard.plan.pit(local, player.fallDistance)) {
+			catchFall(player, aboard, local);
+			return;
+		}
+
+		// (Only where the middle of the feet is over the floor: set back onto an edge, one fell again.)
+		if (player.onGround() && player.tickCount % 2 == 0 && !aboard.plan.pit(local, 0.0) && overFloor((ServerLevel) player.level(), player.position())) {
+			aboard.safe = local;
 		}
 
 		AABB exit = null;

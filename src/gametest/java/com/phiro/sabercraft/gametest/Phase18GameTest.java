@@ -287,9 +287,9 @@ public class Phase18GameTest implements FabricClientGameTest {
 		server.runCommand("gamemode creative @a");
 		context.waitTicks(5);
 		Phase16GameTest.look(context, server, sd, new Vec3(28.8, DestroyerInterior.REACTOR_BOTTOM, 25.0), -90, -5, "phase18_sd_reactor_floor");
-		Phase16GameTest.look(context, server, sd, new Vec3(46.5, DestroyerInterior.REACTOR_BOTTOM, 16.5), 45, -10, "phase18_sd_reactor_converter");
-		Phase16GameTest.look(context, server, sd, new Vec3(40.5, DestroyerInterior.REACTOR_BOTTOM, 31.0), 0, 0, "phase18_sd_reactor_console");
-		Phase16GameTest.look(context, server, sd, new Vec3(32.5, DestroyerInterior.REACTOR_BOTTOM, 33.0), -135, -35, "phase18_sd_reactor_up");
+		Phase16GameTest.look(context, server, sd, new Vec3(43.5, DestroyerInterior.REACTOR_BOTTOM, 14.5), -43, 50, "phase18_sd_reactor_converter");
+		Phase16GameTest.look(context, server, sd, new Vec3(40.5, DestroyerInterior.REACTOR_BOTTOM, 34.0), 0, 10, "phase18_sd_reactor_console");
+		Phase16GameTest.look(context, server, sd, new Vec3(33.5, DestroyerInterior.REACTOR_BOTTOM, 31.5), -135, -35, "phase18_sd_reactor_up");
 		Phase16GameTest.look(context, server, sd, new Vec3(28.8, hangar, 25.0), -60, 35, "phase18_sd_reactor_catwalk");
 
 		// The crew.

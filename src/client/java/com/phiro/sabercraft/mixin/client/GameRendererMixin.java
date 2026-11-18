@@ -14,6 +14,7 @@ import net.minecraft.client.renderer.state.level.CameraRenderState;
 
 import com.phiro.sabercraft.client.combat.CombatConfig;
 import com.phiro.sabercraft.client.combat.SaberCombat;
+import com.phiro.sabercraft.client.story.StoryClient;
 
 /**
  * First person: lets the camera follow rolls and landings a little, by dipping the eyes and
@@ -36,7 +37,16 @@ public abstract class GameRendererMixin {
 
 		float[] camera = SABERCRAFT$CAMERA;
 
-		if (SaberCombat.camera(client.player, client.getDeltaTracker().getGameTimeDeltaPartialTick(false), camera)) {
+		float partial = client.getDeltaTracker().getGameTimeDeltaPartialTick(false);
+
+		if (SaberCombat.camera(client.player, partial, camera)) {
+			poseStack.translate(0.0F, camera[0] * strength, 0.0F);
+			poseStack.mulPose(Axis.ZP.rotationDegrees(camera[2] * strength));
+			poseStack.mulPose(Axis.XP.rotationDegrees(camera[1] * strength));
+		}
+
+		// Phase 23: the jolt of a story fight (a hit, a clash, the blade lock).
+		if (StoryClient.camera(partial, camera)) {
 			poseStack.translate(0.0F, camera[0] * strength, 0.0F);
 			poseStack.mulPose(Axis.ZP.rotationDegrees(camera[2] * strength));
 			poseStack.mulPose(Axis.XP.rotationDegrees(camera[1] * strength));

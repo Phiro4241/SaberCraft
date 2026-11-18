@@ -429,8 +429,11 @@ body("def_spin", legs=[
     (0, [-8, 0, 9], [10, 0, -9], 6, 0.06), (2, [6, 0, 10], [-6, 0, -10], 8, 0.08), (4.75, [-10, 0, 10], [12, 0, -10], 10, 0.1),
     (7.6, [8, 0, 9], [-8, 0, -9], 8, 0.08), (9.5, [-10, 0, 9], [12, 0, -9], 6, 0.06)])
 
-AGI_FP = ([1.05, -0.65, 0.0], [100, -10, 0])
-AGI_TP = ([-115, -10, 10], [-35, 30, 10], [40, 0, -10])
+# Phase 23: the resting pose came down from over the head to the chest (a natural ready stance:
+# the hilt before the right shoulder, the blade leaning back), so standing and walking with the
+# saber lit no longer look stiff; the moves are worked out from it as before.
+AGI_FP = ([1.05, -0.68, 0.0], [98, -10, 0])
+AGI_TP = ([-72, -10, 10], [-35, 30, 10], [56, 0, -10])
 for src, name, time, amp in (("flow_diagonal", "agile_slash", 0.75, 1.1), ("flow_backhand", "agile_backhand", 0.75, 1.1),
                              ("flow_rising", "agile_rising", 0.75, 1.15), ("flow_spin", "agile_twirl", 0.7, 1.0),
                              ("flow_stab", "agile_leap", 0.8, 1.0)):
@@ -487,8 +490,11 @@ body("djem_spin", legs=[
 # Soresu (Obi-Wan): the signature raised guard, the blade held high over the head and pointing
 # forward, the free hand stretched out towards the opponent. Short, controlled cuts out of that
 # guard and quick ripostes.
-SOR_FP = ([0.75, -0.3, 0.05], [118, 30, 0])
-SOR_TP = ([-150, -18, 0], [-80, 25, 0], [-105, 0, -15])
+# Phase 23: at rest no longer over the head (that looked unnatural while standing and walking):
+# a calm middle guard, the hilt at the belly, the blade up and a little forward, the free hand
+# out before the body. The raised guard stays in the moves and in the block.
+SOR_FP = ([0.7, -0.68, 0.1], [96, 18, 0])
+SOR_TP = ([-66, -18, 0], [-48, 22, 0], [10, 0, -12])
 for src, name, time, amp in (("def_cut", "soresu_cut", 1.0, 0.85), ("def_backhand", "soresu_backhand", 1.0, 0.85),
                              ("flow_overhead", "soresu_overhead", 0.9, 0.8), ("def_riposte", "soresu_riposte", 0.9, 0.9),
                              ("def_spin", "soresu_spin", 0.95, 0.9)):
@@ -527,8 +533,10 @@ body("juyo_whirl", legs=[
 
 # Ansturm (Anakin): relentless power blows from a high two-handed guard over the right shoulder,
 # a double strike and a leaping attack that closes the distance.
-ONS_FP = ([0.95, -0.45, 0.0], [108, -35, 0])
-ONS_TP = ([-130, -10, 5], [-120, 35, 0], [10, 0, -25])
+# Phase 23: the guard over the right shoulder is held at the chest now (both hands on the hilt,
+# the blade leaning back over the shoulder), no longer with the arms over the head.
+ONS_FP = ([0.95, -0.62, 0.05], [104, -30, 0])
+ONS_TP = ([-72, -10, 5], [-66, 35, 0], [60, 0, -20])
 for src, name, time, amp in (("heavy_overhead", "ons_overhead", 0.8, 1.1), ("flow_backhand", "ons_backhand", 0.85, 1.2),
                              ("heavy_rising", "ons_rising", 0.8, 1.1), ("heavy_spin", "ons_spin", 0.8, 1.05)):
     derive(src, name, time, amp, ONS_FP, ONS_TP)
