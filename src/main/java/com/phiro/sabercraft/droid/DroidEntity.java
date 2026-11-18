@@ -473,7 +473,8 @@ public class DroidEntity extends Pig {
 				for (int dy = -1; dy <= 1; dy++) {
 					BlockPos pos = target.offset(dx, dy, dz);
 
-					if (!this.canTeleportTo(pos) || this.mouthOfPassage(pos) || !this.inSightOf(player, pos)) {
+					// Phase 24: never onto a turbolift's pad either (it got stuck on the reactor's).
+					if (!this.canTeleportTo(pos) || this.mouthOfPassage(pos) || onLift(this.level(), pos) || !this.inSightOf(player, pos)) {
 						continue;
 					}
 
@@ -574,6 +575,41 @@ public class DroidEntity extends Pig {
 		}
 
 		return false;
+	}
+
+	/**
+	 * Phase 24: whether a place is on (or right at) a turbolift of a ship's interior: a droid put
+	 * there stood on the moving pad and got stuck in its cage.
+	 */
+	public static boolean onLift(net.minecraft.world.level.Level level, BlockPos pos) {
+		if (!com.phiro.sabercraft.interior.ShipInteriors.isInterior(level)) {
+			return false;
+		}
+
+		com.phiro.sabercraft.interior.InteriorPlan plan = com.phiro.sabercraft.interior.ShipInteriors.planAt(pos.getX() + 0.5, pos.getZ() + 0.5);
+		BlockPos origin = com.phiro.sabercraft.interior.ShipInteriors.originAt(pos.getX() + 0.5, pos.getZ() + 0.5);
+
+		if (plan == null || origin == null) {
+			return false;
+		}
+
+		Vec3 local = Vec3.atBottomCenterOf(pos).subtract(Vec3.atLowerCornerOf(origin)).add(0.0, 0.1, 0.0);
+
+		for (com.phiro.sabercraft.interior.InteriorPlan.Lift lift : plan.lifts()) {
+			if (lift.area().inflate(0.6, 0.5, 0.6).contains(local)) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	/**
+	 * Phase 24: whether a droid standing there would be in someone's way: in a narrow passage, by
+	 * the mouth of a crawl way, on a turbolift (for the bigger astromech when it picks where to keep).
+	 */
+	public boolean inTheWay(BlockPos pos) {
+		return this.mouthOfPassage(pos) || onLift(this.level(), pos);
 	}
 
 	/** Phase 23: whether a person could not stand in that place (a solid block right above its floor cell). */

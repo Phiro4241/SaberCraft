@@ -216,7 +216,8 @@ public class StoryGameTest implements FabricClientGameTest {
 		this.waitStep("m1.droid", 80);
 		check(this.on(s -> Story.DESTROYER.equals(session(s).here)), "the Falcon's ramp did not lead into the Star Destroyer");
 		context.waitTicks(30);
-		this.checkMusic("music.story_stealth", "the maintenance room");
+		// Phase 24: the mission begins aboard the Star Destroyer: its own piece (the sneaking music after it).
+		this.checkMusic("music.story_infiltration", "the maintenance room");
 		this.lampPicture();
 		this.darkness();
 		this.use("pad", H);

@@ -120,9 +120,22 @@ static final int CHECKPOINT_TICKS = 60;
 	private static final Map<Integer, Float> STRIDES = new HashMap<>();
 	private static @Nullable StoryDialogPayload dialog;
 
-	/** A comlink line (or one overheard nearby): who, the key, how long it shows. */
-	public record Line(String who, String key, int ticks, boolean heard) {
+	/**
+	 * A comlink line (or one overheard nearby): who, the key, how long it shows. Phase 24: and when
+	 * it came (client ticks): overheard shouts are moments, gone if they could not be shown soon.
+	 */
+	public record Line(String who, String key, int ticks, boolean heard, long at) {
 	}
+
+	/** Phase 24: an overheard line not shown within this long (ticks) is no longer news: it is dropped. */
+	static final int HEARD_STALE = 60;
+	/** Phase 24: how long an overheard line shows at most, and when others wait. */
+	static final int HEARD_MAX = 110;
+	static final int HEARD_SHORT = 45;
+	/** Phase 24: at most this many overheard lines wait (the oldest go first). */
+	static final int HEARD_QUEUED = 2;
+	/** Phase 24: lines dropped (stale, doubled, after a capture): for the tests. */
+	private static int linesDropped;
 
 	private static final Deque<Line> RADIO = new ArrayDeque<>();
 	private static @Nullable Line radioNow;
@@ -212,8 +225,14 @@ static final int CHECKPOINT_TICKS = 60;
 
 	private static void state(StoryStatePayload payload) {
 		boolean was = active();
+		StoryStatePayload before = state;
 		state = payload;
 		received++;
+
+		// Phase 24: the section changed, or the alarm is over: the shouts still waiting are old news.
+		if (before != null && payload.active() && (!before.objective().equals(payload.objective()) || before.alarm() > 0 && payload.alarm() == 0)) {
+			dropBefore(clientTicks, true);
+		}
 
 		if (!payload.active()) {
 			previous = null;
@@ -258,7 +277,12 @@ static final int CHECKPOINT_TICKS = 60;
 			case CUE_RADIO -> {
 				int length = client.font != null ? net.minecraft.network.chat.Component.translatable(payload.text()).getString().length() : 60;
 				boolean heard = payload.value() == 1;
-				RADIO.add(new Line(payload.who(), payload.text(), Mth.clamp(length * RADIO_PER_CHAR + 40, RADIO_MIN, RADIO_MAX), heard));
+
+				if (!radio(new Line(payload.who(), payload.text(),
+						heard ? Mth.clamp(length * RADIO_PER_CHAR + 30, RADIO_MIN - 20, HEARD_MAX) : Mth.clamp(length * RADIO_PER_CHAR + 40, RADIO_MIN, RADIO_MAX), heard,
+						clientTicks))) {
+					return;
+				}
 
 				// Overheard in the room: no comlink click, only the soft voice.
 				if (heard) {
@@ -289,6 +313,9 @@ static final int CHECKPOINT_TICKS = 60;
 				fadeText = payload.text();
 				// What was said before the black ("detected! hide!") is over after it.
 				hint = null;
+				// Phase 24: so are the shouts and lines still waiting from before it (no "Halt!" after
+				// being caught); what is said with the black (the same moment) stays.
+				dropBefore(clientTicks, false);
 			}
 			case CUE_SOUND -> sound(client, payload.text(), 0.9F, 1.0F, figure(payload.value()));
 			case CUE_MUSIC -> music = payload.text().isEmpty() ? null : payload.text();
@@ -308,7 +335,11 @@ static final int CHECKPOINT_TICKS = 60;
 				noiseAge = 0;
 				noisesMade++;
 			}
-			case CUE_CHECKPOINT -> checkpointAge = 0;
+			case CUE_CHECKPOINT -> {
+				checkpointAge = 0;
+				// Phase 24: a new section: what was shouted before it is over.
+				dropBefore(clientTicks, true);
+			}
 			case CUE_CINEMA -> StoryCinema.start(client, payload.who(), payload.value());
 			case CUE_END -> {
 				ended = true;
@@ -317,6 +348,78 @@ static final int CHECKPOINT_TICKS = 60;
 			default -> {
 			}
 		}
+	}
+
+	/**
+	 * Phase 24: a line comes: not if the same is showing or waiting already; the story's comlink
+	 * lines before the overheard ones; at most a few overheard ones waiting. Returns whether it is kept.
+	 */
+	private static boolean radio(Line line) {
+		if (radioNow != null && radioNow.key().equals(line.key()) && radioNow.who().equals(line.who())) {
+			linesDropped++;
+			return false;
+		}
+
+		for (Line waiting : RADIO) {
+			if (waiting.key().equals(line.key()) && waiting.who().equals(line.who())) {
+				linesDropped++;
+				return false;
+			}
+		}
+
+		if (line.heard()) {
+			long queued = RADIO.stream().filter(Line::heard).count();
+
+			while (queued >= HEARD_QUEUED) {
+				for (java.util.Iterator<Line> it = RADIO.iterator(); it.hasNext();) {
+					if (it.next().heard()) {
+						it.remove();
+						linesDropped++;
+						break;
+					}
+				}
+
+				queued--;
+			}
+
+			RADIO.addLast(line);
+			return true;
+		}
+
+		// The story's own lines go before the overheard ones still waiting.
+		java.util.List<Line> heard = new java.util.ArrayList<>();
+
+		while (!RADIO.isEmpty() && RADIO.peekLast().heard()) {
+			heard.add(0, RADIO.pollLast());
+		}
+
+		RADIO.addLast(line);
+		RADIO.addAll(heard);
+		return true;
+	}
+
+	/**
+	 * Phase 24: what came before that moment is over: after a capture's black every line still
+	 * waiting (and an overheard one showing); at a checkpoint, a new section or the alarm's end only
+	 * the shouts of the chase ({@code chaseOnly}).
+	 */
+	private static void dropBefore(long when, boolean chaseOnly) {
+		int before = RADIO.size();
+		RADIO.removeIf(line -> line.at() < when && (!chaseOnly || chase(line)));
+		linesDropped += before - RADIO.size();
+
+		if (radioNow != null && radioNow.at() < when && (chaseOnly ? chase(radioNow) : radioNow.heard())) {
+			radioNow = null;
+			linesDropped++;
+		}
+	}
+
+	/** Phase 24: the crew's shouts of a chase ("Halt!", "Intruder!"): news only while it goes on. */
+	private static final java.util.Set<String> CHASE_SHOUTS = java.util.Set.of("halt", "officer_halt", "intruder", "officer_call", "hands_up", "alarm_call",
+			"mouse_again");
+
+	private static boolean chase(Line line) {
+		return line.heard() && line.key().startsWith("sabercraft.story.shout.") && CHASE_SHOUTS.contains(line.key().substring("sabercraft.story.shout.".length()));
 	}
 
 	/**
@@ -716,8 +819,20 @@ static final int CHECKPOINT_TICKS = 60;
 			}
 		}
 
-		if (radioNow != null && ++radioAge >= radioNow.ticks()) {
-			radioNow = null;
+		// Phase 24: an overheard shout that could not be shown soon is no longer news.
+		int waiting = RADIO.size();
+		RADIO.removeIf(line -> line.heard() && clientTicks - line.at() > HEARD_STALE);
+		linesDropped += waiting - RADIO.size();
+
+		if (radioNow != null) {
+			radioAge++;
+			// Phase 24: an overheard shout makes room soon for what waits (the story's lines first).
+			boolean others = !RADIO.isEmpty();
+			int most = radioNow.heard() && others ? Math.min(radioNow.ticks(), HEARD_SHORT) : radioNow.ticks();
+
+			if (radioAge >= most) {
+				radioNow = null;
+			}
 		}
 
 		if (radioNow == null && !RADIO.isEmpty()) {
@@ -1038,6 +1153,33 @@ static final int CHECKPOINT_TICKS = 60;
 		return active() ? music : null;
 	}
 
+	/**
+	 * Phase 24: how wary the people near the player are (for the music): the highest stage of anyone
+	 * watching within that many blocks (0 calm, 1 suspicious, 2 alerted, 3 detected).
+	 */
+	public static int wariness(double range) {
+		StoryFiguresPayload now = current;
+		Minecraft client = Minecraft.getInstance();
+
+		if (now == null || client.player == null || !active()) {
+			return 0;
+		}
+
+		int most = 0;
+		double x = client.player.getX() - now.origin().getX();
+		double y = client.player.getY() - now.origin().getY();
+		double z = client.player.getZ() - now.origin().getZ();
+
+		for (StoryFiguresPayload.Fig fig : now.figures()) {
+			if ((fig.flags() & StoryFiguresPayload.OBSERVER) != 0 && !"down".equals(fig.pose()) && Math.abs(fig.y() - y) < 6.0
+					&& (fig.x() - x) * (fig.x() - x) + (fig.z() - z) * (fig.z() - z) < range * range) {
+				most = Math.max(most, fig.stage());
+			}
+		}
+
+		return most;
+	}
+
 	static boolean ended() {
 		return ended;
 	}
@@ -1102,6 +1244,20 @@ static final int CHECKPOINT_TICKS = 60;
 
 	public static @Nullable StoryDialogPayload dialogForTest() {
 		return dialog;
+	}
+
+	/** Phase 24: for the tests: lines dropped (doubled, stale, from before a capture) and lines waiting. */
+	public static int linesDroppedForTest() {
+		return linesDropped;
+	}
+
+	public static int linesWaitingForTest() {
+		return RADIO.size() + (radioNow != null ? 1 : 0);
+	}
+
+	/** Phase 24: for the tests: a line as if the server had sent it (heard: overheard). */
+	public static void lineForTest(String who, String key, boolean heard) {
+		radio(new Line(who, key, heard ? HEARD_MAX : RADIO_MAX, heard, clientTicks));
 	}
 
 	public static @Nullable Line radioForTest() {

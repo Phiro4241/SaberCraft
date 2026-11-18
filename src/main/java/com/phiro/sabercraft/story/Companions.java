@@ -117,8 +117,12 @@ public final class Companions {
 			Vec3 at = here.subtract(forward.scale(offset[0])).add(right.scale(offset[1]));
 			Vec3 floor = floor(level, at, here.y);
 
+			// Phase 24: never on a turbolift's pad; the bigger R2-V7 also never in a narrow passage or
+			// by a crawl way's mouth (it stood in the way of one coming out).
+			net.minecraft.core.BlockPos cell = floor != null ? net.minecraft.core.BlockPos.containing(floor.add(0.0, 0.05, 0.0)) : null;
+
 			if (floor != null && (taken == null || floor.distanceTo(taken) > APART) && fits(droid, floor) && clearTo(level, here, floor)
-					&& !nearSomeone(s, floor.subtract(corner))) {
+					&& !nearSomeone(s, floor.subtract(corner)) && !DroidEntity.onLift(level, cell) && (mouse || crawl || !droid.inTheWay(cell))) {
 				best = floor;
 				break;
 			}

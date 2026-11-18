@@ -719,6 +719,224 @@ def story_duel():
     return tr.finish(2.0, 0.28, 1908)
 
 
+# Phase 24: more story music ---------------------------------------------------------------------
+
+def tremolo(freq, seconds, seed, rate=11.0, depth=0.55, bright=0.9):
+    """Strings bowed fast on one note: the shiver of a tense moment."""
+    sig = strings(freq, seconds, seed, bright)
+    t = np.arange(len(sig)) / RATE
+    return sig * (1.0 - depth * 0.5 + depth * 0.5 * np.sin(2 * np.pi * rate * t))
+
+
+def story_infiltration():
+    """Phase 24, the mission begins aboard the Star Destroyer (after the Falcon docked): a low
+    eighth-note pulse under dark brass that rises bar by bar, timpani on the downbeats, a choir
+    held over it and a falling horn call, E phrygian, 100 bpm, 24 bars. More awake than the
+    sneaking music: the danger is close and the plan has begun."""
+    rng = np.random.default_rng(2401)
+    prog = ["Em", "Em", "F", "Em", "Em", "C", "F", "B5"] * 3
+    tr = Track(100, len(prog))
+    for b, name in enumerate(prog):
+        ch = chord(name, 2)
+        for s in range(8):
+            note = ch[0] if s % 4 != 3 else ch[2]
+            tr.add(tr.at(b, s * 0.5), low_staccato(hz(note), 0.2, 24010 + 8 * b + s), -0.1, 0.15 if s % 2 == 0 else 0.09)
+        tr.add(tr.at(b), drum(1.4, 44, 24100 + b, 0.25, 1.2, 3.0), 0.0, 0.26 if b >= 8 else 0.16)
+        if b % 2 == 1:
+            tr.add(tr.at(b, 3.5), drum(0.6, 52, 24150 + b, 0.3, 1.6, 6.0), 0.1, 0.12)
+        for k, note in enumerate(chord(name, 3)):
+            tr.add(tr.at(b), pad(hz(note), tr.bar + 1.2, 24200 + 3 * b + k), -0.5 + 0.5 * k, 0.08)
+        if b >= 4:
+            tr.add(tr.at(b), choir(hz(chord(name, 3)[0] + 12), tr.bar + 0.6, 24300 + b), -0.25, 0.045 + 0.002 * min(b, 16))
+        if b >= 8 and b % 4 == 0:
+            for k, note in enumerate(chord(name, 3)):
+                tr.add(tr.at(b), brass(hz(note), tr.bar * 1.6, 24400 + 3 * b + k, 0.8), -0.3 + 0.3 * k, 0.09)
+        if b >= 12 and b % 4 == 2:
+            # A falling horn call: fifth, fourth, the root.
+            root = chord(name, 4)[0]
+            for i, (step, beat, length) in enumerate(((7, 0, 0.9), (5, 1, 0.9), (1, 2, 0.5), (0, 2.5, 1.4))):
+                tr.add(tr.at(b, beat), brass(hz(root + step), tr.beat * length, 24500 + 4 * b + i, 1.0), 0.25, 0.08)
+        if rng.random() < 0.35:
+            tr.add(tr.at(b, 2 + rng.random()), bell(hz(int(rng.choice(chord(name, 5)))), 2.6, 24600 + b), float(rng.uniform(-0.7, 0.7)), 0.035)
+    return tr.finish(3.0, 0.36, 2402)
+
+
+def story_corridors():
+    """Phase 24, a second piece for sneaking: a ticking harp ostinato like a clock, muted pads and
+    a lonely string line, C# minor, 76 bpm, 16 bars. Quiet like the other, but not the same loop
+    the whole chapter long."""
+    rng = np.random.default_rng(2411)
+    prog = ["C#m", "A", "C#m", "G#5", "F#m", "A", "D", "G#5"] * 2
+    tr = Track(76, len(prog))
+    for b, name in enumerate(prog):
+        ch = chord(name, 3)
+        for s in range(8):
+            note = [ch[0], ch[2], ch[1], ch[2]][s % 4] + 12
+            tr.add(tr.at(b, s * 0.5), harp(hz(note), 1.0, 24700 + 8 * b + s), 0.3, 0.05 if s % 2 else 0.07)
+        for k, note in enumerate(ch):
+            tr.add(tr.at(b), pad(hz(note), tr.bar + 1.4, 24800 + 3 * b + k), -0.5 + 0.5 * k, 0.085)
+        tr.add(tr.at(b), drum(1.2, 38, 24850 + b, 0.05, 0.5, 2.6), 0.0, 0.1)
+    chords = [chord(p, 4) for p in prog]
+    tune = melody(rng, MINOR, 61, chords, 2, rest=0.4, span=(0, 12))
+    for i in range(6):
+        tune[i] = None
+    lay_melody(tr, tune, 2, lambda f, sec, sd: strings(f, sec, sd, 0.6), 0, 24900, 0.05, -0.25)
+    return tr.finish(3.8, 0.44, 2412)
+
+
+def story_tension():
+    """Phase 24, someone grows suspicious: a low drone, a shivering tremolo high above, an uneven
+    heartbeat and a cluster of two notes a half step apart that never resolves, A phrygian, 72 bpm,
+    16 bars. Not yet an alarm: the moment before one."""
+    rng = np.random.default_rng(2421)
+    prog = ["Am", "Bb", "Am", "Am", "F", "Bb", "Am", "E5"] * 2
+    tr = Track(72, len(prog))
+    for b, name in enumerate(prog):
+        ch = chord(name, 2)
+        tr.add(tr.at(b), strings(hz(ch[0]), tr.bar + 0.8, 25000 + b, 0.5), 0.0, 0.13)
+        for beat in (0, 0.42, 2.0, 2.36):
+            tr.add(tr.at(b, beat), drum(0.9, 42, 25050 + 4 * b + int(beat * 3), 0.12, 0.8, 4.0), 0.0, 0.16 if beat in (0, 2.0) else 0.09)
+        top = chord(name, 5)
+        tr.add(tr.at(b), tremolo(hz(top[2]), tr.bar + 0.4, 25100 + b), 0.35, 0.04)
+        if b % 2 == 1:
+            tr.add(tr.at(b), tremolo(hz(top[2] + 1), tr.bar + 0.4, 25150 + b), -0.35, 0.025)
+        for k, note in enumerate(chord(name, 3)):
+            tr.add(tr.at(b), pad(hz(note), tr.bar + 1.2, 25200 + 3 * b + k), -0.4 + 0.4 * k, 0.06)
+        if rng.random() < 0.4:
+            tr.add(tr.at(b, 1 + 2 * rng.random()), bell(hz(int(rng.choice(chord(name, 5))) + 1), 2.4, 25300 + b), float(rng.uniform(-0.6, 0.6)), 0.03)
+    return tr.finish(3.4, 0.4, 2422)
+
+
+def story_search():
+    """Phase 24, they search for the player (after a chase, out of sight): calmer than the alarm
+    but never calm: a steady low pulse, muffled toms, string swells that rise and fall and a
+    two-note warning high up now and then, B phrygian, 112 bpm, 16 bars."""
+    prog = ["Bm", "C", "Bm", "Bm", "G", "C", "Bm", "F#5"] * 2
+    tr = Track(112, len(prog))
+    for b, name in enumerate(prog):
+        ch = chord(name, 2)
+        for s in range(8):
+            tr.add(tr.at(b, s * 0.5), low_staccato(hz(ch[0] if s % 3 else ch[2]), 0.18, 25400 + 8 * b + s), -0.05, 0.12 if s % 2 == 0 else 0.07)
+        for beat in (0, 2.5):
+            tr.add(tr.at(b, beat), drum(0.9, 50, 25500 + 2 * b + int(beat), 0.2, 1.4, 5.0), 0.0, 0.2)
+        n = int((tr.bar + 0.6) * RATE)
+        swell = np.sin(np.linspace(0, np.pi, n)) ** 1.5
+        for k, note in enumerate(chord(name, 3)):
+            sig = strings(hz(note), tr.bar + 0.6, 25600 + 3 * b + k, 0.8)
+            tr.add(tr.at(b), sig * swell[:len(sig)], -0.4 + 0.4 * k, 0.07)
+        if b % 4 == 3:
+            top = chord(name, 5)
+            tr.add(tr.at(b, 0), strings(hz(top[2]), tr.beat * 1.0, 25700 + b, 1.1), 0.3, 0.035)
+            tr.add(tr.at(b, 1), strings(hz(top[1]), tr.beat * 1.4, 25750 + b, 1.1), 0.3, 0.035)
+    return tr.finish(2.4, 0.3, 2423)
+
+
+def story_aftermath():
+    """Phase 24, after the danger: the pulse slows and thins out, the pads open up, one bell still
+    rings unresolved: the heart still beats fast, but the alarm is over. D minor turning to F,
+    64 bpm, 12 bars."""
+    rng = np.random.default_rng(2431)
+    prog = ["Dm", "Bb", "Dm", "C", "Bb", "F", "Gm", "Asus", "Dm", "Bb", "F", "C"]
+    tr = Track(64, len(prog))
+    for b, name in enumerate(prog):
+        ch = chord(name, 2)
+        beats = (0, 1, 2, 3) if b < 4 else (0, 2) if b < 8 else (0,)
+        for beat in beats:
+            tr.add(tr.at(b, beat), drum(1.0, 40, 25800 + 4 * b + beat, 0.06, 0.6, 3.2), 0.0, 0.1)
+        for k, note in enumerate(chord(name, 3)):
+            tr.add(tr.at(b), pad(hz(note), tr.bar + 1.6, 25900 + 3 * b + k), -0.5 + 0.5 * k, 0.11)
+        tr.add(tr.at(b), strings(hz(ch[0]), tr.bar + 0.8, 25950 + b, 0.4), 0.0, 0.1)
+        if b % 3 == 0:
+            tr.add(tr.at(b, 1.5), bell(hz(chord(name, 5)[1]), 3.5, 26000 + b), float(rng.uniform(-0.5, 0.5)), 0.04)
+    chords = [chord(p, 4) for p in prog]
+    tune = melody(rng, MINOR, 62, chords, 2, rest=0.45, span=(0, 10))
+    for i in range(4):
+        tune[i] = None
+    lay_melody(tr, tune, 2, flute, 0, 26100, 0.1, -0.2)
+    return tr.finish(4.2, 0.46, 2432)
+
+
+def story_escape():
+    """Phase 24, the run through the dying Star Destroyer to the Falcon: a racing ostinato, war
+    drums, brass and a choir in full voice, a warning figure like a klaxon high in the strings,
+    G minor, 152 bpm, 24 bars."""
+    rng = np.random.default_rng(2441)
+    prog = ["Gm", "Gm", "Eb", "D5", "Gm", "Bb", "Cm", "D5"] * 3
+    tr = Track(152, len(prog))
+    for b, name in enumerate(prog):
+        ch = chord(name, 2)
+        pattern = [0, 0, 2, 0, 1, 0, 2, 0, 0, 0, 2, 1, 0, 2, 1, 2]
+        for s, p in enumerate(pattern):
+            tr.add(tr.at(b, s * 0.25), low_staccato(hz(ch[p]), 0.14, 26200 + 16 * b + s), -0.1, 0.14 if s % 4 == 0 else 0.08)
+        for beat in (0, 0.75, 1.5, 2, 2.75, 3.5):
+            tr.add(tr.at(b, beat), drum(0.8, 54 if beat % 1 else 46, 26300 + 8 * b + int(beat * 4), 0.35, 2.2, 5.0), 0.0, 0.24)
+        for beat in (1, 3):
+            tr.add(tr.at(b, beat), snare(0.22, 26400 + 2 * b + beat), 0.2, 0.11)
+        for k, note in enumerate(chord(name, 3)):
+            tr.add(tr.at(b), choir(hz(note + 12), tr.bar + 0.4, 26500 + 3 * b + k), -0.3 + 0.3 * k, 0.04)
+        if b % 2 == 0:
+            for k, note in enumerate(chord(name, 3)):
+                tr.add(tr.at(b), brass(hz(note), tr.beat * 1.6, 26600 + 3 * b + k, 1.1), -0.3 + 0.3 * k, 0.1)
+        else:
+            for k, note in enumerate(chord(name, 4)):
+                tr.add(tr.at(b, 2.5), brass(hz(note), tr.beat * 0.5, 26650 + 3 * b + k, 1.2), -0.3 + 0.3 * k, 0.07)
+        top = chord(name, 5)
+        if b % 4 >= 2:
+            for half in range(2):
+                tr.add(tr.at(b, half * 2), strings(hz(top[0] + 12), tr.beat * 0.9, 26700 + 2 * b + half, 1.2), 0.3, 0.035)
+                tr.add(tr.at(b, half * 2 + 1), strings(hz(top[0] + 11), tr.beat * 0.9, 26750 + 2 * b + half, 1.2), 0.3, 0.035)
+    chords = [chord(p, 4) for p in prog]
+    tune = melody(rng, MINOR, 67, chords, 4, rest=0.15, span=(0, 14))
+    for i in range(32):
+        tune[i] = None
+    lay_melody(tr, tune, 4, lambda f, sec, sd: brass(f, sec, sd, 1.0), 0, 26800, 0.08, 0.15, 0.9)
+    return tr.finish(2.0, 0.26, 2442)
+
+
+def story_finale():
+    """Phase 24, the escape film: the Falcon leaves the Tenebris as it breaks apart. A held, rising
+    beginning (choir, strings, timpani rolls), a great hit as the reactor goes, then the theme of
+    the escape, bright brass and choir over driving strings, D minor lifting into D major for the
+    jump, 88 bpm, 20 bars."""
+    rng = np.random.default_rng(2451)
+    prog = ["Dm", "Bb", "Gm", "A5", "Dm", "Bb", "Eb", "A5", "Dm", "Bb", "F", "C", "Dm", "Bb", "F", "C", "Bb", "C", "D", "D"]
+    tr = Track(88, len(prog))
+    for b, name in enumerate(prog):
+        ch = chord(name, 2)
+        for k, note in enumerate(chord(name, 3)):
+            tr.add(tr.at(b), choir(hz(note + 12), tr.bar + 0.6, 27000 + 3 * b + k), -0.4 + 0.4 * k, 0.05 if b < 8 else 0.07)
+            tr.add(tr.at(b), strings(hz(note), tr.bar + 0.6, 27100 + 3 * b + k, 0.9), -0.3 + 0.3 * k, 0.07)
+        tr.add(tr.at(b), strings(hz(ch[0]), tr.bar + 0.6, 27200 + b, 0.7), 0.0, 0.14)
+        if b < 8:
+            # Timpani rolls growing towards the hit.
+            hits = 4 + b * 2
+            for s in range(hits):
+                tr.add(tr.at(b, s * 4.0 / hits), drum(0.5, 42, 27300 + 32 * b + s, 0.15, 0.8, 7.0), 0.0, 0.04 + 0.012 * b)
+        elif b == 8:
+            tr.add(tr.at(b), drum(3.0, 34, 27400, 0.8, 2.5, 1.2), 0.0, 0.6)
+            for k, note in enumerate(chord(name, 2) + chord(name, 3)):
+                tr.add(tr.at(b), brass(hz(note), tr.bar * 1.2, 27450 + k, 1.2), -0.4 + 0.16 * k, 0.12)
+        else:
+            pattern = [0, 0, 2, 0, 1, 0, 2, 0]
+            for s, p in enumerate(pattern):
+                tr.add(tr.at(b, s * 0.5), low_staccato(hz(ch[p]), 0.2, 27500 + 8 * b + s), -0.1, 0.12)
+            for beat in (0, 1.5, 2, 3.5):
+                tr.add(tr.at(b, beat), drum(0.9, 46, 27600 + 4 * b + int(beat * 2), 0.3, 2.0, 4.5), 0.0, 0.26)
+            if b % 2 == 0:
+                for k, note in enumerate(chord(name, 3)):
+                    tr.add(tr.at(b), brass(hz(note), tr.bar * 0.9, 27700 + 3 * b + k, 1.0), -0.3 + 0.3 * k, 0.1)
+    chords = [chord(p, 4) for p in prog]
+    tune = melody(rng, MINOR, 62, chords, 2, rest=0.1, span=(0, 12))
+    for i in range(18):
+        tune[i] = None
+    # The last bars in D major: the F of the tune becomes F#.
+    for i in range(36, len(tune)):
+        if tune[i] is not None and tune[i] % 12 == 5:
+            tune[i] += 1
+    lay_melody(tr, tune, 2, lambda f, sec, sd: brass(f, sec, sd, 1.1), 12, 27800, 0.09, 0.1, 0.95)
+    return tr.finish(3.0, 0.34, 2452)
+
+
 PIECES = {
     "exploration_horizon": exploration_horizon,
     "exploration_wander": exploration_wander,
@@ -736,6 +954,13 @@ PIECES = {
     "story_hideout": story_hideout,
     "story_alarm": story_alarm,
     "story_duel": story_duel,
+    "story_infiltration": story_infiltration,
+    "story_corridors": story_corridors,
+    "story_tension": story_tension,
+    "story_search": story_search,
+    "story_aftermath": story_aftermath,
+    "story_escape": story_escape,
+    "story_finale": story_finale,
 }
 
 

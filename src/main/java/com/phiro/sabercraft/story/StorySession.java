@@ -210,6 +210,12 @@ public final class StorySession {
 		if (restore) {
 			this.alarm = 0;
 			this.unseen = 0;
+			// Phase 24: nobody is after one back at a checkpoint (and the shouts start afresh).
+			this.searching = false;
+			this.huntSeen = -1000L;
+			this.huntAt = null;
+			this.shouts.clear();
+			this.lastShout = -1000L;
 		}
 
 		this.cornered = 0;
@@ -617,7 +623,68 @@ public final class StorySession {
 
 	/** Something said nearby that the player overhears (shown like the comlink, but not as a hologram). */
 	public void hear(String speaker, String key) {
+		if (key.startsWith(SHOUT) && !this.shoutHeard(key)) {
+			return;
+		}
+
 		Story.cue(this, Story.CUE_RADIO, speaker, key, 1);
+	}
+
+	/** Phase 24: the shouts of the crew and the ship (overheard, top left). */
+	static final String SHOUT = "sabercraft.story.shout.";
+	/**
+	 * Phase 24: the shouts that matter on their own (the ship's announcements, a chaser at hand, the
+	 * Schattenklinge): never held back for another's, only the same one is not repeated at once.
+	 */
+	static final java.util.Set<String> IMPORTANT_SHOUTS = java.util.Set.of(SHOUT + "search", SHOUT + "search_over", SHOUT + "emergency", SHOUT + "lights_on",
+			SHOUT + "alarm_call", SHOUT + "hands_up", SHOUT + "shadow_lock", SHOUT + "shadow_phase2", SHOUT + "shadow_defeat", SHOUT + "reactor_critical",
+			SHOUT + "evacuate");
+	/** Phase 24: how long the same shout is not heard again (ticks): one "Halt!" for a squad, not five. */
+	static final int SHOUT_REPEAT = 200;
+	/** Phase 24: how long after one of the crew's shouts the next is heard at the earliest (ticks). */
+	static final int SHOUT_GAP = 40;
+	/** Phase 24: when each shout was last heard (story time), and any of the crew's. */
+	private final Map<String, Long> shouts = new HashMap<>();
+	private long lastShout = -1000L;
+	/** Phase 24: shouts held back so far (for the tests). */
+	public int shoutsHeldBack;
+
+	/**
+	 * Phase 24: whether a shout is heard now. Not every trooper's "Halt!" makes a line: the same
+	 * shout once in ten seconds, and the crew's at most one in two seconds (the important ones, the
+	 * ship's announcements, always, but not twice at once).
+	 */
+	private boolean shoutHeard(String key) {
+		long now = this.time();
+		boolean important = IMPORTANT_SHOUTS.contains(key);
+		Long last = this.shouts.get(key);
+
+		if (last != null && now - last < (important ? SHOUT_GAP : SHOUT_REPEAT) || !important && now - this.lastShout < SHOUT_GAP) {
+			this.shoutsHeldBack++;
+			return false;
+		}
+
+		this.shouts.put(key, now);
+
+		if (!important) {
+			this.lastShout = now;
+		}
+
+		return true;
+	}
+
+	/**
+	 * Phase 24: someone is after the player right now: an alarm (or a fight) and the player seen by
+	 * those hunting them within the last ten seconds (not while they search, not when an alarm
+	 * merely goes on with nobody having seen them).
+	 */
+	public boolean pursued() {
+		return (this.alarm > 0 || this.fighting) && !this.searching && this.time() - this.huntSeen < Stealth.LOSE;
+	}
+
+	/** Phase 24: no time for small talk: an alarm (a chase or a search), a fight, a chaser at hand. */
+	public boolean danger() {
+		return (this.alarm > 0 || this.fighting || this.cornered > 0) && Story.DESTROYER.equals(this.here);
 	}
 
 	/** A short message over the hotbar. */

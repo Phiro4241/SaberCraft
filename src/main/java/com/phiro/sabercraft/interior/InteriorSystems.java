@@ -187,7 +187,7 @@ public final class InteriorSystems {
 		if (hatch != null) {
 			// Phase 19: a story can keep a hatch shut (bolted from the other side; Phase 20: or a
 			// guard stands right in front of it).
-			if (com.phiro.sabercraft.story.Story.hatchClosed(player, origin, hatch.cell())) {
+			if (com.phiro.sabercraft.story.Story.hatchClosed(player, origin, hatch.cell(), hatch.room())) {
 				return;
 			}
 
@@ -201,6 +201,11 @@ public final class InteriorSystems {
 		}
 
 		if (Console.STORAGE.equals(console.action())) {
+			// Phase 24: in a story's ship the containers stay shut (nothing of the story is put away in them).
+			if (com.phiro.sabercraft.story.Story.at(origin) != null) {
+				return;
+			}
+
 			// Phase 18: the chest under the container.
 			if (player.level().getBlockEntity(pos.below()) instanceof net.minecraft.world.MenuProvider store) {
 				player.openMenu(store);

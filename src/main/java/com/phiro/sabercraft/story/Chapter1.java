@@ -2,6 +2,7 @@ package com.phiro.sabercraft.story;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 import org.jspecify.annotations.Nullable;
 
@@ -802,6 +803,22 @@ public final class Chapter1 implements Chapter {
 		};
 	}
 
+	/**
+	 * Phase 24: the talks one has with people in passing (no step waits for them): not while the
+	 * troopers are after one or shoot (the reactor's technician saying he is busy, in a firefight).
+	 */
+	static final Set<String> SMALL_TALK = Set.of("m1_mira_wait", "dax_idle", "rorrak_idle", "kestrel_idle", "checkpoint_closed", "quartermaster", "tech_idle");
+
+	@Override
+	public boolean talksNow(StorySession s, Figure figure) {
+		if (!s.danger()) {
+			return true;
+		}
+
+		String dialog = this.dialogFor(s, figure);
+		return dialog == null || !SMALL_TALK.contains(dialog);
+	}
+
 	@Override
 	public boolean talk(StorySession s, Figure figure) {
 		String step = s.step().id();
@@ -817,7 +834,29 @@ public final class Chapter1 implements Chapter {
 			return s.dialog != null;
 		}
 
-		String dialog = switch (figure.key) {
+		String dialog = this.dialogFor(s, figure);
+
+		if (dialog == null || !this.talksNow(s, figure)) {
+			return false;
+		}
+
+		if (step.equals("m6.jump") && figure.key.equals("dax")) {
+			s.set("tmp.jump_go");
+		}
+
+		s.talk(dialog, figure);
+		return s.dialog != null;
+	}
+
+	/** The dialog speaking to someone opens now (during the chapter), or null. */
+	@Nullable String dialogFor(StorySession s, Figure figure) {
+		String step = s.step().id();
+
+		if (s.has(CHAPTER_DONE)) {
+			return afterwards(s, figure);
+		}
+
+		return switch (figure.key) {
 			case "mira" -> step.equals("m1.briefing") ? "m1_briefing" : "m1_mira_wait";
 			case "dax" -> step.equals("m1.cockpit") ? "m1_dax" : step.equals("m6.jump") ? "falcon_crew" : "dax_idle";
 			case "rorrak" -> "rorrak_idle";
@@ -838,17 +877,6 @@ public final class Chapter1 implements Chapter {
 			case "prisoner" -> s.has("cell3.open") && !s.has("opt.prisoner") ? "m5_prisoner" : null;
 			default -> null;
 		};
-
-		if (dialog == null) {
-			return false;
-		}
-
-		if (step.equals("m6.jump") && figure.key.equals("dax")) {
-			s.set("tmp.jump_go");
-		}
-
-		s.talk(dialog, figure);
-		return s.dialog != null;
 	}
 
 	// --- Droids ------------------------------------------------------------------------------------
@@ -1168,6 +1196,8 @@ public final class Chapter1 implements Chapter {
 				} else if (!s.has("m5.trapped")) {
 					// Phase 20: the trap runs whenever one walks into it (the checkpoint after it is
 					// in the cell, so a capture never skips it or leaves it half done).
+					// Phase 24: it is Hale's scene: nobody who still searched follows into it.
+					clearStage(s, DestroyerInterior.DETENTION.inflate(6.0));
 					s.talk("m5_trap", s.figure("hale"));
 				} else if (!s.has("cell2.open")) {
 					// Back in the cell: the hint again after a few seconds.
@@ -1420,14 +1450,17 @@ public final class Chapter1 implements Chapter {
 	/**
 	 * The music the story asks for (the client plays it instead of its own choice): sneaking on the
 	 * Star Destroyer, calm in the Falcon and in the hideout, the alarm piece while escaping, the
-	 * fight to the hangar, the duel, the jump. The client lays the alarm piece over a calm one
-	 * while an alarm is on.
+	 * fight to the hangar, the duel, the jump. The client lays the danger's moods over a calm one
+	 * (Phase 24: tension, the chase, the search, the calming down after it).
 	 */
 	static void music(StorySession s, int m, String step) {
 		String track = switch (step) {
-			case "m1.briefing", "m1.cockpit", "m1.ramp", "m6.epilogue" -> "music.story_hideout";
+			case "m1.briefing", "m1.cockpit", "m6.epilogue" -> "music.story_hideout";
+			// Phase 24: after the arrival the mission begins: aboard the Star Destroyer, wide awake.
+			case "m1.ramp", "m1.droid" -> "music.story_infiltration";
 			case "m5.escape" -> "music.story_alarm";
-			case "m6.escape1", "m6.escape2", "m6.falcon" -> "music.combat_duel";
+			// Phase 24: the run through the failing ship has its own piece.
+			case "m6.escape1", "m6.escape2", "m6.falcon" -> "music.story_escape";
 			// Silence while she speaks; the duel's music when the blades are lit.
 			case "m6.duel" -> s.has("tmp.duel") || s.has("tmp.film") && !s.has("tmp.duel_end") ? "music.story_duel" : "";
 			case "m6.jump" -> "music.event_rise";
@@ -1573,8 +1606,9 @@ public final class Chapter1 implements Chapter {
 				copy(s);
 			}
 			case "m5.route" -> {
-				if (s.inside(D, DestroyerInterior.DETENTION)
-						|| !s.has("trust.hale") && s.inside(D, new AABB(24.0, H - 0.5, 3.0, 25.0, H + 2.0, 7.0))) {
+				// Phase 24: Hale's trap (or the crawl way's end) only once nobody is after the player.
+				if (!s.pursued() && (s.inside(D, DestroyerInterior.DETENTION)
+						|| !s.has("trust.hale") && s.inside(D, new AABB(24.0, H - 0.5, 3.0, 25.0, H + 2.0, 7.0)))) {
 					s.complete();
 				}
 			}
@@ -2241,6 +2275,37 @@ public final class Chapter1 implements Chapter {
 		s.hint("sabercraft.story.hint.trapped");
 	}
 
+	/**
+	 * Phase 24: a scene of the story begins: the alarm stands down, those who came as help go, and
+	 * whoever still hunted the player near the scene goes back to their post (none of them crowd
+	 * into a room the story needs for itself).
+	 */
+	static void clearStage(StorySession s, AABB near) {
+		s.figures.removeIf(figure -> figure.key.startsWith(Stealth.REINFORCEMENT));
+
+		for (Figure figure : s.figures) {
+			if (D.equals(figure.ship) && !figure.hostile && (figure.mode == Figure.CHASE || figure.mode == Figure.INVESTIGATE || figure.mode == Figure.CALL
+					|| figure.mode == Figure.LOOK && near.contains(figure.position()))) {
+				figure.mode = Figure.RETURN;
+				figure.called = false;
+				figure.searches = 0;
+				figure.windup = 0;
+				figure.burst = 0;
+				figure.suspicion = 0.0F;
+				figure.stage = Figure.CALM;
+				figure.path = List.of();
+				figure.pathGoal = null;
+			}
+		}
+
+		s.alarm = 0;
+		s.unseen = 0;
+		s.searching = false;
+		s.cornered = 0;
+		s.cornerer = null;
+		s.dirty = true;
+	}
+
 	/** Phase 20: in the cell, M-31 waits outside by the bench (and does not come in after the player). */
 	private static void mouseOutside(StorySession s) {
 		ServerPlayer player = s.player();
@@ -2396,7 +2461,16 @@ public final class Chapter1 implements Chapter {
 		if (x == DestroyerInterior.CX - 4 && y == H && z == DestroyerInterior.DETENTION_DOOR_Z0) {
 			// The detention block: open only for the one Hale expects (Phase 20: and for Hale and
 			// his trooper leaving after the trap).
-			return !(s.has("trust.hale") && s.at("m5.route")) && !(s.at("m5.cell") && (s.has("tmp.leave.hale") || s.has("tmp.leave.trap1")));
+			boolean shut = !(s.has("trust.hale") && s.at("m5.route")) && !(s.at("m5.cell") && (s.has("tmp.leave.hale") || s.has("tmp.leave.trap1")));
+
+			if (!shut && s.at("m5.route") && s.pursued()) {
+				// Phase 24: not with troopers on one's heels: Hale's trap (and the room it needs) is
+				// not for a chase; the door opens once they lost the player.
+				refusedDoor(s, new Vec3(x, y, z + 1.0));
+				return true;
+			}
+
+			return shut;
 		}
 
 		if (x == DestroyerInterior.LAB_DOOR_X0 && y == R && z == DestroyerInterior.LAB_WALL) {
@@ -2416,6 +2490,14 @@ public final class Chapter1 implements Chapter {
 		}
 
 		return false;
+	}
+
+	/** Phase 24: the player at a door the chase keeps shut is told why (now and then, not every tick). */
+	private static void refusedDoor(StorySession s, Vec3 door) {
+		if (D.equals(s.here) && s.local(D).distanceTo(door) < 3.2 && !s.timer("door_hint")) {
+			s.timer("door_hint", 60);
+			s.hint(Story.HUNTED);
+		}
 	}
 
 	@Override

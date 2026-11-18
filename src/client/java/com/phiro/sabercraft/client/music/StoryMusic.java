@@ -16,16 +16,47 @@ import com.phiro.sabercraft.network.StoryStatePayload;
 /**
  * Phase 19: the story's music. While the player is in the story, the story chooses the piece (the
  * server sends it with each step: sneaking, the hideout, the alarm, the duel) and it loops; the
- * SaberCraft and Star Wars music step aside meanwhile. During an alarm the calm pieces give way to
- * the alarm piece until it is quiet again. Changes crossfade; an empty choice fades to silence.
- * With the SaberCraft music switched off the story is silent too.
+ * SaberCraft and Star Wars music step aside meanwhile. Changes crossfade; an empty choice fades to
+ * silence. With the SaberCraft music switched off the story is silent too.
+ *
+ * <p>Phase 24: over a calm piece the music follows the danger, in moods: someone grows suspicious
+ * nearby (tension), they are after the player (the alarm), they lost them and search (still tense,
+ * but calmer; also after fleeing into another room), and for half a minute after it is over a
+ * piece that calms down slowly, before the sneaking music comes back. Rising danger cuts in fast,
+ * calming down fades slowly; each mood holds a moment so that it does not flicker. The sneaking
+ * music takes turns between two pieces.
  */
 public final class StoryMusic {
-	/** The calm pieces an alarm interrupts. */
-	private static final List<String> CALM = List.of("music.story_stealth", "music.story_hideout", "music.exploration_wander", "music.night_stars");
+	/** The calm pieces the danger's moods lay themselves over. */
+	private static final List<String> CALM = List.of("music.story_stealth", "music.story_hideout", "music.exploration_wander", "music.night_stars",
+			"music.story_corridors", "music.story_infiltration");
+	private static final String STEALTH = "music.story_stealth";
+	private static final String CORRIDORS = "music.story_corridors";
+	private static final String HIDEOUT = "music.story_hideout";
 	private static final String ALARM = "music.story_alarm";
+	/** Phase 24: the moods: suspicion nearby, the search, after the danger. */
+	private static final String TENSION = "music.story_tension";
+	private static final String SEARCH = "music.story_search";
+	private static final String AFTERMATH = "music.story_aftermath";
 	/** The sneaking music sits a little lower, under the footsteps and voices. */
 	private static final float STEALTH_GAIN = 0.8F;
+	/** Phase 24: how long the calming piece plays after the danger (ticks), and how long suspicion holds the tension. */
+	static final int AFTER = 600;
+	static final int TENSION_HOLD = 160;
+	/** Phase 24: after this long in one sneaking piece the other takes over (ticks). */
+	static final int TURN = 3600;
+	/** Phase 24: how far (blocks) someone's suspicion makes the music tense. */
+	static final double TENSION_RANGE = 18.0;
+
+	/** Phase 24: client ticks counted here; when the danger was last there; suspicion last seen; the sneaking piece's turn. */
+	private static long ticks;
+	private static long dangerAt = Long.MIN_VALUE / 2;
+	private static long suspectAt = Long.MIN_VALUE / 2;
+	private static int calmTurn;
+	private static long calmSince;
+	private static boolean wasCalm;
+	/** Phase 24: the mood now (for the tests): film, story, chase, search, after, tension, calm. */
+	private static String mood = "";
 
 	private static @Nullable MusicPiece current;
 	private static @Nullable String playing;
@@ -51,15 +82,19 @@ public final class StoryMusic {
 		}
 
 		owns = true;
+		ticks++;
+		String was = mood;
 		String piece = wantedPiece();
 
 		if (!java.util.Objects.equals(piece, playing)) {
-			fadeOut(crossfade);
+			// Phase 24: rising danger cuts in quickly, calming down fades out slowly.
+			float fade = rising(was, mood) ? Math.max(8.0F, crossfade * 0.35F) : calming(was, mood) ? Math.max(40.0F, crossfade * 2.0F) : crossfade;
+			fadeOut(fade);
 			playing = piece;
 
 			if (piece != null) {
 				Identifier id = SaberCraft.id(piece);
-				MusicPiece next = new MusicPiece(id, true, Math.max(10.0F, crossfade));
+				MusicPiece next = new MusicPiece(id, true, Math.max(10.0F, fade));
 				current = next;
 				client.getSoundManager().play(next);
 			}
@@ -73,7 +108,7 @@ public final class StoryMusic {
 		float volume = ImmersionConfig.get().musicVolume * client.getMusicVolume();
 
 		if (current != null) {
-			current.setMaster(volume * ("music.story_stealth".equals(playing) ? STEALTH_GAIN : 1.0F));
+			current.setMaster(volume * (STEALTH.equals(playing) || CORRIDORS.equals(playing) ? STEALTH_GAIN : 1.0F));
 		}
 
 		for (MusicPiece piece2 : FADING) {
@@ -84,21 +119,105 @@ public final class StoryMusic {
 		return true;
 	}
 
-	/** The piece the story wants now: the server's choice, the alarm over a calm one. */
+	/**
+	 * The piece the story wants now: a film's own; the server's choice when it is a moment of its
+	 * own (the duel, the escape); over a calm one the mood of the danger.
+	 */
 	private static @Nullable String wantedPiece() {
 		// Phase 20: a film has its own music.
 		if (com.phiro.sabercraft.client.story.StoryCinema.active()) {
+			mood = "film";
 			return com.phiro.sabercraft.client.story.StoryCinema.music();
 		}
 
 		String chosen = StoryClient.music();
 		StoryStatePayload state = StoryClient.state();
+		int alarm = state != null ? state.alarm() : 0;
 
-		if (state != null && state.alarm() >= 3 && (chosen == null || CALM.contains(chosen))) {
+		if (alarm >= 2) {
+			dangerAt = ticks;
+		}
+
+		if (chosen != null && !chosen.isEmpty() && !CALM.contains(chosen)) {
+			wasCalm = false;
+			mood = "story";
+			return chosen;
+		}
+
+		if (alarm >= 3) {
+			wasCalm = false;
+			mood = "chase";
 			return ALARM;
 		}
 
-		return chosen == null || chosen.isEmpty() ? null : chosen;
+		if (alarm == 2) {
+			// Out of their sight, they search: tense still, a little calmer (in the hideout: the calming piece).
+			wasCalm = false;
+			mood = "search";
+			return HIDEOUT.equals(chosen) ? AFTERMATH : SEARCH;
+		}
+
+		if (ticks - dangerAt < AFTER) {
+			wasCalm = false;
+			mood = "after";
+			return AFTERMATH;
+		}
+
+		if (!HIDEOUT.equals(chosen) && StoryClient.wariness(TENSION_RANGE) >= 1) {
+			suspectAt = ticks;
+		}
+
+		if (ticks - suspectAt < TENSION_HOLD) {
+			wasCalm = false;
+			mood = "tension";
+			return TENSION;
+		}
+
+		mood = "calm";
+
+		if (chosen == null || chosen.isEmpty()) {
+			return null;
+		}
+
+		if (!STEALTH.equals(chosen)) {
+			return chosen;
+		}
+
+		// The sneaking music takes turns: the other piece each time one is back from danger, and after a few minutes.
+		if (!wasCalm) {
+			if (calmSince != 0L) {
+				calmTurn++;
+			}
+
+			wasCalm = true;
+			calmSince = ticks;
+		} else if (ticks - calmSince > TURN) {
+			calmTurn++;
+			calmSince = ticks;
+		}
+
+		return calmTurn % 2 == 0 ? STEALTH : CORRIDORS;
+	}
+
+	private static final List<String> LADDER = List.of("calm", "tension", "after", "search", "chase");
+
+	/** Phase 24: whether the danger rose from one mood to the other (the music cuts in fast then). */
+	private static boolean rising(String from, String to) {
+		int a = LADDER.indexOf(from);
+		int b = LADDER.indexOf(to);
+		return a >= 0 && b >= 0 && b > a && !"after".equals(to);
+	}
+
+	/** Phase 24: whether it calms down (the music fades out slowly then). */
+	private static boolean calming(String from, String to) {
+		int a = LADDER.indexOf(from);
+		int b = LADDER.indexOf(to);
+		return a >= 0 && b >= 0 && b < a || "after".equals(to);
+	}
+
+	/** Phase 24: the mood of the music now (for tests). */
+	public static String mood() {
+		return mood;
 	}
 
 	private static void fadeOut(float ticks) {
@@ -130,5 +249,9 @@ public final class StoryMusic {
 		current = null;
 		playing = null;
 		owns = false;
+		dangerAt = Long.MIN_VALUE / 2;
+		suspectAt = Long.MIN_VALUE / 2;
+		wasCalm = false;
+		mood = "";
 	}
 }

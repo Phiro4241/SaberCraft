@@ -1557,5 +1557,61 @@
         "name": "sabercraft:story/reactor_arc"
       }
     ]
+  },
+  "music.story_infiltration": {
+    "sounds": [
+      {
+        "name": "sabercraft:music/story_infiltration",
+        "stream": true
+      }
+    ]
+  },
+  "music.story_corridors": {
+    "sounds": [
+      {
+        "name": "sabercraft:music/story_corridors",
+        "stream": true
+      }
+    ]
+  },
+  "music.story_tension": {
+    "sounds": [
+      {
+        "name": "sabercraft:music/story_tension",
+        "stream": true
+      }
+    ]
+  },
+  "music.story_search": {
+    "sounds": [
+      {
+        "name": "sabercraft:music/story_search",
+        "stream": true
+      }
+    ]
+  },
+  "music.story_aftermath": {
+    "sounds": [
+      {
+        "name": "sabercraft:music/story_aftermath",
+        "stream": true
+      }
+    ]
+  },
+  "music.story_escape": {
+    "sounds": [
+      {
+        "name": "sabercraft:music/story_escape",
+        "stream": true
+      }
+    ]
+  },
+  "music.story_finale": {
+    "sounds": [
+      {
+        "name": "sabercraft:music/story_finale",
+        "stream": true
+      }
+    ]
   }
 }
