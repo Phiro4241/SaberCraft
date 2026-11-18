@@ -2,6 +2,7 @@ package com.phiro.sabercraft.story;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 import org.jspecify.annotations.Nullable;
 
@@ -17,6 +18,7 @@ import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.HitResult;
+import net.minecraft.util.Mth;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.shapes.CollisionContext;
 
@@ -63,6 +65,9 @@ public final class Chapter1 implements Chapter {
 	static final Vec3 AIRLOCK = new Vec3(6.5, H, 10.0);
 	static final Vec3 HIDEOUT = new Vec3(20.5, H, -4.5);
 	static final Vec3 REACTOR_FLOOR = new Vec3(28.8, R, 25.0);
+	/** Phase 24: where the lab's guard stands (east of its door), and how near the droid's beeping at its lock is heard. */
+	static final Vec3 LAB_GUARD = new Vec3(48.4, R, 35.6);
+	static final double LAB_DOOR_HEARD = 4.5;
 	static final Vec3 CELL_2 = new Vec3(31.5, H, 0.0);
 	static final Vec3 LIFT_TOP = new Vec3(28.8, H, 25.0);
 	/** Phase 20: the containers of the dead drop (their mark, the west end of each along x), the contact's is K-7. */
@@ -364,7 +369,12 @@ public final class Chapter1 implements Chapter {
 					continue;
 				}
 			} else if (bottom && Crew.OFFICER_OLIVE.equals(c.kind())) {
-				if ("m4.download".equals(step)) {
+				if (m == 5 && !fight) {
+					// Phase 24: on the way to the lab he oversees the technician on the east platform
+					// (at his console by the lab's walkway, with the guard there and the droid's beeping,
+					// the way in was too hard): the crossing to the lab is one guard to get past.
+					routine = Crew.at(Crew.OFFICER_OLIVE, Crew.STAND, 50.2, R, 22.4, 300.0F);
+				} else if ("m4.download".equals(step)) {
 					// Walks the south of the floor, back and forth (Phase 23: the lab's platform,
 					// along its edge over the open shaft).
 					routine = Crew.patrol(Crew.OFFICER_OLIVE, 0.7, 0.0, new Vec3(38.5, R, 33.8), new Vec3(42.5, R, 33.6), new Vec3(47.0, R, 34.0),
@@ -476,7 +486,17 @@ public final class Chapter1 implements Chapter {
 				if (step.equals("m5.cell") || step.equals("m5.r2") || step.equals("m5.cell1") || step.equals("m5.back")) {
 					// The detention block: Phase 20: one guard, at the entrance, watching the door
 					// (his back to the cells: who would come out of them?). The officer went with Hale.
-					list.add(guard("det_guard", Crew.at(Crew.TROOPER, Crew.STAND, 34.7, H, 6.7, 270.0F)));
+					// Phase 24: by the east end, between the door and the bench, where he sees the door,
+					// the corridor, the cells and the crawl way's hatch by turning his head (he stood with
+					// his face to the wall beside the door). Overpowered, he lies where he fell.
+					Figure guard = guard("det_guard", Crew.at(Crew.TROOPER, Crew.STAND, GUARD_POST.x, H, GUARD_POST.z, GUARD_DOOR_YAW));
+
+					if (s.has(GUARD_DOWN)) {
+						guard.mode = Figure.DOWN;
+						guard.observer = false;
+					}
+
+					list.add(guard);
 
 					if (!s.has("droid.r2v7")) {
 						Figure r2 = person("r2v7", "r2v7", Crew.at("droid_r2", Crew.STAND, 27.5, H + 0.2, 9.45, 180.0F), D);
@@ -496,7 +516,9 @@ public final class Chapter1 implements Chapter {
 						&& (step.equals("m6.lab") || step.equals("m6.saber"));
 
 				if (!s.has("saber.taken") && (step.equals("m6.reactor") || step.equals("m6.door") || hunts)) {
-					list.add(guard("lab_guard", Crew.at(Crew.TROOPER, Crew.STAND, 44.5, R, 35.5, 180.0F)));
+					// Phase 24: a few steps east of the lab's door (he stood right before it), watching
+					// the shaft and the east walkway: one gets past him with care, or lures him off.
+					list.add(guard("lab_guard", Crew.at(Crew.TROOPER, Crew.STAND, LAB_GUARD.x, R, LAB_GUARD.z, 200.0F)));
 				}
 
 				hostiles(s, list, step);
@@ -551,9 +573,13 @@ public final class Chapter1 implements Chapter {
 				if (!s.has("opt.coolant")) {
 					list.add(fighter("h3", 31.0, R, 21.0, 300.0F));
 				}
+
+				// Phase 24: the corridor out of the reactor is guarded already (they wait at their posts
+				// up there, unseen from below, and are not set down out of nowhere when one comes up).
+				corridorGuards(list);
 			}
 			case "m6.escape2" -> {
-				list.add(fighter("h4", 48.0, H, 9.0, 0.0F));
+				corridorGuards(list);
 				list.add(fighter("h5", 40.5, H, 1.0, 0.0F));
 
 				if (!s.has("opt.armour2")) {
@@ -585,6 +611,22 @@ public final class Chapter1 implements Chapter {
 		figure.talks = false;
 		return figure;
 	}
+
+	/**
+	 * Phase 24: two troopers guard the narrow corridor from the reactor to the lobby (one by its
+	 * far end, one half way, a little apart, both facing the way one comes): they hold their posts
+	 * until they see the player (see {@link Finale}), shout, and fight.
+	 */
+	private static void corridorGuards(List<Figure> list) {
+		for (Vec3 at : CORRIDOR_GUARDS) {
+			Figure guard = fighter(at == CORRIDOR_GUARDS.get(0) ? "h4" : "h4b", at.x, H, at.z, 0.0F);
+			guard.post = true;
+			list.add(guard);
+		}
+	}
+
+	/** Phase 24: the corridor's guards' posts (plot space). */
+	static final List<Vec3> CORRIDOR_GUARDS = List.of(new Vec3(48.0, H, 9.0), new Vec3(47.3, H, 4.2));
 
 	private static Figure fighter(String key, double x, double y, double z, float yaw) {
 		Figure figure = new Figure(0, key, Crew.at(Crew.TROOPER, Crew.STAND, x, y, z, yaw));
@@ -661,6 +703,13 @@ public final class Chapter1 implements Chapter {
 				if (s.has("droid.r2v7") && !s.has("cell3.open")) {
 					list.add(point("cell3", 34.0, H, 2.0, 36.0, H + 3.0, 3.0, true));
 				}
+
+				// Phase 24: the guard, from close behind, while he does not see one coming.
+				Figure guard = s.figure("det_guard");
+
+				if (guard != null && takedownOpen(s, guard)) {
+					list.add(new Mission.Point("takedown", D, guard.box().inflate(0.2, 0.0, 0.2), false));
+				}
 			}
 			case 5 -> {
 				if (step.equals("m6.door") && !s.has("lab.open")) {
@@ -694,6 +743,7 @@ public final class Chapter1 implements Chapter {
 	@Override
 	public void use(StorySession s, Mission.Point point) {
 		switch (point.id()) {
+			case "takedown" -> takedown(s);
 			case "pad" -> s.talk("m1_pad", null);
 			case "sign" -> s.talk("m1_sign", null);
 			case "terminal" -> s.talk("terminal", null);
@@ -802,6 +852,22 @@ public final class Chapter1 implements Chapter {
 		};
 	}
 
+	/**
+	 * Phase 24: the talks one has with people in passing (no step waits for them): not while the
+	 * troopers are after one or shoot (the reactor's technician saying he is busy, in a firefight).
+	 */
+	static final Set<String> SMALL_TALK = Set.of("m1_mira_wait", "dax_idle", "rorrak_idle", "kestrel_idle", "checkpoint_closed", "quartermaster", "tech_idle");
+
+	@Override
+	public boolean talksNow(StorySession s, Figure figure) {
+		if (!s.danger()) {
+			return true;
+		}
+
+		String dialog = this.dialogFor(s, figure);
+		return dialog == null || !SMALL_TALK.contains(dialog);
+	}
+
 	@Override
 	public boolean talk(StorySession s, Figure figure) {
 		String step = s.step().id();
@@ -817,7 +883,29 @@ public final class Chapter1 implements Chapter {
 			return s.dialog != null;
 		}
 
-		String dialog = switch (figure.key) {
+		String dialog = this.dialogFor(s, figure);
+
+		if (dialog == null || !this.talksNow(s, figure)) {
+			return false;
+		}
+
+		if (step.equals("m6.jump") && figure.key.equals("dax")) {
+			s.set("tmp.jump_go");
+		}
+
+		s.talk(dialog, figure);
+		return s.dialog != null;
+	}
+
+	/** The dialog speaking to someone opens now (during the chapter), or null. */
+	@Nullable String dialogFor(StorySession s, Figure figure) {
+		String step = s.step().id();
+
+		if (s.has(CHAPTER_DONE)) {
+			return afterwards(s, figure);
+		}
+
+		return switch (figure.key) {
 			case "mira" -> step.equals("m1.briefing") ? "m1_briefing" : "m1_mira_wait";
 			case "dax" -> step.equals("m1.cockpit") ? "m1_dax" : step.equals("m6.jump") ? "falcon_crew" : "dax_idle";
 			case "rorrak" -> "rorrak_idle";
@@ -838,17 +926,6 @@ public final class Chapter1 implements Chapter {
 			case "prisoner" -> s.has("cell3.open") && !s.has("opt.prisoner") ? "m5_prisoner" : null;
 			default -> null;
 		};
-
-		if (dialog == null) {
-			return false;
-		}
-
-		if (step.equals("m6.jump") && figure.key.equals("dax")) {
-			s.set("tmp.jump_go");
-		}
-
-		s.talk(dialog, figure);
-		return s.dialog != null;
 	}
 
 	// --- Droids ------------------------------------------------------------------------------------
@@ -913,9 +990,11 @@ public final class Chapter1 implements Chapter {
 				s.set("tmp.hack." + lock.id());
 				Story.cue(s, Story.CUE_HINT, "progress", "sabercraft.story.hint.hacking", 0);
 
-				// Someone close by hears it beep.
+				// Someone close by hears it beep (Phase 24: the lab's door is a quiet lock: only right by it).
+				double heard = lock.id().equals("lab_door") ? LAB_DOOR_HEARD : 7.0;
+
 				for (Figure figure : s.figures) {
-					if (figure.observer && s.here.equals(figure.ship) && figure.position().distanceTo(lock.box().getCenter()) < 7.0
+					if (figure.observer && s.here.equals(figure.ship) && figure.position().distanceTo(lock.box().getCenter()) < heard
 							&& (figure.mode == Figure.ROUTINE || figure.mode == Figure.RETURN)) {
 						figure.mode = Figure.LOOK;
 						figure.target = lock.box().getCenter();
@@ -1168,6 +1247,8 @@ public final class Chapter1 implements Chapter {
 				} else if (!s.has("m5.trapped")) {
 					// Phase 20: the trap runs whenever one walks into it (the checkpoint after it is
 					// in the cell, so a capture never skips it or leaves it half done).
+					// Phase 24: it is Hale's scene: nobody who still searched follows into it.
+					clearStage(s, DestroyerInterior.DETENTION.inflate(6.0));
 					s.talk("m5_trap", s.figure("hale"));
 				} else if (!s.has("cell2.open")) {
 					// Back in the cell: the hint again after a few seconds.
@@ -1186,6 +1267,15 @@ public final class Chapter1 implements Chapter {
 					s.hear("intercom", "sabercraft.story.shout.lights_on");
 				}
 
+				// Phase 24: the intercom on the reactor (once the lights are announced), then: evacuate.
+				if (id.equals("m6.escape1")) {
+					s.timer("intercom_reactor", 90);
+				} else if (id.equals("m6.escape2")) {
+					s.timer("intercom_evacuate", 50);
+				}
+
+				s.timer("shudder", 60);
+
 				if (id.equals("m6.escape1")) {
 					// Phase 23: the bridge whole again (ship() put it back), nothing of its fall begun.
 					s.unset("tmp.bridge_creak");
@@ -1196,6 +1286,12 @@ public final class Chapter1 implements Chapter {
 				s.fighting = true;
 				s.unset("tmp.film");
 				s.unset("tmp.duel_end");
+				// Phase 24: her TIE stands in the hangar (she escapes in it).
+				s.set("tie.parked");
+				s.unset(Finale.BOSS_SCENE);
+				s.unset(Finale.BOSS_DONE);
+				s.unset("tmp.boss_reveal");
+				s.timers.remove("boss_mid");
 				// Phase 23: the duel is between the two of them: troopers still about from the
 				// escape (drawn in, or come as help) fall back.
 				s.figures.removeIf(figure -> figure.engaged || figure.key.startsWith(Stealth.REINFORCEMENT));
@@ -1420,14 +1516,17 @@ public final class Chapter1 implements Chapter {
 	/**
 	 * The music the story asks for (the client plays it instead of its own choice): sneaking on the
 	 * Star Destroyer, calm in the Falcon and in the hideout, the alarm piece while escaping, the
-	 * fight to the hangar, the duel, the jump. The client lays the alarm piece over a calm one
-	 * while an alarm is on.
+	 * fight to the hangar, the duel, the jump. The client lays the danger's moods over a calm one
+	 * (Phase 24: tension, the chase, the search, the calming down after it).
 	 */
 	static void music(StorySession s, int m, String step) {
 		String track = switch (step) {
-			case "m1.briefing", "m1.cockpit", "m1.ramp", "m6.epilogue" -> "music.story_hideout";
+			case "m1.briefing", "m1.cockpit", "m6.epilogue" -> "music.story_hideout";
+			// Phase 24: after the arrival the mission begins: aboard the Star Destroyer, wide awake.
+			case "m1.ramp", "m1.droid" -> "music.story_infiltration";
 			case "m5.escape" -> "music.story_alarm";
-			case "m6.escape1", "m6.escape2", "m6.falcon" -> "music.combat_duel";
+			// Phase 24: the run through the failing ship has its own piece.
+			case "m6.escape1", "m6.escape2", "m6.falcon" -> "music.story_escape";
 			// Silence while she speaks; the duel's music when the blades are lit.
 			case "m6.duel" -> s.has("tmp.duel") || s.has("tmp.film") && !s.has("tmp.duel_end") ? "music.story_duel" : "";
 			case "m6.jump" -> "music.event_rise";
@@ -1449,6 +1548,16 @@ public final class Chapter1 implements Chapter {
 
 		if (player == null || level == null) {
 			return;
+		}
+
+		// Phase 24: the detention block's guard keeps watch (and can be overpowered).
+		if (s.mission == 4) {
+			guardTick(s, player, level);
+		}
+
+		// Phase 24: from the moment the saber is taken the reactor fails, worse and worse.
+		if (s.mission == 5 && s.has("saber.taken")) {
+			instability(s, player, level);
 		}
 
 		// A step said in a dialog: done once the dialog is closed.
@@ -1573,8 +1682,9 @@ public final class Chapter1 implements Chapter {
 				copy(s);
 			}
 			case "m5.route" -> {
-				if (s.inside(D, DestroyerInterior.DETENTION)
-						|| !s.has("trust.hale") && s.inside(D, new AABB(24.0, H - 0.5, 3.0, 25.0, H + 2.0, 7.0))) {
+				// Phase 24: Hale's trap (or the crawl way's end) only once nobody is after the player.
+				if (!s.pursued() && (s.inside(D, DestroyerInterior.DETENTION)
+						|| !s.has("trust.hale") && s.inside(D, new AABB(24.0, H - 0.5, 3.0, 25.0, H + 2.0, 7.0)))) {
 					s.complete();
 				}
 			}
@@ -1618,17 +1728,42 @@ public final class Chapter1 implements Chapter {
 			case "m6.duel" -> duelTick(s, player);
 			case "m6.jump" -> {
 				if (s.has("tmp.jump_go") && s.dialog == null && !s.has("tmp.jumping")) {
+					// Phase 24: the escape seen from outside (the Tenebris goes up behind the Falcon);
+					// the jump inside the Falcon begins as it jumps in the film, and goes on after it.
 					s.set("tmp.jumping");
-					s.timer("jump", InteriorJump.length());
-					InteriorJump.story(level, s.falcon);
-				} else if (s.has("tmp.jumping") && !s.timer("jump")) {
-					s.unset("tmp.jumping");
-					s.unset("tmp.jump_go");
-					s.complete();
+					s.set("tmp.film");
+					s.timer("escape_film", ESCAPE_FILM);
+					s.timer("jump", ESCAPE_JUMP_AT + InteriorJump.length());
+					Story.cue(s, Story.CUE_CINEMA, "escape", "", ESCAPE_FILM);
+					escapes++;
+				} else if (s.has("tmp.jumping")) {
+					int left = s.timers.getOrDefault("jump", 0);
+
+					if (!s.has("tmp.interior_jump") && left <= InteriorJump.length()) {
+						s.set("tmp.interior_jump");
+						InteriorJump.story(level, s.falcon);
+					}
+
+					if (s.has("tmp.film") && !s.timer("escape_film")) {
+						s.unset("tmp.film");
+					}
+
+					if (!s.timer("jump")) {
+						s.unset("tmp.jumping");
+						s.unset("tmp.jump_go");
+						s.unset("tmp.interior_jump");
+						s.unset("tmp.film");
+						s.complete();
+					}
 				}
 			}
 			default -> {
 			}
+		}
+
+		// Phase 24: the blade lock's scene (the fight waits meanwhile).
+		if (s.has(Finale.BOSS_SCENE)) {
+			Finale.bossScene(s, player, level);
 		}
 
 		// Nobody fights while someone speaks (the player cannot move then).
@@ -2002,11 +2137,45 @@ public final class Chapter1 implements Chapter {
 		if (("duel".equals(film) || "duel_end".equals(film)) && s.at("m6.duel") && s.has("tmp.film")) {
 			s.timer("film", 1);
 		}
+
+		if ("takedown".equals(film) && s.has("tmp.takedown")) {
+			// Phase 24: skipped: he is down at once (the story goes on as after the whole scene).
+			s.timer("takedown", 1);
+		}
+
+		if ("boss_mid".equals(film) && s.has(Finale.BOSS_SCENE)) {
+			// Phase 24: skipped: the burst, her second blade, the second phase at once.
+			ServerPlayer player = s.player();
+			Figure shadow = s.figure("shadow");
+
+			if (player != null) {
+				Finale.endBossScene(s, shadow, player);
+			}
+		}
+
+		if ("escape".equals(film) && s.at("m6.jump") && s.has("tmp.jumping")) {
+			// Phase 24: skipped: the jump inside the Falcon at once (then the epilogue, as after the film).
+			s.timers.remove("escape_film");
+			s.unset("tmp.film");
+			s.timer("jump", Math.min(s.timers.getOrDefault("jump", 0), InteriorJump.length()));
+		}
+	}
+
+	/** Phase 24: the end of the Tenebris from outside (as the client's {@code EscapeFilm}), and when the Falcon jumps in it. */
+	static final int ESCAPE_FILM = 440;
+	static final int ESCAPE_JUMP_AT = 330;
+	private static int escapes;
+
+	static int escapesForTest() {
+		return escapes;
 	}
 
 	/** Phase 21: how long the film before the duel and the one of his flight are (as the client's {@code DuelFilm}). */
 	static final int DUEL_FILM = 220;
-	static final int DUEL_END_FILM = 170;
+	static final int DUEL_END_FILM = 346;
+	/** Phase 24: her flight's moments (as the client's {@code DuelFilm}): she leaps up into the TIE, is in it. */
+	static final int BOARD = 172;
+	static final int IN_TIE = 184;
 	/** Where the player stands in the film before the duel (facing him), and his way out (to the flight control door). */
 	static final Vec3 DUEL_PLAYER = new Vec3(40.5, H, -21.0);
 
@@ -2044,8 +2213,30 @@ public final class Chapter1 implements Chapter {
 					shadow.react = 0;
 					shadow.reactTicks = 0;
 					shadow.scriptSpeed = 6.5;
-					walk(shadow, new Vec3(32.0, H, -31.0), new Vec3(22.0, H, -38.0), new Vec3(18.6, H, -39.0), new Vec3(15.5, H, -39.0));
+					// Phase 24: to the TIE fighter parked by the field (she ran out of the door before).
+					// (Round the south wing to the front of the ball, between the wings.)
+					walk(shadow, new Vec3(30.0, H, -33.0), new Vec3(29.2, H, -41.0), DestroyerInterior.ESCAPE_TIE_FOOT);
 					s.set("tmp.leave.shadow");
+				} else if (t >= BOARD && t < IN_TIE) {
+					// Up into its ball in one leap.
+					Vec3 foot = DestroyerInterior.ESCAPE_TIE_FOOT;
+					Vec3 hatch = DestroyerInterior.ESCAPE_TIE.add(0.0, 0.9, 0.0);
+
+					if (t == BOARD) {
+						shadow.mode = Figure.HELD;
+						shadow.way = List.of();
+						shadow.x = foot.x;
+						shadow.z = foot.z;
+						shadow.y = foot.y;
+					}
+
+					float u = (t - BOARD + 1) / (float) (IN_TIE - BOARD);
+					shadow.x = Mth.lerp(u, foot.x, hatch.x);
+					shadow.z = Mth.lerp(u, foot.z, hatch.z);
+					shadow.y = foot.y + (hatch.y - foot.y) * u + Math.sin(u * Math.PI) * 0.8;
+					shadow.speed = 0.0F;
+				} else if (t == IN_TIE) {
+					s.figures.removeIf(figure -> figure.key.equals("shadow"));
 				}
 			}
 
@@ -2055,6 +2246,8 @@ public final class Chapter1 implements Chapter {
 				s.unset("tmp.duel_end");
 				s.unset("tmp.leave.shadow");
 				s.set("gone.shadow");
+				// Phase 24: her TIE is gone with her.
+				s.unset("tie.parked");
 				s.figures.removeIf(figure -> figure.key.equals("shadow"));
 
 				// His last words are in the film; Dax calls when it is over (seen with the HUD again).
@@ -2066,6 +2259,9 @@ public final class Chapter1 implements Chapter {
 
 			return;
 		}
+
+		// Phase 24: nobody walks through the parked TIE's wings.
+		tieWings(s, player);
 
 		if (shadow == null || shadow.hostile || s.has("tmp.duel") || s.dialog != null) {
 			return;
@@ -2120,7 +2316,51 @@ public final class Chapter1 implements Chapter {
 		s.set("tmp.duel_end");
 		s.timer("film", DUEL_END_FILM);
 		shadow.mode = Figure.HELD;
-		Story.cue(s, Story.CUE_CINEMA, "duel_end", "", DUEL_END_FILM);
+		// Phase 24: her TIE is where the film shows it (the client draws it from this point).
+		s.set("tie.parked");
+		Vec3 tie = DestroyerInterior.ESCAPE_TIE.add(Vec3.atLowerCornerOf(s.destroyer));
+		Story.cue(s, Story.CUE_CINEMA, "duel_end", "", DUEL_END_FILM, List.of(tie));
+	}
+
+	/**
+	 * Phase 24: the parked TIE's wings stand on the hangar floor (drawn only): whoever walks into
+	 * one is set back out on the side they came from. Under the ball between them one can walk.
+	 */
+	private static void tieWings(StorySession s, ServerPlayer player) {
+		if (!s.has("tie.parked") || !D.equals(s.here) || s.has("tmp.film")) {
+			return;
+		}
+
+		Vec3 me = s.local(D);
+		Vec3 tie = DestroyerInterior.ESCAPE_TIE;
+
+		// (It faces east, over the field: its wings stand north and south of the ball, across z.)
+		if (me.y > tie.y + 3.3 || me.y < H - 0.5 || Math.abs(me.x - tie.x) > TIE_WING_HALF + 0.3) {
+			return;
+		}
+
+		for (int side = -1; side <= 1; side += 2) {
+			double wing = tie.z + side * TIE_WING_X;
+			double off = me.z - wing;
+
+			if (Math.abs(off) < TIE_WING_GAP) {
+				double out = wing + (off >= 0.0 ? TIE_WING_GAP : -TIE_WING_GAP);
+				Vec3 corner = Vec3.atLowerCornerOf(s.destroyer);
+				player.connection.teleport(player.getX(), player.getY(), corner.z + out, player.getYRot(), player.getXRot());
+				wingsBlocked++;
+				return;
+			}
+		}
+	}
+
+	/** Phase 24: where the parked TIE's wings stand (from its middle, across z), how far they reach along x, how close one gets. */
+	static final double TIE_WING_X = 3.08;
+	static final double TIE_WING_HALF = 3.3;
+	static final double TIE_WING_GAP = 0.45;
+	private static int wingsBlocked;
+
+	static int wingsBlockedForTest() {
+		return wingsBlocked;
 	}
 
 	/** Mission 1: M-31, stuck behind the crates, comes with the player. */
@@ -2241,6 +2481,215 @@ public final class Chapter1 implements Chapter {
 		s.hint("sabercraft.story.hint.trapped");
 	}
 
+	// --- The detention block's guard (Phase 24) -----------------------------------------------------
+
+	/** Phase 24: where the detention block's guard stands, and the two ways he faces: the door, the room. */
+	static final Vec3 GUARD_POST = new Vec3(34.5, H, 7.6);
+	static final float GUARD_DOOR_YAW = 200.0F;
+	static final float GUARD_ROOM_YAW = 108.0F;
+	/** Phase 24: his watch (ticks): the door this long, a turn, the room this long, a turn back. */
+	static final int GUARD_DOOR_TICKS = 170;
+	static final int GUARD_ROOM_TICKS = 80;
+	static final int GUARD_TURN_TICKS = 20;
+	/** Phase 24: overpowered (a mark kept with the checkpoints after it). */
+	static final String GUARD_DOWN = "det_guard.down";
+	/** Phase 24: how near behind him one has to be, and how long the scene is (ticks, as the client's film). */
+	static final double TAKEDOWN_REACH = 2.4;
+	static final int TAKEDOWN_FILM = 76;
+	private static int takedowns;
+
+	/** For the tests: how often the guard was overpowered since the game started. */
+	public static int takedownsForTest() {
+		return takedowns;
+	}
+
+	/** Phase 24: whether the guard can be overpowered now (on duty, not hunting the player, the player out of the cell). */
+	static boolean takedownOpen(StorySession s, Figure guard) {
+		boolean out = s.at("m5.cell") && s.has("m5.trapped") && s.has("cell2.open") || s.at("m5.r2") || s.at("m5.cell1") || s.at("m5.back");
+		return out && guard.mode != Figure.DOWN && guard.mode != Figure.CHASE && guard.mode != Figure.CALL && guard.mode != Figure.FIGHT
+				&& guard.mode != Figure.SCRIPTED && guard.stage < Figure.ALERTED && !s.has("tmp.film") && !s.has(GUARD_DOWN) && !s.pursued();
+	}
+
+	/**
+	 * Phase 24: the guard's watch. At his post he looks to the door most of the time (who comes
+	 * in?), now and then he turns and looks over the corridor, the cells and the crawl way's hatch;
+	 * what he sees and hears he reacts to as anyone (a noise: he goes to look, then back to his
+	 * post). And the scene when he is overpowered.
+	 */
+	private static void guardTick(StorySession s, ServerPlayer player, ServerLevel level) {
+		Figure guard = s.figure("det_guard");
+
+		if (guard == null) {
+			return;
+		}
+
+		if (s.has("tmp.takedown")) {
+			takedownTick(s, player, level, guard);
+			return;
+		}
+
+		if (guard.mode != Figure.ROUTINE) {
+			return;
+		}
+
+		int cycle = GUARD_DOOR_TICKS + GUARD_ROOM_TICKS + 2 * GUARD_TURN_TICKS;
+		long t = (s.time() + guard.id * 37L) % cycle;
+		float yaw;
+
+		if (t < GUARD_DOOR_TICKS) {
+			yaw = GUARD_DOOR_YAW;
+		} else if (t < GUARD_DOOR_TICKS + GUARD_TURN_TICKS) {
+			yaw = Mth.rotLerp(smooth((t - GUARD_DOOR_TICKS) / (float) GUARD_TURN_TICKS), GUARD_DOOR_YAW, GUARD_ROOM_YAW);
+		} else if (t < GUARD_DOOR_TICKS + GUARD_TURN_TICKS + GUARD_ROOM_TICKS) {
+			yaw = GUARD_ROOM_YAW;
+		} else {
+			yaw = Mth.rotLerp(smooth((t - GUARD_DOOR_TICKS - GUARD_TURN_TICKS - GUARD_ROOM_TICKS) / (float) GUARD_TURN_TICKS), GUARD_ROOM_YAW, GUARD_DOOR_YAW);
+		}
+
+		guard.yaw = yaw;
+		// His head moves a little within the look (he is watching, not a statue).
+		guard.headYaw = yaw + 12.0F * Mth.sin((s.time() + guard.id) / 23.0F);
+	}
+
+	private static float smooth(float u) {
+		float x = Mth.clamp(u, 0.0F, 1.0F);
+		return x * x * (3.0F - 2.0F * x);
+	}
+
+	/**
+	 * Phase 24: the player overpowers the guard: from close behind, while he looks away. From the
+	 * front or the side he sees it coming and raises the alarm; from too far one is told to come
+	 * closer. Then a short scene seen from outside: a grab, a blow, he goes down (and stays down).
+	 */
+	static void takedown(StorySession s) {
+		Figure guard = s.figure("det_guard");
+		ServerPlayer player = s.player();
+
+		if (guard == null || player == null || !takedownOpen(s, guard)) {
+			return;
+		}
+
+		Vec3 me = s.local(D);
+		Vec3 to = new Vec3(me.x - guard.x, 0.0, me.z - guard.z);
+		double distance = to.length();
+
+		if (distance > TAKEDOWN_REACH) {
+			s.hint("sabercraft.story.hint.takedown_near");
+			return;
+		}
+
+		double angle = distance < 1.0E-3 ? 180.0 : Math.toDegrees(Math.acos(Mth.clamp(to.normalize().dot(guard.look()), -1.0, 1.0)));
+
+		if (angle < 100.0) {
+			// He sees it coming.
+			guard.suspicion = 1.0F;
+			guard.stage = Figure.DETECTED;
+			guard.seenAt = me;
+			s.hint("sabercraft.story.hint.takedown_seen");
+			Story.detected(s, guard);
+			return;
+		}
+
+		takedowns++;
+		s.set("tmp.film");
+		s.set("tmp.takedown");
+		s.timer("takedown", TAKEDOWN_FILM);
+		guard.mode = Figure.SCRIPTED;
+		guard.blind = true;
+		guard.speed = 0.0F;
+		guard.way = List.of();
+		// The player right behind him, facing him.
+		Vec3 back = guard.position().subtract(guard.look().scale(0.9));
+		Story.place(s, D, back, guard.yaw);
+		Vec3 world = guard.position().add(Vec3.atLowerCornerOf(s.destroyer));
+		Story.cue(s, Story.CUE_CINEMA, "takedown", "", TAKEDOWN_FILM, List.of(world));
+		s.dirty = true;
+	}
+
+	private static void takedownTick(StorySession s, ServerPlayer player, ServerLevel level, Figure guard) {
+		int left = s.timers.getOrDefault("takedown", 0);
+		int t = TAKEDOWN_FILM - left;
+		Vec3 corner = Vec3.atLowerCornerOf(s.destroyer);
+		Vec3 at = guard.position().add(corner).add(0.0, 1.2, 0.0);
+
+		if (guard.mode != Figure.DOWN) {
+			guard.speed = 0.0F;
+		}
+
+		if (t == 14) {
+			// The grab: an arm round his helmet, a jolt.
+			player.swing(net.minecraft.world.InteractionHand.MAIN_HAND, true);
+			guard.react(Figure.STUMBLE, 12);
+			level.playSound(null, at.x, at.y, at.z, ShipInteriors.sound("story.armour_hit"), net.minecraft.sounds.SoundSource.HOSTILE, 0.7F, 0.8F);
+		} else if (t == 26) {
+			// The blow: he goes down.
+			player.swing(net.minecraft.world.InteractionHand.OFF_HAND, true);
+			guardDown(s, guard);
+			level.playSound(null, at.x, at.y, at.z, ShipInteriors.sound("story.armour_hit"), net.minecraft.sounds.SoundSource.HOSTILE, 0.9F, 0.65F);
+			level.playSound(null, at.x, at.y - 1.0, at.z, ShipInteriors.sound("story.body_fall"), net.minecraft.sounds.SoundSource.HOSTILE, 0.9F, 0.9F);
+		}
+
+		if (guard.reactTicks > 0) {
+			Hits.tick(guard, level, corner);
+		}
+
+		if (left <= 0 || !s.timer("takedown")) {
+			// The end (or skipped): he is down for good, the player has the room.
+			if (guard.mode != Figure.DOWN) {
+				guardDown(s, guard);
+				guard.reactTicks = 0;
+			}
+
+			s.unset("tmp.takedown");
+			s.unset("tmp.film");
+			s.timers.remove("takedown");
+			s.hint("sabercraft.story.hint.takedown_done");
+			s.dirty = true;
+		}
+	}
+
+	/** Phase 24: the guard lies where he fell: no longer on watch (and it is remembered with the checkpoints). */
+	private static void guardDown(StorySession s, Figure guard) {
+		guard.mode = Figure.DOWN;
+		guard.observer = false;
+		guard.speed = 0.0F;
+		guard.suspicion = 0.0F;
+		guard.stage = Figure.CALM;
+		guard.react(Figure.FALL, 16);
+		s.set(GUARD_DOWN);
+	}
+
+	/**
+	 * Phase 24: a scene of the story begins: the alarm stands down, those who came as help go, and
+	 * whoever still hunted the player near the scene goes back to their post (none of them crowd
+	 * into a room the story needs for itself).
+	 */
+	static void clearStage(StorySession s, AABB near) {
+		s.figures.removeIf(figure -> figure.key.startsWith(Stealth.REINFORCEMENT));
+
+		for (Figure figure : s.figures) {
+			if (D.equals(figure.ship) && !figure.hostile && (figure.mode == Figure.CHASE || figure.mode == Figure.INVESTIGATE || figure.mode == Figure.CALL
+					|| figure.mode == Figure.LOOK && near.contains(figure.position()))) {
+				figure.mode = Figure.RETURN;
+				figure.called = false;
+				figure.searches = 0;
+				figure.windup = 0;
+				figure.burst = 0;
+				figure.suspicion = 0.0F;
+				figure.stage = Figure.CALM;
+				figure.path = List.of();
+				figure.pathGoal = null;
+			}
+		}
+
+		s.alarm = 0;
+		s.unseen = 0;
+		s.searching = false;
+		s.cornered = 0;
+		s.cornerer = null;
+		s.dirty = true;
+	}
+
 	/** Phase 20: in the cell, M-31 waits outside by the bench (and does not come in after the player). */
 	private static void mouseOutside(StorySession s) {
 		ServerPlayer player = s.player();
@@ -2286,9 +2735,137 @@ public final class Chapter1 implements Chapter {
 		// Phase 23: the chasers from the reactor (and anyone searching) fight from this moment.
 		Finale.engageAll(s);
 		Story.cue(s, Story.CUE_SOUND, "", "story.alarm", 0);
+		// Phase 24: the containment field drew on the reactor's core: torn open, it overloads it.
+		// A blast out of the field's emitter, the core's arcs, the whole ship shudders.
+		ServerLevel level = interiors(s);
+
+		if (level != null) {
+			Vec3 field = Vec3.atCenterOf(DestroyerInterior.SABER_FIELD).add(Vec3.atLowerCornerOf(s.destroyer));
+			level.sendParticles(net.minecraft.core.particles.ParticleTypes.EXPLOSION, field.x, field.y + 0.6, field.z, 1, 0.0, 0.0, 0.0, 0.0);
+			level.sendParticles(net.minecraft.core.particles.ParticleTypes.ELECTRIC_SPARK, field.x, field.y + 0.8, field.z, 50, 0.4, 0.5, 0.4, 0.5);
+			level.sendParticles(net.minecraft.core.particles.ParticleTypes.LARGE_SMOKE, field.x, field.y + 1.0, field.z, 10, 0.3, 0.4, 0.3, 0.03);
+			level.playSound(null, field.x, field.y, field.z, ShipInteriors.sound("story.reactor_arc"), SoundSource.BLOCKS, 1.4F, 0.8F);
+			level.playSound(null, field.x, field.y, field.z, ShipInteriors.sound("ship.small_blast"), SoundSource.BLOCKS, 1.1F, 0.9F);
+		}
+
+		Story.cue(s, Story.CUE_DUEL, "quake", "", 22);
+		s.timer("intercom_reactor", 70);
 		s.radio("kestrel", "sabercraft.story.radio.saber_taken");
 		learnFocus(s, true);
 		done(s, "m6.saber");
+	}
+
+	// --- Phase 24: the reactor fails --------------------------------------------------------------
+
+	/** How bad it is by step (0: nothing yet). */
+	static int instabilityLevel(StorySession s) {
+		if (s.mission != 5 || !s.has("saber.taken")) {
+			return 0;
+		}
+
+		return switch (s.step().id()) {
+			case "m6.saber", "m6.escape1" -> 1;
+			case "m6.escape2" -> 2;
+			case "m6.duel" -> 3;
+			case "m6.falcon", "m6.jump" -> 4;
+			default -> 0;
+		};
+	}
+
+	/** How long between two shudders (ticks) by how bad it is. */
+	private static final int[] SHUDDER_EVERY = {0, 170, 130, 100, 70};
+	/** Where it burns and sparks along the way out (plot space), by step: the reactor, the corridor, the hangar. */
+	private static final List<Vec3> DAMAGE = List.of(new Vec3(DestroyerInterior.REACTOR_X - 2.0, R + 6.0, DestroyerInterior.REACTOR_Z + 1.0),
+			new Vec3(DestroyerInterior.REACTOR_X + 2.5, R + 11.0, DestroyerInterior.REACTOR_Z - 1.5), new Vec3(48.0, H + 3.2, 6.0),
+			new Vec3(47.5, H + 3.2, 0.5), new Vec3(40.5, H + 3.4, -6.0), new Vec3(38.5, H + 3.4, -12.0), new Vec3(35.0, H + 5.0, -22.0),
+			new Vec3(47.0, H + 5.0, -31.0));
+	private static int shudders;
+
+	static int shuddersForTest() {
+		return shudders;
+	}
+
+	/**
+	 * Phase 24: the reactor, overloaded when the saber was torn out of its field, fails more and
+	 * more on the way out: the ship shudders now and then (sooner and harder from section to
+	 * section), sparks, smoke and small blasts break out near the player (never hurting), the lights
+	 * flicker, the intercom warns and calls to evacuate, sirens; where it is worst it burns on.
+	 * Nothing of it happens during a film or a dialog (it waits); in the Falcon only the booms and
+	 * the shaking are felt.
+	 */
+	private void instability(StorySession s, ServerPlayer player, ServerLevel level) {
+		int stage = instabilityLevel(s);
+
+		if (fired(s, "intercom_reactor")) {
+			s.hear("intercom", "sabercraft.story.shout.reactor_critical");
+		}
+
+		if (fired(s, "intercom_evacuate")) {
+			s.hear("intercom", "sabercraft.story.shout.evacuate");
+		}
+
+		if (stage == 0 || s.has("tmp.film") || s.dialog != null || s.completing()) {
+			return;
+		}
+
+		boolean aboard = D.equals(s.here);
+		Vec3 corner = Vec3.atLowerCornerOf(s.origin(s.here != null ? s.here : D));
+
+		// The fires where it is worst, on all the time near the player.
+		if (aboard && s.stepTicks % 8 == 0) {
+			for (Vec3 spot : DAMAGE) {
+				Vec3 at = spot.add(corner);
+
+				if (at.distanceToSqr(player.position()) < 24.0 * 24.0) {
+					level.sendParticles(net.minecraft.core.particles.ParticleTypes.ELECTRIC_SPARK, at.x, at.y, at.z, 3 + stage, 0.25, 0.1, 0.25, 0.2);
+					level.sendParticles(net.minecraft.core.particles.ParticleTypes.SMOKE, at.x, at.y, at.z, 2, 0.2, 0.1, 0.2, 0.01);
+				}
+			}
+		}
+
+		if (aboard && stage >= 2 && s.stepTicks % 140 == 0) {
+			Story.cue(s, Story.CUE_SOUND, "", "story.siren", 0);
+		}
+
+		if (s.timer("shudder")) {
+			return;
+		}
+
+		s.timer("shudder", SHUDDER_EVERY[stage] + player.getRandom().nextInt(40));
+		shudders++;
+		Story.cue(s, Story.CUE_DUEL, "rumble", "", stage);
+
+		if (!aboard) {
+			// In the Falcon: the Tenebris shakes it where it lies, a boom through the hull.
+			Story.cue(s, Story.CUE_SOUND, "", "ship.explode", 0);
+			return;
+		}
+
+		// A blast somewhere near (where one sees it), sparks, smoke, the core's arcs.
+		Vec3 eye = player.getEyePosition();
+		net.minecraft.util.RandomSource random = player.getRandom();
+
+		for (int attempt = 0; attempt < 5; attempt++) {
+			double angle = random.nextDouble() * Math.PI * 2.0;
+			double reach = 4.0 + random.nextDouble() * 8.0;
+			Vec3 at = eye.add(Math.cos(angle) * reach, -0.5 + random.nextDouble() * 2.5, Math.sin(angle) * reach);
+
+			if (!Stealth.clear(level, eye, at)) {
+				continue;
+			}
+
+			level.sendParticles(net.minecraft.core.particles.ParticleTypes.EXPLOSION, at.x, at.y, at.z, 1, 0.0, 0.0, 0.0, 0.0);
+			level.sendParticles(net.minecraft.core.particles.ParticleTypes.ELECTRIC_SPARK, at.x, at.y, at.z, 16 + stage * 6, 0.3, 0.3, 0.3, 0.35);
+			level.sendParticles(net.minecraft.core.particles.ParticleTypes.LARGE_SMOKE, at.x, at.y, at.z, 4 + stage, 0.4, 0.3, 0.4, 0.02);
+			level.sendParticles(net.minecraft.core.particles.ParticleTypes.LAVA, at.x, at.y, at.z, 2 + stage, 0.2, 0.2, 0.2, 0.0);
+			level.playSound(null, at.x, at.y, at.z, ShipInteriors.sound(stage >= 3 ? "ship.explode" : "ship.small_blast"), SoundSource.BLOCKS,
+					0.45F + 0.12F * stage, 0.8F + random.nextFloat() * 0.3F);
+			break;
+		}
+
+		if (shudders % 2 == 0) {
+			level.playSound(null, eye.x, eye.y + 3.0, eye.z, ShipInteriors.sound("story.reactor_arc"), SoundSource.BLOCKS, 0.4F + 0.1F * stage, 0.6F);
+		}
 	}
 
 	/**
@@ -2396,7 +2973,16 @@ public final class Chapter1 implements Chapter {
 		if (x == DestroyerInterior.CX - 4 && y == H && z == DestroyerInterior.DETENTION_DOOR_Z0) {
 			// The detention block: open only for the one Hale expects (Phase 20: and for Hale and
 			// his trooper leaving after the trap).
-			return !(s.has("trust.hale") && s.at("m5.route")) && !(s.at("m5.cell") && (s.has("tmp.leave.hale") || s.has("tmp.leave.trap1")));
+			boolean shut = !(s.has("trust.hale") && s.at("m5.route")) && !(s.at("m5.cell") && (s.has("tmp.leave.hale") || s.has("tmp.leave.trap1")));
+
+			if (!shut && s.at("m5.route") && s.pursued()) {
+				// Phase 24: not with troopers on one's heels: Hale's trap (and the room it needs) is
+				// not for a chase; the door opens once they lost the player.
+				refusedDoor(s, new Vec3(x, y, z + 1.0));
+				return true;
+			}
+
+			return shut;
 		}
 
 		if (x == DestroyerInterior.LAB_DOOR_X0 && y == R && z == DestroyerInterior.LAB_WALL) {
@@ -2416,6 +3002,14 @@ public final class Chapter1 implements Chapter {
 		}
 
 		return false;
+	}
+
+	/** Phase 24: the player at a door the chase keeps shut is told why (now and then, not every tick). */
+	private static void refusedDoor(StorySession s, Vec3 door) {
+		if (D.equals(s.here) && s.local(D).distanceTo(door) < 3.2 && !s.timer("door_hint")) {
+			s.timer("door_hint", 60);
+			s.hint(Story.HUNTED);
+		}
 	}
 
 	@Override

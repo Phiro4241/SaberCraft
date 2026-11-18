@@ -230,6 +230,13 @@ public final class CrewTalk {
 			return false;
 		}
 
+		// Phase 24: in a story's ship nobody chats while an alarm is on or they shoot.
+		com.phiro.sabercraft.story.StorySession story = com.phiro.sabercraft.story.Story.at(origin);
+
+		if (story != null && story.danger()) {
+			return false;
+		}
+
 		Vec3 eye = player.getEyePosition();
 		Crew nearest = null;
 		double best = REMARK_REACH;

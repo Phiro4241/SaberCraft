@@ -145,6 +145,18 @@ final class Finale {
 	/** Phase 23: the blade lock between the phases (ticks), and how much each stroke of the player during it shortens it. */
 	static final int LOCK_TICKS = 70;
 	static final int LOCK_PRESS = 5;
+	/**
+	 * Phase 24: the blade lock is a scene now (the client's film {@code boss_mid}): how long it is,
+	 * when the burst throws the two apart, when her second blade comes out, when the player is
+	 * turned towards her again (the camera goes back into their eyes).
+	 */
+	static final int BOSS_FILM = 150;
+	static final int BOSS_LOCK = 86;
+	static final int BOSS_REVEAL = 104;
+	static final int BOSS_TURN = 128;
+	static final String BOSS_SCENE = "tmp.boss_mid";
+	/** Phase 24: the scene was played in this fight (it is never played twice in one). */
+	static final String BOSS_DONE = "tmp.boss_mid_done";
 	/** Phase 23: the end: how long she stares at her empty hand (ticks) before she runs. */
 	static final int DISARMED_TICKS = 92;
 	/** Focus: how long, how much a block and each tick adds. */
@@ -259,6 +271,26 @@ final class Finale {
 		double distance = figure.eye().distanceTo(chest);
 		boolean sees = distance < SHOT_RANGE && Stealth.clear(level, corner.add(figure.eye()), corner.add(chest));
 
+		// Phase 24: a guard at his post holds it (rifle up, facing the way one comes) until he sees
+		// the player, hears them close, or is hit: then a shout to the others, and he fights.
+		if (figure.post) {
+			if (sees && distance < POST_SIGHT || distance < POST_NEAR || figure.health < 1.0F) {
+				figure.post = false;
+				figure.cooldown = Math.max(figure.cooldown, POST_FIRST_SHOT);
+
+				if (!s.timer("contact")) {
+					s.timer("contact", 120);
+					s.hear(Story.voice(figure), "sabercraft.story.shout.contact");
+				}
+			} else {
+				figure.speed = 0.0F;
+				figure.windup = 4;
+				figure.yaw = figure.crew.yaw();
+				figure.headYaw = figure.yaw + 18.0F * (float) Math.sin(s.time() / 30.0 + figure.id);
+				return;
+			}
+		}
+
 		// Phase 23: where they go: to the player along a way they can walk (through doors, round
 		// consoles and corners), each a little apart from the others, never straight into the wall
 		// between; where no way leads (the reactor's bridge gone) they stop at its end and shoot.
@@ -297,6 +329,11 @@ final class Finale {
 			figure.cooldown = Math.max(figure.cooldown, 12);
 		}
 	}
+
+	/** Phase 24: a guard at his post sees this far, hears one this near; his first shot after a moment. */
+	static final double POST_SIGHT = 18.0;
+	static final double POST_NEAR = 5.0;
+	static final int POST_FIRST_SHOT = 18;
 
 	/** For the tests: the troopers' (and officers') bolts in a fight since the game started. */
 	private static int shots;
@@ -531,7 +568,8 @@ final class Finale {
 			return;
 		}
 
-		if (before == 1 && f.health <= PHASE_TWO) {
+		// Phase 24: once per fight (a mark of this fight, gone with a checkpoint's restart).
+		if (before == 1 && f.health <= PHASE_TWO && !s.has(BOSS_DONE)) {
 			lockStarts(s, f, player, me, level, corner);
 			return;
 		}
@@ -1016,14 +1054,151 @@ final class Finale {
 		f.burst = 0;
 		f.pushX = 0.0;
 		f.pushZ = 0.0;
-		act(f, LOCK, 0, LOCK_TICKS);
-		f.react(Figure.LOCK, LOCK_TICKS);
-		player.addEffect(new net.minecraft.world.effect.MobEffectInstance(net.minecraft.world.effect.MobEffects.SLOWNESS, LOCK_TICKS + 4, 6, false, false));
+		// Phase 24: as a scene: the lock lasts until the burst in it (the player cannot press against it then).
+		act(f, LOCK, 0, BOSS_LOCK);
+		f.react(Figure.LOCK, BOSS_LOCK);
+		f.lockScene = true;
+		player.addEffect(new net.minecraft.world.effect.MobEffectInstance(net.minecraft.world.effect.MobEffects.SLOWNESS, BOSS_LOCK + 4, 6, false, false));
 		Vec3 contact = contact(f, me).add(corner);
 		level.playSound(null, contact.x, contact.y, contact.z, ShipInteriors.sound("story.blade_lock"), SoundSource.HOSTILE, 1.2F, 1.0F);
-		s.hear("shadow", "sabercraft.story.shout.shadow_lock");
-		Story.cue(s, Story.CUE_DUEL, "lock", "", LOCK_TICKS, java.util.List.of(contact));
+		// (Her words are the scene's lines; nothing is shouted into the corner afterwards.)
+		Story.cue(s, Story.CUE_DUEL, "lock", "", BOSS_LOCK, java.util.List.of(contact));
+		s.set("tmp.film");
+		s.set(BOSS_SCENE);
+		s.set(BOSS_DONE);
+		s.unset("tmp.boss_reveal");
+		s.timer("boss_mid", BOSS_FILM);
+		Story.cue(s, Story.CUE_CINEMA, "boss_mid", "", BOSS_FILM, java.util.List.of(contact));
 		locks++;
+		bossScenes++;
+		s.dirty = true;
+	}
+
+	/** Phase 24, only for tests: a light stroke hits her now (as from behind). */
+	static void bossHitForTest(StorySession s, Figure f, ServerPlayer player) {
+		Vec3 corner = Vec3.atLowerCornerOf(s.origin(s.here));
+		Vec3 me = player.position().subtract(corner);
+		bossHit(s, f, player, me, (ServerLevel) player.level(), corner, f.position().add(corner).add(0.0, 1.2, 0.0), false);
+	}
+
+	/** Phase 24: how often the blade lock's scene began (for the tests). */
+	private static int bossScenes;
+
+	static int bossScenesForTest() {
+		return bossScenes;
+	}
+
+	/**
+	 * Phase 24: the blade lock's scene, each tick while it runs (the fight itself waits meanwhile:
+	 * nobody strikes, nobody is hurt): the lock and its burst as before, then she stands, turns
+	 * to the player and her second blade comes out; the player is turned towards her before the
+	 * camera goes back into their eyes. When it ends (or is skipped) the second phase begins.
+	 */
+	static void bossScene(StorySession s, ServerPlayer player, ServerLevel level) {
+		Figure f = null;
+
+		for (Figure figure : s.figures) {
+			if (figure.saber && figure.hostile) {
+				f = figure;
+			}
+		}
+
+		int left = s.timers.getOrDefault("boss_mid", 0);
+		int t = BOSS_FILM - left;
+
+		if (f == null || s.here == null) {
+			endBossScene(s, null, player);
+			return;
+		}
+
+		Vec3 corner = Vec3.atLowerCornerOf(s.origin(s.here));
+		Vec3 me = player.position().subtract(corner);
+
+		if (f.action == LOCK) {
+			lockTick(s, f, player, me, level, corner);
+		} else {
+			// Thrown back by the burst; then she stands and faces the player.
+			Hits.tick(f, level, corner);
+			f.speed = 0.0F;
+			f.turnTowards(me, 8.0F, true);
+			f.headYaw = Crew.yaw(f.position(), me);
+		}
+
+		if (t >= BOSS_REVEAL) {
+			reveal(s, f, level, corner);
+		}
+
+		if (t == BOSS_TURN) {
+			face(s, player, f, corner);
+		}
+
+		if (!s.timer("boss_mid")) {
+			endBossScene(s, f, player);
+		}
+	}
+
+	/** Phase 24: her second blade comes out (once). */
+	private static void reveal(StorySession s, Figure f, ServerLevel level, Vec3 corner) {
+		if (s.has("tmp.boss_reveal")) {
+			return;
+		}
+
+		s.set("tmp.boss_reveal");
+		Story.cue(s, Story.CUE_DUEL, "phase", "", 2);
+		Vec3 at = f.position().add(corner).add(0.0, 1.0, 0.0);
+		level.playSound(null, at.x, at.y, at.z, ShipInteriors.sound("saber.ignite"), SoundSource.HOSTILE, 1.1F, 0.8F);
+		level.sendParticles(ParticleTypes.ELECTRIC_SPARK, at.x, at.y, at.z, 12, 0.2, 0.3, 0.2, 0.2);
+	}
+
+	/** Phase 24: the player turned towards her (where the camera comes back to). */
+	private static void face(StorySession s, ServerPlayer player, Figure f, Vec3 corner) {
+		Vec3 eye = player.getEyePosition();
+		Vec3 her = f.position().add(corner).add(0.0, 1.5, 0.0);
+		Vec3 d = her.subtract(eye);
+		float yaw = (float) Math.toDegrees(Math.atan2(-d.x, d.z));
+		float pitch = (float) -Math.toDegrees(Math.atan2(d.y, Math.sqrt(d.x * d.x + d.z * d.z)));
+		player.connection.teleport(player.getX(), player.getY(), player.getZ(), yaw, Mth.clamp(pitch, -30.0F, 30.0F));
+	}
+
+	/** Phase 24: the scene is over (played through or skipped): the second phase, as after the old lock. */
+	static void endBossScene(StorySession s, @Nullable Figure f, ServerPlayer player) {
+		if (!s.has(BOSS_SCENE)) {
+			return;
+		}
+
+		s.unset(BOSS_SCENE);
+		s.unset("tmp.film");
+		s.timers.remove("boss_mid");
+
+		if (f == null) {
+			return;
+		}
+
+		ServerLevel level = player.level() instanceof ServerLevel l ? l : null;
+		Vec3 corner = Vec3.atLowerCornerOf(s.origin(s.here != null ? s.here : Story.DESTROYER));
+		Vec3 me = player.position().subtract(corner);
+
+		if (f.action == LOCK && level != null) {
+			// Skipped before the burst: it comes now.
+			Vec3 between = new Vec3(f.x - me.x, 0.0, f.z - me.z);
+			Vec3 dir = between.lengthSqr() < 1.0E-4 ? f.look().scale(-1.0) : between.normalize();
+			lockEnds(s, f, player, me, level, corner, dir);
+		}
+
+		if (level != null) {
+			reveal(s, f, level, corner);
+		}
+
+		f.react = 0;
+		f.reactTicks = 0;
+		f.lockScene = false;
+		act(f, GUARD, 0, 0);
+		f.cooldown = 24;
+		player.removeEffect(net.minecraft.world.effect.MobEffects.SLOWNESS);
+		s.hint("sabercraft.story.hint.duel_phase2");
+		// Her push and leap come a little after the scene, not at once.
+		s.timer("push", 70);
+		s.timer("leap", 120);
 		s.dirty = true;
 	}
 
@@ -1079,9 +1254,13 @@ final class Finale {
 		f.react(Figure.HEAVY, 14);
 		act(f, GUARD, 0, 0);
 		f.cooldown = 26;
-		s.hear("shadow", "sabercraft.story.shout.shadow_phase2");
-		s.hint("sabercraft.story.hint.duel_phase2");
-		Story.cue(s, Story.CUE_DUEL, "phase", "", 2);
+
+		if (!f.lockScene) {
+			s.hear("shadow", "sabercraft.story.shout.shadow_phase2");
+			s.hint("sabercraft.story.hint.duel_phase2");
+			Story.cue(s, Story.CUE_DUEL, "phase", "", 2);
+		}
+
 		Story.cue(s, Story.CUE_DUEL, "lock_end", "", f.id, java.util.List.of(contact));
 		// The push and the leap come soon after.
 		s.timer("push", 60);

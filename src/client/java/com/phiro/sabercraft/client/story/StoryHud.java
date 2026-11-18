@@ -38,6 +38,34 @@ final class StoryHud implements HudElement {
 	static final int GOLD = 0xFFE8C46A;
 	static final int[] STAGE_COLOURS = {0xFFFFFFFF, 0xFFF2D848, 0xFFF59A32, 0xFFF2382C};
 
+	/** Phase 24: the lights failing for a moment (dark dips), the reactor's red at the screen's edges. */
+	private static void reactor(GuiGraphicsExtractor graphics, float partial, int width, int height) {
+		float dark = StoryClient.flicker(partial);
+
+		if (dark > 0.01F) {
+			graphics.fill(0, 0, width, height, Math.round(dark * 255.0F) << 24 | 0x05070A);
+		}
+
+		float red = StoryClient.reactorPulse(partial);
+
+		if (red > 0.005F) {
+			int edge = Math.max(8, Math.min(width, height) / 7);
+			int steps = 6;
+
+			for (int i = 0; i < steps; i++) {
+				float k = 1.0F - i / (float) steps;
+				int alpha = Math.round(red * k * k * 255.0F);
+				int c = alpha << 24 | 0xC81810;
+				int inset = i * edge / steps;
+				int band = Math.max(1, edge / steps);
+				graphics.fill(inset, inset, width - inset, inset + band, c);
+				graphics.fill(inset, height - inset - band, width - inset, height - inset, c);
+				graphics.fill(inset, inset + band, inset + band, height - inset - band, c);
+				graphics.fill(width - inset - band, inset + band, width - inset, height - inset - band, c);
+			}
+		}
+	}
+
 	@Override
 	public void extractRenderState(GuiGraphicsExtractor graphics, DeltaTracker delta) {
 		Minecraft client = Minecraft.getInstance();
@@ -52,6 +80,11 @@ final class StoryHud implements HudElement {
 		int height = graphics.guiHeight();
 		StoryStatePayload state = StoryClient.state();
 		boolean hidden = client.gui.hud.isHidden();
+
+		if (state != null && state.active()) {
+			// Phase 24: the failing reactor: the lights flicker, the alarm's red pulses at the edges.
+			reactor(graphics, partial, width, height);
+		}
 
 		if (state != null && state.active() && !hidden) {
 			alarm(graphics, state, width, height);

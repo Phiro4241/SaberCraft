@@ -81,6 +81,12 @@ public final class StoryClient {
 	/** Phase 23: the blade lock (how long it lasts, its age; the view closes in while it holds). */
 	private static int lockTicks;
 	private static int lockAge = 1000;
+	/** Phase 24: how bad the reactor is (last heard), when; the lights' flicker. */
+	private static int reactorLevel;
+	private static long reactorAt = -10000L;
+	private static int flickerAge = 1000;
+	private static int flickerTicks = 1;
+	private static int rumbles;
 	/** Phase 23: the reactor's bridge groaning under the player (ticks it lasts, how long since it began). */
 	private static int creakTicks = 1;
 	private static int creakAge = 1000;
@@ -120,9 +126,22 @@ static final int CHECKPOINT_TICKS = 60;
 	private static final Map<Integer, Float> STRIDES = new HashMap<>();
 	private static @Nullable StoryDialogPayload dialog;
 
-	/** A comlink line (or one overheard nearby): who, the key, how long it shows. */
-	public record Line(String who, String key, int ticks, boolean heard) {
+	/**
+	 * A comlink line (or one overheard nearby): who, the key, how long it shows. Phase 24: and when
+	 * it came (client ticks): overheard shouts are moments, gone if they could not be shown soon.
+	 */
+	public record Line(String who, String key, int ticks, boolean heard, long at) {
 	}
+
+	/** Phase 24: an overheard line not shown within this long (ticks) is no longer news: it is dropped. */
+	static final int HEARD_STALE = 60;
+	/** Phase 24: how long an overheard line shows at most, and when others wait. */
+	static final int HEARD_MAX = 110;
+	static final int HEARD_SHORT = 45;
+	/** Phase 24: at most this many overheard lines wait (the oldest go first). */
+	static final int HEARD_QUEUED = 2;
+	/** Phase 24: lines dropped (stale, doubled, after a capture): for the tests. */
+	private static int linesDropped;
 
 	private static final Deque<Line> RADIO = new ArrayDeque<>();
 	private static @Nullable Line radioNow;
@@ -212,8 +231,14 @@ static final int CHECKPOINT_TICKS = 60;
 
 	private static void state(StoryStatePayload payload) {
 		boolean was = active();
+		StoryStatePayload before = state;
 		state = payload;
 		received++;
+
+		// Phase 24: the section changed, or the alarm is over: the shouts still waiting are old news.
+		if (before != null && payload.active() && (!before.objective().equals(payload.objective()) || before.alarm() > 0 && payload.alarm() == 0)) {
+			dropBefore(clientTicks, true);
+		}
 
 		if (!payload.active()) {
 			previous = null;
@@ -258,7 +283,12 @@ static final int CHECKPOINT_TICKS = 60;
 			case CUE_RADIO -> {
 				int length = client.font != null ? net.minecraft.network.chat.Component.translatable(payload.text()).getString().length() : 60;
 				boolean heard = payload.value() == 1;
-				RADIO.add(new Line(payload.who(), payload.text(), Mth.clamp(length * RADIO_PER_CHAR + 40, RADIO_MIN, RADIO_MAX), heard));
+
+				if (!radio(new Line(payload.who(), payload.text(),
+						heard ? Mth.clamp(length * RADIO_PER_CHAR + 30, RADIO_MIN - 20, HEARD_MAX) : Mth.clamp(length * RADIO_PER_CHAR + 40, RADIO_MIN, RADIO_MAX), heard,
+						clientTicks))) {
+					return;
+				}
 
 				// Overheard in the room: no comlink click, only the soft voice.
 				if (heard) {
@@ -289,6 +319,9 @@ static final int CHECKPOINT_TICKS = 60;
 				fadeText = payload.text();
 				// What was said before the black ("detected! hide!") is over after it.
 				hint = null;
+				// Phase 24: so are the shouts and lines still waiting from before it (no "Halt!" after
+				// being caught); what is said with the black (the same moment) stays.
+				dropBefore(clientTicks, false);
 			}
 			case CUE_SOUND -> sound(client, payload.text(), 0.9F, 1.0F, figure(payload.value()));
 			case CUE_MUSIC -> music = payload.text().isEmpty() ? null : payload.text();
@@ -308,8 +341,12 @@ static final int CHECKPOINT_TICKS = 60;
 				noiseAge = 0;
 				noisesMade++;
 			}
-			case CUE_CHECKPOINT -> checkpointAge = 0;
-			case CUE_CINEMA -> StoryCinema.start(client, payload.who(), payload.value());
+			case CUE_CHECKPOINT -> {
+				checkpointAge = 0;
+				// Phase 24: a new section: what was shouted before it is over.
+				dropBefore(clientTicks, true);
+			}
+			case CUE_CINEMA -> StoryCinema.start(client, payload.who(), payload.value(), payload.points());
 			case CUE_END -> {
 				ended = true;
 				endAge = 0;
@@ -317,6 +354,78 @@ static final int CHECKPOINT_TICKS = 60;
 			default -> {
 			}
 		}
+	}
+
+	/**
+	 * Phase 24: a line comes: not if the same is showing or waiting already; the story's comlink
+	 * lines before the overheard ones; at most a few overheard ones waiting. Returns whether it is kept.
+	 */
+	private static boolean radio(Line line) {
+		if (radioNow != null && radioNow.key().equals(line.key()) && radioNow.who().equals(line.who())) {
+			linesDropped++;
+			return false;
+		}
+
+		for (Line waiting : RADIO) {
+			if (waiting.key().equals(line.key()) && waiting.who().equals(line.who())) {
+				linesDropped++;
+				return false;
+			}
+		}
+
+		if (line.heard()) {
+			long queued = RADIO.stream().filter(Line::heard).count();
+
+			while (queued >= HEARD_QUEUED) {
+				for (java.util.Iterator<Line> it = RADIO.iterator(); it.hasNext();) {
+					if (it.next().heard()) {
+						it.remove();
+						linesDropped++;
+						break;
+					}
+				}
+
+				queued--;
+			}
+
+			RADIO.addLast(line);
+			return true;
+		}
+
+		// The story's own lines go before the overheard ones still waiting.
+		java.util.List<Line> heard = new java.util.ArrayList<>();
+
+		while (!RADIO.isEmpty() && RADIO.peekLast().heard()) {
+			heard.add(0, RADIO.pollLast());
+		}
+
+		RADIO.addLast(line);
+		RADIO.addAll(heard);
+		return true;
+	}
+
+	/**
+	 * Phase 24: what came before that moment is over: after a capture's black every line still
+	 * waiting (and an overheard one showing); at a checkpoint, a new section or the alarm's end only
+	 * the shouts of the chase ({@code chaseOnly}).
+	 */
+	private static void dropBefore(long when, boolean chaseOnly) {
+		int before = RADIO.size();
+		RADIO.removeIf(line -> line.at() < when && (!chaseOnly || chase(line)));
+		linesDropped += before - RADIO.size();
+
+		if (radioNow != null && radioNow.at() < when && (chaseOnly ? chase(radioNow) : radioNow.heard())) {
+			radioNow = null;
+			linesDropped++;
+		}
+	}
+
+	/** Phase 24: the crew's shouts of a chase ("Halt!", "Intruder!"): news only while it goes on. */
+	private static final java.util.Set<String> CHASE_SHOUTS = java.util.Set.of("halt", "officer_halt", "intruder", "officer_call", "hands_up", "alarm_call",
+			"mouse_again");
+
+	private static boolean chase(Line line) {
+		return line.heard() && line.key().startsWith("sabercraft.story.shout.") && CHASE_SHOUTS.contains(line.key().substring("sabercraft.story.shout.".length()));
 	}
 
 	/**
@@ -354,6 +463,15 @@ static final int CHECKPOINT_TICKS = 60;
 				flash(0x00FFE0D0, 0);
 			}
 			case "lock_push" -> shake(0.55F, 5);
+			case "rumble" -> {
+				// Phase 24: the failing reactor shakes the ship (harder from section to section), the lights flicker.
+				shake(0.3F + 0.22F * value, 10 + 4 * value);
+				reactorLevel = value;
+				reactorAt = clientTicks;
+				flickerAge = 0;
+				flickerTicks = 8 + 3 * value;
+				rumbles++;
+			}
 			case "creak" -> {
 				// Phase 23: the reactor's bridge groans: it trembles (drawn, see StoryRooms), so does the view.
 				creakTicks = Math.max(20, value);
@@ -634,6 +752,45 @@ static final int CHECKPOINT_TICKS = 60;
 		return stunAge;
 	}
 
+	/**
+	 * Phase 24: how dark the flickering lights make it now (0 none .. 1): a few hard dips while the
+	 * ship shudders; and how strongly the alarm's red pulses at the screen's edge (the reactor critical).
+	 */
+	static float flicker(float partial) {
+		if (flickerAge >= flickerTicks) {
+			return 0.0F;
+		}
+
+		float age = flickerAge + partial;
+		// Out, on, out, a stutter, on.
+		float wave = Mth.sin(age * 2.3F) * Mth.sin(age * 0.9F + 1.0F);
+		float fall = 1.0F - age / flickerTicks;
+		return Mth.clamp(wave * 0.75F * fall + (age < 2.0F ? 0.35F : 0.0F), 0.0F, 0.7F);
+	}
+
+	static float reactorPulse(float partial) {
+		if (reactorLevel < 2 || clientTicks - reactorAt > 400L) {
+			return 0.0F;
+		}
+
+		float t = clientTicks + partial;
+		return (0.5F + 0.5F * Mth.sin(t * 0.21F)) * (0.08F + 0.04F * reactorLevel);
+	}
+
+	/** Only for tests: how often the ship shuddered, how bad the reactor is. */
+	public static int rumblesForTest() {
+		return rumbles;
+	}
+
+	public static int reactorLevelForTest() {
+		return reactorLevel;
+	}
+
+	/** Phase 24: whether her saber is a staff now (the second phase of the duel: its second blade). */
+	public static boolean twinBlade() {
+		return duelPhase >= 2;
+	}
+
 	static int duelPhase() {
 		return duelPhase;
 	}
@@ -680,6 +837,7 @@ static final int CHECKPOINT_TICKS = 60;
 		zoomAge++;
 		lockAge++;
 		creakAge++;
+		flickerAge++;
 		flashAge++;
 		hurtFromAge++;
 
@@ -716,8 +874,20 @@ static final int CHECKPOINT_TICKS = 60;
 			}
 		}
 
-		if (radioNow != null && ++radioAge >= radioNow.ticks()) {
-			radioNow = null;
+		// Phase 24: an overheard shout that could not be shown soon is no longer news.
+		int waiting = RADIO.size();
+		RADIO.removeIf(line -> line.heard() && clientTicks - line.at() > HEARD_STALE);
+		linesDropped += waiting - RADIO.size();
+
+		if (radioNow != null) {
+			radioAge++;
+			// Phase 24: an overheard shout makes room soon for what waits (the story's lines first).
+			boolean others = !RADIO.isEmpty();
+			int most = radioNow.heard() && others ? Math.min(radioNow.ticks(), HEARD_SHORT) : radioNow.ticks();
+
+			if (radioAge >= most) {
+				radioNow = null;
+			}
 		}
 
 		if (radioNow == null && !RADIO.isEmpty()) {
@@ -1038,6 +1208,33 @@ static final int CHECKPOINT_TICKS = 60;
 		return active() ? music : null;
 	}
 
+	/**
+	 * Phase 24: how wary the people near the player are (for the music): the highest stage of anyone
+	 * watching within that many blocks (0 calm, 1 suspicious, 2 alerted, 3 detected).
+	 */
+	public static int wariness(double range) {
+		StoryFiguresPayload now = current;
+		Minecraft client = Minecraft.getInstance();
+
+		if (now == null || client.player == null || !active()) {
+			return 0;
+		}
+
+		int most = 0;
+		double x = client.player.getX() - now.origin().getX();
+		double y = client.player.getY() - now.origin().getY();
+		double z = client.player.getZ() - now.origin().getZ();
+
+		for (StoryFiguresPayload.Fig fig : now.figures()) {
+			if ((fig.flags() & StoryFiguresPayload.OBSERVER) != 0 && !"down".equals(fig.pose()) && Math.abs(fig.y() - y) < 6.0
+					&& (fig.x() - x) * (fig.x() - x) + (fig.z() - z) * (fig.z() - z) < range * range) {
+				most = Math.max(most, fig.stage());
+			}
+		}
+
+		return most;
+	}
+
 	static boolean ended() {
 		return ended;
 	}
@@ -1102,6 +1299,20 @@ static final int CHECKPOINT_TICKS = 60;
 
 	public static @Nullable StoryDialogPayload dialogForTest() {
 		return dialog;
+	}
+
+	/** Phase 24: for the tests: lines dropped (doubled, stale, from before a capture) and lines waiting. */
+	public static int linesDroppedForTest() {
+		return linesDropped;
+	}
+
+	public static int linesWaitingForTest() {
+		return RADIO.size() + (radioNow != null ? 1 : 0);
+	}
+
+	/** Phase 24: for the tests: a line as if the server had sent it (heard: overheard). */
+	public static void lineForTest(String who, String key, boolean heard) {
+		radio(new Line(who, key, heard ? HEARD_MAX : RADIO_MAX, heard, clientTicks));
 	}
 
 	public static @Nullable Line radioForTest() {

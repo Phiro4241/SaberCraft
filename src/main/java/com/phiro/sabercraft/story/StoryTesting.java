@@ -482,4 +482,202 @@ public final class StoryTesting {
 		progress.flags.remove(Chapter1.CHAPTER_DONE);
 		StoryStore.save(server, player, progress);
 	}
+
+	// --- Phase 24 ------------------------------------------------------------------------------------
+
+	/**
+	 * Phase 24: where a player can get to on foot in a plot (plot space), from these places: walking,
+	 * stepping up, jumping up to 1.25 blocks, dropping down (up to 40 blocks); not through lifts.
+	 * Each place found: {x, z, feet height} (the middle of its block column). Capped at {@code limit}.
+	 */
+	public static List<double[]> reachable(net.minecraft.server.level.ServerLevel level, net.minecraft.core.BlockPos origin, List<Vec3> starts, int limit) {
+		return reachable(level, origin, starts, limit, false);
+	}
+
+	/**
+	 * Phase 24: as above; with {@code gaps} also running jumps over gaps two and three blocks wide
+	 * (level or a block up), a generous model of what a player can do.
+	 */
+	public static List<double[]> reachable(net.minecraft.server.level.ServerLevel level, net.minecraft.core.BlockPos origin, List<Vec3> starts, int limit,
+			boolean gaps) {
+		java.util.Map<Long, double[]> seen = new java.util.HashMap<>();
+		java.util.ArrayDeque<double[]> open = new java.util.ArrayDeque<>();
+		Vec3 corner = Vec3.atLowerCornerOf(origin);
+
+		for (Vec3 start : starts) {
+			Double feet = feet(level, corner, (int) Math.floor(start.x), (int) Math.floor(start.z), start.y + 0.6, 3.0);
+
+			if (feet != null) {
+				double[] cell = {Math.floor(start.x), Math.floor(start.z), feet};
+
+				if (seen.putIfAbsent(key(cell), cell) == null) {
+					open.add(cell);
+				}
+			}
+		}
+
+		int[][] dirs = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
+
+		while (!open.isEmpty() && seen.size() < limit) {
+			double[] cell = open.poll();
+			int x = (int) cell[0];
+			int z = (int) cell[1];
+			double h = cell[2];
+
+			for (int[] d : dirs) {
+				int nx = x + d[0];
+				int nz = z + d[1];
+
+				for (double up : new double[] {0.0, 0.6, 1.25}) {
+					// Room to rise here (for a step or a jump), room there at that height, the way between free.
+					if (up > 0.0 && !free(level, corner, x, z, h + up)) {
+						continue;
+					}
+
+					if (!free(level, corner, nx, nz, h + up) || !freeBetween(level, corner, x, z, nx, nz, h + up)) {
+						continue;
+					}
+
+					Double feet = feet(level, corner, nx, nz, h + up, 40.0);
+
+					if (feet != null) {
+						double[] next = {nx, nz, feet};
+
+						if (seen.putIfAbsent(key(next), next) == null) {
+							open.add(next);
+						}
+					}
+
+					break;
+				}
+
+				if (!gaps) {
+					continue;
+				}
+
+				// A running jump: over two or three cells, the way free at the jump's height all along.
+				for (int far = 2; far <= 3; far++) {
+					for (double up : new double[] {0.0, 1.0}) {
+						if (far == 3 && up > 0.0 || !free(level, corner, x, z, h + 1.25)) {
+							continue;
+						}
+
+						boolean clear = true;
+
+						for (int k = 1; k <= far && clear; k++) {
+							clear = free(level, corner, x + d[0] * k, z + d[1] * k, h + 1.25)
+									&& freeBetween(level, corner, x + d[0] * (k - 1), z + d[1] * (k - 1), x + d[0] * k, z + d[1] * k, h + 1.25);
+						}
+
+						if (!clear) {
+							continue;
+						}
+
+						int fx = x + d[0] * far;
+						int fz = z + d[1] * far;
+						Double feet = feet(level, corner, fx, fz, h + Math.max(up, 1.25) - 0.001, 40.0);
+
+						if (feet != null && feet >= h + up - 0.6) {
+							double[] next = {fx, fz, feet};
+
+							if (seen.putIfAbsent(key(next), next) == null) {
+								open.add(next);
+							}
+						}
+					}
+				}
+			}
+		}
+
+		return new ArrayList<>(seen.values());
+	}
+
+	private static long key(double[] cell) {
+		return ((long) cell[0] & 0xFFFFL) << 40 | ((long) cell[1] & 0xFFFFL) << 20 | (long) Math.round(cell[2] * 8.0) & 0xFFFFFL;
+	}
+
+	private static net.minecraft.world.phys.AABB body(Vec3 corner, int x, int z, double feet) {
+		return new net.minecraft.world.phys.AABB(corner.x + x + 0.2, corner.y + feet + 0.001, corner.z + z + 0.2, corner.x + x + 0.8, corner.y + feet + 1.8,
+				corner.z + z + 0.8);
+	}
+
+	private static boolean free(net.minecraft.server.level.ServerLevel level, Vec3 corner, int x, int z, double feet) {
+		return level.noCollision(body(corner, x, z, feet));
+	}
+
+	private static boolean freeBetween(net.minecraft.server.level.ServerLevel level, Vec3 corner, int x, int z, int nx, int nz, double feet) {
+		net.minecraft.world.phys.AABB a = body(corner, x, z, feet);
+		net.minecraft.world.phys.AABB b = body(corner, nx, nz, feet);
+		return level.noCollision(a.minmax(b));
+	}
+
+	/** The feet's height (plot space) of one standing in that column, falling from {@code from} at most {@code drop}; null: no room or no ground. */
+	private static @Nullable Double feet(net.minecraft.server.level.ServerLevel level, Vec3 corner, int x, int z, double from, double drop) {
+		net.minecraft.world.phys.AABB box = body(corner, x, z, from);
+
+		if (!level.noCollision(box)) {
+			return null;
+		}
+
+		List<net.minecraft.world.phys.shapes.VoxelShape> shapes = new ArrayList<>();
+		level.getBlockCollisions(null, box.expandTowards(0.0, -drop, 0.0)).forEach(shapes::add);
+		double moved = net.minecraft.world.phys.shapes.Shapes.collide(net.minecraft.core.Direction.Axis.Y, box, shapes, -drop);
+
+		if (moved <= -drop + 1.0E-4) {
+			return null;
+		}
+
+		return from + moved;
+	}
+
+	/** Phase 24: the name of the block one stands on there (plot space feet). */
+	public static String ground(net.minecraft.server.level.ServerLevel level, net.minecraft.core.BlockPos origin, double[] cell) {
+		net.minecraft.core.BlockPos below = origin.offset((int) cell[0], (int) Math.floor(cell[2] - 0.01), (int) cell[1]);
+		return net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(level.getBlockState(below).getBlock()).getPath();
+	}
+
+	/** Phase 24: the guard of the detention block overpowered from behind (as the player's use would). */
+	public static void takedown(StorySession s) {
+		Chapter1.takedown(s);
+	}
+
+	public static int takedowns() {
+		return Chapter1.takedownsForTest();
+	}
+
+	/** Phase 24: the blade lock's scene (how often it began), the escape film, shudders of the failing reactor, wings kept. */
+	public static int bossScenes() {
+		return Finale.bossScenesForTest();
+	}
+
+	public static int escapes() {
+		return Chapter1.escapesForTest();
+	}
+
+	public static int shudders() {
+		return Chapter1.shuddersForTest();
+	}
+
+	public static int instability(StorySession s) {
+		return Chapter1.instabilityLevel(s);
+	}
+
+	/** Phase 24: whether one is after the player now (seen lately, alarm or fight, no search). */
+	public static boolean pursued(StorySession s) {
+		return s.pursued();
+	}
+
+	/** Phase 24: a film skipped by the player (as the client's skip). */
+	public static void skip(StorySession s, String film) {
+		if (s.chapter instanceof Chapter1 chapter) {
+			chapter.skipFilm(s, film);
+		}
+	}
+
+	/** Phase 24: the duel's lock: as when her strength falls to half (the scene begins). */
+	public static void halfStrength(StorySession s, Figure figure, net.minecraft.server.level.ServerPlayer player) {
+		figure.health = Finale.PHASE_TWO + 0.01F;
+		s.lastStroke = s.time();
+		Finale.bossHitForTest(s, figure, player);
+	}
 }

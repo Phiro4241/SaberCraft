@@ -82,6 +82,11 @@ public interface Chapter {
 		return this.locked(session, ship, x, y, z) ? "sabercraft.story.hint.hatch_locked" : null;
 	}
 
+	/** Phase 24: whether one can speak to someone now (an alarm or a fight leaves no time for small talk). */
+	default boolean talksNow(StorySession session, Figure figure) {
+		return true;
+	}
+
 	/** Phase 20: the wall comms of a ship (plot space, where one stands to use them), to raise an alarm. */
 	default java.util.List<net.minecraft.world.phys.Vec3> comms(StorySession session, String ship) {
 		return java.util.List.of();

@@ -64,8 +64,14 @@ final class CrewModels {
 	 * through 0..1, lit or not), lying beaten on the floor, a robe's skirt over the legs.
 	 */
 	record Gear(boolean lamp, int saber, boolean lit, float raise, float swing, boolean down, boolean skirt, int attack, float aim, float crouch, float lean,
-			float hand, float spin, int react, float reactP, boolean pistol, boolean unarmed) {
+			float hand, float spin, int react, float reactP, boolean pistol, boolean unarmed, float twin) {
 		static final Gear NONE = new Gear(false, 0, false, 0.0F, 0.0F, false, false, 0, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F);
+
+		/** Phase 23's gear (one blade). Phase 24: {@code twin} is how far the second blade of a saber staff is out (0..1). */
+		Gear(boolean lamp, int saber, boolean lit, float raise, float swing, boolean down, boolean skirt, int attack, float aim, float crouch, float lean,
+				float hand, float spin, int react, float reactP, boolean pistol, boolean unarmed) {
+			this(lamp, saber, lit, raise, swing, down, skirt, attack, aim, crouch, lean, hand, spin, react, reactP, pistol, unarmed, 0.0F);
+		}
 
 		/** Phase 19's gear (no blow of a kind, no aim). */
 		Gear(boolean lamp, int saber, boolean lit, float raise, float swing, boolean down, boolean skirt) {
@@ -323,7 +329,7 @@ final class CrewModels {
 		}
 
 		if (hilt != null) {
-			lightsaber(b, hilt, gear.saber());
+			lightsaber(b, hilt, gear.saber(), gear.twin());
 		} else if (gear.saber() != 0 && !gear.unarmed()) {
 			// The hilt at the belt.
 			b.fit(InteriorAtlas.IMP_BLACK);
@@ -491,7 +497,7 @@ final class CrewModels {
 	static final int SPIN = 7;
 
 	/** Phase 19: a lightsaber: the hilt below {@code at}, the blade along its direction, glowing in its colour. */
-	private static void lightsaber(MeshBuilder b, float[] at, int colour) {
+	private static void lightsaber(MeshBuilder b, float[] at, int colour, float twin) {
 		b.push().translate(at[0], at[1], at[2]);
 		pointDown(b, -at[3], -at[4], -at[5]);
 		// Now +y runs along the blade.
@@ -500,14 +506,37 @@ final class CrewModels {
 		b.tile(InteriorAtlas.IMP_METAL, 1.0F);
 		b.box(-0.034F, -0.05F, -0.034F, 0.034F, 0.0F, 0.034F);
 		b.box(-0.032F, -0.2F, -0.032F, 0.032F, -0.17F, 0.032F);
-		b.layer(Layer.GLOW).fullBright().colour(0xFFFFFFFF).fit(InteriorAtlas.WHITE);
-		b.box(-0.016F, 0.0F, -0.016F, 0.016F, 1.0F, 0.016F);
-		b.layer(Layer.HOLO).fullBright().colourAlpha(0xB0000000 | colour & 0xFFFFFF).twoSided(true);
-		b.box(-0.04F, -0.01F, -0.04F, 0.04F, 1.03F, 0.04F);
-		b.colourAlpha(0x48000000 | colour & 0xFFFFFF);
-		b.box(-0.075F, -0.03F, -0.075F, 0.075F, 1.06F, 0.075F);
+
+		if (twin > 0.0F) {
+			// Phase 24: the second phase: the hilt is a staff, its second blade comes out of the lower end.
+			b.fit(InteriorAtlas.IMP_BLACK);
+			b.box(-0.028F, -0.52F, -0.028F, 0.028F, -0.27F, 0.028F);
+			b.tile(InteriorAtlas.IMP_METAL, 1.0F);
+			b.box(-0.034F, -0.52F, -0.034F, 0.034F, -0.47F, 0.034F);
+			b.box(-0.032F, -0.36F, -0.032F, 0.032F, -0.33F, 0.032F);
+		}
+
+		blade(b, 0.0F, 1.0F, colour);
+
+		if (twin > 0.0F) {
+			blade(b, -0.52F, -0.52F - 0.95F * Math.min(1.0F, twin), colour);
+		}
+
 		b.layer(Layer.SOLID).worldLight().white().twoSided(false);
 		b.pop();
+	}
+
+	/** A blade from {@code from} to {@code to} along y: a white core in its colour's glow. */
+	private static void blade(MeshBuilder b, float from, float to, int colour) {
+		float lo = Math.min(from, to);
+		float hi = Math.max(from, to);
+		float out = Math.signum(to - from);
+		b.layer(Layer.GLOW).fullBright().colour(0xFFFFFFFF).fit(InteriorAtlas.WHITE);
+		b.box(-0.016F, lo, -0.016F, 0.016F, hi, 0.016F);
+		b.layer(Layer.HOLO).fullBright().colourAlpha(0xB0000000 | colour & 0xFFFFFF).twoSided(true);
+		b.box(-0.04F, Math.min(from - out * 0.01F, to + out * 0.03F), -0.04F, 0.04F, Math.max(from - out * 0.01F, to + out * 0.03F), 0.04F);
+		b.colourAlpha(0x48000000 | colour & 0xFFFFFF);
+		b.box(-0.075F, Math.min(from - out * 0.03F, to + out * 0.06F), -0.075F, 0.075F, Math.max(from - out * 0.03F, to + out * 0.06F), 0.075F);
 	}
 
 	/**

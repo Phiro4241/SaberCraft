@@ -447,6 +447,9 @@ final class StoryRooms {
 		b.layer(Layer.SOLID).worldLight().white().anim(0).twoSided(false);
 	}
 
+	/** Phase 24: her TIE has left (in her film) and is not drawn parked again. */
+	private static boolean tieLeft;
+
 	static void animate(MeshBuilder b, float seconds, InteriorVisuals.PlotView plot) {
 		boolean story = StoryClient.storyPlot(plot.origin());
 		BlockPos o = plot.origin();
@@ -516,6 +519,23 @@ final class StoryRooms {
 		}
 
 		lab(b, seconds, story);
+
+		// Phase 24: her TIE fighter in the hangar for the duel: parked on its wings, then (in the film
+		// of her flight) lifting off and gone through the field.
+		if (!story || !StoryClient.has("tie.parked")) {
+			tieLeft = false;
+		} else {
+			float t = com.phiro.sabercraft.client.story.StoryCinema.time("duel_end");
+			float[] tie = EscapeFilm.hangarTie(t);
+			// (Once it has gone it does not stand there again for the moment until the server says so.)
+			tieLeft |= tie == null;
+
+			if (tie != null && !tieLeft) {
+				EscapeFilm.drawHangarTie(b, tie);
+			}
+
+			b.layer(Layer.SOLID).worldLight().white().anim(0).twoSided(false);
+		}
 	}
 
 	/**

@@ -216,7 +216,8 @@ public class StoryGameTest implements FabricClientGameTest {
 		this.waitStep("m1.droid", 80);
 		check(this.on(s -> Story.DESTROYER.equals(session(s).here)), "the Falcon's ramp did not lead into the Star Destroyer");
 		context.waitTicks(30);
-		this.checkMusic("music.story_stealth", "the maintenance room");
+		// Phase 24: the mission begins aboard the Star Destroyer: its own piece (the sneaking music after it).
+		this.checkMusic("music.story_infiltration", "the maintenance room");
 		this.lampPicture();
 		this.darkness();
 		this.use("pad", H);
@@ -446,8 +447,22 @@ public class StoryGameTest implements FabricClientGameTest {
 		this.waitStep("m6.jump", 80);
 		this.talkTo("dax", true);
 		this.converse();
-		// In the tunnel (the jump charges for 30 ticks).
-		context.waitTicks(85);
+		// Phase 24: the escape seen from outside first (the Tenebris breaking apart, the Falcon jumping).
+		check("escape".equals(this.awaitFilm(40)), "the escape film does not play");
+		String[] shots = {"1_hangar", "2_chase", "3_blasts", "4_core", "5_ring", "6_jump"};
+		int[] ages = {50, 150, 240, 280, 340, 364};
+
+		for (int i = 0; i < shots.length; i++) {
+			this.filmAge("escape", ages[i]);
+			context.takeScreenshot("story_escape_" + shots[i]);
+		}
+
+		for (int i = 0; i < 80 && context.computeOnClient(client -> StoryCinema.active()); i++) {
+			context.waitTicks(2);
+		}
+
+		// Then in the tunnel, inside the Falcon.
+		context.waitTicks(10);
 		context.takeScreenshot("story_jump");
 		this.waitStep("m6.epilogue", 900);
 		this.waitDialog(60, "the epilogue does not begin");
@@ -1392,6 +1407,26 @@ public class StoryGameTest implements FabricClientGameTest {
 		}
 
 		check(!locked, "the blade lock does not end");
+
+		// Phase 24: the lock is a scene now; the second phase (her second blade) comes in it.
+		boolean shotReveal = false;
+		boolean shotReturn = false;
+
+		for (int i = 0; i < 50 && context.computeOnClient(client -> StoryCinema.active()); i++) {
+			int age = context.computeOnClient(client -> "boss_mid".equals(StoryCinema.filmForTest()) ? StoryCinema.ageForTest() : -1);
+
+			if (!shotReveal && age >= 108) {
+				shotReveal = true;
+				context.takeScreenshot("story_boss_mid_reveal");
+			} else if (!shotReturn && age >= 132) {
+				shotReturn = true;
+				context.takeScreenshot("story_boss_mid_return");
+			}
+
+			context.waitTicks(2);
+		}
+
+		check(!context.computeOnClient(client -> StoryCinema.active()), "the blade lock's scene does not end");
 		check(context.computeOnClient(client -> StoryClient.duelPhaseForTest()) == 2, "the client does not know the second phase");
 		check(this.on(s -> session(s).counters.getOrDefault("duel_hurt", 0)) == hurtBefore, "the blade lock hurts the player");
 
@@ -1431,7 +1466,19 @@ public class StoryGameTest implements FabricClientGameTest {
 		check(this.on(s -> session(s).figure("shadow") != null && session(s).figure("shadow").mode != Figure.DOWN), "he is down (he should flee, not die)");
 		context.waitTicks(50);
 		context.takeScreenshot("story_duel_end_4_flight");
-		this.waitStep("m6.falcon", 160);
+		// Phase 24: she leaps up into her TIE fighter, it lifts off and dives out through the field; seen from outside.
+		this.filmAge("duel_end", 176);
+		context.takeScreenshot("story_duel_end_5_board");
+		this.filmAge("duel_end", 206);
+		context.takeScreenshot("story_duel_end_6_tie_lift");
+		this.filmAge("duel_end", 240);
+		context.takeScreenshot("story_duel_end_7_tie_dive");
+		this.filmAge("duel_end", 285);
+		context.takeScreenshot("story_duel_end_8_tie_outside");
+		this.filmAge("duel_end", 330);
+		context.takeScreenshot("story_duel_end_9_back");
+		// Phase 24: her flight goes on to her TIE fighter, out through the field (a longer film).
+		this.waitStep("m6.falcon", 320);
 		check(this.on(s -> session(s).figure("shadow") == null && session(s).has("gone.shadow")), "he is still there after his flight");
 	}
 
@@ -1746,6 +1793,34 @@ public class StoryGameTest implements FabricClientGameTest {
 	}
 
 	/** A short film: numbered screenshots a few ticks apart (put together afterwards). */
+	/** Phase 24: waits until the client's film of that name is that far (ticks), at most 200 ticks. */
+	private void filmAge(String name, int age) {
+		for (int i = 0; i < 200; i++) {
+			boolean there = this.context.computeOnClient(client -> !StoryCinema.active() || !name.equals(StoryCinema.filmForTest()) || StoryCinema.ageForTest() >= age);
+
+			if (there) {
+				return;
+			}
+
+			this.context.waitTick();
+		}
+	}
+
+	/** Phase 24: the film the client plays, waiting up to that many ticks for one to begin. */
+	private @Nullable String awaitFilm(int ticks) {
+		for (int i = 0; i < ticks; i++) {
+			String film = this.context.computeOnClient(client -> StoryCinema.active() ? StoryCinema.filmForTest() : null);
+
+			if (film != null) {
+				return film;
+			}
+
+			this.context.waitTick();
+		}
+
+		return null;
+	}
+
 	private void film(String name, int frames, int every) {
 		for (int i = 0; i < frames; i++) {
 			this.context.takeScreenshot(String.format(Locale.ROOT, "film_%s_%03d", name, i));

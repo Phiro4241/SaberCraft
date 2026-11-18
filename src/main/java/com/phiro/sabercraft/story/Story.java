@@ -487,6 +487,14 @@ public final class Story {
 	 * a guard standing in front of it); the player who tried is told why.
 	 */
 	public static boolean hatchClosed(ServerPlayer player, BlockPos origin, BlockPos cell) {
+		return hatchClosed(player, origin, cell, null);
+	}
+
+	/**
+	 * Phase 24: as above, knowing which way the hatch's room lies: while someone is after the
+	 * player, nobody slips into a crawl way before their eyes (out of one, yes).
+	 */
+	public static boolean hatchClosed(ServerPlayer player, BlockPos origin, BlockPos cell, net.minecraft.core.@Nullable Direction room) {
 		StorySession session = at(origin);
 
 		if (session == null) {
@@ -494,13 +502,117 @@ public final class Story {
 		}
 
 		String ship = origin.equals(session.falcon) ? FALCON : DESTROYER;
-		String why = session.chapter.hatchClosed(session, ship, cell.getX(), cell.getY(), cell.getZ());
+		String why = null;
+
+		if (room != null && DESTROYER.equals(ship) && session.pursued() && session.player.equals(player.getUUID())) {
+			Vec3 from = player.position().subtract(Vec3.atCenterOf(origin.offset(cell)));
+
+			if (from.x * room.getStepX() + from.z * room.getStepZ() > 0.0) {
+				why = HUNTED;
+				hatchesRefused++;
+			}
+		}
+
+		if (why == null) {
+			why = session.chapter.hatchClosed(session, ship, cell.getX(), cell.getY(), cell.getZ());
+		}
 
 		if (why != null && session.player.equals(player.getUUID())) {
 			session.hint(why);
 		}
 
 		return why != null;
+	}
+
+	/**
+	 * Phase 24: the player of a story is about to drop something: the lightsaber is not let go (it
+	 * goes back into their hands, or the inventory). Returns whether it was kept.
+	 */
+	public static boolean keepSaber(ServerPlayer player, net.minecraft.world.item.ItemStack stack) {
+		StorySession session = SESSIONS.get(player.getUUID());
+
+		if (session == null || stack.isEmpty() || !stack.is(net.minecraft.world.item.Items.NETHERITE_SWORD) || !player.isAlive()) {
+			return false;
+		}
+
+		net.minecraft.world.entity.player.Inventory inventory = player.getInventory();
+
+		if (inventory.getSelectedItem().isEmpty()) {
+			inventory.setItem(inventory.getSelectedSlot(), stack.copy());
+		} else if (!inventory.add(stack.copy())) {
+			return false;
+		}
+
+		player.inventoryMenu.sendAllDataToRemote();
+
+		if (player.containerMenu != player.inventoryMenu) {
+			player.containerMenu.sendAllDataToRemote();
+		}
+
+		sabersKept++;
+
+		if (!session.timer("saber_kept")) {
+			session.timer("saber_kept", 60);
+			session.hint("sabercraft.story.hint.saber_kept");
+		}
+
+		return true;
+	}
+
+	private static int sabersKept;
+
+	/** For the tests: how often a story's lightsaber was not let go. */
+	public static int sabersKeptForTest() {
+		return sabersKept;
+	}
+
+	/** Phase 24: how far (blocks) a story droid may be left behind before it is brought back by itself. */
+	static final double DROID_LEFT_BEHIND = 22.0;
+	private static int droidsReturned;
+
+	/**
+	 * Phase 24: a story droid that is gone (lost with a checkpoint, discarded) or left far behind
+	 * (stuck on a lift, behind a closed door) comes back to the player by itself, not only after a
+	 * capture; one told to wait waits, one on its errand is left to it, and none is fetched into a
+	 * crawl way.
+	 */
+	static void keepDroidsNear(StorySession session, ServerPlayer player) {
+		if (session.here == null || !player.isAlive() || com.phiro.sabercraft.droid.DroidEntity.narrow(player) || session.has("tmp.film")) {
+			return;
+		}
+
+		for (DroidType type : storyDroids(session)) {
+			com.phiro.sabercraft.droid.DroidEntity droid = Droids.droid(player, type);
+
+			if (droid != null && (droid.isStaying() || droid.errand() != com.phiro.sabercraft.droid.DroidEntity.ERRAND_NONE)) {
+				continue;
+			}
+
+			// Phase 24 (Phase 20's cell): M-31 waits outside by the bench while the field is on.
+			if (type == DroidType.MOUSE && session.at("m5.cell") && session.has("m5.trapped") && !session.has("cell2.open")) {
+				continue;
+			}
+
+			if (droid == null || droid.isRemoved() || droid.level() != player.level() || droid.distanceTo(player) > DROID_LEFT_BEHIND
+					|| com.phiro.sabercraft.droid.DroidEntity.onLift(droid.level(), droid.blockPosition())) {
+				Droids.bring(player, type);
+				droidsReturned++;
+			}
+		}
+	}
+
+	/** For the tests: how often a story droid was brought back by itself. */
+	public static int droidsReturnedForTest() {
+		return droidsReturned;
+	}
+
+	/** Phase 24: the word why a hatch or a door stays shut while someone is after the player. */
+	public static final String HUNTED = "sabercraft.story.hint.hunted";
+	private static int hatchesRefused;
+
+	/** For the tests: how often a hatch stayed shut because someone was after the player. */
+	public static int hatchesRefusedForTest() {
+		return hatchesRefused;
 	}
 
 	/** A droid's ability in the story; returns the message, or null for the normal ability. */
@@ -558,6 +670,10 @@ public final class Story {
 
 			session.chapter.tick(session);
 			session.afterTick();
+
+			if (server.getTickCount() % 40 == 0 && session.dialog == null) {
+				keepDroidsNear(session, player);
+			}
 
 			if (server.getTickCount() % 2 == 0) {
 				sendFigures(session, player);
@@ -1177,7 +1293,7 @@ public final class Story {
 		}
 
 		for (Figure figure : session.figures) {
-			if (figure.id == id && session.here.equals(figure.ship) && figure.talks && figure.mode != Figure.DOWN) {
+			if (figure.id == id && session.here.equals(figure.ship) && figure.talks && figure.mode != Figure.DOWN && session.chapter.talksNow(session, figure)) {
 				AABB box = figure.box().move(Vec3.atLowerCornerOf(session.origin(figure.ship)));
 
 				if (box.distanceToSqr(player.getEyePosition()) > REACH * REACH) {
@@ -1284,7 +1400,7 @@ public final class Story {
 			}
 
 			int flags = (f.lamp ? StoryFiguresPayload.LAMP : 0) | (f.saber ? StoryFiguresPayload.SABER : 0) | (f.hostile ? StoryFiguresPayload.HOSTILE : 0)
-					| (f.talks ? StoryFiguresPayload.TALKS : 0) | (f.observer ? StoryFiguresPayload.OBSERVER : 0) | (f.lit ? StoryFiguresPayload.LIT : 0)
+					| (f.talks && session.chapter.talksNow(session, f) ? StoryFiguresPayload.TALKS : 0) | (f.observer ? StoryFiguresPayload.OBSERVER : 0) | (f.lit ? StoryFiguresPayload.LIT : 0)
 					| (Combat.pistol(f) && f.observer && (f.mode == Figure.CHASE || f.mode == Figure.FIGHT) && f.react != Figure.COMLINK ? StoryFiguresPayload.ARMED : 0)
 					| (Finale.disarmed(f) ? StoryFiguresPayload.UNARMED : 0);
 			list.add(new StoryFiguresPayload.Fig(f.id, f.kind(), f.pose(), f.speaker, (float) f.x, (float) f.y, (float) f.z, f.yaw, f.headYaw, f.speed, f.stage,

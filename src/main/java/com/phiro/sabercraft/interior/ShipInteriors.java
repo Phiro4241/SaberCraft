@@ -713,6 +713,18 @@ public final class ShipInteriors {
 		player.sendOverlayMessage(net.minecraft.network.chat.Component.translatable("sabercraft.interior.caught"));
 	}
 
+	private static int roofsLeft;
+
+	/** Phase 24: for the tests: how often someone was set back off a roof. */
+	public static int roofsLeftForTest() {
+		return roofsLeft;
+	}
+
+	/** Phase 24: for the tests: {@link #standsFirm}. */
+	public static boolean standsFirmForTest(ServerLevel level, Vec3 at) {
+		return standsFirm(level, at);
+	}
+
 	/** Phase 23: whether there is something firm under the feet at that spot (world space). */
 	static boolean standsFirm(ServerLevel level, Vec3 at) {
 		AABB under = new AABB(at.x - 0.25, at.y - 0.2, at.z - 0.25, at.x + 0.25, at.y - 0.01, at.z + 0.25);
@@ -743,8 +755,24 @@ public final class ShipInteriors {
 			return;
 		}
 
+		// Phase 24: nobody walks on a roof (the bridge's, a wall's top between rooms): whoever stands
+		// there somehow (thrown, pushed, a jump nobody foresaw) is back at once where they last stood
+		// in a room. The rooms themselves are closed (the walk test finds no way up); this only
+		// makes sure of it.
+		if (!player.isSpectator() && !player.isCreative() && player.onGround() && aboard.plan.onRoof(local)) {
+			ServerLevel level = (ServerLevel) player.level();
+			Vec3 back = aboard.safe != null && standsFirm(level, aboard.world(aboard.safe)) ? aboard.safe : aboard.plan.entry();
+			teleport(player, level, aboard.world(back), player.getYRot());
+			player.setDeltaMovement(Vec3.ZERO);
+			player.hurtMarked = true;
+			player.resetFallDistance();
+			roofsLeft++;
+			return;
+		}
+
 		// (Only where the middle of the feet is over the floor: set back onto an edge, one fell again.)
-		if (player.onGround() && player.tickCount % 2 == 0 && !aboard.plan.pit(local, 0.0) && overFloor((ServerLevel) player.level(), player.position())) {
+		if (player.onGround() && player.tickCount % 2 == 0 && !aboard.plan.pit(local, 0.0) && !aboard.plan.onRoof(local)
+				&& overFloor((ServerLevel) player.level(), player.position())) {
 			aboard.safe = local;
 		}
 

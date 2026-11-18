@@ -359,6 +359,27 @@ public final class Droids {
 			return null;
 		}
 
+		// Phase 24: in the story the ability key always reaches the story's droid, even when the
+		// client still named one gone (respawned at a checkpoint) or far off (left behind, stuck):
+		// the droid of that kind is meant, and ability() brings it back if it is away.
+		if (com.phiro.sabercraft.story.Story.playing(player) && action.equals("ability")) {
+			DroidType meant = null;
+
+			if (player.level().getEntity(entityId) instanceof DroidEntity named && named.owner().equals(player.getUUID())) {
+				meant = named.droid();
+			}
+
+			List<DroidType> crew = crew(player);
+
+			if (meant == null || !crew.contains(meant)) {
+				meant = crew.contains(DroidType.MOUSE) ? DroidType.MOUSE : crew.isEmpty() ? null : crew.get(0);
+			}
+
+			if (meant != null) {
+				return command(player, action, meant.id());
+			}
+		}
+
 		if (!(player.level().getEntity(entityId) instanceof DroidEntity droid) || droid.isRemoved()
 				|| droid.distanceToSqr(player.getEyePosition()) > (TARGET_RANGE + 2.0) * (TARGET_RANGE + 2.0)
 				// Phase 19: in the story the key means a droid without looking at it (it may be behind in a shaft).
@@ -514,6 +535,23 @@ public final class Droids {
 		DroidEntity droid = droid(player, type);
 		Component name = name(player, type);
 
+		if ((droid == null || droid.level() != player.level() || droid.distanceToSqr(player) > ABILITY_RANGE_SQR)
+				&& com.phiro.sabercraft.story.Story.playing(player) && !narrowNow(player)) {
+			// Phase 24: in the story a droid left behind (stuck somewhere, gone with a checkpoint)
+			// comes back to the player first: the key never does nothing.
+			if (droid != null && droid.isStaying()) {
+				return Component.translatableWithFallback("sabercraft.story.droid.waiting", "%s waits where you left it.", name);
+			}
+
+			bring(player, type);
+			droid = droid(player, type);
+			broughtBack++;
+
+			if (droid != null) {
+				droid.playVoice("interact", 0.8F);
+			}
+		}
+
 		if (droid == null || droid.level() != player.level() || droid.distanceToSqr(player) > ABILITY_RANGE_SQR) {
 			return Component.translatableWithFallback("sabercraft.droid.too_far", "%s is too far away.", name);
 		}
@@ -561,6 +599,18 @@ public final class Droids {
 		}
 
 		return result.message();
+	}
+
+	private static int broughtBack;
+
+	/** Phase 24: for the tests: how often a story's droid was brought back by its ability key. */
+	public static int broughtBackForTest() {
+		return broughtBack;
+	}
+
+	/** Phase 24: whether the player crawls in a narrow passage now (no droid is fetched into it). */
+	private static boolean narrowNow(ServerPlayer player) {
+		return DroidEntity.narrow(player);
 	}
 
 	/** Phase 19: the wait after a droid's ability in the story (ticks). */
