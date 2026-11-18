@@ -1196,6 +1196,31 @@ public class StoryGameTest implements FabricClientGameTest {
 		}
 
 		String key = trooper.key;
+		// Phase 25: nobody shoots while the strokes are counted. Besides a stroke, the only thing that
+		// hurts a trooper in the fight is a bolt the saber turned (a swing turns bolts coming from the
+		// front, Phase 22; half his strength). In CI (PR #30) the lab's guard, who now stands out on the
+		// platform in the troopers' line of fire, was down after a heavy and a light stroke. So the
+		// troopers hold their fire, the bolts already flying land, and he starts whole; if a stroke
+		// still misses, the hits counted so far are in the message.
+		this.server.runOnServer(s -> {
+			for (Figure f : session(s).figures) {
+				if (f.hostile) {
+					f.cooldown = 1000;
+					f.windup = 0;
+					f.burst = 0;
+				}
+			}
+		});
+		this.context.waitTicks(30);
+		int returned = this.on(s -> session(s).counters.getOrDefault("returned_hits", 0));
+		this.server.runOnServer(s -> {
+			Figure f = session(s).figure(key);
+
+			if (f.mode != Figure.DOWN) {
+				f.health = 1.0F;
+			}
+		});
+		check(this.on(s -> session(s).figure(key).mode != Figure.DOWN), key + " is down before the first stroke");
 
 		// Phase 23: a heavy stroke throws him back (he reels, arms out); light ones make him flinch; a
 		// trooper takes four light strokes (Phase 22) or a heavy and two light ones.
@@ -1219,7 +1244,9 @@ public class StoryGameTest implements FabricClientGameTest {
 			double moved = this.on(s -> session(s).figure(key).position().distanceTo(from));
 			int sent = this.context.computeOnClient(client -> StoryInput.struckForTest());
 			check(sent > struck, "the attack key with the saber sends no stroke");
-			check(after < before, "the stroke does not hit " + key + " (" + before + " -> " + after + ")");
+			String hits = this.on(s -> "heavy " + session(s).counters.getOrDefault("heavy_hits", 0) + ", light " + session(s).counters.getOrDefault("light_hits", 0)
+					+ ", bolts sent back " + (session(s).counters.getOrDefault("returned_hits", 0) - returned));
+			check(after < before, "stroke " + stroke + " does not hit " + key + " (" + before + " -> " + after + "; hits so far: " + hits + ")");
 
 			if (heavy) {
 				check(reaction == Figure.HEAVY, "a heavy stroke does not throw " + key + " back (reaction " + reaction + ")");
@@ -1231,6 +1258,7 @@ public class StoryGameTest implements FabricClientGameTest {
 		}
 
 		check(this.on(s -> session(s).figure(key).mode == Figure.DOWN), key + " is not down after a heavy and two light strokes");
+		check(this.on(s -> session(s).counters.getOrDefault("returned_hits", 0)) == returned, "a bolt sent back hit someone while the strokes were counted");
 		this.context.runOnClient(client -> client.options.setCameraType(CameraType.THIRD_PERSON_BACK));
 		this.context.waitTicks(20);
 		this.context.takeScreenshot("story_trooper_down");
