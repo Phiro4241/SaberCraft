@@ -431,7 +431,9 @@ public class StoryGameTest implements FabricClientGameTest {
 		context.takeScreenshot("story_lab");
 		this.use("saber", R);
 		this.converse("take");
-		this.waitStep("m6.escape1", 40);
+		// Phase 25: taking it is a short scene (seen whole here; skipped in Phase25GameTest).
+		check("saber".equals(this.awaitFilm(40)), "taking the saber does not play its scene");
+		this.waitStep("m6.escape1", 300);
 		check(this.on(s -> SaberVariant.canHold(me(s).getMainHandItem())), "Ilyra's saber is not in the hand");
 		this.server.runCommand("effect give @a minecraft:resistance 100000 4 true");
 		this.server.runCommand("effect give @a minecraft:instant_health 1 4 true");
@@ -528,6 +530,7 @@ public class StoryGameTest implements FabricClientGameTest {
 		this.waitStep("m3.hale", 40);
 		// Phase 23: the armory is emptied first (the security desk pages the quartermaster to the
 		// hangar), Hale waits outside meanwhile, then comes in himself, alone; nobody else speaks.
+		// (Phase 25: at once, as a short scene: the quartermaster is sent out as it begins.)
 		check(this.on(s -> session(s).has("qm.away")), "the quartermaster is not paged out when Hale's scene begins");
 		check(this.on(s -> session(s).figure("hale") != null && !DestroyerInterior.ARMORY.contains(session(s).figure("hale").position().add(0.0, 0.5, 0.0))),
 				"Hale is in the armory before it is empty");
@@ -948,6 +951,15 @@ public class StoryGameTest implements FabricClientGameTest {
 		check(droids, where + ": the droids are not with the player after the capture");
 		this.server.runOnServer(s -> StoryTesting.unseen(session(s), 0));
 		int captures = this.on(s -> Story.capturesForTest());
+		// Phase 25: the escape out of the reactor begins with the chase, as it did the first time
+		// (the same troopers): there the place is fair if no chaser is at hand and nobody catches
+		// the player in the first seconds; everywhere else nobody may see the player at all.
+		boolean chase = where.equals("m5.escape");
+		double nearest = this.on(s -> {
+			Vec3 me = session(s).local(Story.DESTROYER);
+			return session(s).figures.stream().filter(f -> Story.DESTROYER.equals(f.ship) && f.mode == Figure.CHASE)
+					.mapToDouble(f -> f.position().distanceTo(me)).min().orElse(99.0);
+		});
 		float most = 0.0F;
 
 		for (int i = 0; i < 8; i++) {
@@ -955,7 +967,12 @@ public class StoryGameTest implements FabricClientGameTest {
 			most = Math.max(most, this.on(s -> StoryTesting.suspicion(session(s))));
 		}
 
-		check(most < 0.3F && this.on(s -> Story.capturesForTest()) == captures, where + ": the checkpoint's place is not safe (suspicion " + most + ")");
+		if (chase) {
+			check(nearest > 6.0 && this.on(s -> Story.capturesForTest()) == captures,
+					where + ": after the capture a chaser is at hand at once (" + String.format(Locale.ROOT, "%.1f", nearest) + " blocks) or catches the player");
+		} else {
+			check(most < 0.3F && this.on(s -> Story.capturesForTest()) == captures, where + ": the checkpoint's place is not safe (suspicion " + most + ")");
+		}
 		this.unseen();
 		SaberCraft.LOGGER.info("STORY: checkpoint of {} restored ({})", where, kept);
 	}

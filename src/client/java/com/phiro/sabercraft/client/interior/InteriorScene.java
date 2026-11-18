@@ -407,6 +407,8 @@ public final class InteriorScene {
 			// cockpit window were there in one game and gone in the next).
 			case GLASS -> RenderTypes.bannerPattern(ATLAS);
 			case HOLO -> RenderTypes.entityTranslucentEmissive(ATLAS);
+			// Phase 25: added light (see InteriorLight).
+			case LIGHT -> InteriorLight.TYPE;
 		};
 	}
 

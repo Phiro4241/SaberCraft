@@ -66,7 +66,16 @@ public final class StoryCinema {
 			new Line(332, 362, "dax", "sabercraft.story.film.escape.dax2")};
 	private static final Line[] NO_LINES = {};
 	/** Phase 24: the films there are. */
-	private static final Set<String> FILMS = Set.of("arrival", "duel", "duel_end", "takedown", "boss_mid", "escape");
+	private static final Set<String> FILMS = Set.of("arrival", "duel", "duel_end", "takedown", "boss_mid", "escape", "hale_in", "service", "saber");
+	/** Phase 25: the lines of the short scenes aboard (see {@link SceneFilm}). */
+	private static final Line[] HALE_LINES = {
+			new Line(44, 80, "hale", "sabercraft.story.film.hale_in.hale1")};
+	private static final Line[] SERVICE_LINES = {
+			new Line(20, 52, "trooper", "sabercraft.story.film.service.trooper1"),
+			new Line(64, 94, "trooper", "sabercraft.story.film.service.trooper2"),
+			new Line(100, 126, "trooper", "sabercraft.story.film.service.trooper3")};
+	private static final Line[] SABER_LINES = {
+			new Line(96, 150, "intercom", "sabercraft.story.film.saber.intercom")};
 	/** When the title shows (ticks). */
 	private static final int TITLE_FROM = 128;
 	private static final int TITLE_TO = 214;
@@ -121,6 +130,7 @@ public final class StoryCinema {
 			case "takedown" -> DuelFilm.TAKEDOWN_LENGTH;
 			case "boss_mid" -> DuelFilm.BOSS_LENGTH;
 			case "escape" -> EscapeFilm.LENGTH;
+			case "hale_in", "service", "saber" -> SceneFilm.length(name);
 			default -> ArrivalFilm.LENGTH;
 		};
 		length = Math.max(20, Math.min(ticks, most));
@@ -140,6 +150,17 @@ public final class StoryCinema {
 
 		client.gui.setScreen(new FilmScreen());
 		sound(client, 0);
+	}
+
+	/**
+	 * Phase 25: the server's scene is over (a dialog opens, or the player was caught and is back at
+	 * a checkpoint): a short scene aboard still running here (this client a little behind) ends
+	 * without being skipped, so what follows is seen at once.
+	 */
+	static void sceneOver(Minecraft client) {
+		if (film != null && SceneFilm.has(film)) {
+			stop(client, false);
+		}
 	}
 
 	/** The film ends (played through, skipped, or the player left). */
@@ -311,6 +332,17 @@ public final class StoryCinema {
 		return film != null && !elsewhere();
 	}
 
+	/** Phase 25: how near the player's eyes a film's camera hides the player's own body. */
+	static final double AT_EYES = 1.4;
+
+	/**
+	 * Phase 25: whether a film's camera is so near the player's eyes (as it glides out of them or
+	 * back in) that their own body is not drawn: it would fill the picture from inside.
+	 */
+	public static boolean atEyes(Vec3 camera, net.minecraft.world.entity.@Nullable Entity player, float partial) {
+		return player != null && player.getEyePosition(partial).distanceToSqr(camera) < AT_EYES * AT_EYES;
+	}
+
 	/** The camera of the film now (in the level), or null without a film. */
 	public static ArrivalFilm.@Nullable Shot camera(float partial) {
 		if (film == null) {
@@ -325,6 +357,12 @@ public final class StoryCinema {
 			}
 
 			Vec3 player = client.player.getPosition(partial);
+
+			if (SceneFilm.has(film)) {
+				// Phase 25: a short scene aboard, shot from fixed places of the ship (its corner with the cue).
+				ArrivalFilm.Shot eye = new ArrivalFilm.Shot(client.player.getEyePosition(partial), client.player.getViewYRot(partial), client.player.getViewXRot(partial));
+				return SceneFilm.camera(film, time(partial), focus != null ? focus : Vec3.ZERO, eye);
+			}
 
 			if ("takedown".equals(film)) {
 				Vec3 guard = focus != null ? new Vec3(focus.x, player.y, focus.z) : player.add(Vec3.directionFromRotation(0.0F, client.player.getYRot()));
@@ -364,9 +402,10 @@ public final class StoryCinema {
 	public static @Nullable String music() {
 		return switch (film != null ? film : "") {
 			case "duel", "boss_mid" -> "music.story_duel";
-			case "duel_end" -> "music.event_rise";
+			// Phase 25: her flight: won, but not over (the piece goes on to the Falcon).
+			case "duel_end" -> "music.story_triumph";
 			case "escape" -> "music.story_finale";
-			case "takedown" -> null;
+			case "takedown", "hale_in", "service", "saber" -> null;
 			default -> "music.flight_imperial";
 		};
 	}
@@ -426,6 +465,9 @@ public final class StoryCinema {
 			case "duel_end" -> DUEL_END_LINES;
 			case "boss_mid" -> BOSS_LINES;
 			case "escape" -> ESCAPE_LINES;
+			case "hale_in" -> HALE_LINES;
+			case "service" -> SERVICE_LINES;
+			case "saber" -> SABER_LINES;
 			default -> NO_LINES;
 		};
 	}
@@ -490,7 +532,8 @@ public final class StoryCinema {
 			boolean arrival = "arrival".equals(film);
 			boolean escape = "escape".equals(film);
 			// Phase 24: the short scenes go back to the player's eyes without black.
-			boolean scene = "takedown".equals(film) || "boss_mid".equals(film);
+			// Phase 25: so do the scenes aboard (only the crawl way's ends in black: the hideout is elsewhere).
+			boolean scene = "takedown".equals(film) || "boss_mid".equals(film) || "hale_in".equals(film) || "saber".equals(film);
 			int flash = arrival && t < 8.0F ? Math.round((1.0F - t / 8.0F) * 230.0F) : 0;
 
 			if (escape && t >= EscapeFilm.CORE && t < EscapeFilm.CORE + 22) {
@@ -560,7 +603,13 @@ public final class StoryCinema {
 					int count = Math.min(2, rows.size());
 					// Centred in the lower bar; a line in two rises over the picture's edge rather than off the screen.
 					int y = Math.min(this.height - bar + Math.max(2, (bar - 10 - 10 * count) / 2), this.height - 3 - (10 + 10 * count));
-					graphics.centeredText(this.font, name, this.width / 2, y, alpha << 24 | ("mira".equals(line.speaker()) ? 0x8CC0FF : "shadow".equals(line.speaker()) ? 0xFF6A5C : 0xE8C878));
+					int tint = switch (line.speaker()) {
+						case "mira" -> 0x8CC0FF;
+						case "shadow" -> 0xFF6A5C;
+						case "hale", "trooper", "intercom" -> 0xC8D0DC;
+						default -> 0xE8C878;
+					};
+					graphics.centeredText(this.font, name, this.width / 2, y, alpha << 24 | tint);
 
 					for (int r = 0; r < count; r++) {
 						graphics.centeredText(this.font, rows.get(r), this.width / 2, y + 11 + r * 10, alpha << 24 | 0xECEFF4);

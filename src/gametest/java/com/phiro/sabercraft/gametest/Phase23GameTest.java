@@ -606,10 +606,13 @@ public class Phase23GameTest implements FabricClientGameTest {
 				new Vec3(27.5, DestroyerInterior.PIT + 1, 77.5)));
 		check(reaches(down), "no way from the bridge's walkway down the steps into the crew pit: " + down);
 
-		// A fight: the player in the armory, the troopers in the corridor and the lobby.
+		// A fight: the player in the armory, the troopers in the corridor and the lobby. (Phase 25:
+		// at this step they hold their posts until they notice the player; here they have: off
+		// their posts, in the fight.)
 		this.server.runOnServer(s -> {
 			for (Figure f : this.session(s).figures) {
 				if (f.hostile) {
+					f.post = false;
 					f.x = 40.5 + (f.id % 3 - 1) * 1.2;
 					f.z = -6.0 + f.id % 2;
 					f.y = H;

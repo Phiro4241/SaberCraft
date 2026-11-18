@@ -80,8 +80,11 @@ public abstract class CameraMixin {
 			this.setRotation(film.yaw(), film.pitch());
 			this.setPosition(film.position());
 
-			// Phase 21: a film where the story is shows the player from outside.
-			if (com.phiro.sabercraft.client.story.StoryCinema.inWorld()) {
+			// Phase 21: a film where the story is shows the player from outside (Phase 25: not
+			// while the camera is right at their eyes, gliding out of them or back in: one would
+			// see the inside of their head).
+			if (com.phiro.sabercraft.client.story.StoryCinema.inWorld()
+					&& !com.phiro.sabercraft.client.story.StoryCinema.atEyes(film.position(), this.entity, partialTicks)) {
 				this.detached = true;
 			}
 

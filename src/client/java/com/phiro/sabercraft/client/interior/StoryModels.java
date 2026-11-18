@@ -75,7 +75,14 @@ final class StoryModels {
 		float[] hilt = StoryClient.looseHilt(plot.origin(), partial);
 
 		if (hilt != null) {
-			CrewModels.looseHilt(b, hilt[0], hilt[1], hilt[2], hilt[3], hilt[4]);
+			CrewModels.looseHilt(b, hilt[0], hilt[1], hilt[2], hilt[3], hilt[4], StoryClient.twinBlade());
+		}
+
+		// Phase 25: her saber staff, thrown: spinning through the air, both blades lit.
+		float[] flying = StoryClient.flyingStaff(plot.origin(), partial);
+
+		if (flying != null) {
+			CrewModels.flyingStaff(b, flying[0], flying[1], flying[2], flying[3], flying[4], RED);
 		}
 
 		b.layer(Layer.SOLID).worldLight().white().anim(0).twoSided(false);
@@ -186,7 +193,8 @@ final class StoryModels {
 		}
 
 		// Phase 24: in the second phase of the duel her hilt is a staff: its second blade comes out (and goes with the first).
-		state[8] = approach(state[8], lit && skirt && StoryClient.twinBlade() ? 1.0F : 0.0F, dt * 3.2F);
+		// (Phase 25: slower, to be seen: she takes the staff in both hands, then the second blade comes out.)
+		state[8] = approach(state[8], lit && skirt && StoryClient.twinBlade() ? 1.0F : 0.0F, dt * 1.6F);
 		return new CrewModels.Gear((fig.flags() & StoryFiguresPayload.LAMP) != 0, RED, lit, state[0], state[1], down, skirt, attack, 0.0F, state[5],
 				state[6], state[7], spin, react, reactP, false, (fig.flags() & StoryFiguresPayload.UNARMED) != 0, state[8]);
 	}

@@ -680,4 +680,63 @@ public final class StoryTesting {
 		s.lastStroke = s.time();
 		Finale.bossHitForTest(s, figure, player);
 	}
+
+	// --- Phase 25 ----------------------------------------------------------------------------------
+
+	/** Phase 25: the short scenes aboard begun and skipped since the game started. */
+	public static int scenesStarted() {
+		return Scenes.startedForTest();
+	}
+
+	public static int scenesSkipped() {
+		return Scenes.skippedForTest();
+	}
+
+	/** Phase 25: the maintenance door's emergency release pulled, and the door bolted, since the game started. */
+	public static int releases() {
+		return Scenes.releasesForTest();
+	}
+
+	public static int bolts() {
+		return Scenes.boltsForTest();
+	}
+
+	/** Phase 25: whether a scene aboard runs now (and which: {@code tmp.scene.<name>}). */
+	public static boolean scene(StorySession s, String film) {
+		return Scenes.running(s, film);
+	}
+
+	/** Phase 25: the emergency release clicked, the bolt panel clicked (as the player's use). */
+	public static void release(StorySession s) {
+		Scenes.release(s);
+	}
+
+	public static void bolt(StorySession s) {
+		Scenes.bolt(s);
+	}
+
+	/** Phase 25: "take it" in the saber's talk: the scene begins (as the answer does). */
+	public static void saberScene(StorySession s) {
+		Scenes.saberBegin(s);
+	}
+
+	/** Phase 25: her throws since the game started: begun, hits, blocked, dodged; and spins begun. */
+	public static int[] throwsCount() {
+		return Finale.throwsForTest();
+	}
+
+	/** Phase 25: she throws her staff now (from where she stands, at the player). */
+	public static void throwNow(StorySession s, Figure figure) {
+		Finale.throwForTest(s, figure);
+	}
+
+	/** Phase 25: she spins now (a blow with the staff round her). */
+	public static void spinNow(StorySession s, Figure figure) {
+		Finale.spinForTest(s, figure);
+	}
+
+	/** Phase 25: whether her staff is in flight now. */
+	public static boolean staffOut(Figure figure) {
+		return figure.action == Finale.THROW && figure.windup <= 0 && figure.throwFrom != null;
+	}
 }

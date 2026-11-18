@@ -108,7 +108,9 @@ final class DestroyerRooms {
 
 		// Phase 16: the gallery's way through the reactor wall is lined apart (only where the wall is).
 		// Phase 20: so is the way to the lab (its panels and the lining were drawn on the same plane).
-		if (s.kind() != Kind.FLOOR && (GALLERY.contains(s.x(), s.y(), s.z()) || LAB_WAY.contains(s.x(), s.y(), s.z()))) {
+		// Phase 25: and the maintenance passage at the walkway's end.
+		if (s.kind() != Kind.FLOOR && (GALLERY.contains(s.x(), s.y(), s.z()) || LAB_WAY.contains(s.x(), s.y(), s.z())
+				|| SERVICE_WAY.contains(s.x(), s.y(), s.z()))) {
 			return;
 		}
 
@@ -149,7 +151,20 @@ final class DestroyerRooms {
 			case CEILING -> ceiling(b, s, plot);
 			case WALL -> wall(b, s, plot);
 		}
+
+		// Phase 25: the core's light on the walkways and platforms round it (added light, pulsing with
+		// the core, fading out towards the wall).
+		if (s.kind() == Kind.FLOOR && s.in("reactor") && inReactor(s.x() + 0.5, s.z() + 0.5, CORE_LIGHT + 1.0)) {
+			Vector3f core = new Vector3f((float) REACTOR_X, s.y(), (float) REACTOR_Z);
+			b.layer(Layer.LIGHT).fullBright().anim(InteriorScene.ANIM_PULSE).colour(0xFF3A62B4).fit(InteriorAtlas.WHITE)
+					.lightFrom(core, core, 2.2F, (float) CORE_LIGHT);
+			Skin.face(b, s, Skin.EPS * 3);
+			b.noLight().layer(Layer.SOLID).worldLight().white().anim(0);
+		}
 	}
+
+	/** Phase 25: how far the reactor core's light reaches over the floors round it. */
+	static final double CORE_LIGHT = 11.0;
 
 	static boolean inReactor(double x, double z, double r) {
 		double dx = x - REACTOR_X;
@@ -251,7 +266,8 @@ final class DestroyerRooms {
 		} else if (h == strip) {
 			b.fit(InteriorAtlas.IMP_WALL_STRIP);
 			Skin.face(b, s, Skin.EPS);
-			b.layer(Layer.GLOW).fullBright().colour(0xFFB0C4EC).fit(InteriorAtlas.IMP_WALL_STRIP_GLOW);
+			// Phase 25: the maintenance chamber behind the reactor: a dim amber strip.
+			b.layer(Layer.GLOW).fullBright().colour(s.in("service") ? 0xFFD89040 : 0xFFB0C4EC).fit(InteriorAtlas.IMP_WALL_STRIP_GLOW);
 			Skin.face(b, s, Skin.EPS * 2);
 			b.layer(Layer.SOLID).worldLight().white();
 		} else if (h < strip) {
@@ -1043,7 +1059,8 @@ final class DestroyerRooms {
 		// Phase 20: and the way to the lab on the shaft floor (the server always left it open, but the
 		// wall was drawn across it: one walked through a wall that looked closed to find the door).
 		// Phase 23: down into the depth, darker the further down.
-		List<InteriorPlan.Doorway> ways = List.of(DestroyerInterior.GALLERY, DestroyerInterior.LAB_WAY);
+		// Phase 25: and the maintenance passage at the end of the walkway along the north-east wall.
+		List<InteriorPlan.Doorway> ways = List.of(DestroyerInterior.GALLERY, DestroyerInterior.LAB_WAY, DestroyerInterior.SERVICE_WAY);
 		RoundWalls.wall(b, cx, cz, r, (int) bottom, (int) top, true, 0.0F, 360.0F, 48, ways,
 				(pen, row, index) -> pen.colour(depthShade(bottom + row)).tile(InteriorAtlas.IMP_WALL_TALL, 2.0F));
 		b.white();
@@ -1052,6 +1069,20 @@ final class DestroyerRooms {
 		RoundWalls.linings(b, ways, DestroyerInterior::openReactor, DestroyerRooms::reactorWallCell, (door, x, z) -> true,
 				() -> b.tile(InteriorAtlas.IMP_METAL, 1.0F), () -> b.tile(InteriorAtlas.IMP_METAL, 1.0F));
 		b.tile(InteriorAtlas.IMP_WALL_TALL, 2.0F);
+
+		// Phase 25: the core's light on the wall round the working level (added light, pulsing with the
+		// core), brightest level with the walkways, fading out a few blocks up and down (the wall
+		// above and the depth below stay dark).
+		Vector3f glowAt = new Vector3f(cx, work + 1.5F, cz);
+		b.layer(Layer.LIGHT).fullBright().anim(InteriorScene.ANIM_PULSE).lightFrom(glowAt, glowAt, r + 0.2F, r + 3.0F);
+		// The wall itself drawn again, pulled 0.06 in towards the middle: cut into the same pieces as
+		// the wall (also beside the doorways), each lying parallel in front of its piece.
+		float pull = (r - 0.06F) / r;
+		b.push().translate(cx, 0.0, cz).scale(pull, 1.0F, pull).translate(-cx, 0.0, -cz);
+		RoundWalls.wall(b, cx, cz, r, (int) work - 6, (int) work + 10, true, 0.0F, 360.0F, 48, ways,
+				(pen, row, index) -> pen.colour(0xFF1C3666).fit(InteriorAtlas.WHITE));
+		b.pop();
+		b.noLight().white().anim(0).layer(Layer.SOLID).worldLight();
 
 		// Ribs and conduits up the wall (Phase 18: where the server has them collide).
 		b.tile(InteriorAtlas.IMP_PIPE, 1.0F);
@@ -1299,6 +1330,23 @@ final class DestroyerRooms {
 
 		b.tile(InteriorAtlas.IMP_FLOOR_GRATE, 1.0F);
 		b.box(x0, y - 0.02F, z0, x1, y, z1, MeshBuilder.UP);
+
+		// Phase 25: the core's light on the grating (pulsing with it, fading out towards the wall),
+		// block by block so that it fades over the platform.
+		Vector3f core = new Vector3f((float) REACTOR_X, y, (float) REACTOR_Z);
+		b.layer(Layer.LIGHT).fullBright().anim(InteriorScene.ANIM_PULSE).colour(0xFF3A62B4).fit(InteriorAtlas.WHITE)
+				.lightFrom(core, core, 2.2F, (float) CORE_LIGHT);
+
+		for (int x = g.x0(); x <= g.x1(); x++) {
+			for (int z = g.z0(); z <= g.z1(); z++) {
+				if (inReactor(x + 0.5, z + 0.5, CORE_LIGHT + 1.0)) {
+					// (Over the hazard bands at the edges, which lie 0.006 over the grating.)
+					b.box(x, y, z, x + 1, y + 0.012F, z + 1, MeshBuilder.UP);
+				}
+			}
+		}
+
+		b.noLight().layer(Layer.SOLID).worldLight().white().anim(0);
 		b.tile(InteriorAtlas.IMP_METAL, 1.0F);
 		b.box(x0, y - thick, z0, x1, y - 0.002F, z1, MeshBuilder.ALL & ~MeshBuilder.UP);
 		b.colour(0xFF9098A8);
@@ -1453,6 +1501,10 @@ final class DestroyerRooms {
 		float hx = tx + 0.5F;
 		float hy = DECK + 3.4F;
 		float hz = 107.5F;
+		// Phase 25: its light on the table under it (added light, fading out round the beam).
+		float tableLight = (float) (DestroyerInterior.TABLE_Z1 - DestroyerInterior.TABLE_Z0) / 2 - 0.15F;
+		tableLight(b, hx, DECK + 1.93F, hz, 0.5F, tableLight, 0xFF1A3466);
+		b.layer(Layer.HOLO).twoSided(true);
 		b.colourAlpha(0x3868B8FF).fit(InteriorAtlas.IMP_HOLO);
 		b.push().translate(hx, hy, hz).rotateY(seconds * 15.0F);
 		b.sphere(new Vector3f(0, 0, 0), 0.8F, 12, 8);
@@ -1466,6 +1518,9 @@ final class DestroyerRooms {
 
 		// The tactical table: a small fleet in formation over the map.
 		int sx = (CX + 4 + SIDE_EAST) / 2 + 4;
+		// Phase 25: the map's light on the table round it.
+		tableLight(b, sx + 0.5F, DECK + 2.0F, 107.5F, 1.2F, 1.95F, 0xFF173A30);
+		b.layer(Layer.HOLO).twoSided(true);
 		b.colourAlpha(0x70A0C8FF);
 
 		for (int i = 0; i < 3; i++) {
@@ -1482,6 +1537,19 @@ final class DestroyerRooms {
 		b.pop();
 
 		b.twoSided(false).white().layer(Layer.SOLID).worldLight();
+	}
+
+	/** Phase 25: a hologram's light on the table it stands on: a disc of added light, fading out. */
+	private static void tableLight(MeshBuilder b, float x, float y, float z, float inner, float radius, int colour) {
+		Vector3f at = new Vector3f(x, y, z);
+		b.twoSided(false).layer(Layer.LIGHT).fullBright().anim(InteriorScene.ANIM_SHIMMER).colour(colour).fit(InteriorAtlas.WHITE)
+				.lightFrom(at, at, inner, radius);
+
+		for (int k = 0; k < 4; k++) {
+			b.ring(x, y + Skin.EPS * 3, z, radius * k / 4, radius * (k + 1) / 4, 32, true);
+		}
+
+		b.noLight().anim(0).white();
 	}
 
 	/** A small wedge (for holograms), nose at -z, about 40 units long. */

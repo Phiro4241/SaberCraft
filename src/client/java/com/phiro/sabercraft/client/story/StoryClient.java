@@ -30,6 +30,7 @@ import com.phiro.sabercraft.network.StoryCuePayload;
 import com.phiro.sabercraft.network.StoryDialogPayload;
 import com.phiro.sabercraft.network.StoryFiguresPayload;
 import com.phiro.sabercraft.network.StoryStatePayload;
+import com.phiro.sabercraft.story.StaffThrow;
 
 /**
  * Phase 19: what this client knows of the story: the state the server sent (mission, objectives,
@@ -105,6 +106,18 @@ public final class StoryClient {
 	private static float hiltYaw;
 	/** Phase 23: how long the struck saber flies (ticks; as the server's). */
 	static final int HILT_FLIGHT = 16;
+	/**
+	 * Phase 25: her thrown saber staff: where it left her hand, its far end, the hand it comes back
+	 * to (world), how long out and back (ticks), how long it has flown (half as fast under the
+	 * Focus, as on the server); null while none flies.
+	 */
+	private static @Nullable Vec3 throwFrom;
+	private static @Nullable Vec3 throwFar;
+	private static @Nullable Vec3 throwHand;
+	private static int throwOut;
+	private static int throwBack;
+	private static float throwAge;
+	private static int throwsSeen;
 	/** Phase 23: the camera moments seen (for tests). */
 	private static int jolts;
 static final int CHECKPOINT_TICKS = 60;
@@ -225,6 +238,7 @@ static final int CHECKPOINT_TICKS = 60;
 		hurtFromAge = 1000;
 		hiltFrom = null;
 		hiltTo = null;
+		throwFrom = null;
 	}
 
 	// --- Receiving ---------------------------------------------------------------------------------
@@ -275,6 +289,8 @@ static final int CHECKPOINT_TICKS = 60;
 		}
 
 		dialog = payload;
+		// Phase 25: a short scene still running here gives way to the talk it leads to.
+		StoryCinema.sceneOver(client);
 		DialogScreen.open(client, payload);
 	}
 
@@ -322,6 +338,8 @@ static final int CHECKPOINT_TICKS = 60;
 				// Phase 24: so are the shouts and lines still waiting from before it (no "Halt!" after
 				// being caught); what is said with the black (the same moment) stays.
 				dropBefore(clientTicks, false);
+				// Phase 25: and a short scene aboard (caught in the middle of it: back at the checkpoint).
+				StoryCinema.sceneOver(client);
 			}
 			case CUE_SOUND -> sound(client, payload.text(), 0.9F, 1.0F, figure(payload.value()));
 			case CUE_MUSIC -> music = payload.text().isEmpty() ? null : payload.text();
@@ -519,6 +537,19 @@ static final int CHECKPOINT_TICKS = 60;
 				shake(0.5F, 5);
 			}
 			case "phase" -> duelPhase = value;
+			case "throw" -> {
+				// Phase 25: her staff thrown at the player.
+				if (points.size() >= 3) {
+					throwFrom = points.get(0);
+					throwFar = points.get(1);
+					throwHand = points.get(2);
+					throwOut = value / 1000;
+					throwBack = value % 1000;
+					throwAge = 0.0F;
+					throwsSeen++;
+				}
+			}
+			case "caught" -> throwFrom = null;
 			case "meter" -> {
 				meterAge = 0;
 				focusMeter = value % 1000;
@@ -534,6 +565,7 @@ static final int CHECKPOINT_TICKS = 60;
 				focusOn = false;
 				duelPhase = 1;
 				lockAge = 1000;
+				throwFrom = null;
 			}
 			default -> {
 			}
@@ -665,6 +697,39 @@ static final int CHECKPOINT_TICKS = 60;
 		double y = Mth.lerp(k, from.y, to.y + 0.04) + 1.1 * 4.0 * k * (1.0 - k) - origin.getY();
 		float pitch = k < 1.0F ? k * 900.0F : 90.0F;
 		return new float[] {(float) x, (float) y, (float) z, hiltYaw + k * 160.0F, pitch};
+	}
+
+	/**
+	 * Phase 25: her thrown saber staff (plot space of that ship): {x, y, z, yaw, spin} while it
+	 * flies, or null.
+	 */
+	public static float @Nullable [] flyingStaff(BlockPos origin, float partial) {
+		Vec3 from = throwFrom;
+		Vec3 far = throwFar;
+		Vec3 hand = throwHand;
+
+		if (from == null || far == null || hand == null) {
+			return null;
+		}
+
+		float t = throwAge + partial * (focusOn ? 0.5F : 1.0F);
+
+		if (t >= throwOut + throwBack) {
+			return null;
+		}
+
+		Vec3 at = StaffThrow.at(from, far, hand, throwOut, throwBack, t);
+		float yaw = StaffThrow.yaw(from, far, hand, throwOut, throwBack, t);
+		return new float[] {(float) (at.x - origin.getX()), (float) (at.y - origin.getY()), (float) (at.z - origin.getZ()), yaw, t * StaffThrow.SPIN};
+	}
+
+	/** Only for tests: how many throws of her staff were seen, and whether one flies now. */
+	public static int throwsSeenForTest() {
+		return throwsSeen;
+	}
+
+	public static boolean staffFlyingForTest() {
+		return throwFrom != null && throwAge < throwOut + throwBack;
 	}
 
 	/** Phase 23: where the struck saber flew from and lands (world), for the film of the end; null if none. */
@@ -828,6 +893,14 @@ static final int CHECKPOINT_TICKS = 60;
 
 	private static void tick(Minecraft client) {
 		clientTicks++;
+
+		if (throwFrom != null) {
+			throwAge += focusOn ? 0.5F : 1.0F;
+
+			if (throwAge >= throwOut + throwBack + 4) {
+				throwFrom = null;
+			}
+		}
 		focusAge++;
 		hurtAge++;
 		blockAge++;

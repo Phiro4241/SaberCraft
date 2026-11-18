@@ -276,6 +276,14 @@ public final class FalconVisuals implements InteriorVisuals {
 		return any ? 16 : 1;
 	}
 
+	/**
+	 * Phase 25: whether a point (seen from above) is in the ramp hall. The engine grille's lower lip
+	 * passed through the hall's corner by the hatch: seen from the pad, a dark sliver in the corner.
+	 */
+	static boolean inRampHall(Vector3f p) {
+		return p.x > 33.0F && p.x < 38.0F && p.z > 30.0F && p.z < 42.0F;
+	}
+
 	/** The ramp housing seen from above (the saucer's underside is open over it: it ran through the ramp at head height). */
 	static final float[] RAMP_OUTLINE = {31.6F, 29.8F, 32.8F, 28.6F, 37.2F, 28.6F, 38.4F, 29.8F, 38.4F, 42.2F, 37.2F, 43.4F, 32.8F, 43.4F, 31.6F, 42.2F};
 
@@ -599,8 +607,10 @@ public final class FalconVisuals implements InteriorVisuals {
 		// Seen from the ramp: the closed outer hatch, with a lamp strip over it.
 		b.layer(Layer.SOLID).worldLight().sun(null, 1.0F).white().fit(InteriorAtlas.FAL_HATCH);
 		// Phase 17: right on the barriers that close the hatch (it stood more than a block behind them).
-		b.rect(37.0F, 5.8F, 42.02F, -3.0F, 0, 0, 0, -2.8F, 0);
-		b.layer(Layer.GLOW).fullBright().colour(0xFFFFD9A0).fit(InteriorAtlas.FAL_CEILING_LIGHT_GLOW);
+		// Phase 25: up to the wall over it (a slit under the lamp strip showed the stars outside).
+		b.rect(37.0F, 6.0F, 42.02F, -3.0F, 0, 0, 0, -3.0F, 0);
+		// Phase 25: only the tile's lit middle (its dark edges looked like a slot round the lamp).
+		b.layer(Layer.GLOW).fullBright().colour(0xFFFFD9A0).fit(InteriorAtlas.FAL_CEILING_LIGHT_GLOW, 0.25F, 0.25F, 0.75F, 0.75F);
 		b.rect(36.6F, 6.0F, 42.0F, -2.2F, 0, 0, 0, -0.12F, 0);
 		b.fullBright().sun(SUN, 0.55F);
 		b.layer(Layer.SOLID).colour(HULL_TINT).tile(InteriorAtlas.FAL_METAL_DARK, 1.0F);
@@ -611,6 +621,10 @@ public final class FalconVisuals implements InteriorVisuals {
 	}
 
 	// --- Turrets, dish, engines ------------------------------------------------------------------
+
+	/** Phase 25: where the collars round the turret domes end (the rooms close their insides to it). */
+	static final float TOP_COLLAR_RIM = 12.4F + 1.2F;
+	static final float BOTTOM_COLLAR_RIM = 3.8F - 1.2F;
 
 	private static void turrets(MeshBuilder b) {
 		for (int s = -1; s <= 1; s += 2) {
@@ -686,8 +700,12 @@ public final class FalconVisuals implements InteriorVisuals {
 			// The housing lips above and below.
 			b.polyFacing(List.of(at(s0, R + 0.02F, BAND_TOP - 0.6F), at(s1, R + 0.02F, BAND_TOP - 0.6F), at(s1, R + 0.4F, BAND_TOP - 0.9F),
 					at(s0, R + 0.4F, BAND_TOP - 0.9F)), new Vector3f(out).add(0, 1, 0));
-			b.polyFacing(List.of(at(s0, R + 0.02F, BAND_BOTTOM + 0.6F), at(s1, R + 0.02F, BAND_BOTTOM + 0.6F), at(s1, R + 0.4F, BAND_BOTTOM + 0.9F),
-					at(s0, R + 0.4F, BAND_BOTTOM + 0.9F)), new Vector3f(out).add(0, -1, 0));
+			// Phase 25: not where the rim passes through the ramp hall's corner by the hatch (seen from the
+			// pad, the lip's dark underside was a sliver in the corner).
+			if (!inRampHall(at((s0 + s1) / 2, R + 0.2F, 0))) {
+				b.polyFacing(List.of(at(s0, R + 0.02F, BAND_BOTTOM + 0.6F), at(s1, R + 0.02F, BAND_BOTTOM + 0.6F), at(s1, R + 0.4F, BAND_BOTTOM + 0.9F),
+						at(s0, R + 0.4F, BAND_BOTTOM + 0.9F)), new Vector3f(out).add(0, -1, 0));
+			}
 		}
 
 		b.layer(Layer.GLOW).fullBright().white().anim(InteriorScene.ANIM_PULSE).fit(InteriorAtlas.FAL_ENGINE_GLOW);

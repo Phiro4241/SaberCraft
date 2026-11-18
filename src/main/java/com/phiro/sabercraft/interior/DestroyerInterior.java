@@ -98,7 +98,8 @@ public final class DestroyerInterior extends InteriorPlan {
 				// Phase 23: a rib's cells also hold the wall's curve (the round shell skips cells
 				// already shaped): one walked into the wall beside every rib.
 				final int row = y;
-				ProxyShapes.Solid shape = (x, z) -> rib.at(x, z) || !openReactor(x, z, row) && !inGallery(x, z, row) && !inLabWay(x, z, row);
+				ProxyShapes.Solid shape = (x, z) -> rib.at(x, z) || !openReactor(x, z, row) && !inGallery(x, z, row) && !inLabWay(x, z, row)
+						&& !inServiceWay(x, z, row);
 				b.solid((int) Math.floor(rx - 1), (int) Math.floor(rz - 1), (int) Math.floor(rx + 1), (int) Math.floor(rz + 1), y, shape, 1.0,
 						java.util.Set.of());
 			}
@@ -169,7 +170,10 @@ public final class DestroyerInterior extends InteriorPlan {
 			new Gantry("desk", 39, 14, 41, 15, DestroyerInterior.HANGAR + 1, false),
 			new Gantry("deck_bridge", 33, 16, 43, 17, DestroyerInterior.HANGAR + 1, true),
 			new Gantry("deck_bridge_end", 33, 18, 34, 21, DestroyerInterior.HANGAR + 1, true),
-			new Gantry("lift_top", 28, 22, 34, 27, DestroyerInterior.HANGAR + 1, false));
+			new Gantry("lift_top", 28, 22, 34, 27, DestroyerInterior.HANGAR + 1, false),
+			// Phase 25: the maintenance walkway from the east platform north along the wall to the
+			// maintenance door (a dead end but for the door: it joins nothing else of the steelwork).
+			new Gantry("service", 48, 14, 49, 19, DestroyerInterior.REACTOR_BOTTOM, true));
 
 	/** Phase 23: the bridge that breaks behind the player in the escape (from the lab's platform to the lift's). */
 	public static final List<Gantry> COLLAPSE = GANTRIES.stream().filter(g -> g.id().startsWith("collapse")).toList();
@@ -463,6 +467,22 @@ public final class DestroyerInterior extends InteriorPlan {
 	public static final double TRACKER_R = 2.2;
 	public static final BlockPos SABER_FIELD = new BlockPos(44, REACTOR_BOTTOM, 50);
 	public static final BlockPos HOLO = new BlockPos(39, REACTOR_BOTTOM, 46);
+	/**
+	 * Phase 25: the way out of the reactor for the escape: the walkway (gantry {@code service}) to
+	 * a passage through the shaft's north-east wall, the maintenance door ({@link #DOOR_SERVICE}) at
+	 * its end, a small chamber behind it (the panel that bolts the door, pipes), and in its north
+	 * wall the hatch of a crawl way (the ship's ventilation).
+	 */
+	public static final Doorway SERVICE_WAY = new Doorway(48, REACTOR_BOTTOM, 11, 49, REACTOR_BOTTOM + 2, 14, false);
+	public static final int SERVICE_DOOR_Z = 10;
+	/** Phase 25: the chamber behind the maintenance door (inside: x 47..50, z 6..9). */
+	public static final AABB SERVICE_ROOM = new AABB(47, REACTOR_BOTTOM, 6, 51, REACTOR_BOTTOM + 3, 10);
+	/** Phase 25: the crawl way out of the chamber (one block high, north). */
+	public static final AABB SERVICE_VENT = new AABB(48, REACTOR_BOTTOM, 2, 49, REACTOR_BOTTOM + 1, 5);
+	public static final BlockPos SERVICE_HATCH = new BlockPos(48, REACTOR_BOTTOM, 5);
+	/** Phase 25: the emergency release by the door (outside, in the passage) and the panel that bolts it (inside). */
+	public static final AABB SERVICE_RELEASE = new AABB(47.55, REACTOR_BOTTOM + 0.7, 12.4, 48.05, REACTOR_BOTTOM + 1.8, 13.6);
+	public static final AABB SERVICE_LOCK = new AABB(50.45, REACTOR_BOTTOM + 0.7, 8.4, 51.0, REACTOR_BOTTOM + 1.8, 9.6);
 
 	private static final String WALL = "gray_concrete";
 	private static final String DARK = "polished_deepslate";
@@ -651,7 +671,9 @@ public final class DestroyerInterior extends InteriorPlan {
 			Door.wall(false, AIRLOCK_WALL, 5, 7, HANGAR + 1, HANGAR + 3),
 			Door.wall(true, CX + 4, -14, -12, HANGAR + 1, HANGAR + 3),
 			Door.wall(true, CX - 4, DETENTION_DOOR_Z0, DETENTION_DOOR_Z0 + 1, HANGAR + 1, HANGAR + 3),
-			Door.wall(false, LAB_WALL, LAB_DOOR_X0, LAB_DOOR_X0 + 2, REACTOR_BOTTOM, REACTOR_BOTTOM + 2));
+			Door.wall(false, LAB_WALL, LAB_DOOR_X0, LAB_DOOR_X0 + 2, REACTOR_BOTTOM, REACTOR_BOTTOM + 2),
+			// Phase 25: the maintenance door out of the reactor.
+			Door.wall(false, SERVICE_DOOR_Z, 48, 49, REACTOR_BOTTOM, REACTOR_BOTTOM + 2));
 
 	/** Phase 19: the doors by name (their index in {@link #DOORS}). */
 	public static final int DOOR_GALLERY = 5;
@@ -659,6 +681,7 @@ public final class DestroyerInterior extends InteriorPlan {
 	public static final int DOOR_ARMORY = 7;
 	public static final int DOOR_DETENTION = 8;
 	public static final int DOOR_LAB = 9;
+	public static final int DOOR_SERVICE = 10;
 
 	@Override
 	public List<Door> doors() {
@@ -707,7 +730,8 @@ public final class DestroyerInterior extends InteriorPlan {
 		// the way to the lab collides where its walls are drawn. 10 (Phase 23): the turbolift back in
 		// a bay of its own behind the lobby (the detention door no longer beside it); the reactor an
 		// open shaft far down, platforms and narrow bridges instead of the floor and the catwalk.
-		return 10;
+		// 11 (Phase 25): the maintenance walkway, door, chamber and crawl way out of the reactor.
+		return 11;
 	}
 
 	@Override
@@ -834,6 +858,10 @@ public final class DestroyerInterior extends InteriorPlan {
 				new Room("lift", new AABB(CX - 2, DECK + 1, COMMAND_BACK - 2, CX + 3, DECK + 4, COMMAND_BACK)),
 				new Room("flight_control", new AABB(CONTROL_X0 + 1, HANGAR + 1, -58, HANGAR_X0, HANGAR + 6, -36)),
 				new Room("hangar", new AABB(HANGAR_X0 + 1, HANGAR + 1, HANGAR_Z0 + 1, HANGAR_X1, HANGAR_TOP, HANGAR_Z1)),
+				// Phase 25: the maintenance chamber behind the reactor's wall, and its crawl way (under
+				// the corridor from the reactor to the lobby: no roof of theirs to keep anyone off).
+				new Room("service", SERVICE_ROOM, false),
+				new Room("vent", SERVICE_VENT, false),
 				new Room("reactor", new AABB(REACTOR_X - REACTOR_R, PIT_FLOOR, REACTOR_Z - REACTOR_R, REACTOR_X + REACTOR_R, REACTOR_TOP,
 						REACTOR_Z + REACTOR_R)),
 				new Room("hangar_corridor", new AABB(CX - 3, HANGAR + 1, HANGAR_Z1, CX + 4, HANGAR + 5, LOBBY_Z1 + 1)),
@@ -907,7 +935,9 @@ public final class DestroyerInterior extends InteriorPlan {
 			// Phase 18: the side way south to the hidden room.
 			new AABB(18, HANGAR + 1, -9, 19, HANGAR + 2, -7),
 			// Phase 19: Kestrel's way from the hidden room east to the detention block.
-			new AABB(24, HANGAR + 1, -4, 25, HANGAR + 2, 7));
+			new AABB(24, HANGAR + 1, -4, 25, HANGAR + 2, 7),
+			// Phase 25: out of the reactor's maintenance chamber.
+			SERVICE_VENT);
 
 	/** Phase 18: the hidden room off the crawl way (inside, walls included: x 13..23, z -8..-1). */
 	public static final AABB HIDDEN = new AABB(14, HANGAR + 1, -7, 23, HANGAR + 4, -1);
@@ -921,7 +951,9 @@ public final class DestroyerInterior extends InteriorPlan {
 			// and both ends of the way from the hidden room to the detention block.
 			new Hatch(MAINTENANCE_HATCH, net.minecraft.core.Direction.SOUTH),
 			new Hatch(HIDEOUT_HATCH, net.minecraft.core.Direction.WEST),
-			new Hatch(DETENTION_HATCH, net.minecraft.core.Direction.EAST));
+			new Hatch(DETENTION_HATCH, net.minecraft.core.Direction.EAST),
+			// Phase 25: from the reactor's maintenance chamber into the ventilation.
+			new Hatch(SERVICE_HATCH, net.minecraft.core.Direction.SOUTH));
 
 	/** The hidden room's opening (no hatch: from inside, nobody needs to hide it). */
 	public static final BlockPos HIDDEN_MOUTH = new BlockPos(18, HANGAR + 1, -8);
@@ -1152,9 +1184,15 @@ public final class DestroyerInterior extends InteriorPlan {
 		return y >= LAB_WAY.y0() && y <= LAB_WAY.y1() && x >= LAB_WAY.x0() && x < LAB_WAY.x1() + 1 && z >= LAB_WAY.z0() + 0.5 && z < LAB_WAY.z1() + 1;
 	}
 
+	/** Phase 25: whether a point (plot space, row y) is in the maintenance passage through the shaft's wall, up to the curve. */
+	public static boolean inServiceWay(double x, double z, int y) {
+		return y >= SERVICE_WAY.y0() && y <= SERVICE_WAY.y1() && x >= SERVICE_WAY.x0() && x < SERVICE_WAY.x1() + 1 && z >= SERVICE_WAY.z0()
+				&& z < SERVICE_WAY.z1() + 1;
+	}
+
 	@Override
 	public List<Doorway> doorways() {
-		return List.of(GALLERY, LAB_WAY);
+		return List.of(GALLERY, LAB_WAY, SERVICE_WAY);
 	}
 
 	@Override
@@ -1186,7 +1224,7 @@ public final class DestroyerInterior extends InteriorPlan {
 		// Phase 23: from the depth up (the steelwork's barriers are left as they are).
 		b.roundShell(REACTOR_X, REACTOR_Z, new double[] {REACTOR_WALL}, (int) (REACTOR_X - r - 2), PIT_FLOOR + 1, (int) (REACTOR_Z - r - 2),
 				(int) (REACTOR_X + r + 2), REACTOR_TOP - 1, (int) (REACTOR_Z + r + 2), java.util.Set.of(InteriorBuilder.state(DARK).getBlock()),
-				DestroyerInterior::openReactor, (x, z, y) -> inGallery(x, z, y) || inLabWay(x, z, y));
+				DestroyerInterior::openReactor, (x, z, y) -> inGallery(x, z, y) || inLabWay(x, z, y) || inServiceWay(x, z, y));
 		// Phase 22: beside the way to the lab, between the shaft's wall and the lab's, there were
 		// empty cells behind the drawn walls: one walked into the wall there. Now they collide.
 		for (int x : new int[] {LAB_DOOR_X0 - 1, LAB_DOOR_X0 + 3}) {
@@ -1225,11 +1263,56 @@ public final class DestroyerInterior extends InteriorPlan {
 			}
 		}
 
+		serviceWay(b);
+
 		// The core gives off light.
 		b.light((int) REACTOR_X, HANGAR + 3, (int) (REACTOR_Z - 11), 13);
 		b.light((int) REACTOR_X, HANGAR + 3, (int) (REACTOR_Z + 11), 13);
 		b.light((int) (REACTOR_X - 11), HANGAR + 3, (int) REACTOR_Z, 13);
 		b.light((int) (REACTOR_X + 11), HANGAR + 3, (int) REACTOR_Z, 13);
+	}
+
+	/**
+	 * Phase 25: the maintenance way out of the reactor: a passage through the shaft's wall at the
+	 * end of the walkway, the door, the chamber behind it, the crawl way's shell (the crawl ways are
+	 * hollowed out and their hatches shut with the others, see {@link #vents}).
+	 */
+	private static void serviceWay(InteriorBuilder b) {
+		int r = REACTOR_BOTTOM;
+		// The chamber: a shell, hollowed out, a floor.
+		b.box(46, r - 1, 5, 51, r + 3, 10, DARK);
+		b.clear(47, r, 6, 50, r + 2, 9);
+		b.box(47, r - 1, 6, 50, r - 1, 9, FLOOR);
+		// The passage from the door to the shaft: walls where the shaft's ring does not reach, then
+		// hollowed out through the ring (the door's cells at its north end are the door's).
+		b.box(47, r - 1, 10, 50, r + 3, 12, DARK);
+		b.clear(48, r, 10, 49, r + 2, 14);
+		b.box(48, r - 1, 10, 49, r - 1, 13, FLOOR);
+
+		// Beside the passage, past the curve, the cells behind its drawn side walls collide (as by
+		// the way to the lab).
+		for (int x : new int[] {47, 50}) {
+			for (int z = 11; z <= 14; z++) {
+				double nx = net.minecraft.util.Mth.clamp(REACTOR_X, x, x + 1) - REACTOR_X;
+				double nz = net.minecraft.util.Mth.clamp(REACTOR_Z, z, z + 1) - REACTOR_Z;
+
+				if (Math.sqrt(nx * nx + nz * nz) < REACTOR_WALL) {
+					continue;
+				}
+
+				for (int y = r; y <= r + 2; y++) {
+					if (b.isAir(x, y, z)) {
+						b.set(x, y, z, PROXY);
+					}
+				}
+			}
+		}
+
+		// The crawl way's shell (hollowed out with the others).
+		b.box(47, r - 1, 1, 49, r + 1, 5, DARK);
+		// Dim amber light in the chamber; the passage's light comes from the walkway's guide lamps.
+		b.light(48, r + 2, 7, 9);
+		b.light(48, r + 2, 12, 7);
 	}
 
 	// --- Bridge deck ---------------------------------------------------------------------------

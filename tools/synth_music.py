@@ -937,6 +937,79 @@ def story_finale():
     return tr.finish(3.0, 0.34, 2452)
 
 
+# Phase 25: the finale's moods ---------------------------------------------------------------------
+
+def story_triumph():
+    """Phase 25, after the duel won: triumphant, but the ship is still breaking apart around one.
+    The escape's theme turned bright in the brass and choir (D major, B minor), over the driving
+    staccato and drums of the run that has not ended, a warning figure high in the strings now and
+    then, 138 bpm, 16 bars."""
+    rng = np.random.default_rng(2551)
+    prog = ["D", "Bm", "G", "A", "D", "Bm", "Em", "A5", "Bm", "G", "D", "A", "Bm", "G", "Em", "A5"]
+    tr = Track(138, len(prog))
+    for b, name in enumerate(prog):
+        ch = chord(name, 2)
+        pattern = [0, 0, 2, 0, 1, 0, 2, 0, 0, 0, 2, 1, 0, 2, 1, 2]
+        for s, p in enumerate(pattern):
+            tr.add(tr.at(b, s * 0.25), low_staccato(hz(ch[p]), 0.14, 28000 + 16 * b + s), -0.1, 0.12 if s % 4 == 0 else 0.07)
+        for beat in (0, 1.5, 2, 3.5):
+            tr.add(tr.at(b, beat), drum(0.9, 50, 28100 + 4 * b + int(beat * 2), 0.3, 2.0, 4.5), 0.0, 0.22)
+        for beat in (1, 3):
+            tr.add(tr.at(b, beat), snare(0.22, 28200 + 2 * b + beat), 0.2, 0.09)
+        for k, note in enumerate(chord(name, 3)):
+            tr.add(tr.at(b), choir(hz(note + 12), tr.bar + 0.4, 28300 + 3 * b + k), -0.3 + 0.3 * k, 0.05)
+            tr.add(tr.at(b), strings(hz(note), tr.bar + 0.4, 28350 + 3 * b + k, 0.9), -0.3 + 0.3 * k, 0.05)
+        # Bright brass on the bar, answered on the off beat.
+        for k, note in enumerate(chord(name, 3)):
+            tr.add(tr.at(b), brass(hz(note), tr.beat * 1.5, 28400 + 3 * b + k, 1.15), -0.3 + 0.3 * k, 0.1)
+        if b % 2 == 1:
+            for k, note in enumerate(chord(name, 4)):
+                tr.add(tr.at(b, 2.5), brass(hz(note), tr.beat * 0.6, 28450 + 3 * b + k, 1.2), -0.3 + 0.3 * k, 0.06)
+        # The warning figure (the ship is still dying), in every fourth bar.
+        if b % 4 == 3:
+            top = chord(name, 5)
+            for half in range(2):
+                tr.add(tr.at(b, half * 2), strings(hz(top[0] + 12), tr.beat * 0.9, 28500 + 2 * b + half, 1.2), 0.3, 0.03)
+                tr.add(tr.at(b, half * 2 + 1), strings(hz(top[0] + 11), tr.beat * 0.9, 28550 + 2 * b + half, 1.2), 0.3, 0.03)
+    chords = [chord(p, 4) for p in prog]
+    major = [0, 2, 4, 5, 7, 9, 11]
+    tune = melody(rng, major, 62, chords, 2, rest=0.12, span=(0, 14))
+    lay_melody(tr, tune, 2, lambda f, sec, sd: brass(f, sec, sd, 1.2), 12, 28600, 0.1, 0.1, 0.95)
+    return tr.finish(2.2, 0.3, 2552)
+
+
+def story_launch():
+    """Phase 25, aboard the Falcon before the jump: not safe yet. A pulse like a heartbeat in the
+    low drums, held strings rising bar by bar, the choir holding its breath, the escape's figure
+    in the brass far off; it ends where it began, so it loops while one waits, B minor, 104 bpm,
+    16 bars."""
+    rng = np.random.default_rng(2561)
+    prog = ["Bm", "Bm", "G", "A", "Bm", "Bm", "Em", "F#5", "Bm", "G", "Em", "F#5", "G", "A", "Em", "F#5"]
+    tr = Track(104, len(prog))
+    for b, name in enumerate(prog):
+        ch = chord(name, 2)
+        grow = 0.6 + 0.4 * ((b % 8) / 7)
+        # The heartbeat.
+        for beat in (0, 0.4, 2, 2.4):
+            tr.add(tr.at(b, beat), drum(0.6, 44, 29000 + 4 * b + int(beat * 5), 0.2, 1.6, 6.0), 0.0, 0.2 if beat in (0, 2) else 0.12)
+        for k, note in enumerate(chord(name, 3)):
+            tr.add(tr.at(b), tremolo(hz(note), tr.bar + 0.4, 29100 + 3 * b + k, 10.0, 0.45, 0.85), -0.35 + 0.35 * k, 0.05 * grow)
+        tr.add(tr.at(b), strings(hz(ch[0]), tr.bar + 0.5, 29200 + b, 0.7), 0.0, 0.14)
+        tr.add(tr.at(b), choir(hz(chord(name, 3)[0] + 12), tr.bar + 0.5, 29300 + b), -0.2, 0.05)
+        pattern = [0, 0, 2, 0, 1, 0, 2, 0]
+        for s, p in enumerate(pattern):
+            tr.add(tr.at(b, s * 0.5), low_staccato(hz(ch[p]), 0.16, 29400 + 8 * b + s), -0.1, 0.07)
+        if b % 4 == 2:
+            for k, note in enumerate(chord(name, 3)):
+                tr.add(tr.at(b), brass(hz(note), tr.beat * 2.0, 29500 + 3 * b + k, 0.8), -0.3 + 0.3 * k, 0.06)
+    chords = [chord(p, 4) for p in prog]
+    tune = melody(rng, MINOR, 59, chords, 2, rest=0.3, span=(0, 10))
+    for i in range(8):
+        tune[i] = None
+    lay_melody(tr, tune, 2, lambda f, sec, sd: strings(f, sec, sd, 1.1), 12, 29600, 0.07, 0.15, 0.9)
+    return tr.finish(2.4, 0.3, 2562)
+
+
 PIECES = {
     "exploration_horizon": exploration_horizon,
     "exploration_wander": exploration_wander,
@@ -961,6 +1034,8 @@ PIECES = {
     "story_aftermath": story_aftermath,
     "story_escape": story_escape,
     "story_finale": story_finale,
+    "story_triumph": story_triumph,
+    "story_launch": story_launch,
 }
 
 

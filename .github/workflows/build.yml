@@ -5,9 +5,11 @@
 # - A push to main (usually the merge of a pull request that was just tested) only builds the JAR.
 #   The full test can be started by hand under Actions > build > Run workflow.
 # - Changes to Markdown files and docs/ alone start no run.
-# - Timeouts stop a hanging game test after 75 minutes instead of the default 6 hours (the whole
+# - Timeouts stop a hanging game test after 95 minutes instead of the default 6 hours (the whole
 #   suite took about 40 minutes by Phase 17, about 50 with Phase 18 and 19 (50.6 minutes on PR #24),
-#   a few more with Phase 20's film and tests: 60 left too little room; 45 was too short before).
+#   a few more with Phase 20's film and tests: 60 left too little room; 45 was too short before;
+#   Phase 24's run took 68 of the then 75 minutes, Phase 25 adds a few: 95 leaves room). A limit
+#   only stops a hanging run sooner: a run that passes costs the same minutes whatever the limit.
 # - Screenshots and the audio recording are only kept when the test fails (or on a manual run),
 #   and every artifact expires after a few days instead of 90.
 
@@ -37,8 +39,8 @@ jobs:
   # job is billed separately and rounded up to whole minutes.
   build:
     runs-on: ubuntu-24.04
-    # A successful run takes about 55 minutes (Phase 20).
-    timeout-minutes: 85
+    # A successful run takes about 75 minutes (Phase 25: build, then the game test).
+    timeout-minutes: 110
     env:
       # Only a pull request or a manual run starts the Minecraft client.
       CLIENT_TEST: ${{ github.event_name != 'push' }}
@@ -59,12 +61,15 @@ jobs:
         run: chmod +x ./gradlew
       - name: build
         run: ./gradlew build gametestClasses
+      # Only the mod's JAR (not the sources JAR), kept a few days: enough to download and test it.
       - name: capture build artifacts
         uses: actions/upload-artifact@v7
         with:
           name: Artifacts
-          path: build/libs/
-          retention-days: 7
+          path: |
+            build/libs/*.jar
+            !build/libs/*-sources.jar
+          retention-days: 5
 
       # Starts a real Minecraft client in a virtual display, checks the blade renderer, the ignite and
       # retract animation and the sounds, and takes screenshots of the saber in first and third person.
@@ -81,7 +86,7 @@ jobs:
       - name: run client game test
         if: env.CLIENT_TEST == 'true'
         # A hanging test fails here, so the screenshots below still show how far it got.
-        timeout-minutes: 75
+        timeout-minutes: 95
         run: xvfb-run -a -s "-screen 0 1280x720x24" ./gradlew runClientGameTest
       - name: upload screenshots
         if: env.CLIENT_TEST == 'true' && (failure() || github.event_name == 'workflow_dispatch')

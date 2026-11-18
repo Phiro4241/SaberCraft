@@ -1613,5 +1613,21 @@
         "stream": true
       }
     ]
+  },
+  "music.story_triumph": {
+    "sounds": [
+      {
+        "name": "sabercraft:music/story_triumph",
+        "stream": true
+      }
+    ]
+  },
+  "music.story_launch": {
+    "sounds": [
+      {
+        "name": "sabercraft:music/story_launch",
+        "stream": true
+      }
+    ]
   }
 }
