@@ -554,6 +554,9 @@ public class Phase27GameTest implements FabricClientGameTest {
 		this.put(new Vec3(25.5, H, -58.0), 180.0F, 0.0F);
 		this.context.waitTicks(20);
 		check(!this.on(s -> Vents.fastCrawlForTest(this.me(s))), "standing again, the crawl's bonus stays");
+		// The new hatch from the hangar: low in the west wall beside the crate stack, marked as access.
+		this.put(new Vec3(21.5, H, -28.5), 90.0F, 22.0F);
+		this.context.waitTicks(10);
 		this.context.takeScreenshot("phase27_hangar_west_wall");
 	}
 
@@ -697,7 +700,7 @@ public class Phase27GameTest implements FabricClientGameTest {
 
 		check(looks.size() >= 3, "the lab's guard does not look round (looks " + looks + ")");
 		// Screenshots for left and right: from the platform facing the door, from the door facing out.
-		this.put(new Vec3(44.5, R, 32.5), 0.0F, 8.0F);
+		this.put(new Vec3(44.5, R, 34.2), 0.0F, 8.0F);
 		this.context.waitTicks(4);
 		this.context.takeScreenshot("phase27_lab_guard_facing_door");
 		this.put(new Vec3(44.5, R, 38.0), 180.0F, 8.0F);

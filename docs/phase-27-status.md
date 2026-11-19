@@ -115,7 +115,7 @@ The Falcon was there from the start of the escape, and her TIE flew through it. 
 
 Phiro: the guard stood like a statue right of the entrance; he should have full enemy AI and stand a little further left beside the door, so the player has to notice him, distract him or get round him.
 
-- **New post:** west of the way to the lab's door, where one comes along the platform. Seen from the platform facing the door that is **left** of the way (seen from the lab looking out, right). Phase 26's post east of the way had the only way there and the door always behind him: he never saw anyone. The screenshots `phase27_lab_guard_facing_door` and `phase27_lab_guard_from_door` show both views. If "left" was meant the other way, it is one constant (`Chapter1.LAB_GUARD`).
+- **New post:** west of the way to the lab's door, where one comes along the platform. Phase 26's post was east of the way: looking out of the lab's door, that is on the **right** (Phiro's "rechts neben dem Eingang"), so the new post is **left** in that view. Coming along the platform and facing the door, it is on the right. Phase 26's post also had the only way there and the door always behind him: he never saw anyone. The pictures in section 20 show both views. If "left" was meant the other way, it is one constant (`Chapter1.LAB_GUARD`).
 - **His watch:** in turn, along the platform to the west (who comes over the bridges?) for 4 seconds, over the shaft (2 s), **to the east bridge for 7 seconds**, over the shaft again (2 s), with smooth turns between (a round of about 20 seconds); his head moves within each look. While he looks east, one gets by behind him.
 - **Full enemy AI:** what he sees and hears he reacts to as anyone: he goes to look, raises the alarm, fires. As a **sentry** he has his rifle ready: seeing someone close, he **fires first** instead of running at them, and again at most every 3 seconds while he sees them.
 - **Distraction:** he hears M-31 a little further than most (9 blocks), goes to the spot, looks there, searches on past it (onto the west bridge in the test), then comes back to his post and his round of looks.
@@ -163,7 +163,7 @@ Automated tests run in the cloud container with a real client (Xvfb, software re
 **Known issues and notes:**
 
 - **Other keys and Simple Voice Chat:** SaberCraft also uses **N** (droid ability), **H** (force grip) and **G** (story focus). Simple Voice Chat's defaults for its other keys could not be checked from here (its pages could not be reached); if one overlaps, it can be changed in the key settings. **G** also overlaps with vanilla 26.2's *quick actions* key; that was so since Phase 21 and is unchanged in this phase.
-- **The lab guard's side** follows the reading above (left when facing the door from the platform).
+- **The lab guard's side** follows the reading above (left when looking out of the lab's door, right when facing the door from the platform).
 - **The alternative hatch in the hangar** needs the interior rebuilt to version 13 (when nobody is aboard).
 - `SkinLayerGameTest` depends on the order of the test classes (as before); the committed order is unchanged and `Phase27GameTest` comes last.
 
@@ -200,7 +200,7 @@ Was die automatischen Tests nicht ersetzen können, im echten Spiel mit der JAR 
 
 **Mission 5 und 6**
 
-15. Laborwache: Posten links neben dem Weg zur Labortür (von der Plattform aus gesehen); sie schaut abwechselnd nach Westen, über den Schacht und lange zur Ostbrücke. Bemerken, ablenken (M-31), umgehen oder von hinten ausschalten. Sie schießt, wenn sie dich sieht.
+15. Laborwache: Posten westlich vom Weg zur Labortür (aus der Labortür hinausgesehen links, von der Plattform Richtung Tür gesehen rechts); sie schaut abwechselnd nach Westen, über den Schacht und lange zur Ostbrücke. Bemerken, ablenken (M-31), umgehen oder von hinten ausschalten. Sie schießt, wenn sie dich sieht.
 16. Bosskampf auf allen drei Schwierigkeiten (Normal spürbar härter als Phase 26; Ring-Ansturm schon in Phase 1, aber selten).
 17. Nach dem Boss und ihrem Film: die Falcon steigt aus der Tiefe unter dem Hangar auf, nicht vorher, ohne Aufploppen.
 
