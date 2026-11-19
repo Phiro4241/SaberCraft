@@ -150,13 +150,31 @@ Automated tests run in the cloud container with a real client (Xvfb, software re
 | 16 | Bridge barrier | yes, `bridge`, `Phase26GameTest.lift` | the barrier stands and collides; the lift refuses in mission 4 | how it looks |
 | 17 | QA | the suite, see below | – | – |
 
-**Results (2026-11-19, local, not CI):** _filled in after the full run._
+**Results (2026-11-19, local, not CI):** all **45 test classes green** on the final code (commit `69c2832`, after the review fixes), run in four groups one after another: Story group (`StoryGameTest`, `Phase21`–`Phase27GameTest`) 27 min, interiors (`ShipBoardingGameTest` … `Phase20GameTest`) 13 min, blades, sky and characters (`BladeScreenshotGameTest` … `SkinLayerGameTest`) 19 min, arsenal, ships and older phases (`ArsenalGameTest` … `Phase14GameTest`) 13 min. The same 45 classes were green before on the code before the review fixes.
+
+Measured in `Phase27GameTest`:
+
+- **Hard landings (X-Wing dropped onto the ground):** at 0.75, 1.1 and 1.45 blocks/tick the impact measured is exactly the landing speed, and the hull lost grows with it: 0.14, 0.41 and 0.72 (of 1). Resting on the ground and pushing down costs nothing.
+- **The lured officer (Mission 2):** his round covers z −54.9 to −43.1, on its line; lured by M-31 he goes, the seated crew stay seated, and he kept away from the door's side for **13.5 s**.
+- **Crawling:** 3.6 blocks in 2 seconds in the crawl way.
+- **The lab's guard:** he detects the player coming along the platform and fires; lured, he is 2.8 blocks off his post within 5 s and 6.8 at most while searching on.
+- **Difficulty:** enemies in the hangar mission: Easy 9, Normal 10, Hard 13.
+- **Respawn by the cell console:** the most suspicion there in 10 seconds: 0.0.
 
 **Found and fixed by the tests in this phase:**
 
 1. **New fields were lost for numbered figures** (the lab guard's sentry and the officer's hearing): the story copies each figure from its template, and the copy did not take the new fields. Fixed; the test checks both.
 2. **A lured guard stopped short twice:** the lure's spot was already a step short of the noise, and he then stopped another step short of that. The lab's guard moved only 2.1 blocks. Now a lured guard goes right up to the spot (2.8 blocks there, then 6.8 blocks while searching on).
 3. **StoryGameTest clicked "Start"**, which now asks for the difficulty first; the test picks Normal.
+4. **An independent review of the whole diff** (each finding checked again by a second reviewer who tried to refute it) confirmed 21 issues; all are fixed in the last commit, and the full suite ran again afterwards:
+   - *Difficulty:* a pick made in a world without a save carried over to the next world opened in the same game (now cleared when the server stops, and applied only to a story without a save); Restart or "Play mission" before the first checkpoint fell back to Normal; changing the difficulty and leaving in the same menu visit lost calm progress; a change closed the menu tab just opened; reinforcements came at the same time on every difficulty (now later on Easy, sooner on Hard); "Play" on a new story skipped the difficulty page.
+   - *Lure:* a lured guard could walk in place forever when the spot a step short of the noise was not standable (the spot now steps back to where he can stand); a lured mark was not cleared when other code sent him searching.
+   - *Boss:* two pauses compared a tempo-scaled timer with an unscaled limit; her push ignored the difficulty's strength.
+   - *Crawl ways:* in singleplayer the client and the server shared one click intent, so the click was used up by the wrong side; the click's reach was larger than the reach that keeps one crawling, so the pose could flip every tick.
+   - *Mission 2:* the marker pointed back at the hideout's mouth while one was inside; the pointer to the side hatch was a 3.5-second hint hidden behind the container's dialog (now Kestrel says it over the comm once the container is shut); old checkpoints at the moved airlock spot are put at the step's safe place.
+   - *Hints:* the short crawl-way reminder also came at open hatches (where "use" shuts the hatch) and could stay away for a long time after a dimension change.
+   - *Falcon:* loading at the escape far from the hangar, it still rose once one came near (now decided when it is first drawn after coming in).
+   - *Tests and this document:* the interrupt test now checks the server path that fixes Dax (a film the story begins ends an open dialog); table rows that claimed more than the tests check were corrected.
 
 **Not tested automatically:** how everything plays by hand (the lure's timing, sneaking past the lab's guard and the officer, the boss on all three difficulties, how the brightness looks), the films, music and sounds, Simple Voice Chat together with SaberCraft, Iris and shader packs, a second real player.
 
@@ -166,6 +184,7 @@ Automated tests run in the cloud container with a real client (Xvfb, software re
 - **The lab guard's side** follows the reading above (left when looking out of the lab's door, right when facing the door from the platform).
 - **The alternative hatch in the hangar** needs the interior rebuilt to version 13 (when nobody is aboard).
 - `SkinLayerGameTest` depends on the order of the test classes (as before); the committed order is unchanged and `Phase27GameTest` comes last.
+- **The one-time hint boxes** (top right, as Minecraft's own toasts) can cover the mission panel or the menu's corner while they show (see the difficulty picture in section 20). Phase 28 moves them.
 
 ## 18. CI
 
@@ -212,3 +231,13 @@ Was die automatischen Tests nicht ersetzen können, im echten Spiel mit der JAR 
 
 19. Alter Spielstand aus Phase 26 weiterspielen (lädt, Schwierigkeit Normal, das Innere wird auf Version 13 umgebaut, wenn niemand an Bord ist).
 20. Mehrspieler: jeder Spieler hat seine eigene Schwierigkeit und seinen eigenen Fortschritt.
+
+## 20. Pictures
+
+All from the test client (software rendering, 854×480, no shader pack): [`docs/images/phase27`](images/phase27).
+
+| | |
+|---|---|
+| A new story asks for the difficulty first ![](images/phase27/difficulty_page.jpg) | Mission 2: the side hatch low in the hangar's west wall, beside the crate stack ![](images/phase27/hangar_side_hatch.jpg) |
+| Behind it, the short crawl way into the one to the hideout ![](images/phase27/hangar_side_crawl_way.jpg) | The lab's door seen from the platform: the guard's post is to the right of this view, just out of the frame ![](images/phase27/lab_door_from_platform.jpg) |
+| Looking out of the lab's door: the guard on his post, on the left ![](images/phase27/lab_guard_from_door.jpg) | |
