@@ -213,6 +213,9 @@ Before Phase 13 the cooldowns were shorter (B1 5 s, Chopper 15 s, BB-8 20 s, pro
 | `language` | `"auto"` | Phase 19: the language of SaberCraft's own texts (story, dialogs, menus, hints): `auto` (the same as Minecraft), `de_de` (German) or `en_us` (English), independent of Minecraft's language. Minecraft's own texts stay as they are. Menu: **Story**. |
 | `story_marker` | `true` | Phase 19: the story's hints on screen: the marker over the next objective and the eye that fills when someone notices you. `false` for playing without help (the objective line stays). Menu: **Story**. |
 | `story_text_speed` | `1` | Phase 19: how fast the dialogs' texts appear: `0` at once, `1` normal, `2` slow. A key or click always shows the whole line. Menu: **Story**. |
+| `story_brightness` | `0` | Phase 27: brightens the story's own darkening (emergency lights, the alarm's pulsing, failing lights): `0` as made, `1` brighter, `2` bright. The colours stay, only less dark. Menu: **Story** ("Story-Helligkeit"). |
+| `hints_shown` | `[]` | Phase 27: the hints shown once (how to open the menu, how to get into a crawl way), by name. Remove a name to see that hint again. Only in this file. |
+| `menu_key_moved` | `false` | Phase 27: whether the menu key was moved once from the old default **V** to **I** (Simple Voice Chat uses V). Only a key still on V is moved, once. Only in this file. |
 | `title_screen` | `true` | Phase 24: SaberCraft's own title screen (its starfield, buttons, subtitle and sayings). `false`: Minecraft's own title screen, unchanged. Only in this file (no menu row). |
 
 ## `character_client.json` (client)

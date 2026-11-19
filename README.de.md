@@ -41,7 +41,7 @@ Die JAR `sabercraft-0.1.0.jar` gibt es unter **[Releases](https://github.com/Phi
 
 | Taste | Aktion |
 | --- | --- |
-| **I** | SaberCraft-Menü (früher V; ein noch auf V liegender Menü-Schlüssel wird einmalig auf I verlegt) |
+| **I** | SaberCraft-Menü (früher V; eine noch auf V liegende Menütaste wird einmalig auf I verlegt) |
 | **R** (halten) | Abwehrhaltung, direkt nach dem Hochnehmen Parade |
 | **Z** | Drehangriff / Klingenwirbel |
 | **B** | Machtstoß |
