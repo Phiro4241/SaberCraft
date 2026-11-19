@@ -175,6 +175,11 @@ public final class Hints {
 		return moved;
 	}
 
+	/** For the tests: the move off V tried again (it happens only once). */
+	public static void moveAgainForTest(Minecraft client) {
+		moveMenuKey(client);
+	}
+
 	/** For the tests: as at the first start (the key on V, not moved yet). */
 	public static void replayMoveForTest(Minecraft client) {
 		ImmersionConfig.get().menuKeyMoved = false;

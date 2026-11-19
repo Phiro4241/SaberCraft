@@ -801,6 +801,43 @@ public final class StoryTesting {
 		return Chapter1.LAB_GUARD_DOWN;
 	}
 
+	/** Phase 27: the figures made again for the step as it is now (as at a checkpoint). */
+	public static void refigure(StorySession s) {
+		s.rebuildFigures();
+	}
+
+	/** Phase 27: the difficulty kept in the player's story file. */
+	public static String fileDifficulty(net.minecraft.server.MinecraftServer server, java.util.UUID player) {
+		return StoryStore.load(server, player).difficulty;
+	}
+
+	/** Phase 27: places of the story (plot space): the hideout's opening from the crawl way, the checkpoint with the stick, the safe places by the cells. */
+	public static Vec3 hideoutMouth() {
+		return Chapter1.HIDEOUT_MOUTH.at();
+	}
+
+	public static Vec3 crateSafe() {
+		return Chapter1.CRATE_SAFE;
+	}
+
+	public static Vec3 consoleSafe() {
+		return Chapter1.CONSOLE_SAFE;
+	}
+
+	/** Phase 27: whether a place (plot space) is in one of the Star Destroyer's crawl ways; where a checkpoint there would be kept (null: none). */
+	public static boolean inVent(Vec3 at) {
+		return Chapter1.inVent(at);
+	}
+
+	public static @Nullable Vec3 crawlAnchor(Vec3 at) {
+		return Chapter1.crawlAnchor(at);
+	}
+
+	/** Phase 27: how many saved places were not trusted on a restore (the player put at the step's own place instead). */
+	public static int untrusted() {
+		return Story.untrustedForTest();
+	}
+
 	/** Phase 27: the lab guard's looks: how many, the yaw of one, and ticks until he holds that one next. */
 	public static int labLooks() {
 		return Chapter1.LAB_WATCH.length;

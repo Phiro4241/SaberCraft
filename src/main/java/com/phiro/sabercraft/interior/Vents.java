@@ -140,6 +140,12 @@ public final class Vents {
 		}
 	}
 
+	/** For the tests: whether the player crawls with the crawl way's bonus now. */
+	public static boolean fastCrawlForTest(Player player) {
+		net.minecraft.world.entity.ai.attributes.AttributeInstance speed = player.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.SNEAKING_SPEED);
+		return speed != null && speed.hasModifier(CRAWL_SPEED);
+	}
+
 	/** A click on a closed hatch opens it. */
 	static void open(ServerPlayer player, BlockPos origin, Hatch hatch) {
 		ServerLevel level = player.level();
