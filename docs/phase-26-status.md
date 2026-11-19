@@ -154,13 +154,25 @@ Automated tests run in the cloud container with a real client (Xvfb, software re
 | 14 | Random choice outside the story | yes, `Phase26GameTest.randomCharacter` + `randomSaber` | 4 characters: each new, worn at once, known to the server; two quick presses end on the second; a film character brings its saber; 6 sabers: each new, valid, in the hand at once, the menu stays open | – |
 | 15 | Story restrictions still hold | yes, `Phase26GameTest.restrictions` + `CharacterGameTest` | in the story the character and saber pages are locked, music is not; both random functions change nothing | – |
 
-**Results.** `Phase26GameTest` ran green locally in parts (every part passed; the fixes it found are below). The full local run of all 44 classes is in progress; its result follows in this document.
+**Results (2026-11-19, local, not CI).**
+
+All **44** client test classes ran **green on the first try** on commit `7e9bf9e` (the code of this phase), in the cloud container (Xvfb, software rendering), in four runs of the committed order's groups (75 minutes in all):
+
+- `StoryGameTest`, `Phase21GameTest` to `Phase26GameTest` (27 minutes);
+- `ShipBoardingGameTest`, `InteriorDesignGameTest`, `Phase16GameTest` to `Phase20GameTest` (15 minutes);
+- the first 15 classes, `BladeScreenshotGameTest` to `SkinLayerGameTest` (20 minutes);
+- the other 15, `ArsenalGameTest` to `Phase14GameTest` (14 minutes).
+
+No earlier test had to be changed for this phase. Before that full run, `Phase26GameTest` was brought to green alone (the findings below). `./gradlew build` is green. **CI** has not run on this code yet: it starts with the pull request.
 
 **Found and fixed by the tests in this phase:**
 
 1. **The hatch could not be opened again** after it had been shut with the key held: the mark that ignores the held key (section 1) was only cleared when the player looked at another hatch, not when the key was let go. Now it is cleared on release.
 2. **The server missed quick character choices:** it takes a new choice at most every half second, so after two quick presses of the random button the client showed one character and the server knew the other (other players and the story saw the wrong one). The client now sends its last choice again once the half second has passed.
 3. **No deck steps were heard:** the steps were only replaced on barrier blocks, but the decks are drawn over real floor blocks. Now every floor aboard steps like a deck plate (in water, Minecraft's own sounds stay).
+4. **Her moves were still named on screen:** besides the hints, the strength bar showed the name of each attack as she wound up ("Hieb von oben", "Stoß", "Sprungangriff", …) and "Er taumelt" when she was open. Seen on the test's pictures; removed (section 6), and the test now checks that these texts are gone.
+
+**Tests that needed fixing themselves** (what they check stayed the same): the duel begins on her last line, whose dialog stays open until the player reads on, so the test now closes it before it uses the keys (with it open, the guard and strokes never reached the game); the lunge is checked from a moment where she is ready to go in; the player's view after the 50 % scene is measured as the camera comes back (16° off her two ticks later, as she already moves); the fierce last quarter is reached by a real stroke, not by setting her strength.
 
 **Not tested automatically:** how everything plays by hand (the duel's feel, the ring saber in motion, the rush and the lunge, the openings, whether the troopers' fire is fair), the music and the sounds while playing, sneaking up on the lab's guard, the Falcon's look from different places in the hangar, Iris and shader packs, other graphics cards, a second real player.
 
@@ -176,7 +188,20 @@ Automated tests run in the cloud container with a real client (Xvfb, software re
 
 Unchanged from Phase 25 (test step 95 minutes, job 110 minutes, `docs/ci.md`). `Phase26GameTest` takes about four minutes locally.
 
-## 13. Manuelle Testliste (für Phiro)
+## 13. Pictures
+
+All from the test client (software rendering, 854×480, English texts, no shader pack): [`docs/images/phase26`](images/phase26).
+
+| | |
+|---|---|
+| The random character, put on at once ![](images/phase26/random_character.jpg) | The random saber, on the saber at once ![](images/phase26/random_saber.jpg) |
+| The takedown of the lab's guard from behind ![](images/phase26/lab_takedown.jpg) | He stays down (front, by the platform's edge) ![](images/phase26/lab_guard_down.jpg) |
+| Droids put on the saber's holder have stepped off ![](images/phase26/droids_off_holder.jpg) | The lift to the bridge locked in the finale ![](images/phase26/lift_locked.jpg) |
+| The Falcon waiting under the hangar's field ![](images/phase26/falcon_under_hangar.jpg) | Looking down through the field ![](images/phase26/falcon_from_above.jpg) |
+| The ring spinning up before her rush ![](images/phase26/ring_windup.jpg) | The rush, close up (the blades a glowing disc) ![](images/phase26/ring_rush.jpg) |
+| Her last quarter: the ring flares (no text under her bar) ![](images/phase26/boss_fierce.jpg) | The 50 % scene, set up after running past her ![](images/phase26/half_scene.jpg) |
+
+## 14. Manuelle Testliste (für Phiro)
 
 Was die automatischen Tests nicht ersetzen können, im echten Spiel mit der JAR aus diesem PR. Am einfachsten über **Story → Kapitel 1** und die Checkpoints; in Klammern, worauf zu achten ist.
 
