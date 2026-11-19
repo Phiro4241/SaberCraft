@@ -739,4 +739,94 @@ public final class StoryTesting {
 	public static boolean staffOut(Figure figure) {
 		return figure.action == Finale.THROW && figure.windup <= 0 && figure.throwFrom != null;
 	}
+
+	// --- Phase 26 ----------------------------------------------------------------------------------
+
+	/** Phase 26: M-31 at the cell's field since the game started: {begun, ended with the field off}. */
+	public static int[] cellField() {
+		return new int[] {CellField.startedForTest(), CellField.finishedForTest()};
+	}
+
+	/** Phase 26: the field's taking down now: 0 none, 1 M-31 on its way, 2 at work. */
+	public static int cellFieldStage(StorySession s) {
+		return s.has(CellField.WORKING) ? 2 : s.has(CellField.GOING) ? 1 : 0;
+	}
+
+	/** Phase 26: where M-31 works on the field (plot space), and how long it works (ticks). */
+	public static Vec3 cellFieldPanel() {
+		return CellField.PANEL;
+	}
+
+	public static int cellFieldWork() {
+		return CellField.WORK_TICKS;
+	}
+
+	/** Phase 26: where Kestrel waits at the crawl way out of the detention block (plot space). */
+	public static Vec3 kestrelAtVent() {
+		return Chapter1.KESTREL_AT_VENT;
+	}
+
+	/** Phase 26: the lab's guard: his post (plot space), the mark that he was overpowered. */
+	public static Vec3 labGuardPost() {
+		return Chapter1.LAB_GUARD;
+	}
+
+	public static String labGuardDown() {
+		return Chapter1.LAB_GUARD_DOWN;
+	}
+
+	/** Phase 26: whether that guard can be overpowered now (from close behind). */
+	public static boolean takedownOpen(StorySession s, Figure guard) {
+		return Chapter1.takedownOpen(s, guard);
+	}
+
+	/** Phase 26: whether the lift to the bridge is shut now, and whether the Falcon waits under the hangar. */
+	public static boolean bridgeClosed(StorySession s) {
+		return Chapter1.bridgeClosed(s);
+	}
+
+	public static boolean falconWaits(StorySession s) {
+		return Chapter1.falconWaits(s);
+	}
+
+	/** Phase 26: the finale's shots: {least ticks between shots, random ticks on top, a second shot's gap, the gap between two troopers' shots}. */
+	public static int[] shotTiming() {
+		return new int[] {Finale.SHOT_MIN, Finale.SHOT_RANDOM, Finale.DOUBLE_GAP, Finale.VOLLEY_GAP};
+	}
+
+	/** Phase 26: her rushes with the ring: {begun, blocked, hits, lunges}. */
+	public static int[] rushes() {
+		return Finale.rushesForTest();
+	}
+
+	/** Phase 26: she begins a rush with the ring now. */
+	public static void rushNow(StorySession s, Figure figure) {
+		Finale.rushForTest(s, figure);
+	}
+
+	/** Phase 26: whether she is in a rush with the ring now (spinning up or driving at the player). */
+	public static boolean rushing(Figure figure) {
+		return figure.action == Finale.RUSH;
+	}
+
+	/** Phase 26: how often the blade lock's scene set the two up, and how often the player was held in place. */
+	public static int[] sceneHolds() {
+		return Finale.sceneHoldsForTest();
+	}
+
+	/** Phase 26: how far apart the blade lock's scene puts the two; her strength below which she fights fiercely. */
+	public static double lockDistance() {
+		return Finale.LOCK_DISTANCE;
+	}
+
+	/** Phase 26: a stroke takes her just below her last quarter (she turns fierce). */
+	public static void lastStrength(StorySession s, Figure figure, net.minecraft.server.level.ServerPlayer player) {
+		figure.health = Finale.FIERCE + Finale.HIT - 0.005F;
+		s.lastStroke = s.time();
+		Finale.bossHitForTest(s, figure, player);
+	}
+
+	public static float fierce() {
+		return Finale.FIERCE;
+	}
 }

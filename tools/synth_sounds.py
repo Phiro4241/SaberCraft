@@ -1624,6 +1624,198 @@ def phase23():
     write_ogg("reactor_arc", story_reactor_arc(rng), STORY_OUT)
 
 
+# Phase 26: the cell's field, the droids at work, the Inquisitor's ring, steps and crawling aboard,
+# consoles and latches, the corridors' air. Quiet sounds, several variants each where they repeat.
+
+
+def click(t, at, freq, decay, level):
+    """A short struck click at `at` seconds: a decaying sine (the body of a key, a latch, a deck plate)."""
+    ct = np.clip(t - at, 0, None)
+    return np.sin(2 * np.pi * freq * ct) * np.exp(-ct * decay) * (t >= at) * level
+
+
+def story_droid_work(rng, seconds=1.6):
+    """A droid plugging into a port and working it: a servo whirr out and in, the arm's latch, a
+    run of soft data chirps, a ratcheting turn, the arm whirring back."""
+    t = t_axis(seconds)
+    out = np.zeros_like(t)
+    for start, length, f0, f1 in ((0.0, 0.32, 210, 330), (seconds - 0.34, 0.3, 320, 200)):
+        tt = np.clip(t - start, 0, length)
+        on = ((t >= start) & (t < start + length)).astype(float)
+        f = f0 + (f1 - f0) * tt / length
+        env = np.sin(np.pi * tt / length) ** 0.8
+        out += (np.sin(2 * np.pi * np.cumsum(f * on) / RATE) + 0.35 * np.sign(np.sin(4 * np.pi * np.cumsum(f * on) / RATE))) * env * on * 0.22
+    out += click(t, 0.33, 1450, 90, 0.35) + click(t, 0.335, 620, 60, 0.25)
+    chirps = rng.uniform(0.45, 1.05, 7)
+    for at in sorted(chirps):
+        f = rng.choice([1180.0, 1320.0, 1480.0, 1760.0, 1980.0])
+        length = rng.uniform(0.03, 0.06)
+        c = glide_tone(f, f * rng.uniform(0.92, 1.12), length, vibrato=0.0)
+        i = int(at * RATE)
+        out[i:i + len(c)] += c[: max(0, len(out) - i)] * 0.12
+    for k in range(6):
+        out += click(t, 0.62 + k * 0.055, 2300 + 120 * k, 160, 0.12)
+    out += click(t, 1.2, 900, 70, 0.2)
+    fade = np.minimum(1.0, (seconds - t) / 0.04)
+    return normalize(lowpass(out * fade, 5200), 0.42)
+
+
+def story_field_flicker(rng, seconds=0.85):
+    """A force field stuttering: its hum dropping out and catching again, with crackles at each catch."""
+    t = t_axis(seconds)
+    hum = sum(np.sin(2 * np.pi * 120 * k * t) / k for k in range(1, 6))
+    gate = np.ones_like(t)
+    for start, length in ((0.12, 0.06), (0.27, 0.1), (0.46, 0.05), (0.58, 0.12)):
+        gate[(t >= start) & (t < start + length)] = 0.08
+    gate = np.convolve(gate, np.ones(120) / 120, mode="same")
+    crackle = bandpass_noise(seconds, 2200, 8000, rng) * (rng.random(len(t)) < 0.01) * 3.0
+    crackle = np.convolve(crackle, np.ones(20) / 20, mode="same")
+    edge = np.abs(np.gradient(gate)) * 400
+    fade = np.minimum(1.0, (seconds - t) / 0.12) * np.minimum(1.0, t / 0.02)
+    return normalize((lowpass(hum * gate, 1400) * 0.7 + crackle * np.clip(edge, 0, 1) + crackle * 0.15) * fade, 0.42)
+
+
+def story_ring_spin(rng, seconds=1.15):
+    """An Inquisitor's ring spinning up: a mechanical ratchet ticking faster and faster, the ring's
+    bearing rising into a whirr, the blades' hum sweeping past (a doppler-like wah)."""
+    t = t_axis(seconds)
+    out = np.zeros_like(t)
+    # The ratchet: ticks closer and closer together.
+    at = 0.0
+    gap = 0.11
+    while at < seconds * 0.7:
+        out += click(t, at, 3100 + rng.uniform(-200, 200), 220, 0.16)
+        out += click(t, at + 0.002, 1250, 120, 0.1)
+        at += gap
+        gap = max(0.018, gap * 0.8)
+    # The bearing's whirr, rising.
+    f = 90 + 520 * np.clip(t / (seconds * 0.75), 0, 1) ** 1.4
+    whirr = (np.sin(2 * np.pi * np.cumsum(f) / RATE) + 0.4 * np.sin(4 * np.pi * np.cumsum(f) / RATE)) * np.clip(t / 0.3, 0, 1) * 0.25
+    # The blades sweeping past: the hum, its loudness pulsing with the turns.
+    turns = np.cumsum(2.0 + 16.0 * np.clip(t / (seconds * 0.8), 0, 1)) / RATE
+    wah = 0.55 + 0.45 * np.cos(2 * np.pi * turns * 2)
+    hum = hum_tone(t, HUM_BASE * 0.85 * (1 + 0.03 * np.cos(2 * np.pi * turns * 2)), partials=DARK_VOICE.partials) * wah * 0.35
+    fade = np.minimum(1.0, (seconds - t) / 0.25)
+    return normalize(lowpass(out + whirr + hum, 6000) * fade, 0.5)
+
+
+def story_hack(rng, seconds=1.3):
+    """An emergency release pulled: a lever's ratchet clicking under strain, a groan of metal, the
+    catch letting go with a heavy clunk."""
+    t = t_axis(seconds)
+    out = np.zeros_like(t)
+    for k, at in enumerate(np.linspace(0.05, 0.8, 9)):
+        out += click(t, at + rng.uniform(-0.01, 0.01), 1900 + rng.uniform(-150, 150), 180, 0.22)
+        out += click(t, at + 0.003, 520, 90, 0.12)
+    groan_f = 85 + 25 * np.sin(2 * np.pi * 1.3 * t)
+    groan = np.sin(2 * np.pi * np.cumsum(groan_f) / RATE) * bandpass_noise(seconds, 200, 900, rng) * np.clip(t / 0.2, 0, 1) * (t < 0.9) * 0.3
+    out += lowpass(groan, 900)
+    out += click(t, 0.92, 70, 14, 0.7) + click(t, 0.92, 210, 30, 0.35) + click(t, 0.925, 1300, 70, 0.15)
+    fade = np.minimum(1.0, (seconds - t) / 0.08)
+    return normalize(out * fade, 0.5)
+
+
+def story_console(rng, seconds=0.5):
+    """A console worked: three or four soft key presses at an uneven rhythm and a small confirming chirp."""
+    t = t_axis(seconds)
+    out = np.zeros_like(t)
+    at = 0.01
+    for _ in range(rng.integers(3, 5)):
+        f = rng.uniform(1800, 2600)
+        out += click(t, at, f, 260, 0.3) + click(t, at, f * 0.37, 150, 0.15)
+        at += rng.uniform(0.06, 0.1)
+    f0 = rng.choice([880.0, 990.0, 1170.0])
+    c = glide_tone(f0, f0 * 1.5, 0.09, vibrato=0.0)
+    i = int((at + 0.03) * RATE)
+    out[i:i + len(c)] += c[: max(0, len(out) - i)] * 0.14
+    fade = np.minimum(1.0, (seconds - t) / 0.03)
+    return normalize(lowpass(out * fade, 6000), 0.4)
+
+
+def story_latch(rng, seconds=0.45):
+    """A locker's latch: a spring click, a hollow metal knock as the door comes free."""
+    t = t_axis(seconds)
+    out = click(t, 0.0, rng.uniform(2400, 3000), 240, 0.4) + click(t, 0.004, 900, 120, 0.2)
+    knock_at = rng.uniform(0.07, 0.11)
+    out += click(t, knock_at, rng.uniform(260, 320), 22, 0.35) + click(t, knock_at, rng.uniform(640, 760), 30, 0.18)
+    out += bandpass_noise(seconds, 400, 2400, rng) * np.exp(-np.clip(t - knock_at, 0, None) * 30) * (t >= knock_at) * 0.08
+    fade = np.minimum(1.0, (seconds - t) / 0.05)
+    return normalize(out * fade, 0.42)
+
+
+def deck_step(rng, seconds=0.28):
+    """A boot on a ship's deck plate: a dull thud, a short metallic ring of the plate (its pitch
+    a little different each time) and a scuff."""
+    t = t_axis(seconds)
+    thud = click(t, 0.0, rng.uniform(70, 95), 38, 0.6)
+    plate_f = rng.uniform(420, 620)
+    plate = (click(t, 0.002, plate_f, 26, 0.16) + click(t, 0.002, plate_f * rng.uniform(2.6, 2.9), 40, 0.07)
+             + click(t, 0.002, plate_f * rng.uniform(4.1, 4.6), 60, 0.03))
+    scuff = bandpass_noise(seconds, 900, 4500, rng) * np.exp(-t * rng.uniform(40, 70)) * 0.22
+    fade = np.minimum(1.0, (seconds - t) / 0.03)
+    return normalize(lowpass(thud + plate + scuff, 5000) * fade, 0.5)
+
+
+def vent_crawl(rng, seconds=0.5):
+    """Crawling in a vent: a knee or hand on thin sheet metal (a hollow bonk that rings in the
+    duct) and a short scrape."""
+    t = t_axis(seconds)
+    bonk_f = rng.uniform(150, 210)
+    bonk = click(t, 0.0, bonk_f, 16, 0.45) + click(t, 0.0, bonk_f * rng.uniform(2.3, 2.6), 22, 0.18) + click(t, 0.0, bonk_f * 5.1, 40, 0.05)
+    start = rng.uniform(0.04, 0.1)
+    length = rng.uniform(0.12, 0.22)
+    tt = np.clip(t - start, 0, length)
+    scrape_env = np.sin(np.pi * tt / length) * ((t >= start) & (t < start + length))
+    scrape = bandpass_noise(seconds, 1500, 6000, rng) * scrape_env * 0.12
+    fade = np.minimum(1.0, (seconds - t) / 0.06)
+    return normalize(lowpass(bonk + scrape, 4500) * fade, 0.45)
+
+
+CORRIDOR_SECONDS = 24.0
+
+
+def corridor_air(rng):
+    """A Star Destroyer's corridor: the air handlers' soft breath, a low hum of power in the walls,
+    now and then something far off: a tick of cooling metal, a distant hatch, a short relay buzz
+    (at uneven times, so the loop is not heard as one)."""
+    t = t_axis(CORRIDOR_SECONDS)
+    breath = fast_lowpass(periodic_noise(CORRIDOR_SECONDS, 80, 1400, rng), 900) * (0.75 + 0.25 * np.sin(2 * np.pi * (3 / CORRIDOR_SECONDS) * t))
+    hum = (np.sin(2 * np.pi * 60.0 * t) + 0.35 * np.sin(2 * np.pi * 120.0 * t)) * 0.06 * (0.8 + 0.2 * np.sin(2 * np.pi * (2 / CORRIDOR_SECONDS) * t + 1.0))
+    events = np.zeros_like(t)
+    for start in (1.7, 5.9, 9.2, 14.8, 19.6, 22.3):
+        kind = rng.integers(0, 3)
+        d = 0.8
+        tt = t_axis(d)
+        if kind == 0:
+            ev = np.sin(2 * np.pi * rng.uniform(1800, 2600) * tt) * np.exp(-tt * 70) * 0.05
+        elif kind == 1:
+            ev = (np.sin(2 * np.pi * rng.uniform(140, 190) * tt) + 0.5 * np.sin(2 * np.pi * rng.uniform(300, 360) * tt)) * np.exp(-tt * 8) * 0.08
+        else:
+            ev = np.sign(np.sin(2 * np.pi * 100 * tt)) * np.exp(-tt * 14) * (tt < 0.2) * 0.03
+        wrap_event(events, start, ev)
+    return normalize(breath * 0.6 + hum + fast_lowpass(events, 2500), 0.35)
+
+
+def phase26():
+    """Phase 26: the cell's field and the droids at work, the Inquisitor's ring, the release lever,
+    consoles and latches, steps on deck and crawling in the vents, the corridors' air. Own random stream."""
+    rng = np.random.default_rng(1977_26)
+    write_ogg("droid_work", story_droid_work(rng), STORY_OUT)
+    write_ogg("droid_work2", story_droid_work(rng, 1.45), STORY_OUT)
+    write_ogg("field_flicker", story_field_flicker(rng), STORY_OUT)
+    write_ogg("ring_spin", story_ring_spin(rng), STORY_OUT)
+    write_ogg("hack", story_hack(rng), STORY_OUT)
+    for k in range(1, 4):
+        write_ogg("console%d" % k, story_console(rng), STORY_OUT)
+    for k in range(1, 3):
+        write_ogg("latch%d" % k, story_latch(rng), STORY_OUT)
+    for k in range(1, 7):
+        write_ogg("deck_step%d" % k, deck_step(rng), SHIP_OUT)
+    for k in range(1, 6):
+        write_ogg("vent_crawl%d" % k, vent_crawl(rng), STORY_OUT)
+    write_ogg("corridor_air", corridor_air(rng), SHIP_OUT)
+
+
 # Planet ambiences (Phase 10) ---------------------------------------------------------------------
 # Loops of AMBIENT_SECONDS. Every slow modulation runs a whole number of times per loop, and every
 # event (a gust, a bird, a crackle) that runs over the end wraps to the start, so they loop
@@ -1830,6 +2022,10 @@ def main():
 
     if "--phase21" in sys.argv:
         phase21()
+        return
+
+    if "--phase26" in sys.argv:
+        phase26()
         return
 
     if "--phase23" in sys.argv:

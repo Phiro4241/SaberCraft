@@ -165,6 +165,15 @@ public abstract class InteriorPlan {
 		return this.entry();
 	}
 
+	/**
+	 * Phase 26: the places of props that matter (a pedestal, a projector, a console the story uses),
+	 * plot space, with a little room round them: no droid walks onto them, stands at them or is put
+	 * there. They still move freely everywhere else.
+	 */
+	public List<AABB> keepClear() {
+		return List.of();
+	}
+
 	/** Phase 16: the doorways through the plan's curved walls. */
 	public List<Doorway> doorways() {
 		return List.of();

@@ -887,8 +887,10 @@ final class DestroyerRooms {
 			b.box(rx + 0.16F, HANGAR + 2.25F, z - 0.025F, rx + 0.24F, HANGAR + 2.6F, z + 0.025F, MeshBuilder.ALL & ~MeshBuilder.DOWN);
 		}
 
-		// The security desk on the east wall, facing the corridor.
-		Props.at(b, CX + 3.5, HANGAR + 1, -8.5, Props.west());
+		// The security desk on the east wall, facing the corridor. Phase 26: between two of the
+		// corridor's frames (at z -8.5 its end stood in a frame's post: the riser and its screen
+		// reached into the post and flickered there).
+		Props.at(b, CX + 3.5, HANGAR + 1, com.phiro.sabercraft.interior.DestroyerInterior.SECURITY_DESK_Z, Props.west());
 		Props.desk(b, 1.9F, 0.82F, InteriorAtlas.IMP_CONSOLE, InteriorAtlas.IMP_CONSOLE_TOP, InteriorAtlas.IMP_CONSOLE_TOP_GLOW,
 				InteriorAtlas.IMP_SCREEN_RADAR_GLOW, true, 5);
 		b.pop();

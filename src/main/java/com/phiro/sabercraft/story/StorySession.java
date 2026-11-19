@@ -118,6 +118,10 @@ public final class StorySession {
 	public boolean fighting;
 	/** Phase 23: when the player last struck with the saber (story time): a pause makes the next a heavy stroke. */
 	long lastStroke = -1000L;
+	/** Phase 26: when a trooper of the finale last fired (two never fire within a few ticks of each other). */
+	long lastVolley = -1000L;
+	/** Phase 26: where the player is held during the boss's blade lock scene (world space), or null. */
+	@org.jspecify.annotations.Nullable Vec3 sceneAt;
 	/** Phase 23: where the Schattenklinge's saber lies after the duel (plot space), or null. */
 	@Nullable Vec3 dropped;
 
@@ -548,6 +552,10 @@ public final class StorySession {
 	/** The dialog's partner goes back to what they did (unless a script gave them something else to do). */
 	private void release() {
 		Figure figure = this.partner;
+
+		if (figure != null) {
+			figure.talking = false;
+		}
 
 		if (figure != null && figure.mode == Figure.HELD && this.partnerWas != Figure.HELD) {
 			figure.mode = this.partnerWas == Figure.SCRIPTED || this.partnerWas == Figure.FIGHT ? this.partnerWas : Figure.RETURN;

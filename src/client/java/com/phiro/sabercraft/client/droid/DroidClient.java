@@ -37,6 +37,7 @@ public final class DroidClient {
 			return switch (this.event) {
 				case DroidPose.TALK -> 1200L;
 				case DroidPose.ABILITY -> 1400L;
+				case DroidPose.WORK -> 2600L;
 				default -> 600L;
 			};
 		}

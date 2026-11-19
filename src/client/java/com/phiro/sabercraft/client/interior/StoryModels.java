@@ -54,6 +54,9 @@ final class StoryModels {
 		Minecraft client = Minecraft.getInstance();
 		float cameraYaw = client.gameRenderer.mainCamera().yRot();
 		List<StoryClient.Pose> people = StoryClient.figures(plot.origin(), partial);
+		// Phase 26: the halos of her blades face the camera.
+		Vec3 eye = client.gameRenderer.mainCamera().position();
+		InquisitorSaber.EYE.set((float) (eye.x - plot.origin().getX()), (float) (eye.y - plot.origin().getY()), (float) (eye.z - plot.origin().getZ()));
 
 		for (StoryClient.Pose pose : people) {
 			StoryFiguresPayload.Fig fig = pose.fig();
@@ -61,12 +64,14 @@ final class StoryModels {
 			switch (fig.kind()) {
 				case "droid_mouse" -> mouse(b, pose, t);
 				case "droid_r2" -> astromech(b, pose, t);
-				default -> person(b, pose, t, dt);
+				default -> person(b, pose, t, dt, plot.origin());
 			}
 
 			if ((fig.flags() & StoryFiguresPayload.LAMP) != 0 && !"down".equals(fig.pose())) {
 				beam(b, plot, pose);
 			}
+
+			bladeLight(b, plot, pose);
 
 			marks(b, pose, cameraYaw, t);
 		}
@@ -90,10 +95,10 @@ final class StoryModels {
 
 	// --- People ------------------------------------------------------------------------------------
 
-	private static void person(MeshBuilder b, StoryClient.Pose pose, float t, float dt) {
+	private static void person(MeshBuilder b, StoryClient.Pose pose, float t, float dt, net.minecraft.core.BlockPos origin) {
 		StoryFiguresPayload.Fig fig = pose.fig();
 		boolean down = "down".equals(fig.pose());
-		String kind = kind(fig);
+		String kind = kind(fig, origin);
 		String crewPose = down ? Crew.STAND : fig.pose();
 		Crew crew = new Crew(kind, crewPose, pose.x(), pose.y(), pose.z(), pose.yaw(), List.of(), 0.0, 0.0, "");
 		int seed = fig.id() * 7 + 3;
@@ -109,9 +114,14 @@ final class StoryModels {
 		CrewModels.figure(b, crew, look, pose.x(), pose.y(), pose.z(), pose.yaw(), pose.walk(), t, seed, head, gear);
 	}
 
-	/** What kind of person to draw: Kestrel in the second armour in the finale, the prisoner in her overall. */
-	private static String kind(StoryFiguresPayload.Fig fig) {
-		if ("kestrel".equals(fig.speaker()) && StoryClient.mission() == 5 && StoryClient.has("opt.armour2")) {
+	/**
+	 * What kind of person to draw: Kestrel in the second armour in the finale, the prisoner in her
+	 * overall. Phase 26: the armour only aboard the Star Destroyer (in the Falcon's cockpit after
+	 * the escape she sat in it still): back aboard the Falcon she is herself again.
+	 */
+	private static String kind(StoryFiguresPayload.Fig fig, net.minecraft.core.BlockPos origin) {
+		if ("kestrel".equals(fig.speaker()) && StoryClient.mission() == 5 && StoryClient.has("opt.armour2") && StoryClient.destroyerPlot(origin)
+				&& !StoryClient.has(com.phiro.sabercraft.story.Chapter1.CHAPTER_DONE)) {
 			return Crew.TROOPER;
 		}
 
@@ -120,6 +130,11 @@ final class StoryModels {
 		}
 
 		return fig.kind();
+	}
+
+	/** Phase 26, for tests: what Kestrel is drawn as in the plot with that corner now (a trooper: in the second armour). */
+	static String kestrelForTest(net.minecraft.core.BlockPos origin) {
+		return kind(new StoryFiguresPayload.Fig(0, Crew.REBEL, Crew.STAND, "kestrel", 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0, 0, 0, 0, 0, 0), origin);
 	}
 
 	/** The faces of the story's own people; everyone else looks like the crew. */
@@ -156,7 +171,7 @@ final class StoryModels {
 	 */
 	private static CrewModels.Gear saber(StoryFiguresPayload.Fig fig, boolean lit, float dt, boolean down, boolean skirt, float reactP) {
 		// raise, swing, the kind last seen, its progress, the kind swung, crouch, lean, hand, aim
-		float[] state = SABERS.computeIfAbsent(fig.id(), id -> new float[9]);
+		float[] state = SABERS.computeIfAbsent(fig.id(), id -> new float[13]);
 		int kind = fig.windup() >> 5;
 		float progress = (fig.windup() & 31) / 31.0F;
 		int lastKind = (int) state[2];
@@ -195,8 +210,113 @@ final class StoryModels {
 		// Phase 24: in the second phase of the duel her hilt is a staff: its second blade comes out (and goes with the first).
 		// (Phase 25: slower, to be seen: she takes the staff in both hands, then the second blade comes out.)
 		state[8] = approach(state[8], lit && skirt && StoryClient.twinBlade() ? 1.0F : 0.0F, dt * 1.6F);
+		ring(state, fig, lit && skirt, state[8] > 0.35F, kind, progress, spin, react, reactP, dt);
+		float blur = Mth.clamp((Math.abs(state[10]) - InquisitorSaber.BLUR_FROM) / (InquisitorSaber.SPIN_FAST - InquisitorSaber.BLUR_FROM), 0.0F, 1.0F);
 		return new CrewModels.Gear((fig.flags() & StoryFiguresPayload.LAMP) != 0, RED, lit, state[0], state[1], down, skirt, attack, 0.0F, state[5],
-				state[6], state[7], spin, react, reactP, false, (fig.flags() & StoryFiguresPayload.UNARMED) != 0, state[8]);
+				state[6], state[7], spin, react, reactP, false, (fig.flags() & StoryFiguresPayload.UNARMED) != 0, state[8], skirt, state[9], blur,
+				state[11]);
+	}
+
+	/**
+	 * Phase 26: her Inquisitor's ring, each frame: how fast it spins (radians a second, [10]) and
+	 * how far it has turned ([9]), and how much her blades flare ([11]). Still in the first phase
+	 * (one blade: the ring is locked); with both blades it spins up as a spin winds up and through
+	 * it, as the ring's rush spins up and through the rush, as she draws it back to throw it; it
+	 * twitches when a stroke is turned aside; it winds down slowly afterwards and stops with the
+	 * blades across again (the nearest half turn). The flare: when blades meet, in the lock, and
+	 * once as the last quarter of her strength begins.
+	 */
+	private static void ring(float[] state, StoryFiguresPayload.Fig fig, boolean inquisitor, boolean both, int kind, float progress, float spin, int react,
+			float reactP, float dt) {
+		float goal = 0.0F;
+
+		if (inquisitor && both) {
+			if (kind == CrewModels.SPIN) {
+				goal = InquisitorSaber.SPIN_FAST * Math.max(0.35F, Math.min(1.0F, progress * 1.4F));
+			} else if (react == CrewModels.RING) {
+				goal = InquisitorSaber.SPIN_FAST * (reactP < CrewModels.RING_WIND ? 0.25F + 0.75F * reactP / CrewModels.RING_WIND : 1.0F);
+			} else if (react == CrewModels.THROW_WIND) {
+				goal = InquisitorSaber.SPIN_FAST * 0.85F * Mth.clamp(reactP * 1.3F, 0.0F, 1.0F);
+			}
+
+			if (react == CrewModels.PARRY && (int) state[12] != CrewModels.PARRY) {
+				// A stroke turned aside: the ring twitches round on its hub.
+				state[10] += 9.0F;
+			}
+
+			if (StoryClient.ringFlared(fig.id())) {
+				state[10] = Math.max(state[10], InquisitorSaber.SPIN_FAST);
+			}
+		}
+
+		float speed = state[10];
+
+		if (goal > speed) {
+			speed = Math.min(goal, speed + 34.0F * dt);
+		} else {
+			speed = Math.max(goal, speed - 16.0F * dt);
+		}
+
+		state[10] = speed;
+		float angle = state[9] + speed * dt;
+
+		if (!inquisitor || !both) {
+			// One blade: the ring is locked with it where it was made to stand.
+			angle = approachAngle(angle, 0.0F, Mth.TWO_PI, dt * 6.0F);
+		} else if (speed < 2.5F && goal == 0.0F) {
+			// Coming to rest: the blades settle across again (whichever half turn is nearer).
+			angle = approachAngle(angle, 0.0F, Mth.PI, dt * (3.0F - speed));
+		}
+
+		state[9] = angle % Mth.TWO_PI;
+		float flare = react == CrewModels.CLASH ? 1.0F : react == CrewModels.PARRY ? 0.55F : react == CrewModels.LOCK ? 0.6F : 0.0F;
+
+		if (StoryClient.ringFlared(fig.id())) {
+			flare = 1.0F;
+		}
+
+		state[11] = Math.max(flare, state[11] - dt * 3.5F);
+		state[12] = react;
+	}
+
+	/** Phase 26: turns an angle towards the nearest of goal + n * period, at most by step. */
+	private static float approachAngle(float angle, float goal, float period, float step) {
+		float off = (angle - goal) % period;
+
+		if (off > period / 2.0F) {
+			off -= period;
+		} else if (off < -period / 2.0F) {
+			off += period;
+		}
+
+		float move = Mth.clamp(-off, -Math.max(0.0F, step), Math.max(0.0F, step));
+		return angle + move;
+	}
+
+	/**
+	 * Phase 26: the light her lit blades throw on the floor round her: red, brighter and wider while
+	 * the ring spins (as the mod's sabers light what is near them).
+	 */
+	private static void bladeLight(MeshBuilder b, InteriorVisuals.PlotView plot, StoryClient.Pose pose) {
+		StoryFiguresPayload.Fig fig = pose.fig();
+
+		if (!"shadow".equals(fig.kind()) || (fig.flags() & StoryFiguresPayload.SABER) == 0
+				|| (fig.flags() & (StoryFiguresPayload.HOSTILE | StoryFiguresPayload.LIT)) == 0 || (fig.flags() & StoryFiguresPayload.UNARMED) != 0
+				|| "down".equals(fig.pose())) {
+			return;
+		}
+
+		float[] state = SABERS.get(fig.id());
+		float blur = state == null ? 0.0F : Mth.clamp((Math.abs(state[10]) - InquisitorSaber.BLUR_FROM) / 12.0F, 0.0F, 1.0F);
+		float flare = state == null ? 0.0F : state[11];
+		float both = state != null && state[8] > 0.35F ? 1.0F : 0.0F;
+		float yaw = pose.yaw() * Mth.DEG_TO_RAD;
+		// A little before her, where her blades are.
+		float x = (float) pose.x() - Mth.sin(yaw) * 0.45F;
+		float z = (float) pose.z() + Mth.cos(yaw) * 0.45F;
+		float k = 0.55F + 0.2F * both + 0.25F * blur + 0.3F * flare;
+		int colour = Mesh.scale(0xFF7A140C, Mth.clamp(k, 0.0F, 1.3F), false);
+		StoryRooms.floorLight(b, plot, x, (float) pose.y() + 0.9F, z, 0.5F, 3.2F + 0.9F * both + 1.0F * blur, colour, 0);
 	}
 
 	/**
@@ -205,7 +325,7 @@ final class StoryModels {
 	 * fall and the comlink.
 	 */
 	private static CrewModels.Gear rifle(StoryFiguresPayload.Fig fig, float dt, boolean down, float reactP) {
-		float[] state = SABERS.computeIfAbsent(fig.id(), id -> new float[9]);
+		float[] state = SABERS.computeIfAbsent(fig.id(), id -> new float[13]);
 		state[8] = approach(state[8], fig.windup() > 0 && !down ? 1.0F : 0.0F, dt * 8.0F);
 		int react = fig.reactKind();
 		// The old jolt only where no reaction of the server shows the hit.

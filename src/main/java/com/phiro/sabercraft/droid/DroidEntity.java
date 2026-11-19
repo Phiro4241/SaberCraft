@@ -225,7 +225,117 @@ public class DroidEntity extends Pig {
 				this.resetFallDistance();
 				this.setDeltaMovement(Vec3.ZERO);
 			}
+
+			if (this.tickCount % 2 == 0 && this.onGround()) {
+				this.stepOffProps();
+			}
 		}
+	}
+
+	/**
+	 * Phase 26: whether a point (world space, a droid's feet) is on or at a prop of a ship's
+	 * interior that droids keep off ({@link com.phiro.sabercraft.interior.InteriorPlan#keepClear}),
+	 * its body ({@code half} wide either way) counted.
+	 */
+	public static boolean keptClear(net.minecraft.world.level.Level level, double x, double y, double z, double half) {
+		if (!com.phiro.sabercraft.interior.ShipInteriors.isInterior(level)) {
+			return false;
+		}
+
+		com.phiro.sabercraft.interior.InteriorPlan plan = com.phiro.sabercraft.interior.ShipInteriors.planAt(x, z);
+		BlockPos origin = com.phiro.sabercraft.interior.ShipInteriors.originAt(x, z);
+
+		if (plan == null || origin == null || plan.keepClear().isEmpty()) {
+			return false;
+		}
+
+		net.minecraft.world.phys.AABB feet = new net.minecraft.world.phys.AABB(x - half, y, z - half, x + half, y + 0.4, z + half)
+				.move(-origin.getX(), -origin.getY(), -origin.getZ());
+
+		for (net.minecraft.world.phys.AABB box : plan.keepClear()) {
+			if (box.intersects(feet)) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	/**
+	 * Phase 26: its ways never lead over a prop it keeps off (the cells of such props count as
+	 * blocked for its path finding); everywhere else it walks as before.
+	 */
+	@Override
+	protected net.minecraft.world.entity.ai.navigation.PathNavigation createNavigation(net.minecraft.world.level.Level level) {
+		return new net.minecraft.world.entity.ai.navigation.GroundPathNavigation(this, level) {
+			@Override
+			protected net.minecraft.world.level.pathfinder.PathFinder createPathFinder(int maxVisitedNodes) {
+				this.nodeEvaluator = new WalkNodeEvaluator() {
+					@Override
+					public PathType getPathType(net.minecraft.world.level.pathfinder.PathfindingContext context, int x, int y, int z) {
+						if (keptClear(context.level() instanceof net.minecraft.world.level.Level l ? l : level, x + 0.5, y + 0.05, z + 0.5, 0.2)) {
+							return PathType.BLOCKED;
+						}
+
+						return super.getPathType(context, x, y, z);
+					}
+				};
+				return new net.minecraft.world.level.pathfinder.PathFinder(this.nodeEvaluator, maxVisitedNodes);
+			}
+		};
+	}
+
+	/** Phase 26: ticks it has stood on or at a prop it keeps off (it steps off; after a while it is put beside it). */
+	private int onProp;
+
+	/**
+	 * Phase 26: standing on or at a prop it keeps off (pushed there, or the prop's room changed
+	 * round it): it steps off to the nearest free place by it, and is put there if it cannot.
+	 */
+	private void stepOffProps() {
+		if (!keptClear(this.level(), this.getX(), this.getY() + 0.05, this.getZ(), this.getBbWidth() / 2.0)) {
+			this.onProp = 0;
+			return;
+		}
+
+		this.onProp++;
+		BlockPos here = this.blockPosition();
+		BlockPos best = null;
+		double bestDistance = Double.MAX_VALUE;
+
+		for (int dx = -3; dx <= 3; dx++) {
+			for (int dz = -3; dz <= 3; dz++) {
+				for (int dy = -1; dy <= 1; dy++) {
+					BlockPos pos = here.offset(dx, dy, dz);
+					double distance = dx * dx + dz * dz + dy * dy * 0.5;
+
+					if (distance < bestDistance && this.canTeleportTo(pos)) {
+						bestDistance = distance;
+						best = pos;
+					}
+				}
+			}
+		}
+
+		if (best == null) {
+			return;
+		}
+
+		if (this.onProp > 30) {
+			this.snapTo(best.getX() + 0.5, best.getY(), best.getZ() + 0.5, this.getYRot(), this.getXRot());
+			this.getNavigation().stop();
+			this.onProp = 0;
+			propsLeft++;
+		} else if (this.onProp % 10 == 1) {
+			this.getNavigation().moveTo(best.getX() + 0.5, best.getY(), best.getZ() + 0.5, 1.0);
+		}
+	}
+
+	private static int propsLeft;
+
+	/** Phase 26, for tests: how often a droid had to be put off a prop it kept off. */
+	public static int propsLeftForTest() {
+		return propsLeft;
 	}
 
 	/** Phase 23: how long (ticks) after its owner came out of a narrow passage before the droid catches up by jumping to them. */
@@ -521,7 +631,9 @@ public class DroidEntity extends Pig {
 
 	private boolean canTeleportTo(BlockPos pos) {
 		if (WalkNodeEvaluator.getPathTypeStatic(this, pos) != PathType.WALKABLE
-				|| this.level().getBlockState(pos.below()).getBlock() instanceof LeavesBlock) {
+				|| this.level().getBlockState(pos.below()).getBlock() instanceof LeavesBlock
+				// Phase 26: never onto a pedestal or a console of the story, nor right at it.
+				|| keptClear(this.level(), pos.getX() + 0.5, pos.getY() + 0.1, pos.getZ() + 0.5, 0.35)) {
 			return false;
 		}
 

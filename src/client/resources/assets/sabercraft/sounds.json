@@ -1629,5 +1629,129 @@
         "stream": true
       }
     ]
+  },
+  "story.droid_work": {
+    "sounds": [
+      {
+        "name": "sabercraft:story/droid_work",
+        "attenuation_distance": 12
+      },
+      {
+        "name": "sabercraft:story/droid_work2",
+        "attenuation_distance": 12
+      }
+    ],
+    "subtitle": "subtitles.sabercraft.story.droid_work"
+  },
+  "story.field_flicker": {
+    "sounds": [
+      {
+        "name": "sabercraft:story/field_flicker"
+      }
+    ],
+    "subtitle": "subtitles.sabercraft.story.field_flicker"
+  },
+  "story.ring_spin": {
+    "sounds": [
+      {
+        "name": "sabercraft:story/ring_spin",
+        "attenuation_distance": 24
+      }
+    ]
+  },
+  "story.hack": {
+    "sounds": [
+      {
+        "name": "sabercraft:story/hack"
+      }
+    ]
+  },
+  "story.console": {
+    "sounds": [
+      {
+        "name": "sabercraft:story/console1",
+        "volume": 0.55
+      },
+      {
+        "name": "sabercraft:story/console2",
+        "volume": 0.55
+      },
+      {
+        "name": "sabercraft:story/console3",
+        "volume": 0.55
+      }
+    ]
+  },
+  "story.latch": {
+    "sounds": [
+      {
+        "name": "sabercraft:story/latch1",
+        "volume": 0.6
+      },
+      {
+        "name": "sabercraft:story/latch2",
+        "volume": 0.6
+      }
+    ]
+  },
+  "story.vent_crawl": {
+    "sounds": [
+      {
+        "name": "sabercraft:story/vent_crawl1",
+        "attenuation_distance": 10
+      },
+      {
+        "name": "sabercraft:story/vent_crawl2",
+        "attenuation_distance": 10
+      },
+      {
+        "name": "sabercraft:story/vent_crawl3",
+        "attenuation_distance": 10
+      },
+      {
+        "name": "sabercraft:story/vent_crawl4",
+        "attenuation_distance": 10
+      },
+      {
+        "name": "sabercraft:story/vent_crawl5",
+        "attenuation_distance": 10
+      }
+    ]
+  },
+  "ship.deck_step": {
+    "sounds": [
+      {
+        "name": "sabercraft:ship/deck_step1",
+        "attenuation_distance": 14
+      },
+      {
+        "name": "sabercraft:ship/deck_step2",
+        "attenuation_distance": 14
+      },
+      {
+        "name": "sabercraft:ship/deck_step3",
+        "attenuation_distance": 14
+      },
+      {
+        "name": "sabercraft:ship/deck_step4",
+        "attenuation_distance": 14
+      },
+      {
+        "name": "sabercraft:ship/deck_step5",
+        "attenuation_distance": 14
+      },
+      {
+        "name": "sabercraft:ship/deck_step6",
+        "attenuation_distance": 14
+      }
+    ]
+  },
+  "ship.corridor_air": {
+    "sounds": [
+      {
+        "name": "sabercraft:ship/corridor_air",
+        "attenuation_distance": 12
+      }
+    ]
   }
 }

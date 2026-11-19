@@ -339,15 +339,18 @@ final class StoryRooms {
 		Props.crate(b, 51, H + 1, -10, 52, H + 2, -9, InteriorAtlas.IMP_CRATE);
 
 		// The security panel on the corridor's east wall (the story opens the armory with it).
+		// Phase 26: with the desk under it half a block north: its end stood in the post of the
+		// corridor's frame at z -8, its face in the post's face, and flickered there.
 		float wall = CX + 4;
+		float dz = (float) (com.phiro.sabercraft.interior.DestroyerInterior.SECURITY_DESK_Z + 8.5);
 		b.tile(InteriorAtlas.IMP_METAL, 1.0F);
-		b.box(wall - 0.22F, H + 0.55F, -9.4F, wall, H + 1.45F, -7.6F, MeshBuilder.ALL & ~MeshBuilder.EAST);
+		b.box(wall - 0.22F, H + 0.55F, -9.4F + dz, wall, H + 1.45F, -7.6F + dz, MeshBuilder.ALL & ~MeshBuilder.EAST);
 		b.fit(InteriorAtlas.IMP_SCREEN);
-		b.rect(wall - 0.228F, H + 1.38F, -9.3F, 0, 0, 0.9F, 0, -0.5F, 0);
+		b.rect(wall - 0.228F, H + 1.38F, -9.3F + dz, 0, 0, 0.9F, 0, -0.5F, 0);
 		b.layer(Layer.GLOW).fullBright().anim(InteriorScene.ANIM_SCREEN).fit(InteriorAtlas.IMP_SCREEN_TEXT_GLOW);
-		b.rect(wall - 0.236F, H + 1.34F, -9.26F, 0, 0, 0.82F, 0, -0.42F, 0);
+		b.rect(wall - 0.236F, H + 1.34F, -9.26F + dz, 0, 0, 0.82F, 0, -0.42F, 0);
 		b.fit(InteriorAtlas.IMP_CONSOLE_TOP_GLOW);
-		b.rect(wall - 0.236F, H + 0.84F, -9.0F, 0, 0, 0.6F, 0, -0.22F, 0);
+		b.rect(wall - 0.236F, H + 0.84F, -9.0F + dz, 0, 0, 0.6F, 0, -0.22F, 0);
 		b.layer(Layer.SOLID).worldLight().anim(0);
 	}
 
@@ -565,6 +568,54 @@ final class StoryRooms {
 		b.layer(Layer.SOLID).worldLight().white().anim(0).twoSided(false);
 	}
 
+	/**
+	 * Phase 26: a cell's field failing ({@code p} 0 to 1): drawn in horizontal bands, each dropping
+	 * out now and then (more often towards the end), the whole field blinking off for a frame or
+	 * two, its colour paling; the bands near the emitter's end, where M-31 works, go first.
+	 */
+	static void fieldFlicker(MeshBuilder b, float x0, float x1, float seconds, float p) {
+		int frame = (int) (seconds * 30.0F);
+		// The whole field off for a moment: rarely at first, often at the end.
+		float off = hash(frame, 7);
+
+		if (off < 0.08F + 0.42F * p * p) {
+			return;
+		}
+
+		int bands = 12;
+		float top = H + 2.86F;
+		float height = 2.74F / bands;
+		int alpha = (int) (0x58 * (1.0F - 0.35F * p) + 0x30 * (hash(frame, 3) - 0.5F));
+
+		for (int k = 0; k < bands; k++) {
+			// Low bands (by the emitter) fail first.
+			float weak = p * (1.2F - k / (float) bands * 0.6F);
+
+			if (hash(frame / 2 + k * 13, k) < weak * 0.85F) {
+				continue;
+			}
+
+			// A band now and then shifted sideways (the picture tears).
+			float shift = hash(frame + k * 31, 11) < p * 0.4F ? (hash(frame, k + 5) - 0.5F) * 0.3F : 0.0F;
+			float a0 = Math.max(x0, x0 + shift);
+			float a1 = Math.min(x1, x1 + shift);
+			int colour = (Math.max(0, Math.min(255, alpha)) << 24) | (p > 0.6F && hash(frame, k) < 0.3F ? 0xC8E0FF : 0x78B8FF);
+			b.layer(Layer.HOLO).fullBright().colourAlpha(colour).tile(InteriorAtlas.IMP_FORCE_FIELD_GLOW, 1.0F).anim(InteriorScene.ANIM_SHIMMER).twoSided(true);
+			b.rect(a0, top - k * height, CELL_FRONT + 0.5F, a1 - a0, 0, 0, 0, -height + 0.01F, 0);
+		}
+
+		b.twoSided(false).layer(Layer.SOLID).worldLight().white().anim(0);
+	}
+
+	/** Phase 26: a repeatable noise 0..1 from two numbers. */
+	private static float hash(int a, int b) {
+		int h = a * 0x27D4EB2D ^ b * 0x165667B1;
+		h ^= h >>> 15;
+		h *= 0x2C1B3C6D;
+		h ^= h >>> 12;
+		return (h & 0xFFFFFF) / (float) 0x1000000;
+	}
+
 	/** Phase 24: her TIE has left (in her film) and is not drawn parked again. */
 	private static boolean tieLeft;
 
@@ -576,10 +627,22 @@ final class StoryRooms {
 		serviceLights(b, seconds, story);
 
 		// The cells' force fields, while their barriers stand.
-		for (int[] cell : CELLS) {
+		// Phase 26: the one M-31 works on stutters first (stripes drop out, the whole field blinks,
+		// more and more often, brighter where the sparks fly) before it dies.
+		float flicker = story ? StoryClient.effect("field_flicker", 0.0F) : -1.0F;
+
+		for (int i = 0; i < CELLS.length; i++) {
+			int[] cell = CELLS[i];
+
 			if (plot.level().getBlockState(o.offset(cell[0], (int) H, CELL_FRONT)).is(Blocks.BARRIER)) {
 				float x0 = cell[0];
 				float x1 = cell[1] + 1;
+
+				if (i == 1 && flicker >= 0.0F) {
+					fieldFlicker(b, x0, x1, seconds, flicker);
+					continue;
+				}
+
 				b.layer(Layer.HOLO).fullBright().colourAlpha(0x5878B8FF).tile(InteriorAtlas.IMP_FORCE_FIELD_GLOW, 1.0F).anim(InteriorScene.ANIM_SHIMMER)
 						.twoSided(true);
 				b.rect(x0, H + 2.86F, CELL_FRONT + 0.5F, x1 - x0, 0, 0, 0, -2.74F, 0);
@@ -608,7 +671,8 @@ final class StoryRooms {
 		float wall = CX + 4;
 		b.layer(Layer.GLOW).fullBright().anim(open ? 0 : InteriorScene.ANIM_PULSE).colour(open ? 0xFF50E070 : 0xFFFF4030)
 				.fit(InteriorAtlas.IMP_CEILING_LIGHT_GLOW);
-		b.box(wall - 0.25F, H + 0.66F, -8.0F, wall - 0.22F, H + 0.76F, -7.8F, MeshBuilder.WEST);
+		float lamp = (float) (com.phiro.sabercraft.interior.DestroyerInterior.SECURITY_DESK_Z + 8.5);
+		b.box(wall - 0.25F, H + 0.66F, -8.0F + lamp, wall - 0.22F, H + 0.76F, -7.8F + lamp, MeshBuilder.WEST);
 		b.layer(Layer.SOLID).worldLight().anim(0);
 
 		// Things lying about that the story lets one take.
@@ -772,7 +836,7 @@ final class StoryRooms {
 	 * from {@code inner} to {@code radius}): on each floor cell near it where nothing stands, just
 	 * over the floor's plates.
 	 */
-	private static void floorLight(MeshBuilder b, InteriorVisuals.PlotView plot, float x, float y, float z, float inner, float radius, int colour,
+	static void floorLight(MeshBuilder b, InteriorVisuals.PlotView plot, float x, float y, float z, float inner, float radius, int colour,
 			int anim) {
 		Vector3f at = new Vector3f(x, y, z);
 		b.layer(Layer.LIGHT).fullBright().anim(anim).colour(colour).fit(InteriorAtlas.WHITE).lightFrom(at, at, inner, radius);

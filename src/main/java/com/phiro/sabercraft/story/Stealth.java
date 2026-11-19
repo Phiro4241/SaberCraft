@@ -796,7 +796,9 @@ public final class Stealth {
 				}
 			}
 			case Figure.HELD -> {
-				figure.speed = 0.0F;
+				// Phase 26: stopped mid-stride (spoken to on the way somewhere): the legs come to
+				// rest over a few ticks instead of snapping straight.
+				figure.speed = figure.speed > 0.3F ? figure.speed * 0.5F : 0.0F;
 
 				if (figure.target != null) {
 					figure.turnTowards(figure.target, 12.0F, true);

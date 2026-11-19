@@ -110,6 +110,14 @@ public final class MeshBuilder {
 		return this;
 	}
 
+	/**
+	 * Phase 26: a point of the builder's own base space (where the transform began, before any
+	 * {@link #push}) in the space the next quads are given in: for things that face the camera.
+	 */
+	public Vector3f toLocal(Vector3f base) {
+		return new Matrix4f(this.matrix).invert().transformPosition(new Vector3f(base));
+	}
+
 	/** Multiplies the transform by a basis: x to {@code right}, y to {@code up}, z to {@code back}. */
 	public MeshBuilder basis(Vector3f right, Vector3f up, Vector3f back) {
 		this.matrix.mul(new Matrix4f(right.x, right.y, right.z, 0.0F, up.x, up.y, up.z, 0.0F, back.x, back.y, back.z, 0.0F, 0.0F, 0.0F, 0.0F, 1.0F));

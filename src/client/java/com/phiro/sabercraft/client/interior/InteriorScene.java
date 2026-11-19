@@ -380,6 +380,9 @@ public final class InteriorScene {
 				}
 			}
 
+			// Phase 26: the Falcon waiting under the hangar during the story's escape.
+			HangarFalcon.submit(poseStack, collector, level, origin, seconds, shadow);
+
 			poseStack.popPose();
 		}
 

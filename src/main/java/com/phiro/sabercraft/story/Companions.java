@@ -100,7 +100,8 @@ public final class Companions {
 		boolean fresh = now - CHOSEN.getOrDefault(droid.getId(), Long.MIN_VALUE / 2) < KEEP_TICKS;
 
 		if (kept != null && fresh && kept[1].distanceTo(here) < 1.2 && (taken == null || kept[0].distanceTo(taken) > APART)
-				&& droid.level().noCollision(droid, droid.getDimensions(droid.getPose()).makeBoundingBox(kept[0]))) {
+				&& droid.level().noCollision(droid, droid.getDimensions(droid.getPose()).makeBoundingBox(kept[0]))
+				&& !DroidEntity.keptClear(level, kept[0].x, kept[0].y + 0.05, kept[0].z, droid.getBbWidth() / 2.0)) {
 			CHOSEN.put(droid.getId(), now);
 			return new DroidEntity.Spot(kept[0], crawl ? 2.2 : mouse ? 3.2 : 4.2, crawl ? 0.8 : 1.0);
 		}
@@ -121,7 +122,10 @@ public final class Companions {
 			// by a crawl way's mouth (it stood in the way of one coming out).
 			net.minecraft.core.BlockPos cell = floor != null ? net.minecraft.core.BlockPos.containing(floor.add(0.0, 0.05, 0.0)) : null;
 
+			// Phase 26: and never on a prop of the story (the floor found under a spot can be the top
+			// of the saber's pedestal), nor right at it.
 			if (floor != null && (taken == null || floor.distanceTo(taken) > APART) && fits(droid, floor) && clearTo(level, here, floor)
+					&& !DroidEntity.keptClear(level, floor.x, floor.y + 0.05, floor.z, droid.getBbWidth() / 2.0)
 					&& !nearSomeone(s, floor.subtract(corner)) && !DroidEntity.onLift(level, cell) && (mouse || crawl || !droid.inTheWay(cell))) {
 				best = floor;
 				break;
@@ -197,7 +201,7 @@ public final class Companions {
 		Vec3 look = hit.getType() == HitResult.Type.MISS ? end : hit.getLocation().subtract(player.getLookAngle().scale(0.4));
 		Vec3 at = floor(level, look, look.y);
 
-		if (at == null || at.distanceTo(player.position()) < 1.5) {
+		if (at == null || at.distanceTo(player.position()) < 1.5 || DroidEntity.keptClear(level, at.x, at.y + 0.05, at.z, 0.25)) {
 			return "sabercraft.story.droid.m31_where";
 		}
 

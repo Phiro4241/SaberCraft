@@ -127,6 +127,12 @@ public final class InteriorClient {
 
 	/** Every tick: the trigger of the guns, while sitting at them. */
 	private static void input(Minecraft client) {
+		// Phase 26: the use key let go after it shut a hatch: the next press may open it again
+		// (heldAfterHatch is only asked while the key is down, so it is forgotten here).
+		if (shutHatch != null && !client.options.keyUse.isDown()) {
+			shutHatch = null;
+		}
+
 		Sitting sitting = sitting(client);
 
 		if (sitting == null || !Seat.GUNNER.equals(sitting.seat().role()) || client.gui.screen() != null) {
@@ -201,10 +207,34 @@ public final class InteriorClient {
 			return false;
 		}
 
+		shutHatch = com.phiro.sabercraft.interior.Vents.looked(client.player);
 		ClientPlayNetworking.send(new InteriorActionPayload(InteriorActionPayload.HATCH));
 		client.player.swing(net.minecraft.world.InteractionHand.MAIN_HAND);
 		hatches++;
 		return true;
+	}
+
+	/** Phase 26: the hatch the use key just shut, while the key is still held (else null). */
+	private static @Nullable BlockPos shutHatch;
+
+	/**
+	 * Phase 26: whether the use key, still held since it shut a hatch, points at that hatch (now a
+	 * closed block): it does nothing then. Released once, the key opens the hatch again as before.
+	 */
+	public static boolean heldAfterHatch(Minecraft client) {
+		BlockPos shut = shutHatch;
+
+		if (shut == null) {
+			return false;
+		}
+
+		if (client.player == null || !client.options.keyUse.isDown()) {
+			shutHatch = null;
+			return false;
+		}
+
+		return client.hitResult instanceof net.minecraft.world.phys.BlockHitResult hit && hit.getType() == net.minecraft.world.phys.HitResult.Type.BLOCK
+				&& hit.getBlockPos().equals(shut);
 	}
 
 	/** For tests: how often the use key shut a hatch. */

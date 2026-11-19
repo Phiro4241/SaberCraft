@@ -632,6 +632,14 @@ public final class Droids {
 		return config.balance(type).damage / (1.0F + config.droidGroupPenalty * others);
 	}
 
+	/** Phase 26: the droid is seen at work (on something in front of it). */
+	public static final byte EVENT_WORK = 4;
+
+	/** Phase 26: tells everyone who sees the droid that it works on something (its model shows it). */
+	public static void working(DroidEntity droid) {
+		event(droid, EVENT_WORK);
+	}
+
 	/** Tells everyone who sees the droid what it does, so its model shows it. */
 	static void event(DroidEntity droid, byte event) {
 		DroidEventPayload payload = new DroidEventPayload(droid.getId(), event);

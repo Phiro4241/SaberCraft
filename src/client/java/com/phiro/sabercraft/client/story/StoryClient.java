@@ -54,6 +54,41 @@ public final class StoryClient {
 	static final byte CUE_CHECKPOINT = 10;
 	/** Phase 21: the duel's moments (who: hit, hurt, blocked, parried, phase, meter, focus_on, focus_off, over). */
 	static final byte CUE_DUEL = 11;
+	/** Phase 26: a short effect somewhere (who: its name; value: how long, ticks; points: where). */
+	static final byte CUE_EFFECT = 12;
+
+	/** Phase 26: the effects running (name: start in client ticks, length, where). */
+	private record Effect(long start, int ticks, List<Vec3> points) {
+	}
+
+	private static final Map<String, Effect> EFFECTS = new HashMap<>();
+	private static int effectsSeen;
+
+	/**
+	 * Phase 26: how far an effect of that name is (0 just begun, 1 over; the partial tick counted),
+	 * or -1 if none runs.
+	 */
+	public static float effect(String name, float partialTick) {
+		Effect effect = EFFECTS.get(name);
+
+		if (effect == null) {
+			return -1.0F;
+		}
+
+		float p = (clientTicks - effect.start() + partialTick) / Math.max(1, effect.ticks());
+		return p > 1.0F ? -1.0F : Math.max(0.0F, p);
+	}
+
+	/** Phase 26: where an effect runs (world space), empty if none. */
+	public static List<Vec3> effectPoints(String name) {
+		Effect effect = EFFECTS.get(name);
+		return effect != null ? effect.points() : List.of();
+	}
+
+	/** Phase 26, for tests: how many effects were shown. */
+	public static int effectsSeenForTest() {
+		return effectsSeen;
+	}
 
 	/** Phase 21: the Focus (slowed time in a fight; learnt with Ilyra's saber). */
 	public static final net.minecraft.client.KeyMapping FOCUS_KEY = new net.minecraft.client.KeyMapping("key.sabercraft.story_focus",
@@ -135,6 +170,10 @@ static final int CHECKPOINT_TICKS = 60;
 	private static @Nullable StoryFiguresPayload current;
 	private static long receivedAt;
 	private static long clientTicks;
+	/** Phase 26: when (client ticks) a figure's Inquisitor ring last flared up (the last quarter of the duel). */
+	private static final Map<Integer, Long> RING_FLARES = new HashMap<>();
+	/** Phase 26: how long such a flare lasts (ticks). */
+	static final int RING_FLARE_TICKS = 6;
 	/** How far each figure's legs have walked (for the steps). */
 	private static final Map<Integer, Float> STRIDES = new HashMap<>();
 	private static @Nullable StoryDialogPayload dialog;
@@ -223,6 +262,7 @@ static final int CHECKPOINT_TICKS = 60;
 		music = null;
 		ended = false;
 		HITS.clear();
+		RING_FLARES.clear();
 		focusMeter = -1;
 		focusOn = false;
 		hurtAge = 1000;
@@ -239,6 +279,7 @@ static final int CHECKPOINT_TICKS = 60;
 		hiltFrom = null;
 		hiltTo = null;
 		throwFrom = null;
+		EFFECTS.clear();
 	}
 
 	// --- Receiving ---------------------------------------------------------------------------------
@@ -340,6 +381,8 @@ static final int CHECKPOINT_TICKS = 60;
 				dropBefore(clientTicks, false);
 				// Phase 25: and a short scene aboard (caught in the middle of it: back at the checkpoint).
 				StoryCinema.sceneOver(client);
+				// Phase 26: and whatever effect ran (a field stuttering).
+				EFFECTS.clear();
 			}
 			case CUE_SOUND -> sound(client, payload.text(), 0.9F, 1.0F, figure(payload.value()));
 			case CUE_MUSIC -> music = payload.text().isEmpty() ? null : payload.text();
@@ -365,6 +408,10 @@ static final int CHECKPOINT_TICKS = 60;
 				dropBefore(clientTicks, true);
 			}
 			case CUE_CINEMA -> StoryCinema.start(client, payload.who(), payload.value(), payload.points());
+			case CUE_EFFECT -> {
+				EFFECTS.put(payload.who(), new Effect(clientTicks, Math.max(1, payload.value()), List.copyOf(payload.points())));
+				effectsSeen++;
+			}
 			case CUE_END -> {
 				ended = true;
 				endAge = 0;
@@ -464,6 +511,12 @@ static final int CHECKPOINT_TICKS = 60;
 				zoom(0.035F, 8);
 			}
 			case "parried" -> shake(0.45F, 5);
+			case "fierce" -> {
+				// Phase 26: the last quarter of her strength: her ring spins up, the blades flare, the view jolts.
+				RING_FLARES.put(value, clientTicks);
+				shake(1.0F, 9);
+				flash(0x00FFD0C0, 0);
+			}
 			case "clash" -> {
 				shake(1.6F, 11);
 				zoom(0.06F, 10);
@@ -570,6 +623,17 @@ static final int CHECKPOINT_TICKS = 60;
 			default -> {
 			}
 		}
+	}
+
+	/** Phase 26: whether this figure's Inquisitor ring flares up just now (it spins up, its blades blaze). */
+	public static boolean ringFlared(int id) {
+		Long at = RING_FLARES.get(id);
+		return at != null && clientTicks - at < RING_FLARE_TICKS;
+	}
+
+	/** Phase 26: how many ring flares were seen (tests). */
+	public static int ringFlaresForTest() {
+		return RING_FLARES.size();
 	}
 
 	/** Phase 23: the camera jolts (a stronger jolt wins over a weaker one still running). */
@@ -1020,6 +1084,12 @@ static final int CHECKPOINT_TICKS = 60;
 	public static boolean storyPlot(BlockPos origin) {
 		StoryStatePayload s = state;
 		return s != null && s.active() && (origin.equals(s.falcon()) || origin.equals(s.destroyer()));
+	}
+
+	/** Phase 26: whether that plot is this player's story Star Destroyer. */
+	public static boolean destroyerPlot(BlockPos origin) {
+		StoryStatePayload s = state;
+		return s != null && s.active() && origin.equals(s.destroyer());
 	}
 
 	/** Phase 20: whether the crew of the mission now is wary (after an alarm, until the mission ends). */

@@ -6,7 +6,6 @@ import java.util.List;
 import org.jspecify.annotations.Nullable;
 
 import net.minecraft.client.Minecraft;
-import net.minecraft.resources.Identifier;
 
 import com.phiro.sabercraft.SaberCraft;
 import com.phiro.sabercraft.client.ImmersionConfig;
@@ -88,13 +87,19 @@ public final class StoryMusic {
 
 		if (!java.util.Objects.equals(piece, playing)) {
 			// Phase 24: rising danger cuts in quickly, calming down fades out slowly.
-			float fade = rising(was, mood) ? Math.max(8.0F, crossfade * 0.35F) : calming(was, mood) ? Math.max(40.0F, crossfade * 2.0F) : crossfade;
-			fadeOut(fade);
+			// Phase 26: never a cut: rising danger comes in within a second while the old piece
+			// takes half as long again to go; the story's own pieces (the duel, the escape, the
+			// last sections) crossfade over at least a second and a half; the old piece waits for
+			// the new one to play before it fades (no gap), both on the equal-power curve.
+			boolean up = rising(was, mood);
+			float fade = up ? Math.max(RISE_MIN, crossfade * 0.4F) : calming(was, mood) ? Math.max(40.0F, crossfade * 2.0F) : Math.max(STORY_MIN, crossfade);
+			MusicPiece next = piece != null ? new MusicPiece(SaberCraft.id(piece), true, Math.max(10.0F, fade)) : null;
+			fadeOut(up ? fade * 1.5F : fade, next);
 			playing = piece;
+			changes++;
+			lastFade = fade;
 
-			if (piece != null) {
-				Identifier id = SaberCraft.id(piece);
-				MusicPiece next = new MusicPiece(id, true, Math.max(10.0F, fade));
+			if (next != null) {
 				current = next;
 				client.getSoundManager().play(next);
 			}
@@ -108,7 +113,9 @@ public final class StoryMusic {
 		float volume = ImmersionConfig.get().musicVolume * client.getMusicVolume();
 
 		if (current != null) {
-			current.setMaster(volume * (STEALTH.equals(playing) || CORRIDORS.equals(playing) ? STEALTH_GAIN : 1.0F));
+			// Phase 26: the tense bed under her words before the duel sits low too.
+			boolean low = STEALTH.equals(playing) || CORRIDORS.equals(playing) || "story".equals(mood) && TENSION.equals(playing);
+			current.setMaster(volume * (low ? STEALTH_GAIN : 1.0F));
 		}
 
 		for (MusicPiece piece2 : FADING) {
@@ -227,11 +234,32 @@ public final class StoryMusic {
 	}
 
 	private static void fadeOut(float ticks) {
+		fadeOut(ticks, null);
+	}
+
+	/** Phase 26: the piece playing gives way: it fades once {@code next} plays (see MusicPiece.fadeOutAfter). */
+	private static void fadeOut(float ticks, @Nullable MusicPiece next) {
 		if (current != null) {
-			current.fadeOut(ticks);
+			current.fadeOutAfter(next, ticks);
 			FADING.add(current);
 			current = null;
 		}
+	}
+
+	/** Phase 26: the shortest fades (ticks): rising danger, a change of the story's own piece. */
+	static final float RISE_MIN = 16.0F;
+	static final float STORY_MIN = 30.0F;
+	private static int changes;
+	private static float lastFade;
+
+	/** Phase 26: for the tests: how often the piece changed, and how long the last fade was (ticks). */
+	public static float[] changesForTest() {
+		return new float[] {changes, lastFade};
+	}
+
+	/** Phase 26: for the tests: the shortest fade of a piece fading now (ticks still to go are not known: its level 0..1), or -1. */
+	public static int fadingForTest() {
+		return FADING.size();
 	}
 
 	private static void tidy(Minecraft client) {

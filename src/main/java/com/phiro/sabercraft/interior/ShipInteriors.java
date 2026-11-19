@@ -813,6 +813,13 @@ public final class ShipInteriors {
 			if (lift != null && aboard.zoneTicks >= LIFT_TICKS) {
 				aboard.armed = false;
 				aboard.zoneTicks = 0;
+
+				// Phase 26: a story may keep it shut (the lift to the bridge in the finale): not again
+				// until one has stepped out of it.
+				if (com.phiro.sabercraft.story.Story.liftRefused(player, lift.arrival())) {
+					return;
+				}
+
 				teleport(player, (ServerLevel) player.level(), aboard.world(lift.arrival()), lift.yaw());
 				player.connection.send(new ClientboundSoundPacket(sound("ship.lift"), SoundSource.NEUTRAL, player.getX(), player.getY(), player.getZ(), 0.6F,
 						1.0F, player.getRandom().nextLong()));

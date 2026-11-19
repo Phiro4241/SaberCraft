@@ -1006,6 +1006,28 @@ public final class SaberAbilities {
 		sendStamina(player, state);
 	}
 
+	/**
+	 * Phase 26: a scene of the story begins (the boss's blade lock): the guard comes down, a dash
+	 * or a spin still going ends, without a cooldown (afterwards everything is ready as before).
+	 */
+	public static void interrupt(ServerPlayer player) {
+		State state = STATES.get(player.getUUID());
+
+		if (state == null) {
+			return;
+		}
+
+		long now = player.level().getGameTime();
+
+		if (state.guarding()) {
+			stopGuard(player, state, now, 0);
+		}
+
+		state.dashStart = -1;
+		state.spinStart = -1;
+		state.whirl = false;
+	}
+
 	/** Only for tests: forgets all cooldowns and states. */
 	public static void reset(@Nullable ServerPlayer player) {
 		if (player == null) {
