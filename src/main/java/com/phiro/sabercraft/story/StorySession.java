@@ -553,6 +553,9 @@ public final class StorySession {
 		figure.sight = template.sight;
 		// Phase 24: a guard at his post holds it; one already overpowered lies where he fell.
 		figure.post = template.post;
+		// Phase 27: how far they hear, and whether they are a sentry (the lab's guard).
+		figure.hearing = template.hearing;
+		figure.sentry = template.sentry;
 		figure.snapToRoutine(time);
 
 		if (template.mode == Figure.DOWN) {

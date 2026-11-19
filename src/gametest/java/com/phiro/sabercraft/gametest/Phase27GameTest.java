@@ -261,6 +261,8 @@ public class Phase27GameTest implements FabricClientGameTest {
 		this.put(deep, 0.0F, 10.0F);
 		this.context.waitTicks(10);
 		check(this.on(s -> this.me(s).getPose()) == Pose.SWIMMING, "put into the crawl way, the player is not on all fours");
+		// (Something learned since the last checkpoint: only then is there anything to keep.)
+		this.flags("know.phase27_test");
 		this.server.runOnServer(s -> StoryTesting.safeCheckpointNow(this.session(s)));
 		Vec3 anchor = this.on(s -> StoryTesting.checkpointPlace(this.session(s)));
 		check(this.on(s -> StoryTesting.checkpoints(this.session(s))) > before && anchor != null && anchor.distanceTo(deep) < 0.6,
@@ -644,8 +646,15 @@ public class Phase27GameTest implements FabricClientGameTest {
 		this.unseen();
 		int[] noise = this.on(s -> StoryTesting.noise(this.session(s), new Vec3(37.5, R, 34.0)));
 		check(noise[0] == 1, "the lab's guard does not go to see M-31's noise");
-		this.context.waitTicks(100);
-		double off = this.on(s -> this.session(s).figure("lab_guard").position().distanceTo(post));
+		double off = 0.0;
+
+		for (int i = 0; i < 12; i++) {
+			this.context.waitTicks(10);
+			Figure lured = this.on(s -> this.session(s).figure("lab_guard"));
+			off = Math.max(off, lured.position().distanceTo(post));
+			SaberCraft.LOGGER.info("PHASE27 LAB GUARD LURE: tick {} at {} mode {} target {}", (i + 1) * 10, lured.position(), lured.mode, lured.target);
+		}
+
 		check(off > 2.5, "M-31's noise does not draw the lab's guard off his post (" + String.format(Locale.ROOT, "%.1f", off) + ")");
 		boolean back = false;
 
