@@ -801,6 +801,46 @@ public final class StoryTesting {
 		return Chapter1.LAB_GUARD_DOWN;
 	}
 
+	/** Phase 27: the lab guard's looks: how many, the yaw of one, and ticks until he holds that one next. */
+	public static int labLooks() {
+		return Chapter1.LAB_WATCH.length;
+	}
+
+	public static float labLookYaw(int look) {
+		return Chapter1.LAB_WATCH[look][0];
+	}
+
+	public static int labLookIn(StorySession s, int look) {
+		Figure guard = s.figure("lab_guard");
+		long now = s.time();
+		return (int) (Chapter1.labWatchAt(now, look, guard == null ? 0 : guard.id) - now);
+	}
+
+	/** Phase 27: how fast that figure's suspicion fills if it looked that way now (its look put back after). */
+	public static float seesLooking(StorySession s, Figure figure, float yaw) {
+		float yaw0 = figure.yaw;
+		float head0 = figure.headYaw;
+		figure.yaw = yaw;
+		figure.headYaw = yaw;
+		float rate = sees(s, figure);
+		figure.yaw = yaw0;
+		figure.headYaw = head0;
+		return rate;
+	}
+
+	/** Phase 27: how far that figure hears M-31, whether it is a sentry, how often a noise drew it (and when). */
+	public static double hearing(Figure figure) {
+		return figure.hearing;
+	}
+
+	public static boolean sentry(Figure figure) {
+		return figure.sentry;
+	}
+
+	public static void distractedLongAgo(Figure figure) {
+		figure.distractedAt -= Stealth.DISTRACT_FORGET + 20;
+	}
+
 	/** Phase 26: whether that guard can be overpowered now (from close behind). */
 	public static boolean takedownOpen(StorySession s, Figure guard) {
 		return Chapter1.takedownOpen(s, guard);

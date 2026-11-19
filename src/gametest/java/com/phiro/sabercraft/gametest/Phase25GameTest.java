@@ -66,8 +66,8 @@ public class Phase25GameTest implements FabricClientGameTest {
 	/** Where Hale's scene leaves the player and Hale (as {@code Scenes}). */
 	private static final Vec3 HALE_PLAYER = new Vec3(48.6, H, -7.6);
 	private static final Vec3 HALE_STOP = new Vec3(47.1, H, -9.3);
-	/** Where the lab's guard stands (as {@code Chapter1.LAB_GUARD}). */
-	private static final Vec3 LAB_GUARD = new Vec3(46.2, R, 34.0);
+	/** Where the lab's guard stands (as {@code Chapter1.LAB_GUARD}; Phase 27: west of the way to the door). */
+	private static final Vec3 LAB_GUARD = new Vec3(41.8, R, 35.4);
 
 	private ClientGameTestContext context;
 	private TestServerContext server;
@@ -435,16 +435,21 @@ public class Phase25GameTest implements FabricClientGameTest {
 
 		check(this.on(s -> this.session(s).figure("lab_guard").position().distanceTo(LAB_GUARD) < 0.4), "the lab's guard is not at his place by the door");
 		this.notInWalls("m6.door");
-		// His back to the way to the door: unseen there, and coming along the platform from the west.
-		this.put(new Vec3(44.5, R, 37.2), 0.0F, 0.0F);
-		float atDoor = this.on(s -> StoryTesting.sees(this.session(s), this.session(s).figure("lab_guard")));
-		this.put(new Vec3(40.0, R, 33.6), 270.0F, 0.0F);
-		float behind = this.on(s -> StoryTesting.sees(this.session(s), this.session(s).figure("lab_guard")));
-		this.put(new Vec3(48.6, R, 30.8), 0.0F, 0.0F);
-		float front = this.on(s -> StoryTesting.sees(this.session(s), this.session(s).figure("lab_guard")));
-		SaberCraft.LOGGER.info("PHASE25 LAB GUARD: sees the player at the door {}, behind him {}, on the east bridge {}", atDoor, behind, front);
-		check(atDoor == 0.0F, "the lab's guard sees the player at the lab's door (" + atDoor + ")");
-		check(behind == 0.0F, "the lab's guard sees the player coming along the platform behind him (" + behind + ")");
+		// (Measured by hand: meanwhile nobody may really notice the player.)
+		this.unseen();
+		// Phase 27: west of the way to the door, looking in turn west along the platform, over the
+		// shaft and east: looking east, the way one comes and the door are behind him; looking
+		// west, one coming along the platform is seen.
+		this.put(new Vec3(44.5, R, 38.2), 0.0F, 0.0F);
+		float atDoor = this.on(s -> StoryTesting.seesLooking(this.session(s), this.session(s).figure("lab_guard"), StoryTesting.labLookYaw(2)));
+		this.put(new Vec3(37.5, R, 34.0), 270.0F, 0.0F);
+		float behind = this.on(s -> StoryTesting.seesLooking(this.session(s), this.session(s).figure("lab_guard"), StoryTesting.labLookYaw(2)));
+		float front = this.on(s -> StoryTesting.seesLooking(this.session(s), this.session(s).figure("lab_guard"), StoryTesting.labLookYaw(0)));
+		SaberCraft.LOGGER.info("PHASE25 LAB GUARD: looking east he sees the player at the door {}, coming along the platform {}; looking west {}", atDoor, behind,
+				front);
+		check(atDoor == 0.0F, "the lab's guard looking east sees the player at the lab's door (" + atDoor + ")");
+		check(behind == 0.0F, "the lab's guard looking east sees the player coming along the platform behind him (" + behind + ")");
+		check(front > 0.0F, "the lab's guard looking west does not see the player coming along the platform");
 		// Seen from the way one comes along the platform, and from the shaft.
 		this.unseen();
 		this.put(new Vec3(38.6, R, 33.6), 270.0F, 8.0F);
@@ -454,7 +459,7 @@ public class Phase25GameTest implements FabricClientGameTest {
 		this.context.waitTicks(4);
 		this.context.takeScreenshot("phase25_lab_guard_shaft");
 		// M-31's noise along the platform: he goes to see (one of them, not everyone).
-		int[] noise = this.on(s -> StoryTesting.noise(this.session(s), new Vec3(40.5, R, 33.6)));
+		int[] noise = this.on(s -> StoryTesting.noise(this.session(s), new Vec3(37.5, R, 34.0)));
 		SaberCraft.LOGGER.info("PHASE25 LAB GUARD: the noise: went {}, looked {}, ignored {}", noise[0], noise[1], noise[2]);
 		check(noise[0] == 1, "not one goes to see M-31's noise by the lab (" + noise[0] + ")");
 		this.context.waitTicks(80);

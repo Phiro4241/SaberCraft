@@ -1057,6 +1057,7 @@ public final class Story {
 		figure.path = List.of();
 		figure.pathGoal = null;
 		figure.pathReaches = true;
+		figure.luredFrom = null;
 		cue(session, CUE_SOUND, "", "story.detected", figure.id);
 		// Phase 27: seen: no dialog or menu keeps the player standing there.
 		session.interrupt(true);
@@ -1096,7 +1097,8 @@ public final class Story {
 			// Phase 21: the call brings two more troopers a few seconds later (once per alarm).
 			session.hear(voice(figure), "sabercraft.story.shout.halt");
 			figure.mode = Figure.CHASE;
-			figure.cooldown = 10 + figure.id % 10;
+			// (Phase 27: a sentry has his rifle ready: up with it at once.)
+			figure.cooldown = figure.sentry ? 0 : 10 + figure.id % 10;
 			Stealth.rally(session, figure, me);
 
 			if (session.alarm <= 0) {

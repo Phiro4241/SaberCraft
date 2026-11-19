@@ -40,6 +40,8 @@ final class Combat {
 	/** How far they shoot (blocks) and how close they run in to seize the player. */
 	static final double SHOOT_RANGE = 16.0;
 	static final double RUSH = 3.4;
+	/** Phase 27: a sentry fires first again only this long after his last shot (ticks); till then he runs in. */
+	static final int SENTRY_AGAIN = 60;
 	/** Aiming before a shot (ticks): as a rule, after a second alarm in a mission, and the second shot of two. */
 	static final int AIM = 14;
 	static final int AIM_ALERT = 10;
@@ -292,15 +294,19 @@ final class Combat {
 			return;
 		}
 
+		// Phase 27: a sentry seeing one close by raises his rifle and fires first (the lab's guard
+		// never fired: whoever he saw was always close, and he only ran in to seize them).
+		boolean opens = figure.sentry && time - figure.firedAt > SENTRY_AGAIN && distance > Stealth.CATCH + 0.3 && s.grace <= 0 && lineFree(s, figure, me);
+
 		// Close enough to seize the player: they run in ("Hands up!" when they reach them).
-		if (distance < RUSH && !pistol(figure)) {
+		if (distance < RUSH && !pistol(figure) && !opens) {
 			Stealth.go(figure, me, Stealth.RUN, level, corner, time);
 			figure.headYaw = Crew.yaw(figure.position(), me);
 			return;
 		}
 
 		// Ready, in sight, nobody of theirs in the way: up with the rifle.
-		if (figure.cooldown <= 0 && distance <= SHOOT_RANGE && s.grace <= 0 && lineFree(s, figure, me)) {
+		if ((figure.cooldown <= 0 || opens) && distance <= SHOOT_RANGE && s.grace <= 0 && lineFree(s, figure, me)) {
 			figure.windup = s.difficulty().ticks(figure.burst > 0 ? AIM_BURST : pistol(figure) ? AIM_PISTOL : Stealth.level(s) >= 2 ? AIM_ALERT : AIM,
 					s.difficulty().aim);
 			figure.speed = 0.0F;
@@ -464,6 +470,7 @@ final class Combat {
 		BlasterBolt bolt = new BlasterBolt(level, muzzle, BlasterType.STUN, STUN_DAMAGE);
 		bolt.shoot(aim.x, aim.y, aim.z, BlasterType.STUN.speed(), spread);
 		level.addFreshEntity(bolt);
+		figure.firedAt = s.time();
 		level.playSound(null, muzzle.x, muzzle.y, muzzle.z, ShipInteriors.sound(pistol(figure) ? "blaster.se14c" : "blaster.e11"), SoundSource.HOSTILE, 0.75F,
 				1.25F + player.getRandom().nextFloat() * 0.1F);
 		shots++;

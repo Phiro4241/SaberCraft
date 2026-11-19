@@ -88,6 +88,13 @@ public final class Stealth {
 	static final double HEAR_WALL = 3.5;
 	/** Phase 21: how long one stops and listens before going to see (ticks). */
 	static final int LISTEN = 16;
+	/**
+	 * Phase 27: drawn by a noise: how long they look round at each place (ticks), how far past
+	 * the noise they search on (blocks), and after how long they believe a noise again (ticks).
+	 */
+	static final int LURE_LOOK = 100;
+	static final double LURE_ON = 4.0;
+	static final int DISTRACT_FORGET = 1200;
 	/** Phase 21: figures keep this far apart (blocks). */
 	static final double APART = 0.7;
 
@@ -632,12 +639,15 @@ public final class Stealth {
 			figure.mode = Figure.INVESTIGATE;
 			figure.target = figure.seenAt;
 			figure.timer = 100;
+			// (Phase 27: what they saw counts now, not the noise that drew them.)
+			figure.luredFrom = null;
 		} else if (figure.stage == Figure.SUSPICIOUS && figure.mode == Figure.ROUTINE && figure.seenAt != null) {
 			// Phase 21: after two alarms in a mission nobody just looks: they go and see at once.
 			if (level(s) >= 2 && time - figure.lastSeen < 10) {
 				figure.mode = Figure.INVESTIGATE;
 				figure.target = figure.seenAt;
 				figure.timer = 80;
+				figure.luredFrom = null;
 			} else {
 				figure.mode = Figure.LOOK;
 				figure.target = figure.seenAt;
@@ -680,7 +690,10 @@ public final class Stealth {
 					figure.lure = null;
 					figure.mode = Figure.INVESTIGATE;
 					figure.target = to.length() > 1.6 ? lure.subtract(to.normalize().scale(1.2)) : figure.position();
-					figure.timer = 60;
+					// Phase 27: a lure keeps them longer: they look round where the noise was, then
+					// search on past it, away from where they stood (and from whoever slips by there).
+					figure.luredFrom = figure.position();
+					figure.timer = LURE_LOOK;
 					figure.searches = 1;
 					s.dirty = true;
 				}
@@ -690,17 +703,25 @@ public final class Stealth {
 						|| !go(figure, Combat.apart(s, figure, figure.target, level, corner), s.searching ? WALK * 1.4 : WALK, level, corner, time)) {
 					// There (or no way on): look round a while; then the next place to search, or back.
 					figure.speed = 0.0F;
-					figure.headYaw = figure.yaw + Mth.sin(time * 0.08F + figure.id) * 60.0F;
+					// Phase 27: drawn by a noise, they search towards it (not all round, back towards the post).
+					boolean lured = figure.luredFrom != null && figure.suspicion < ALERTED;
+					figure.headYaw = figure.yaw + Mth.sin(time * 0.08F + figure.id) * (lured ? 30.0F : 60.0F);
 
 					if (--figure.timer <= 0 && figure.suspicion < ALERTED) {
-						Vec3 next = figure.searches > 0 && figure.target != null ? searchPoint(figure, figure.target, level, corner, time) : null;
+						Vec3 next = null;
+
+						if (figure.searches > 0 && figure.target != null) {
+							next = lured ? beyond(figure, figure.target, level, corner) : null;
+							next = next != null ? next : searchPoint(figure, figure.target, level, corner, time);
+						}
 
 						if (next != null) {
 							figure.searches--;
 							figure.target = next;
-							figure.timer = 70;
+							figure.timer = lured ? LURE_LOOK - 20 : 70;
 						} else {
 							figure.searches = 0;
+							figure.luredFrom = null;
 							figure.mode = Figure.RETURN;
 						}
 					}
@@ -904,6 +925,38 @@ public final class Stealth {
 	}
 
 	/** Phase 20: another place to search near where they lost the player (one they can walk to), or null. */
+	/**
+	 * Phase 27: where one drawn by a noise searches next: on past it, away from where they stood
+	 * (a few blocks, as far as there is floor and nothing in between), or null.
+	 */
+	private static @Nullable Vec3 beyond(Figure figure, Vec3 around, ServerLevel level, Vec3 corner) {
+		Vec3 from = figure.luredFrom;
+
+		if (from == null) {
+			return null;
+		}
+
+		Vec3 dir = around.subtract(from).multiply(1.0, 0.0, 1.0);
+
+		if (dir.lengthSqr() < 0.25) {
+			return null;
+		}
+
+		dir = dir.normalize();
+
+		for (double distance : new double[] {LURE_ON, LURE_ON - 1.0, LURE_ON - 2.0}) {
+			double x = around.x + dir.x * distance;
+			double z = around.z + dir.z * distance;
+			Double y = Paths.stand(level, corner, x, around.y, z, figure.crew.height());
+
+			if (y != null && Math.abs(y - around.y) < 1.1 && clear(level, corner.add(around.x, around.y + 1.2, around.z), corner.add(x, y + 1.2, z))) {
+				return new Vec3(x, y, z);
+			}
+		}
+
+		return null;
+	}
+
 	private static @Nullable Vec3 searchPoint(Figure figure, Vec3 around, ServerLevel level, Vec3 corner, long time) {
 		for (int tries = 0; tries < 8; tries++) {
 			double angle = (time * 0.37 + figure.id * 1.9 + tries * 2.3) % (Math.PI * 2.0);
@@ -1063,11 +1116,16 @@ public final class Stealth {
 				continue;
 			}
 
+			// Phase 27: a minute after the last time, they believe a noise again.
+			if (figure.distracted > 0 && s.time() - figure.distractedAt > DISTRACT_FORGET) {
+				figure.distracted = 0;
+			}
+
 			Vec3 ear = figure.eye();
 			Vec3 sound = at.add(0.0, 0.3, 0.0);
 			double distance = ear.distanceTo(sound);
 
-			if (distance > HEAR || Math.abs(figure.y - at.y) > 2.5) {
+			if (distance > figure.hearing || Math.abs(figure.y - at.y) > 2.5) {
 				continue;
 			}
 
@@ -1087,13 +1145,21 @@ public final class Stealth {
 				continue;
 			}
 
-			boolean go = went.isEmpty() && figure.distracted == 0;
+			// Phase 27: one on a seat looks over but does not get up (the nearest standing one goes:
+			// in the flight control the seated crew were always nearest, and the officer only looked).
+			boolean go = went.isEmpty() && figure.distracted == 0 && !figure.seated();
 
 			if (!go && looked.size() >= 2) {
 				continue;
 			}
 
-			figure.distracted++;
+			// Phase 27: only going to see (or having gone before) makes one believe the next noise
+			// less; a look over from a seat or the side costs nothing.
+			if (go || figure.distracted > 0) {
+				figure.distracted++;
+				figure.distractedAt = s.time();
+			}
+
 			figure.mode = Figure.LOOK;
 			figure.target = at;
 			figure.timer = go ? LISTEN : 30;

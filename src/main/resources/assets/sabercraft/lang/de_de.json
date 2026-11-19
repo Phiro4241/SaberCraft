@@ -1512,5 +1512,6 @@
   "sabercraft.hint.vent": "Wartungsschacht: Luken mit gelb-schwarzem Rahmen und Lämpchen sind begehbar. %s auf die Luke öffnet sie, dann einfach hineingehen. (Oder %s halten.)",
   "sabercraft.hint.vent_inside": "Im Schacht: %s kriecht vorwärts. %s auf die offene Luke hinter dir schließt sie.",
   "sabercraft.hint.vent_short": "%s auf die Luke: öffnen und hineinkriechen",
-  "sabercraft.story.hint.bridge_sealed": "Sicherheitssperre: Der Turbolift zur Brücke ist abgeriegelt. Dort oben hast du nichts verloren."
+  "sabercraft.story.hint.bridge_sealed": "Sicherheitssperre: Der Turbolift zur Brücke ist abgeriegelt. Dort oben hast du nichts verloren.",
+  "sabercraft.story.hint.m2_side_hatch": "Kestrel über Funk: „Gut, du hast ihn. Wird's in der Flugleitung zu eng, nimm die Wartungsluke unten in der Westwand des Hangars, gleich neben dem Kistenstapel.“"
 }

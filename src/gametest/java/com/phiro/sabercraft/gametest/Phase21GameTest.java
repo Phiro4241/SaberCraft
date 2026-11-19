@@ -189,7 +189,8 @@ public class Phase21GameTest implements FabricClientGameTest {
 	private void noise() {
 		String key = this.on(s -> {
 			for (Figure figure : this.session(s).figures) {
-				if (figure.observer && Story.DESTROYER.equals(figure.ship) && figure.mode == Figure.ROUTINE && Math.abs(figure.y - H) < 1.0) {
+				// (Phase 27: someone standing: one on a seat only looks over, he does not get up.)
+				if (figure.observer && Story.DESTROYER.equals(figure.ship) && figure.mode == Figure.ROUTINE && Math.abs(figure.y - H) < 1.0 && !figure.seated()) {
 					return figure.key;
 				}
 			}

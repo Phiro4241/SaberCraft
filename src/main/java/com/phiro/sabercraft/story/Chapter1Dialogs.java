@@ -127,6 +127,8 @@ final class Chapter1Dialogs {
 				.say("start", "funke").does(s -> {
 					s.set("item.stick");
 					Chapter1.done(s, "m2.drop");
+					// Phase 27: the second way back, where one can find it.
+					s.hint("sabercraft.story.hint.m2_side_hatch");
 				})
 				.build());
 

@@ -79,10 +79,21 @@ public final class Chapter1 implements Chapter {
 	 * the door, his back to it: one comes along the platform from the west behind him, or M-31
 	 * lures him off; from the bridges in the north and east he sees one coming.)
 	 */
-	static final Vec3 LAB_GUARD = new Vec3(46.2, R, 34.0);
-	/** Phase 26: the lab guard's watch: the east bridge most of the time, now and then the shaft. */
-	static final float LAB_GUARD_BRIDGE_YAW = 205.0F;
-	static final float LAB_GUARD_SHAFT_YAW = 165.0F;
+	static final Vec3 LAB_GUARD = new Vec3(41.8, R, 35.4);
+	/**
+	 * Phase 26: the lab guard's watch. Phase 27: Phase 26's post east of the way to the door (46.2,
+	 * 34.0) had the only way there and the door always behind him: he never saw anyone, and read as
+	 * a statue. Now he stands west of the way to the door, where one comes along the platform, and
+	 * looks in turn along the platform to the west (who comes over the bridges?), over the shaft and
+	 * to the east bridge, then back: while he looks east, one gets by behind him (or M-31 draws him
+	 * off, or one overpowers him from behind). Yaws and how long he holds each look (ticks).
+	 */
+	static final float LAB_GUARD_WAY_YAW = 105.0F;
+	static final float LAB_GUARD_SHAFT_YAW = 160.0F;
+	static final float LAB_GUARD_BRIDGE_YAW = 218.0F;
+	static final float[][] LAB_WATCH = {{LAB_GUARD_WAY_YAW, 80.0F}, {LAB_GUARD_SHAFT_YAW, 45.0F}, {LAB_GUARD_BRIDGE_YAW, 140.0F}, {LAB_GUARD_SHAFT_YAW, 45.0F}};
+	/** Phase 27: how far the lab's guard hears M-31 (a little further than most: he listens on watch). */
+	static final double LAB_GUARD_HEARING = 9.0;
 	/** Phase 26: the lab guard overpowered (kept with the checkpoints after it, as the detention's guard). */
 	static final String LAB_GUARD_DOWN = "lab_guard.down";
 	static final double LAB_DOOR_HEARD = 4.5;
@@ -92,6 +103,17 @@ public final class Chapter1 implements Chapter {
 	static final String[][] CRATES = {{"c3", "20"}, {"f9", "23"}, {"k7", "26"}};
 	/** Phase 20: by the stack of crates on the hangar's east side. */
 	static final Vec3 HANGAR_CRATES = new Vec3(57.3, H, -27.9);
+	/**
+	 * Phase 27: the checkpoint with the stick: the hangar's south-west corner beside the
+	 * containers, out of the patrols' way; and the flight control officer's round between the
+	 * consoles (he stood still, facing the door and the hatch: no way past him but a lure).
+	 */
+	static final Vec3 CRATE_SAFE = new Vec3(18.6, H, -64.3);
+	static final Vec3 FLIGHT_BEAT_SOUTH = new Vec3(12.0, H, -43.0);
+	static final Vec3 FLIGHT_BEAT_NORTH = new Vec3(12.0, H, -55.0);
+	static final double FLIGHT_BEAT_SPEED = 0.6;
+	/** Phase 27: how far the flight control officer hears M-31 (from the door, a lure reaches him). */
+	static final double FLIGHT_HEARING = 10.0;
 	/** Phase 20: safe places: the maintenance room's corner by the crates (behind the guard at Kestrel's hatch), the armory once its master is gone, the crawl way at the detention block's hatch. */
 	static final Vec3 MAINT_SAFE = new Vec3(3.5, H, -5.5);
 	static final Vec3 ARMORY_SAFE = new Vec3(50.5, H, -7.5);
@@ -176,7 +198,9 @@ public final class Chapter1 implements Chapter {
 				cp("m2.kestrel", D, HIDEOUT, 90.0F, kestrel),
 				cp("m2.terminal", D, HIDEOUT, 90.0F, at(D, 18.0, H + 1.1, -1.4)),
 				cp("m2.drop", D, HIDEOUT, 90.0F, at(D, 10.5, H + 0.5, -34.0)),
-				step("m2.return", D, HIDEOUT, 90.0F, kestrel)),
+				// Phase 27: a checkpoint by the containers with the stick (caught on the way back, one
+				// had to find the right container all over again).
+				cp("m2.return", D, CRATE_SAFE, 180.0F, kestrel)),
 				List.of(new Mission.Optional("eavesdrop", s -> true)));
 
 		Mission m3 = new Mission("m3", List.of(
@@ -529,10 +553,22 @@ public final class Chapter1 implements Chapter {
 				}
 			}
 
+			// Phase 27: in Mission 2 the flight control officer walks a round between the consoles
+			// (going north, the door and the crawl way's hatch are behind him), and hears further.
+			boolean flight = m == 1 && Crew.OFFICER_OLIVE.equals(c.kind()) && "flight_control".equals(c.role());
+
+			if (flight) {
+				routine = Crew.patrol(Crew.OFFICER_OLIVE, FLIGHT_BEAT_SPEED, 0.0, FLIGHT_BEAT_SOUTH, FLIGHT_BEAT_NORTH).as("flight_control");
+			}
+
 			Figure figure = new Figure(0, "crew:" + i, routine);
 			figure.ship = D;
 			figure.observer = true;
 			figure.talks = false;
+
+			if (flight) {
+				figure.hearing = FLIGHT_HEARING;
+			}
 			// After the download the lights are low: the troops carry lamps.
 			figure.lamp = m == 4 && Crew.TROOPER.equals(c.kind());
 			list.add(figure);
@@ -691,7 +727,10 @@ public final class Chapter1 implements Chapter {
 				if (!s.has("saber.taken") && (step.equals("m6.reactor") || step.equals("m6.door") || step.equals("m6.lab") || step.equals("m6.saber"))) {
 					// Phase 24: a few steps east of the lab's door (he stood right before it), watching
 					// the shaft and the east walkway: one gets past him with care, or lures him off.
-					Figure guard = guard("lab_guard", Crew.at(Crew.TROOPER, Crew.STAND, LAB_GUARD.x, R, LAB_GUARD.z, LAB_GUARD_BRIDGE_YAW));
+					Figure guard = guard("lab_guard", Crew.at(Crew.TROOPER, Crew.STAND, LAB_GUARD.x, R, LAB_GUARD.z, LAB_GUARD_WAY_YAW));
+					// Phase 27: a sentry: he hears M-31 a little further, and seeing one close he fires first.
+					guard.sentry = true;
+					guard.hearing = LAB_GUARD_HEARING;
 
 					if (s.has(LAB_GUARD_DOWN)) {
 						guard.mode = Figure.DOWN;
@@ -752,7 +791,7 @@ public final class Chapter1 implements Chapter {
 				list.add(fighter("h2", 48.5, R, 28.5, 120.0F));
 				// (Phase 26: unless he was overpowered before: then he still lies where he fell.)
 				if (s.has(LAB_GUARD_DOWN)) {
-					Figure down = guard("lab_guard", Crew.at(Crew.TROOPER, Crew.STAND, LAB_GUARD.x, R, LAB_GUARD.z, LAB_GUARD_BRIDGE_YAW));
+					Figure down = guard("lab_guard", Crew.at(Crew.TROOPER, Crew.STAND, LAB_GUARD.x, R, LAB_GUARD.z, LAB_GUARD_WAY_YAW));
 					down.mode = Figure.DOWN;
 					down.observer = false;
 					list.add(down);
@@ -2979,17 +3018,16 @@ public final class Chapter1 implements Chapter {
 		return x * x * (3.0F - 2.0F * x);
 	}
 
-	/** Phase 26: the lab guard's watch: the bridge this long, a turn, the shaft this long, a turn back (ticks). */
-	static final int LAB_BRIDGE_TICKS = 150;
-	static final int LAB_SHAFT_TICKS = 70;
+	/** Phase 26: how long the lab guard takes to turn from one look to the next (ticks). */
 	static final int LAB_TURN_TICKS = 24;
 
 	/**
-	 * Phase 26: the lab's guard keeps watch over the reactor's platform: mostly the east bridge
-	 * (who comes over it?), now and then he turns and looks down the shaft; his head moves within
-	 * the look. His back stays to the lab's door and the platform's west end (one gets past him
-	 * with care, as in Phase 25). What he sees and hears he reacts to as anyone (Stealth); from
-	 * close behind he can be overpowered, the same scene as the detention's guard.
+	 * Phase 26: the lab's guard keeps watch over the reactor's platform; his head moves within the
+	 * look. Phase 27: from his post west of the way to the door he looks in turn along the platform
+	 * to the west, over the shaft, to the east bridge and back over the shaft ({@link #LAB_WATCH}):
+	 * coming along the platform, one waits for him to look east. What he sees and hears he reacts
+	 * to as anyone (Stealth: he goes to look, raises the alarm, fires); from close behind he can be
+	 * overpowered, the same scene as the detention's guard.
 	 */
 	private static void labGuardTick(StorySession s, ServerPlayer player, ServerLevel level) {
 		Figure guard = s.figure("lab_guard");
@@ -3007,23 +3045,59 @@ public final class Chapter1 implements Chapter {
 			return;
 		}
 
-		int cycle = LAB_BRIDGE_TICKS + LAB_SHAFT_TICKS + 2 * LAB_TURN_TICKS;
-		long t = (s.time() + guard.id * 29L) % cycle;
-		float yaw;
+		float yaw = labWatchYaw(s.time() + guard.id * 29L);
+		guard.yaw = yaw;
+		guard.headYaw = yaw + 12.0F * Mth.sin((s.time() + guard.id) / 21.0F);
+	}
 
-		if (t < LAB_BRIDGE_TICKS) {
-			yaw = LAB_GUARD_BRIDGE_YAW;
-		} else if (t < LAB_BRIDGE_TICKS + LAB_TURN_TICKS) {
-			yaw = Mth.rotLerp(smooth((t - LAB_BRIDGE_TICKS) / (float) LAB_TURN_TICKS), LAB_GUARD_BRIDGE_YAW, LAB_GUARD_SHAFT_YAW);
-		} else if (t < LAB_BRIDGE_TICKS + LAB_TURN_TICKS + LAB_SHAFT_TICKS) {
-			yaw = LAB_GUARD_SHAFT_YAW;
-		} else {
-			yaw = Mth.rotLerp(smooth((t - LAB_BRIDGE_TICKS - LAB_TURN_TICKS - LAB_SHAFT_TICKS) / (float) LAB_TURN_TICKS), LAB_GUARD_SHAFT_YAW,
-					LAB_GUARD_BRIDGE_YAW);
+	/** Phase 27: the length of the lab guard's round of looks (ticks). */
+	static int labWatchCycle() {
+		int cycle = 0;
+
+		for (float[] look : LAB_WATCH) {
+			cycle += (int) look[1] + LAB_TURN_TICKS;
 		}
 
-		guard.yaw = yaw;
-		guard.headYaw = yaw + 9.0F * Mth.sin((s.time() + guard.id) / 21.0F);
+		return cycle;
+	}
+
+	/** Phase 27: where the lab's guard looks at that time of his round (each look held, smooth turns between). */
+	static float labWatchYaw(long time) {
+		long t = Math.floorMod(time, (long) labWatchCycle());
+
+		for (int i = 0; i < LAB_WATCH.length; i++) {
+			float[] look = LAB_WATCH[i];
+			float[] next = LAB_WATCH[(i + 1) % LAB_WATCH.length];
+
+			if (t < look[1]) {
+				return look[0];
+			}
+
+			t -= (long) look[1];
+
+			if (t < LAB_TURN_TICKS) {
+				return Mth.rotLerp(smooth(t / (float) LAB_TURN_TICKS), look[0], next[0]);
+			}
+
+			t -= LAB_TURN_TICKS;
+		}
+
+		return LAB_WATCH[0][0];
+	}
+
+	/** For the tests: the time of the guard's round when he holds that look (index into {@link #LAB_WATCH}), from that time on. */
+	static long labWatchAt(long now, int look, int guardId) {
+		long offset = 0L;
+
+		for (int i = 0; i < look; i++) {
+			offset += (long) LAB_WATCH[i][1] + LAB_TURN_TICKS;
+		}
+
+		long cycle = labWatchCycle();
+		long t = Math.floorMod(now + guardId * 29L, cycle);
+		// The first tick of that look a few ticks in (the turn into it done).
+		long wanted = offset + 4L;
+		return now + Math.floorMod(wanted - t, cycle);
 	}
 
 	/**
@@ -3068,12 +3142,25 @@ public final class Chapter1 implements Chapter {
 		guard.blind = true;
 		guard.speed = 0.0F;
 		guard.way = List.of();
-		// The player right behind him, facing him.
+		// The player right behind him, facing him. Phase 27: unless something stands there (the
+		// lab guard's back towards the console): then on the side they came from, or where they are.
+		Vec3 corner0 = Vec3.atLowerCornerOf(s.destroyer);
 		Vec3 back = guard.position().subtract(guard.look().scale(0.9));
+
+		if (!room(player, back.add(corner0))) {
+			Vec3 side = distance < 1.0E-3 ? null : guard.position().add(to.normalize().scale(0.9));
+			back = side != null && room(player, side.add(corner0)) ? side : me;
+		}
+
 		Story.place(s, D, back, guard.yaw);
 		Vec3 world = guard.position().add(Vec3.atLowerCornerOf(s.destroyer));
 		Story.cue(s, Story.CUE_CINEMA, "takedown", "", TAKEDOWN_FILM, List.of(world));
 		s.dirty = true;
+	}
+
+	/** Phase 27: whether the player fits standing at that place (world space). */
+	private static boolean room(ServerPlayer player, Vec3 at) {
+		return player.level().noCollision(player, player.getDimensions(net.minecraft.world.entity.Pose.STANDING).makeBoundingBox(at).deflate(0.02));
 	}
 
 	private static void takedownTick(StorySession s, ServerPlayer player, ServerLevel level, Figure guard) {
@@ -3434,6 +3521,22 @@ public final class Chapter1 implements Chapter {
 				// The way to the hangar: through the crawl way to flight control; there, the containers.
 				Vec3 me = s.local(D);
 				return me.z > -33.0 && me.x < 37.0 ? step.target() : at(D, 24.0, H + 1.4, -63.5);
+			}
+			case "m2.return" -> {
+				// Phase 27: the way back: to flight control's door, there to the crawl way's hatch,
+				// in the crawl way on to the hideout (the marker pointed at Kestrel through the walls).
+				if (inCrawlWay(s)) {
+					return HIDEOUT_MOUTH;
+				}
+
+				Vec3 me = s.local(D);
+
+				if (me.x < DestroyerInterior.HANGAR_X0 && me.z < -34.5 && me.z > -59.5) {
+					return at(D, 10.5, H + 0.6, -35.6);
+				}
+
+				return me.x >= DestroyerInterior.HANGAR_X0 && me.z < DestroyerInterior.HANGAR_Z1 ? at(D, DestroyerInterior.HANGAR_X0 + 0.5, H + 1.4, -38.5)
+						: step.target();
 			}
 			case "m5.cell1" -> {
 				return s.has("cell1.open") ? at(D, 27.0, H + 1.0, 0.0) : step.target();

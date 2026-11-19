@@ -1512,5 +1512,6 @@
   "sabercraft.hint.vent": "Maintenance shaft: hatches with a yellow and black frame and a small lamp can be used. %s on the hatch opens it, then just walk in. (Or hold %s.)",
   "sabercraft.hint.vent_inside": "In the shaft: %s crawls forward. %s on the open hatch behind you shuts it.",
   "sabercraft.hint.vent_short": "%s on the hatch: open it and crawl in",
-  "sabercraft.story.hint.bridge_sealed": "Security barrier: the turbolift to the bridge is sealed off. Nothing for you up there."
+  "sabercraft.story.hint.bridge_sealed": "Security barrier: the turbolift to the bridge is sealed off. Nothing for you up there.",
+  "sabercraft.story.hint.m2_side_hatch": "Kestrel over the comm: \"Good, you have it. If flight control gets too crowded, take the maintenance hatch low in the hangar's west wall, right beside the crate stack.\""
 }

@@ -513,6 +513,9 @@ public final class StorySession {
 				kept.saber = figure.saber;
 				kept.sight = figure.sight;
 				kept.ship = figure.ship;
+				// Phase 27: how far they hear, and whether they are a sentry, may change with the step too.
+				kept.hearing = figure.hearing;
+				kept.sentry = figure.sentry;
 				this.figures.add(kept);
 			} else {
 				this.figures.add(this.numbered(figure, time));
