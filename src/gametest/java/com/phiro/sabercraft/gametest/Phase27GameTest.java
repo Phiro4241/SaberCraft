@@ -22,6 +22,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Pose;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.phys.Vec3;
 
 import com.phiro.sabercraft.SaberCraft;
@@ -38,6 +39,8 @@ import com.phiro.sabercraft.interior.DestroyerInterior;
 import com.phiro.sabercraft.interior.ShipInteriors;
 import com.phiro.sabercraft.interior.Vents;
 import com.phiro.sabercraft.network.StoryActionPayload;
+import com.phiro.sabercraft.ship.ShipEntity;
+import com.phiro.sabercraft.ship.Starships;
 import com.phiro.sabercraft.story.Chapter1;
 import com.phiro.sabercraft.story.Figure;
 import com.phiro.sabercraft.story.Story;
@@ -112,6 +115,7 @@ public class Phase27GameTest implements FabricClientGameTest {
 
 			this.part("keys", this::keys);
 			this.part("brightness", this::brightness);
+			this.part("shipDamage", this::shipDamage);
 			this.part("difficulty", this::difficulty);
 			this.part("checkpoints", this::checkpoints);
 			this.part("oldSave", this::oldSave);
@@ -190,6 +194,80 @@ public class Phase27GameTest implements FabricClientGameTest {
 			ImmersionConfig.get().storyBrightness = was;
 			ImmersionConfig.save();
 		});
+	}
+
+	// --- 3: a hard landing costs hull by how fast the ship came down ---------------------------------------------------
+
+	private void shipDamage() {
+		this.server.runOnServer(s -> Starships.command(this.me(s), "board", "xwing"));
+		boolean aboard = false;
+
+		for (int i = 0; i < 100 && !aboard; i++) {
+			this.context.waitTick();
+			aboard = this.on(s -> this.me(s).getVehicle() instanceof ShipEntity);
+		}
+
+		check(aboard, "not aboard the X-Wing for the landings");
+
+		if (!aboard) {
+			return;
+		}
+
+		// Dropped straight down onto the ground, faster each time (the X-Wing: safe up to 0.5 blocks a
+		// tick, a wreck at 1.75).
+		double[] speeds = {0.75, 1.1, 1.45};
+		float[] lost = new float[speeds.length];
+		double[] measured = new double[speeds.length];
+		boolean resting = true;
+
+		for (int i = 0; i < speeds.length; i++) {
+			double speed = speeds[i];
+			this.server.runOnServer(s -> {
+				ShipEntity ship = (ShipEntity) this.me(s).getVehicle();
+				ship.setHealth(ship.getMaxHealth());
+				int ground = this.me(s).level().getHeight(Heightmap.Types.MOTION_BLOCKING, ship.getBlockX(), ship.getBlockZ());
+				ship.setPos(ship.getX(), ground + 16.0, ship.getZ());
+				ship.forceMotionForTest(new Vec3(0.0, -speed, 0.0));
+			});
+			boolean down = false;
+
+			for (int t = 0; t < 60 && !down; t++) {
+				this.context.waitTick();
+				down = this.on(s -> ((ShipEntity) this.me(s).getVehicle()).onGround());
+			}
+
+			this.context.waitTicks(2);
+			float landed = this.on(s -> ((ShipEntity) this.me(s).getVehicle()).getHealth());
+			int index = i;
+			this.server.runOnServer(s -> {
+				ShipEntity ship = (ShipEntity) this.me(s).getVehicle();
+				lost[index] = 1.0F - ship.getHealth() / ship.getMaxHealth();
+				measured[index] = ShipEntity.lastImpact();
+			});
+			// Resting on the ground, still pushed down: no more damage (past the crash pause).
+			this.context.waitTicks(30);
+			resting &= this.on(s -> ((ShipEntity) this.me(s).getVehicle()).getHealth()) == landed;
+			this.server.runOnServer(s -> ((ShipEntity) this.me(s).getVehicle()).forceMotionForTest(null));
+			this.context.waitTicks(5);
+		}
+
+		SaberCraft.LOGGER.info("PHASE27 SHIP DAMAGE: landing at {} blocks/tick: impact {}, hull lost {}", speeds, measured, lost);
+		check(resting, "a ship resting on the ground, pushed down, still takes damage");
+
+		for (int i = 0; i < speeds.length; i++) {
+			check(Math.abs(measured[i] - speeds[i]) < 0.1, "a landing at " + speeds[i] + " counts as " + measured[i]);
+		}
+
+		check(lost[0] > 0.05F && lost[0] < lost[1] && lost[1] < lost[2] && lost[2] < 1.0F, "the hull lost does not grow with the landing's speed");
+		this.server.runOnServer(s -> {
+			ShipEntity ship = (ShipEntity) this.me(s).getVehicle();
+			this.me(s).stopRiding();
+
+			if (ship != null) {
+				ship.discard();
+			}
+		});
+		this.context.waitTicks(10);
 	}
 
 	// --- 12: the difficulty ------------------------------------------------------------------------------------------
@@ -384,6 +462,16 @@ public class Phase27GameTest implements FabricClientGameTest {
 		this.context.waitTicks(140);
 		double z = this.on(s -> this.session(s).figure(officer).position().z);
 		check(z < -49.0, "the lured officer is not far enough from the door (z " + String.format(Locale.ROOT, "%.1f", z) + ")");
+		// How long the way past the door stays free: until he is back in the south half of his round.
+		int away = 140;
+
+		while (away < 900 && this.on(s -> this.session(s).figure(officer).position().z) < -46.0) {
+			this.context.waitTicks(10);
+			away += 10;
+		}
+
+		SaberCraft.LOGGER.info("PHASE27 MISSION 2: the lured officer kept away from the door's side for {} s", away / 20.0);
+		check(away >= 160, "the lured officer is back at the door's side too soon (" + away / 20.0 + " s)");
 		// A second noise at once: he only looks; a minute later he believes it again.
 		int[] again = this.on(s -> StoryTesting.noise(this.session(s), this.session(s).figure(officer).position().add(1.5, 0.0, 0.0)));
 		check(again[0] == 0, "the officer goes to see a second noise at once");
