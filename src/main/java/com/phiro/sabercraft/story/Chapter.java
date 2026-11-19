@@ -82,6 +82,15 @@ public interface Chapter {
 		return this.locked(session, ship, x, y, z) ? "sabercraft.story.hint.hatch_locked" : null;
 	}
 
+	/**
+	 * Phase 26: whether that hatch (plot space) is a way out the story means for a chase: it opens
+	 * while someone is after the player (other crawl ways do not, so nobody slips away before the
+	 * hunters' eyes). Only where and while the story offers it as the escape.
+	 */
+	default boolean escapeHatch(StorySession session, String ship, int x, int y, int z) {
+		return false;
+	}
+
 	/** Phase 24: whether one can speak to someone now (an alarm or a fight leaves no time for small talk). */
 	default boolean talksNow(StorySession session, Figure figure) {
 		return true;

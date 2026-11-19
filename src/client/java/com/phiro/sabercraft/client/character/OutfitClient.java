@@ -133,10 +133,31 @@ public final class OutfitClient {
 		});
 		ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> {
 			OTHERS.clear();
+			sentAt = -1000L;
+			pending = false;
 			sendChoice();
 		});
 		ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> OTHERS.clear());
+		// Phase 26: a choice that came too soon after the last one is sent once the server takes it.
+		net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents.END_CLIENT_TICK.register(client -> {
+			ticks++;
+
+			if (pending && ticks - sentAt >= RESEND_TICKS) {
+				sendChoice();
+			}
+		});
 	}
+
+	/**
+	 * Phase 26: the server takes a new choice at most every half second (OutfitSync). Two choices
+	 * quicker than that (the random button pressed twice, two cards clicked) left the server on the
+	 * first while this client showed the second: now the last one is sent as soon as it may be.
+	 * Client ticks, with a tick to spare.
+	 */
+	static final int RESEND_TICKS = 12;
+	private static long ticks;
+	private static long sentAt = -1000L;
+	private static boolean pending;
 
 	public static Path folder() {
 		return FabricLoader.getInstance().getConfigDir().resolve(SaberCraft.MOD_ID).resolve("outfits");
@@ -265,6 +286,12 @@ public final class OutfitClient {
 	}
 
 	private static void sendChoice() {
+		if (ticks - sentAt < RESEND_TICKS && ticks >= sentAt) {
+			pending = true;
+			return;
+		}
+
+		pending = false;
 		String choice = CharacterConfig.get().outfit;
 		// A profile of your own shows its base character to the others, if it has one.
 		Optional<Identifier> builtIn = builtIn(choice).or(() -> profile(choice).map(CustomProfiles.Profile::base)).map(Outfit::id);
@@ -272,7 +299,13 @@ public final class OutfitClient {
 		if (Minecraft.getInstance().getConnection() != null && ClientPlayNetworking.canSend(ChooseOutfitPayload.TYPE)) {
 			// Files of your own stay on this computer: others then see your plain skin.
 			ClientPlayNetworking.send(new ChooseOutfitPayload(builtIn));
+			sentAt = ticks;
 		}
+	}
+
+	/** Phase 26, for tests: whether a choice waits to be sent (the server's half second). */
+	public static boolean choicePendingForTest() {
+		return pending;
 	}
 
 	public static Optional<Outfit> builtIn(String choice) {

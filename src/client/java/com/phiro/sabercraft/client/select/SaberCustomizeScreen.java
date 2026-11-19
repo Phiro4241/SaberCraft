@@ -10,6 +10,7 @@ import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.resources.Identifier;
+import net.minecraft.util.RandomSource;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -43,6 +44,8 @@ public class SaberCustomizeScreen extends SaberMenuScreen {
 	private static final int STYLE_BUTTON_WIDTH = 58;
 	private static final int STYLE_ROW = 18;
 	private static final int STYLES_PER_ROW = 3;
+	/** Phase 26: the width of the random button. */
+	private static final int RANDOM_WIDTH = 56;
 
 	private final InteractionHand hand;
 	private Identifier hilt;
@@ -116,6 +119,13 @@ public class SaberCustomizeScreen extends SaberMenuScreen {
 
 		this.updateStyleButtons();
 
+		// Phase 26: a random saber (hilt, color and a style that fits the hilt), above the hilts:
+		// taken over at once, the menu stays open to roll again.
+		this.addRenderableWidget(Button.builder(Component.translatable("sabercraft.menu.random"), b -> this.randomSaber(RandomSource.create()))
+				.bounds(this.left + 10 + HILTS_PER_ROW * (HILT_ICON + 3) - 3 - RANDOM_WIDTH, this.top + 14, RANDOM_WIDTH, 16)
+				.tooltip(Tooltip.create(Component.translatable("sabercraft.customize.random.description")))
+				.build());
+
 		// Apply and cancel at the bottom of the color column; above them (Phase 12) the way back to
 		// a normal sword.
 		int columnWidth = 2 * COLOR_BUTTON_WIDTH + 4;
@@ -152,6 +162,64 @@ public class SaberCustomizeScreen extends SaberMenuScreen {
 		for (StyleButton entry : this.styleButtons) {
 			entry.button().visible = SaberVariant.styleFits(this.hilt, entry.style());
 		}
+	}
+
+	/**
+	 * Phase 26: a random saber: any hilt, any color, a fighting style that fits that hilt (the
+	 * staff styles only for the double-bladed hilt), never exactly the one chosen now. It is taken
+	 * over at once (sent as "Apply" sends a choice, and the server checks it as any other); the menu
+	 * stays open, so that one can roll again. Not in a story. Returns the saber chosen, or null.
+	 */
+	public @org.jspecify.annotations.Nullable SaberVariant randomSaber(RandomSource random) {
+		if (lockedInStory(Tab.SABER)) {
+			this.status = Component.translatable("sabercraft.menu.story.locked_tab");
+			return null;
+		}
+
+		List<SaberHilt> hilts = List.copyOf(SaberHilts.all().values());
+		SaberVariant pick = null;
+
+		for (int i = 0; i < 12; i++) {
+			SaberHilt hiltPick = hilts.get(random.nextInt(hilts.size()));
+			Identifier colorPick = SaberVariant.COLORS.get(random.nextInt(SaberVariant.COLORS.size()));
+			List<Identifier> styles = SaberVariant.STYLES.stream().filter(id -> SaberVariant.styleFits(hiltPick.id(), id)).toList();
+			Identifier stylePick = styles.get(random.nextInt(styles.size()));
+			pick = new SaberVariant(hiltPick.id(), colorPick, stylePick);
+
+			if (!(hiltPick.id().equals(this.hilt) && colorPick.equals(this.color) && stylePick.equals(this.style))) {
+				break;
+			}
+		}
+
+		this.hilt = pick.hilt();
+		this.color = pick.color();
+		this.style = pick.style();
+		this.status = Component.empty();
+		this.updateStyleButtons();
+
+		if (this.minecraft != null) {
+			switch (SaberSelection.apply(this.minecraft, this.hand, pick)) {
+				case SENT, CREATIVE -> {
+				}
+				case UNSUPPORTED -> this.status = Component.translatable("sabercraft.customize.unsupported");
+				case NO_SABER -> this.status = Component.translatable("sabercraft.customize.no_saber");
+			}
+		}
+
+		randoms++;
+		return pick;
+	}
+
+	private static int randoms;
+
+	/** Phase 26: for the tests: how many random sabers were taken over. */
+	public static int randomsForTest() {
+		return randoms;
+	}
+
+	/** Phase 26: what is chosen now (tests). */
+	public SaberVariant choiceForTest() {
+		return new SaberVariant(this.hilt, this.color, this.style);
 	}
 
 	private void selectColor(Identifier id) {

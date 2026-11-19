@@ -44,8 +44,25 @@ import com.phiro.sabercraft.ship.Starships;
  * blocks), so every player sees and bumps into the same, with or without the mod.
  */
 public final class InteriorSystems {
-	/** How near (blocks, along the way through) someone opens a door. */
-	static final double DOOR_REACH = 2.6;
+	/**
+	 * How near (blocks, along the way through) someone coming towards a door opens it. Phase 26:
+	 * 2.6 before; the doors opened rather early (a little less now, still in time for a run).
+	 */
+	static final double DOOR_REACH = 2.15;
+	/**
+	 * Phase 26: how near (blocks, along the way through) a player opens a door without coming
+	 * towards it (standing in front of it, stepping sideways into it).
+	 */
+	static final double DOOR_NEAR = 0.9;
+	/**
+	 * Phase 26: the same for the people of a story: only right in the doorway. Walking past a door
+	 * (a patrol along a corridor) no longer opens it; walking towards it does.
+	 */
+	static final double DOOR_NEAR_FIGURE = 0.6;
+	/** Phase 26: blocks someone must come nearer to the door's plane in two ticks to count as coming towards it. */
+	static final double DOOR_APPROACH = 0.025;
+	/** Phase 26: ticks a door stays open at least once it opened (no snapping shut on someone's back, no flapping). */
+	static final int DOOR_HOLD = 16;
 
 	private InteriorSystems() {
 	}
@@ -66,6 +83,8 @@ public final class InteriorSystems {
 			for (Map.Entry<BlockPos, InteriorPlan> plot : ShipInteriors.plotsInUse().entrySet()) {
 				doors(interiors, plot.getKey(), plot.getValue(), false);
 			}
+
+			doorsSeen();
 		}
 
 		InteriorJump.tick(server, interiors);
@@ -79,11 +98,41 @@ public final class InteriorSystems {
 	public static final float DOOR_OPEN_VOLUME = 0.55F;
 	public static final float DOOR_CLOSE_VOLUME = 0.32F;
 
+	/** Phase 26: where everyone near the doors stood when they were last looked at (two ticks ago). */
+	private static final Map<String, Vec3> WAS = new HashMap<>();
+	/** Phase 26: the positions seen this time (they become {@link #WAS} after all plots). */
+	private static final Map<String, Vec3> NOW = new HashMap<>();
+	/** Phase 26: until when (game time) each open door stays open at least (its first cell, world space). */
+	private static final Map<Long, Long> HELD_OPEN = new HashMap<>();
+	/** Phase 26: how often a door opened or shut (with its sound), for tests. */
+	private static int doorMoves;
+
 	/** Opens the doors someone is near, closes the others (or opens all of them, for tests). */
 	static void doors(ServerLevel level, BlockPos origin, InteriorPlan plan, boolean allOpen) {
+		// Phase 26: everyone who might come to a door here, with where they were before.
+		List<Mover> movers = allOpen ? List.of() : movers(level, origin);
+		long now = level.getGameTime();
+
 		for (Door door : plan.doors()) {
+			long key = origin.offset(door.x0(), door.y0(), door.z0()).asLong();
+			boolean isOpen = level.getBlockState(origin.offset(door.x0(), door.y0(), door.z0())).isAir();
+			boolean wanted = allOpen || wanted(origin, door, movers, isOpen);
+			Long hold = HELD_OPEN.get(key);
+
+			if (!wanted && isOpen && hold != null && now < hold) {
+				// Phase 26: just opened: it stays open a moment (someone in the doorway, or about to be).
+				wanted = true;
+			}
+
 			// Phase 19: a story can keep a door shut (until a card, a console, a droid opens it).
-			boolean open = allOpen || near(level, origin, door) && !com.phiro.sabercraft.story.Story.locked(origin, door.x0(), door.y0(), door.z0());
+			boolean open = allOpen || wanted && !com.phiro.sabercraft.story.Story.locked(origin, door.x0(), door.y0(), door.z0());
+
+			if (open && !isOpen) {
+				HELD_OPEN.put(key, now + DOOR_HOLD);
+			} else if (!open) {
+				HELD_OPEN.remove(key);
+			}
+
 			boolean changed = false;
 
 			for (int x = door.x0(); x <= door.x1(); x++) {
@@ -104,6 +153,7 @@ public final class InteriorSystems {
 			}
 
 			if (changed && !allOpen) {
+				doorMoves++;
 				Vec3 middle = middle(origin, door);
 				// Phase 17: closing a little quieter than opening.
 				level.playSound(null, middle.x, middle.y, middle.z, ShipInteriors.sound("ship.door"), SoundSource.BLOCKS, open ? DOOR_OPEN_VOLUME : DOOR_CLOSE_VOLUME,
@@ -112,14 +162,109 @@ public final class InteriorSystems {
 		}
 	}
 
-	/** Whether anyone (not a spectator) stands within reach of the door, on either side. */
-	private static boolean near(ServerLevel level, BlockPos origin, Door door) {
+	/**
+	 * Phase 26: someone who may come to a door: a player or one of a story's people, where they
+	 * stand now and where they stood two ticks before ({@code null}: just came).
+	 */
+	record Mover(boolean player, Vec3 at, @Nullable Vec3 was) {
+	}
+
+	/** Phase 26: everyone in a plot who may open its doors (players not spectating, the story's people). */
+	private static List<Mover> movers(ServerLevel level, BlockPos origin) {
+		List<Mover> list = new ArrayList<>();
+		// (A plot reaches east of its corner, and north and south of it: the Star Destroyer's hangar
+		// deck lies at negative z.)
+		int half = ShipInteriors.SPACING / 2;
+		AABB plot = new AABB(origin.getX() - 16, level.getMinY(), origin.getZ() - half, origin.getX() + ShipInteriors.SPACING - 16, level.getMaxY(),
+				origin.getZ() + half);
+
+		for (net.minecraft.world.entity.player.Player player : level.getEntitiesOfClass(net.minecraft.world.entity.player.Player.class, plot,
+				player -> !player.isSpectator())) {
+			String key = player.getStringUUID();
+			Vec3 at = player.position();
+			NOW.put(key, at);
+			list.add(new Mover(true, at, WAS.get(key)));
+		}
+
+		// Phase 20: the people of a story walk through doors too (chasing, sent somewhere).
+		com.phiro.sabercraft.story.Story.figuresAt(origin, (key, at) -> {
+			NOW.put(key, at);
+			list.add(new Mover(false, at, WAS.get(key)));
+		});
+		return list;
+	}
+
+	/**
+	 * Whether someone wants through that door now (on either side, before its opening: not off to
+	 * the side of it). Phase 26: only who comes towards it, or stands right in it; a player in front
+	 * of an open door keeps it open while not walking away. One walking past it (along the wall, a
+	 * patrol in the corridor) or away from it does not open it.
+	 */
+	static boolean wanted(BlockPos origin, Door door, List<Mover> movers, boolean isOpen) {
 		AABB box = new AABB(origin.getX() + door.x0(), origin.getY() + door.y0() - 0.5, origin.getZ() + door.z0(), origin.getX() + door.x1() + 1,
 				origin.getY() + door.y1() + 1, origin.getZ() + door.z1() + 1)
 				.inflate(door.alongX() ? DOOR_REACH : 0.3, 0.0, door.alongX() ? 0.3 : DOOR_REACH);
-		return !level.getEntitiesOfClass(net.minecraft.world.entity.player.Player.class, box, player -> !player.isSpectator()).isEmpty()
-				// Phase 20: the people of a story walk through doors too (chasing, sent somewhere).
-				|| com.phiro.sabercraft.story.Story.figureNear(origin, box);
+		double plane = (door.alongX() ? origin.getX() : origin.getZ()) + door.plane();
+
+		for (Mover mover : movers) {
+			if (!box.contains(mover.at().add(0.0, 0.5, 0.0))) {
+				continue;
+			}
+
+			double along = (door.alongX() ? mover.at().x : mover.at().z) - plane;
+			double distance = Math.abs(along);
+
+			if (distance <= (mover.player() ? DOOR_NEAR : DOOR_NEAR_FIGURE)) {
+				return true;
+			}
+
+			Vec3 was = mover.was();
+
+			if (was == null || was.distanceTo(mover.at()) > 1.5) {
+				// Just came (a player stepping out of a lift, put there): as if walking up to it.
+				if (mover.player()) {
+					return true;
+				}
+
+				continue;
+			}
+
+			double before = Math.abs((door.alongX() ? was.x : was.z) - plane);
+			double closer = before - distance;
+
+			if (closer > DOOR_APPROACH || mover.player() && isOpen && closer > -DOOR_APPROACH) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	/** Phase 26: after all plots: what was seen now is what was seen before, next time. */
+	private static void doorsSeen() {
+		WAS.clear();
+		WAS.putAll(NOW);
+		NOW.clear();
+	}
+
+	/** Phase 26, for tests: how often a door opened or shut so far. */
+	public static int doorMovesForTest() {
+		return doorMoves;
+	}
+
+	/**
+	 * Phase 26, for tests: whether one person (a player or one of a story's people) at {@code at},
+	 * two ticks before at {@code was} (null: just came), wants through that door of a plot whose
+	 * corner is at the world's origin.
+	 */
+	public static boolean wantedForTest(Door door, boolean player, Vec3 at, @Nullable Vec3 was, boolean isOpen) {
+		return wanted(BlockPos.ZERO, door, List.of(new Mover(player, at, was)), isOpen);
+	}
+
+	/** Phase 26, for tests: the doors of a plot looked at now (as every second tick). */
+	public static void doorsForTest(ServerLevel level, BlockPos origin, InteriorPlan plan) {
+		doors(level, origin, plan, false);
+		doorsSeen();
 	}
 
 	static Vec3 middle(BlockPos origin, Door door) {

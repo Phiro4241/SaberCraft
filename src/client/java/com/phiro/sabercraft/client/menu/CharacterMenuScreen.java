@@ -15,6 +15,7 @@ import net.minecraft.client.gui.components.CycleButton;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.screens.inventory.InventoryScreen;
 import net.minecraft.network.chat.Component;
+import net.minecraft.util.RandomSource;
 import net.minecraft.util.Util;
 import net.minecraft.world.InteractionHand;
 
@@ -43,6 +44,8 @@ public class CharacterMenuScreen extends SaberMenuScreen {
 	private static final int CARD_HEIGHT = 22;
 	private static final int CARD_GAP = 2;
 	private static final int GRID_WIDTH = 2 * CARD_WIDTH + CARD_GAP;
+	/** Phase 26: the width of the random button beside the two lists. */
+	private static final int RANDOM_WIDTH = 42;
 	/** Which list is shown: the film characters (Phase 8) or the original outfits. Kept while the game runs. */
 	private static boolean showCharacters = true;
 	private final List<Choice> choices = new ArrayList<>();
@@ -67,7 +70,8 @@ public class CharacterMenuScreen extends SaberMenuScreen {
 		this.choices.clear();
 		OutfitClient.reloadCharacterSkins();
 		CustomProfiles.reload();
-		int half = GRID_WIDTH / 2 - 1;
+		// Phase 26: the two lists and, beside them, a random pick from the list shown.
+		int half = (GRID_WIDTH - RANDOM_WIDTH - 4) / 2;
 		Button charactersTab = this.addRenderableWidget(Button.builder(Component.translatable("sabercraft.menu.character.characters"), b -> this.showList(true))
 				.bounds(this.left + 10, this.top + 20, half, 20)
 				.tooltip(Tooltip.create(Component.translatable("sabercraft.menu.character.characters.description")))
@@ -75,6 +79,11 @@ public class CharacterMenuScreen extends SaberMenuScreen {
 		Button outfitsTab = this.addRenderableWidget(Button.builder(Component.translatable("sabercraft.menu.character.outfits"), b -> this.showList(false))
 				.bounds(this.left + 12 + half, this.top + 20, half, 20)
 				.tooltip(Tooltip.create(Component.translatable("sabercraft.menu.character.outfits.description")))
+				.build());
+		this.addRenderableWidget(Button.builder(Component.translatable("sabercraft.menu.random"), b -> this.randomPick(RandomSource.create()))
+				.bounds(this.left + 10 + GRID_WIDTH - RANDOM_WIDTH, this.top + 20, RANDOM_WIDTH, 20)
+				.tooltip(Tooltip.create(Component.translatable(showCharacters ? "sabercraft.menu.character.random.description"
+						: "sabercraft.menu.character.random_outfit.description")))
 				.build());
 		charactersTab.active = !showCharacters;
 		outfitsTab.active = showCharacters;
@@ -220,6 +229,32 @@ public class CharacterMenuScreen extends SaberMenuScreen {
 		}));
 		button.setTooltip(Tooltip.create(description));
 		this.choices.add(new Choice(value, button));
+	}
+
+	/**
+	 * Phase 26: a random character from the list shown (the film characters, or the original
+	 * outfits), never the one worn now; it is put on as if its card were clicked (a film character
+	 * brings its saber along when one is in hand). Not in a story (the menu is the story's then, and
+	 * the server keeps the story's look anyway). Returns the outfit chosen, or null.
+	 */
+	public @Nullable Outfit randomPick(RandomSource random) {
+		if (lockedInStory(Tab.CHARACTER)) {
+			this.status = Component.translatable("sabercraft.menu.story.locked_tab");
+			return null;
+		}
+
+		List<Outfit> list = showCharacters ? Outfit.CHARACTERS : Outfit.OUTFITS;
+		String current = CharacterConfig.get().outfit;
+		List<Outfit> others = list.stream().filter(o -> !o.id().toString().equals(current)).toList();
+		Outfit pick = (others.isEmpty() ? list : others).get(random.nextInt((others.isEmpty() ? list : others).size()));
+		OutfitClient.choose(pick.id().toString());
+		this.status = Component.translatable("sabercraft.menu.character.random_chosen", Component.translatable(pick.translationKey()));
+
+		if (pick.character() && this.minecraft != null && this.minecraft.player != null && SaberSelection.saberHand(this.minecraft.player) != null) {
+			this.takeSaber();
+		}
+
+		return pick;
 	}
 
 	private Optional<Outfit> chosen() {

@@ -38,6 +38,7 @@ import com.phiro.sabercraft.droid.DroidEntity;
 import com.phiro.sabercraft.droid.DroidType;
 import com.phiro.sabercraft.droid.Droids;
 import com.phiro.sabercraft.interior.Crew;
+import com.phiro.sabercraft.interior.DestroyerInterior;
 import com.phiro.sabercraft.interior.ShipInteriors;
 import com.phiro.sabercraft.network.StoryActionPayload;
 import com.phiro.sabercraft.network.StoryCuePayload;
@@ -76,6 +77,11 @@ public final class Story {
 	public static final byte CUE_CHECKPOINT = 10;
 	/** Phase 21: the duel's moments for the HUD (who: hit, hurt, blocked, parried, phase, meter, focus_on/off, over). */
 	public static final byte CUE_DUEL = 11;
+	/**
+	 * Phase 26: a short effect the client shows somewhere (who: its name, e.g. {@code field_flicker};
+	 * value: how long, ticks; points: where, world space).
+	 */
+	public static final byte CUE_EFFECT = 12;
 
 	/** How far one reaches to use a thing or speak to someone (blocks). */
 	static final double REACH = 4.5;
@@ -404,6 +410,28 @@ public final class Story {
 		session.dirty = true;
 	}
 
+	/**
+	 * Phase 26: the people of the story walking in the ship that has that plot corner (not those
+	 * lying beaten): a stable key and where they stand (world space, the feet), for the doors to
+	 * see who comes towards them.
+	 */
+	public static void figuresAt(BlockPos origin, java.util.function.BiConsumer<String, Vec3> out) {
+		StorySession session = at(origin);
+
+		if (session == null) {
+			return;
+		}
+
+		String ship = origin.equals(session.falcon) ? FALCON : DESTROYER;
+		Vec3 corner = Vec3.atLowerCornerOf(origin);
+
+		for (Figure figure : session.figures) {
+			if (ship.equals(figure.ship) && figure.mode != Figure.DOWN) {
+				out.accept(session.player + "/" + figure.id, figure.position().add(corner));
+			}
+		}
+	}
+
 	/** Phase 20: whether one of the people of the story whose ship has that plot corner is in a box (world space): doors open for them. */
 	public static boolean figureNear(BlockPos origin, AABB box) {
 		StorySession session = at(origin);
@@ -470,6 +498,32 @@ public final class Story {
 		return true;
 	}
 
+	private static int liftsRefused;
+
+	/**
+	 * Phase 26: whether the story keeps a lift shut for this player now: the one up to the command
+	 * deck (and the bridge) while the finale runs (see {@link Chapter1#bridgeClosed}). Down it
+	 * always goes, so nobody who was up there is shut in. The player is told why, with a short buzz.
+	 */
+	public static boolean liftRefused(ServerPlayer player, Vec3 arrival) {
+		StorySession session = SESSIONS.get(player.getUUID());
+
+		if (session == null || !DESTROYER.equals(session.here) || !Chapter1.bridgeClosed(session) || arrival.y < DestroyerInterior.DECK - 4) {
+			return false;
+		}
+
+		liftsRefused++;
+		session.hint("sabercraft.story.hint.lift_locked");
+		player.connection.send(new net.minecraft.network.protocol.game.ClientboundSoundPacket(ShipInteriors.sound("story.door_lock"),
+				net.minecraft.sounds.SoundSource.NEUTRAL, player.getX(), player.getY(), player.getZ(), 0.6F, 0.8F, player.getRandom().nextLong()));
+		return true;
+	}
+
+	/** For the tests: how often the lift to the bridge stayed shut. */
+	public static int liftsRefusedForTest() {
+		return liftsRefused;
+	}
+
 	/** Whether that door of a plot is locked by a story. */
 	public static boolean locked(BlockPos origin, int x, int y, int z) {
 		StorySession session = at(origin);
@@ -504,7 +558,10 @@ public final class Story {
 		String ship = origin.equals(session.falcon) ? FALCON : DESTROYER;
 		String why = null;
 
-		if (room != null && DESTROYER.equals(ship) && session.pursued() && session.player.equals(player.getUUID())) {
+		// Phase 26: a crawl way the story means as the way out of a chase (the reactor's maintenance
+		// chamber) opens with the hunters behind one: that is what it is for.
+		if (room != null && DESTROYER.equals(ship) && session.pursued() && session.player.equals(player.getUUID())
+				&& !session.chapter.escapeHatch(session, ship, cell.getX(), cell.getY(), cell.getZ())) {
 			Vec3 from = player.position().subtract(Vec3.atCenterOf(origin.offset(cell)));
 
 			if (from.x * room.getStepX() + from.z * room.getStepZ() > 0.0) {
@@ -1348,6 +1405,12 @@ public final class Story {
 
 		if (session != null) {
 			Mission.Step step = session.step();
+
+			// Phase 26: the Falcon waits under the hangar's field while one escapes (drawn by the client).
+			if (Chapter1.falconWaits(session)) {
+				known.add(Chapter1.FALCON_WAITING);
+			}
+
 			// Phase 22: after the chapter no objective is left: the client shows that it is over.
 			objective = session.has(Chapter1.CHAPTER_DONE) ? "sabercraft.story.obj.chapter_done" : step.objective();
 
@@ -1437,6 +1500,8 @@ public final class Story {
 			// They stop and look at the player (unless a script sends them off, or they fight).
 			partner.mode = Figure.HELD;
 			partner.target = session.local(partner.ship);
+			// Phase 26: and talk with them (standing: with their hands; on a seat: sitting).
+			partner.talking = true;
 		}
 
 		ServerPlayNetworking.send(player, new StoryDialogPayload(true, line.speaker(), line.radio(), line.key(dialog), answers, dialog.id + "." + line.id()));

@@ -1178,4 +1178,76 @@ public final class MeshAudit {
 		found.add(0, poses + " poses, " + inBody + " with the staff in her body");
 		return found;
 	}
+
+	/** Phase 26: what Kestrel is drawn as in the story's plot with that corner now (a trooper: in the second armour). */
+	public static String kestrelLook(net.minecraft.core.BlockPos origin) {
+		return StoryModels.kestrelForTest(origin);
+	}
+
+	/**
+	 * Phase 26: her Inquisitor's saber (grip, ring, both blades) in every pose of the duel as above,
+	 * the ring's rush and its wind-up included, at eight angles of the ring and both still and
+	 * spinning (the whole disc swept): the poses in which a part of it lies in her body after it is
+	 * kept clear, and how far it had to be moved out at most. The first line counts them.
+	 */
+	public static List<String> ringInBody() {
+		List<String> found = new ArrayList<>();
+		float shoulder = CrewModels.BODY - 0.06F;
+		int[] attacks = {0, CrewModels.OVERHEAD, CrewModels.SWEEP, CrewModels.THRUST, CrewModels.CROUCH, CrewModels.STAGGER};
+		int[] reacts = {0, CrewModels.FLINCH, CrewModels.HEAVY, CrewModels.CLASH, CrewModels.PARRY, CrewModels.LOCK, CrewModels.THROW_WIND,
+				CrewModels.RING};
+		float[] steps = {0.0F, 0.5F, 1.0F};
+		float[] reactSteps = {0.0F, 0.25F, 0.5F, 0.75F, 1.0F};
+		float[] spins = {0.0F, 0.125F, 0.25F, 0.375F, 0.5F, 0.625F, 0.75F, 0.875F};
+		float[] twins = {0.0F, 0.5F, 1.0F};
+		int poses = 0;
+		int inBody = 0;
+		float most = 0.0F;
+
+		for (int attack : attacks) {
+			for (float raise : steps) {
+				for (float swing : steps) {
+					for (int react : reacts) {
+						for (float reactP : react == 0 ? new float[] {0.0F} : reactSteps) {
+							for (float spin : spins) {
+								for (float twin : twins) {
+									for (int spinning = 0; spinning <= 1; spinning++) {
+										for (int i = 0; i < 8; i++) {
+											float angle = Mth.TWO_PI * i / 8.0F;
+											CrewModels.Gear gear = new CrewModels.Gear(false, 0xFFFF2020, true, raise, swing, false, true, attack, 0.0F, 0.0F,
+													0.0F, 0.0F, spin, react, reactP, false, false, twin, true, angle, spinning, 0.0F);
+											float[] hilt = CrewModels.saberHold(shoulder, gear);
+											float[] staff = twin > 0.0F ? CrewModels.staffHold(shoulder, gear, hilt) : null;
+											InquisitorSaber.Hold held = CrewModels.ringHold(shoulder, gear,
+													staff != null ? InquisitorSaber.centred(staff) : InquisitorSaber.fromEmitter(hilt));
+											boolean second = Mth.clamp((twin - 0.35F) / 0.65F, 0.0F, 1.0F) > 0.0F;
+											InquisitorSaber.Hold clear = InquisitorSaber.clear(held, angle, second, shoulder, spinning == 1);
+											poses++;
+											float dx = clear.c()[0] - held.c()[0];
+											float dz = clear.c()[2] - held.c()[2];
+											most = Math.max(most, Mth.sqrt(dx * dx + dz * dz));
+
+											if (spinning == 1 ? InquisitorSaber.discInBody(clear, second, shoulder)
+													: InquisitorSaber.inBody(clear, angle, second, shoulder)) {
+												inBody++;
+
+												if (found.size() < 40) {
+													found.add(String.format(java.util.Locale.ROOT,
+															"attack %d raise %.2f swing %.2f react %d/%.2f spin %.3f twin %.2f angle %d spinning %d", attack, raise,
+															swing, react, reactP, spin, twin, i, spinning));
+												}
+											}
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+
+		found.add(0, poses + " poses, " + inBody + " with the saber in her body, moved out at most " + String.format(java.util.Locale.ROOT, "%.2f", most));
+		return found;
+	}
 }

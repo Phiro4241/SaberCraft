@@ -85,7 +85,14 @@ public final class DestroyerVisuals implements InteriorVisuals {
 				new SoundSpot("ship.imperial_consoles", CX + 0.5, DECK + 1.5, WINDOW_Z + 3, 0.4F, 10.0F),
 				new SoundSpot("ship.imperial_consoles", 66.0, DECK + 1.5, 107.5, 0.45F, 10.0F),
 				new SoundSpot("ship.imperial_consoles", CONTROL_X0 + 6, HANGAR + 1.5, -47.0, 0.45F, 10.0F),
-				new SoundSpot("ship.hangar_air", CX + 0.5, HANGAR + 8, -40.0, 0.6F, 40.0F));
+				new SoundSpot("ship.hangar_air", CX + 0.5, HANGAR + 8, -40.0, 0.6F, 40.0F),
+				// Phase 26: the corridors' own air (the handlers' breath, power in the walls, now and
+				// then something far off): the hangar corridor, the detention block, the way to the
+				// lab, the command corridor.
+				new SoundSpot("ship.corridor_air", CX + 0.5, HANGAR + 3, -9.0, 0.35F, 9.0F),
+				new SoundSpot("ship.corridor_air", 31.0, HANGAR + 3, 5.0, 0.3F, 7.0F),
+				new SoundSpot("ship.corridor_air", LAB_DOOR_X0 + 1.0, REACTOR_BOTTOM + 2, LAB_WALL - 3.0, 0.3F, 7.0F),
+				new SoundSpot("ship.corridor_air", CX + 0.5, DECK + 3, 108.0, 0.35F, 10.0F));
 	}
 
 	@Override

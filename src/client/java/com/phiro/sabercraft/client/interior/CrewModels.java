@@ -64,8 +64,20 @@ final class CrewModels {
 	 * through 0..1, lit or not), lying beaten on the floor, a robe's skirt over the legs.
 	 */
 	record Gear(boolean lamp, int saber, boolean lit, float raise, float swing, boolean down, boolean skirt, int attack, float aim, float crouch, float lean,
-			float hand, float spin, int react, float reactP, boolean pistol, boolean unarmed, float twin) {
+			float hand, float spin, int react, float reactP, boolean pistol, boolean unarmed, float twin, boolean inquisitor, float ring, float blur,
+			float flare) {
 		static final Gear NONE = new Gear(false, 0, false, 0.0F, 0.0F, false, false, 0, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F);
+
+		/**
+		 * Phase 24's gear (a saber staff's second blade). Phase 26: {@code inquisitor}: the saber is
+		 * an Inquisitor's ({@link InquisitorSaber}): its ring turned by {@code ring} (radians),
+		 * spinning fast enough to blur ({@code blur} 0..1), its blades flaring ({@code flare} 0..1).
+		 */
+		Gear(boolean lamp, int saber, boolean lit, float raise, float swing, boolean down, boolean skirt, int attack, float aim, float crouch, float lean,
+				float hand, float spin, int react, float reactP, boolean pistol, boolean unarmed, float twin) {
+			this(lamp, saber, lit, raise, swing, down, skirt, attack, aim, crouch, lean, hand, spin, react, reactP, pistol, unarmed, twin, false, 0.0F, 0.0F,
+					0.0F);
+		}
 
 		/** Phase 23's gear (one blade). Phase 24: {@code twin} is how far the second blade of a saber staff is out (0..1). */
 		Gear(boolean lamp, int saber, boolean lit, float raise, float swing, boolean down, boolean skirt, int attack, float aim, float crouch, float lean,
@@ -99,6 +111,10 @@ final class CrewModels {
 	/** Phase 25: her saber staff drawn back to be thrown (twirling over the shoulder), and away in flight (the hand out after it). */
 	static final int THROW_WIND = 11;
 	static final int THROWN = 12;
+	/** Phase 26: the ring's rush (as the server's {@code Figure.RING}): the ring spins up, then she drives in behind it. */
+	static final int RING = 13;
+	/** Phase 26: how much of the ring's rush is its spinning up (as the server's wind-up of 18 of its 42 ticks). */
+	static final float RING_WIND = 18.0F / 42.0F;
 
 	/** Phase 23: how far a reaction throws the body back (degrees; negative is forward) at that point of it. */
 	static float reactLean(Gear gear, float t, int seed) {
@@ -285,6 +301,17 @@ final class CrewModels {
 		if (thrown) {
 			hilt = null;
 		}
+
+		// Phase 26: her Inquisitor's saber: the ring where the single blade's emitter was, or in the
+		// middle of where the staff was held; kept out of her body at the ring's angle now.
+		InquisitorSaber.Hold ring = null;
+		float second = Mth.clamp((gear.twin() - 0.35F) / 0.65F, 0.0F, 1.0F);
+
+		if (gear.inquisitor() && !thrown && (staff != null || hilt != null)) {
+			ring = ringHold(shoulder, gear, staff != null ? InquisitorSaber.centred(staff) : InquisitorSaber.fromEmitter(hilt));
+			ring = InquisitorSaber.clear(ring, gear.ring(), second > 0.0F, shoulder, gear.blur() > 0.0F);
+		}
+
 		float fling = gear.down() ? 0.0F : reactFling(gear);
 		boolean pistol = gear.pistol() && !gear.down() && !sit;
 
@@ -293,7 +320,12 @@ final class CrewModels {
 			float[] hand = hilt != null ? new float[] {hilt[0] - hilt[3] * (side < 0 ? 0.05F : 0.17F), hilt[1] - hilt[4] * (side < 0 ? 0.05F : 0.17F),
 					hilt[2] - hilt[5] * (side < 0 ? 0.05F : 0.17F)} : hand(crew, side, shoulder, swing, t, seed, rifle, walking);
 
-			if (staff != null) {
+			if (ring != null) {
+				// Phase 26: both hands on the grip behind the ring, the right nearer it (drawn back to
+				// throw: the right hand alone).
+				hand = side < 0 ? ring.grip(InquisitorSaber.HAND)
+						: gear.react() == THROW_WIND ? hand(crew, side, shoulder, 0.0F, t, seed, false, false) : ring.grip(InquisitorSaber.HAND_2);
+			} else if (staff != null) {
 				// Phase 25: the right hand on the half of the staff to her right, the left on the other
 				// (drawn back to throw: the right hand alone, at its middle).
 				float k = staff[3] <= 0.0F ? 1.0F : -1.0F;
@@ -331,7 +363,7 @@ final class CrewModels {
 				hand = new float[] {Mth.lerp(fling, hand[0], sx + side * 0.32F), Mth.lerp(fling, hand[1], shoulder + 0.05F), Mth.lerp(fling, hand[2], -0.12F)};
 			}
 
-			if (hilt != null && side > 0 && gear.hand() > 0.0F) {
+			if ((hilt != null || ring != null) && side > 0 && gear.hand() > 0.0F) {
 				// Phase 21: the free hand out towards the player (the Force push coming).
 				float k = Mth.clamp(gear.hand(), 0.0F, 1.0F);
 				hand = new float[] {Mth.lerp(k, hand[0], sx * 0.6F), Mth.lerp(k, hand[1], shoulder + 0.02F), Mth.lerp(k, hand[2], 0.62F)};
@@ -353,12 +385,17 @@ final class CrewModels {
 			pistol(b, at[0], at[1], at[2], dir[0], dir[1], dir[2]);
 		}
 
-		if (staff != null) {
+		if (ring != null) {
+			InquisitorSaber.draw(b, ring, gear.ring(), 1.0F, second, gear.saber(), gear.blur(), gear.flare());
+		} else if (staff != null) {
 			saberStaff(b, staff, gear.saber(), gear.twin());
 		} else if (hilt != null) {
 			lightsaber(b, hilt, gear.saber(), 0.0F);
 		} else if (thrown) {
 			// (In flight: drawn where it flies, see StoryModels.)
+		} else if (gear.inquisitor() && !gear.unarmed()) {
+			// Phase 26: her Inquisitor's saber carried on her back before the duel.
+			InquisitorSaber.carried(b, shoulder);
 		} else if (gear.saber() != 0 && !gear.unarmed()) {
 			// The hilt at the belt.
 			b.fit(InteriorAtlas.IMP_BLACK);
@@ -526,6 +563,9 @@ final class CrewModels {
 	static final int STAGGER = 6;
 	static final int SPIN = 7;
 
+	/** Phase 26: the Schattenklinge's saber is an Inquisitor's ({@link InquisitorSaber}): thrown and struck from her hand too. */
+	static final boolean INQUISITOR = true;
+
 	/** Phase 25: the half length of her saber staff, and the length of each blade. */
 	static final float STAFF_HALF = 0.5F;
 	static final float STAFF_BLADE = 0.95F;
@@ -603,8 +643,9 @@ final class CrewModels {
 			out[i + 3] = Mth.lerp(w, Mth.lerp(r, guardD[i], raisedD[i]), throughD[i]);
 		}
 
-		if (gear.react() == THROW_WIND) {
+		if (gear.react() == THROW_WIND && !gear.inquisitor()) {
 			// Drawn back over the right shoulder, twirling in her hand faster and faster.
+			// (Phase 26: an Inquisitor's saber is not twirled: its ring spins, see ringHold.)
 			float p = Mth.clamp(gear.reactP(), 0.0F, 1.0F);
 			float k = Mth.clamp(p * 2.5F, 0.0F, 1.0F);
 			float a = p * p * 6.0F * Mth.PI;
@@ -617,8 +658,9 @@ final class CrewModels {
 			}
 		}
 
-		if (gear.spin() > 0.0F) {
+		if (gear.spin() > 0.0F && !gear.inquisitor()) {
 			// The spin: twirled twice round before her while she turns once round.
+			// (Phase 26: an Inquisitor's saber is not twirled by the arm: its ring spins round the grip.)
 			float a = gear.spin() * 4.0F * Mth.PI;
 			float c = Mth.cos(a);
 			float si = Mth.sin(a);
@@ -643,8 +685,10 @@ final class CrewModels {
 
 		if (single != null && twin < 1.0F) {
 			// The second blade comes out: from the single blade's hold (the staff's top at its emitter) to the staff's.
+			// (Phase 26: an Inquisitor's saber: from where its ring was behind the single blade's emitter.)
 			float e = twin * twin * (3.0F - 2.0F * twin);
-			float[] from = {single[0] - single[3] * STAFF_HALF, single[1] - single[4] * STAFF_HALF, single[2] - single[5] * STAFF_HALF};
+			float back = gear.inquisitor() ? InquisitorSaber.EMIT : STAFF_HALF;
+			float[] from = {single[0] - single[3] * back, single[1] - single[4] * back, single[2] - single[5] * back};
 
 			for (int i = 0; i < 3; i++) {
 				out[i] = Mth.lerp(e, from[i], out[i]);
@@ -656,8 +700,62 @@ final class CrewModels {
 		out[3] = dir[0];
 		out[4] = dir[1];
 		out[5] = dir[2];
-		clearOfBody(out, shoulder);
+
+		// (Phase 26: an Inquisitor's saber is kept out of her body by its own shape, see InquisitorSaber.clear.)
+		if (!gear.inquisitor()) {
+			clearOfBody(out, shoulder);
+		}
+
 		return out;
+	}
+
+	/**
+	 * Phase 26: where she holds her Inquisitor's saber beyond the blade's own hold: before the ring's
+	 * rush it comes up before her chest, the grip pointing at the player, so that the spinning ring
+	 * is a disc of blades between them; in a spin it is raised before her face the same way; drawn
+	 * back to throw, the grip points up over her shoulder (the ring spinning flat behind her head).
+	 * Elsewhere the blade's hold as it is (the ring's angle does the rest).
+	 */
+	static InquisitorSaber.Hold ringHold(float shoulder, Gear gear, InquisitorSaber.Hold hold) {
+		float k = 0.0F;
+		float[] c = null;
+		float[] a = null;
+		float[] d = null;
+
+		if (gear.react() == RING) {
+			float p = Mth.clamp(gear.reactP(), 0.0F, 1.0F);
+			// Up quickly as it spins up, held through the rush, down at its very end.
+			k = Mth.clamp(Math.min(p / RING_WIND * 1.6F, (1.0F - p) * 10.0F), 0.0F, 1.0F);
+			c = new float[] {-0.04F, shoulder - 0.12F, 0.56F};
+			a = new float[] {0.0F, 0.12F, 1.0F};
+			d = new float[] {0.0F, 1.0F, 0.0F};
+		} else if (gear.spin() > 0.0F) {
+			k = Mth.sin(Mth.clamp(gear.spin(), 0.0F, 1.0F) * Mth.PI);
+			k = Math.max(k, gear.spin() < 0.5F ? Mth.clamp(gear.spin() * 4.0F, 0.0F, 1.0F) : k);
+			c = new float[] {0.0F, shoulder - 0.02F, 0.52F};
+			a = new float[] {0.0F, 0.3F, 1.0F};
+			d = new float[] {-1.0F, 0.0F, 0.0F};
+		} else if (gear.react() == THROW_WIND) {
+			float p = Mth.clamp(gear.reactP(), 0.0F, 1.0F);
+			k = Mth.clamp(p * 2.5F, 0.0F, 1.0F);
+			c = new float[] {-0.4F, shoulder + 0.28F, -0.06F};
+			a = new float[] {-0.15F, 1.0F, 0.1F};
+			d = new float[] {0.0F, 0.0F, 1.0F};
+		}
+
+		if (k <= 0.0F || c == null) {
+			return hold;
+		}
+
+		float e = k * k * (3.0F - 2.0F * k);
+		float[] hc = hold.c();
+		float[] ha = hold.a();
+		float[] hd = hold.d();
+		float[] an = norm(a[0], a[1], a[2]);
+		float[] dn = norm(d[0], d[1], d[2]);
+		return InquisitorSaber.of(new float[] {Mth.lerp(e, hc[0], c[0]), Mth.lerp(e, hc[1], c[1]), Mth.lerp(e, hc[2], c[2])},
+				new float[] {Mth.lerp(e, ha[0], an[0]), Mth.lerp(e, ha[1], an[1]), Mth.lerp(e, ha[2], an[2])},
+				new float[] {Mth.lerp(e, hd[0], dn[0]), Mth.lerp(e, hd[1], dn[1]), Mth.lerp(e, hd[2], dn[2])});
 	}
 
 	/**
@@ -743,6 +841,12 @@ final class CrewModels {
 	 * flies, both blades lit.
 	 */
 	static void flyingStaff(MeshBuilder b, float x, float y, float z, float yaw, float spin, int colour) {
+		// Phase 26: her saber is an Inquisitor's: the ring spinning flat in flight.
+		if (INQUISITOR) {
+			InquisitorSaber.flying(b, x, y, z, yaw, spin, colour);
+			return;
+		}
+
 		b.push().translate(x, y, z).rotateY(-yaw).rotateX(80.0F).rotateZ(spin);
 		staffHilt(b);
 		blade(b, STAFF_HALF, STAFF_HALF + STAFF_BLADE, colour);
@@ -799,6 +903,12 @@ final class CrewModels {
 	 * yaw, tipped by pitch (90: lying flat). Its emitter is scorched where the blade broke off.
 	 */
 	static void looseHilt(MeshBuilder b, float x, float y, float z, float yaw, float pitch, boolean staff) {
+		// Phase 26: her saber is an Inquisitor's: lying on its ring.
+		if (INQUISITOR) {
+			InquisitorSaber.lying(b, x, y, z, yaw, pitch);
+			return;
+		}
+
 		b.layer(Layer.SOLID).worldLight().white().twoSided(false);
 		b.push().translate(x, y, z).rotateY(-yaw).rotateX(pitch);
 

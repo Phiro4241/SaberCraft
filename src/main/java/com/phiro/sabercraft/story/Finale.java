@@ -50,9 +50,18 @@ import com.phiro.sabercraft.saber.SaberVariant;
 final class Finale {
 	/** The damage of a trooper's bolt (the player has 20). */
 	static final float BOLT_DAMAGE = 3.0F;
-	/** Ticks between a trooper's shots: at least, and a random part. */
-	static final int SHOT_MIN = 40;
-	static final int SHOT_RANDOM = 40;
+	/**
+	 * Ticks between a trooper's shots: at least, and a random part. Phase 26: about half as long as
+	 * before (40 + up to 40: they hardly shot), and now and then a second shot right after the
+	 * first ({@link #DOUBLE_CHANCE}, {@link #DOUBLE_GAP}). Fair stays fair: the rifle comes up
+	 * before each shot (the wind-up the client shows), and two troopers never fire within
+	 * {@link #VOLLEY_GAP} ticks of each other (one can turn each bolt aside, one after the other).
+	 */
+	static final int SHOT_MIN = 22;
+	static final int SHOT_RANDOM = 22;
+	static final float DOUBLE_CHANCE = 0.3F;
+	static final int DOUBLE_GAP = 7;
+	static final int VOLLEY_GAP = 7;
 	/** How far a trooper shoots, and how close they come. */
 	static final double SHOT_RANGE = 26.0;
 	static final double KEEP = 9.0;
@@ -115,11 +124,49 @@ final class Finale {
 	static final int[] OPENINGS = {0, 30, 24};
 	static final int[] PAUSES = {0, 34, 18};
 	static final int[] PARRIES = {0, 3, 2};
-	/** Phase 23: her combos, per phase: the kinds of blow one after the other (the second phase's are longer and mixed). */
-	static final int[][][] PATTERNS = {{}, {{OVERHEAD}, {SWEEP}, {THRUST}, {OVERHEAD, SWEEP}, {SWEEP, THRUST}, {SWEEP, OVERHEAD}},
+	/**
+	 * Phase 23: her combos, per phase: the kinds of blow one after the other (the second phase's are
+	 * longer and mixed). Phase 26: a few more of each (a three-blow combo in the first phase too).
+	 */
+	static final int[][][] PATTERNS = {{}, {{OVERHEAD}, {SWEEP}, {THRUST}, {OVERHEAD, SWEEP}, {SWEEP, THRUST}, {SWEEP, OVERHEAD}, {THRUST, OVERHEAD},
+			{OVERHEAD, SWEEP, THRUST}},
 			{{SWEEP, SWEEP, OVERHEAD}, {THRUST, SWEEP, THRUST}, {OVERHEAD, THRUST}, {SWEEP, OVERHEAD, SWEEP}, {OVERHEAD, SWEEP, THRUST},
 					// Phase 25: with the staff she spins too (both blades round her: blocked or dodged as any blow).
 					{SPIN, THRUST}, {SWEEP, SPIN}, {OVERHEAD, SPIN, SWEEP}}};
+	/**
+	 * Phase 26: the last quarter of her strength: she fights harder (shorter pauses, quicker
+	 * follow-up blows, the ring's rush more often, longer combos that end in a spin), still with an
+	 * opening after each combo.
+	 */
+	static final float FIERCE = 0.25F;
+	static final int[][] FIERCE_PATTERNS = {{SWEEP, OVERHEAD, SPIN}, {THRUST, SWEEP, THRUST, SPIN}, {OVERHEAD, THRUST, SWEEP}, {SWEEP, SPIN, OVERHEAD},
+			{THRUST, THRUST, SWEEP}};
+	/**
+	 * Phase 26: the lunge of the first phase: from this far to this far she drives in with a thrust
+	 * (the wind-up a little longer: to be seen coming), at this speed (blocks a second), at most
+	 * this often (ticks).
+	 */
+	static final double LUNGE_FROM = 3.4;
+	static final double LUNGE_TO = 5.8;
+	static final double LUNGE_SPEED = 6.5;
+	static final int LUNGE_EVERY = 120;
+	/**
+	 * Phase 26: the ring's rush (the second phase): the ring with both blades spins up round the grip
+	 * (the warning: its whirr rising, the blades blurring into a disc), then she drives at the
+	 * player behind the spinning disc. Blocked it throws the player back, dodged it goes past;
+	 * either way it ends with her off balance as the ring winds down: an opening, longer than the
+	 * others. A stroke into it while it spins up meets the blades (a clash).
+	 */
+	static final int RUSH = 10;
+	static final int RUSH_WIND = 18;
+	static final int RUSH_TICKS = 24;
+	static final double RUSH_SPEED = 5.5;
+	static final double RUSH_REACH = 1.9;
+	static final double RUSH_FROM = 2.6;
+	static final double RUSH_TO = 9.0;
+	static final int RUSH_EVERY = 230;
+	static final int RUSH_EVERY_FIERCE = 150;
+	static final int RUSH_OPENING = 12;
 	/** Phase 25: a spin's wind-up is longer (the staff twirls round her: to be seen coming), and it reaches a little further. */
 	static final int SPIN_WINDUP = 20;
 	static final double SPIN_REACH = 3.5;
@@ -157,9 +204,13 @@ final class Finale {
 	static final int PUSH_EVERY = 220;
 	static final int LEAP_EVERY = 180;
 	static final int RECOIL_TICKS = 14;
-	/** What a light and a heavy stroke take of her (she has 1); the second phase begins at half. */
-	static final float HIT = 0.065F;
-	static final float HIT_HEAVY = 0.1F;
+	/**
+	 * What a light and a heavy stroke take of her (she has 1); the second phase begins at half.
+	 * Phase 26: about a quarter more strength (0.065 and 0.1 before): the fight lasts a little
+	 * longer, her blows hurt as much as before.
+	 */
+	static final float HIT = 0.052F;
+	static final float HIT_HEAVY = 0.08F;
 	static final float PHASE_TWO = 0.5F;
 	/** Phase 23: the blade lock between the phases (ticks), and how much each stroke of the player during it shortens it. */
 	static final int LOCK_TICKS = 70;
@@ -337,12 +388,21 @@ final class Finale {
 			figure.headYaw = Crew.yaw(figure.position(), me);
 
 			if (--figure.cooldown <= 0) {
-				shoot(figure, player, level, corner);
-				figure.cooldown = SHOT_MIN + player.getRandom().nextInt(SHOT_RANDOM);
+				if (s.time() - s.lastVolley < VOLLEY_GAP) {
+					// Phase 26: another just fired: a moment later (the rifle stays up).
+					figure.cooldown = VOLLEY_GAP - (int) (s.time() - s.lastVolley) + 1;
+				} else {
+					shoot(figure, player, level, corner);
+					s.lastVolley = s.time();
+					// Phase 26: now and then a second shot right after the first (never a third).
+					boolean again = figure.burst == 0 && player.getRandom().nextFloat() < DOUBLE_CHANCE;
+					figure.burst = again ? 1 : 0;
+					figure.cooldown = again ? DOUBLE_GAP : SHOT_MIN + player.getRandom().nextInt(SHOT_RANDOM);
+				}
 			}
 
-			// The rifle comes up the last ten ticks before a shot.
-			figure.windup = figure.cooldown <= 10 ? 10 - figure.cooldown + 1 : 0;
+			// The rifle comes up the last ten ticks before a shot (and stays up for a second one).
+			figure.windup = figure.burst > 0 ? 10 : figure.cooldown <= 10 ? 10 - figure.cooldown + 1 : 0;
 		} else {
 			// Out of sight: they come to where the player is (in a fight everyone knows), the
 			// way round (Phase 23; before they walked straight at the wall between).
@@ -351,6 +411,7 @@ final class Finale {
 			}
 
 			figure.windup = 0;
+			figure.burst = 0;
 			figure.cooldown = Math.max(figure.cooldown, 12);
 		}
 	}
@@ -463,7 +524,8 @@ final class Finale {
 	static void strike(StorySession s, ServerPlayer player) {
 		ServerLevel level = Chapter1.interiors(s);
 
-		if (!s.fighting || level == null || s.here == null || !SaberVariant.canHold(player.getMainHandItem()) || s.timer("stroke")) {
+		// (Phase 26: nor in a scene: the blade lock's at half her strength holds the player still.)
+		if (!s.fighting || level == null || s.here == null || !SaberVariant.canHold(player.getMainHandItem()) || s.timer("stroke") || s.has("tmp.film")) {
 			return;
 		}
 
@@ -559,6 +621,24 @@ final class Finale {
 					return;
 				}
 			}
+			case RUSH -> {
+				Vec3 toMe = new Vec3(eye.x - f.x, 0.0, eye.z - f.z).normalize();
+
+				if (f.windup > 0) {
+					// Phase 26: into the ring as it spins up: the blades meet, her rush is gone.
+					f.react = 0;
+					f.reactTicks = 0;
+					clash(s, f, player, me, level, corner);
+				} else if (toMe.dot(f.look()) < -0.35) {
+					// From behind, while she drives on: it hits.
+					bossHit(s, f, player, me, level, corner, at, heavy);
+				} else {
+					// Into the spinning disc: turned aside, and one is thrown back a little.
+					discTurns(s, f, player, me, level, corner);
+				}
+
+				return;
+			}
 			default -> {
 			}
 		}
@@ -621,6 +701,17 @@ final class Finale {
 			return;
 		}
 
+		// Phase 26: the last quarter: the ring flares and whirls once round the grip, and she
+		// fights harder from now on (seen and heard; no words).
+		if (fierce(f) && !s.has("tmp.boss_fierce")) {
+			s.set("tmp.boss_fierce");
+			Vec3 ring = f.position().add(corner).add(0.0, 1.3, 0.0);
+			level.playSound(null, ring.x, ring.y, ring.z, ShipInteriors.sound("story.ring_spin"), SoundSource.HOSTILE, 1.1F, 0.85F);
+			level.sendParticles(ParticleTypes.ELECTRIC_SPARK, ring.x, ring.y, ring.z, 24, 0.3, 0.3, 0.3, 0.4);
+			Story.cue(s, Story.CUE_DUEL, "fierce", "", f.id);
+			s.timer("rush", Math.min(s.timers.getOrDefault("rush", 0), 60));
+		}
+
 		if (flying) {
 			// She waits for her staff (the throw goes on).
 			return;
@@ -662,11 +753,8 @@ final class Finale {
 		f.pattern = -1;
 		blowStarts(f, THRUST, RIPOSTE, level, s);
 		ripostes++;
-
-		if (!s.has("tmp.hint_riposte")) {
-			s.set("tmp.hint_riposte");
-			s.hint("sabercraft.story.hint.duel_riposte");
-		}
+		// (Phase 26: no words on the screen for what she does: her thrust, its sound, and the
+		// blades are what one goes by.)
 	}
 
 	/**
@@ -691,11 +779,6 @@ final class Finale {
 		clashes++;
 		s.counters.merge("clashes", 1, Integer::sum);
 		Story.cue(s, Story.CUE_DUEL, "clash", "", f.id, java.util.List.of(contact));
-
-		if (!s.has("tmp.hint_clash")) {
-			s.set("tmp.hint_clash");
-			s.hint("sabercraft.story.hint.duel_clash");
-		}
 	}
 
 	/** Phase 23: where the two blades meet (plot space): between them, at chest height. */
@@ -741,7 +824,6 @@ final class Finale {
 		s.timer("leap", LEAP_EVERY);
 		Chapter1.music(s, s.mission, s.step().id());
 		Story.cue(s, Story.CUE_SOUND, "", "saber.ignite", shadow.id);
-		s.hint("sabercraft.story.hint.duel_start");
 		s.dirty = true;
 	}
 
@@ -788,7 +870,7 @@ final class Finale {
 					riposte(s, f, level);
 				} else {
 					act(f, GUARD, 0, 0);
-					f.cooldown = PAUSES[phase] / 2;
+					f.cooldown = pause(f, phase) / 2;
 				}
 			}
 
@@ -799,15 +881,17 @@ final class Finale {
 			f.turnTowards(me, 6.0F, true);
 			f.headYaw = Crew.yaw(f.position(), me);
 
-			if (f.action == WINDUP) {
+			if (f.action == WINDUP || f.action == RUSH) {
 				act(f, GUARD, 0, 0);
-				f.cooldown = PAUSES[phase];
+				f.lunge = false;
+				f.cooldown = pause(f, phase);
 			}
 
 			return;
 		}
 
-		if (f.action != LEAP || f.windup > 0) {
+		// (Phase 26: driving on in the ring's rush she turns slowly, see rushTick.)
+		if ((f.action != LEAP || f.windup > 0) && (f.action != RUSH || f.windup > 0)) {
 			f.turnTowards(me, f.action == WINDUP ? 9.0F : 16.0F, true);
 		}
 
@@ -817,9 +901,9 @@ final class Finale {
 			case WINDUP -> {
 				f.speed = 0.0F;
 
-				// A thrust carries her in a little.
+				// A thrust carries her in a little (Phase 26: a lunge from further off: fast).
 				if (f.attack == THRUST && distance > 2.2) {
-					Stealth.step(f, me, 2.5, level, corner);
+					Stealth.step(f, me, f.lunge ? LUNGE_SPEED : 2.5, level, corner);
 				}
 
 				if (--f.windup <= 0) {
@@ -846,11 +930,12 @@ final class Finale {
 
 				if (--f.timer <= 0) {
 					act(f, GUARD, 0, 0);
-					f.cooldown = PAUSES[phase] / 2;
+					f.cooldown = pause(f, phase) / 2;
 				}
 			}
 			case LEAP -> leap(s, f, player, me, level, corner, phase);
 			case THROW -> throwTick(s, f, player, me, level, corner);
+			case RUSH -> rushTick(s, f, player, me, level, corner);
 			case PUSH -> {
 				f.speed = 0.0F;
 
@@ -905,15 +990,34 @@ final class Finale {
 		}
 
 		// Phase 25: from a distance she throws her staff (not too soon after her leap or push).
+		// (Phase 26: nor right after the ring's rush.)
 		if (phase >= 2 && !s.timer("throw") && distance > THROW_FROM && distance < THROW_TO && clear && s.timers.getOrDefault("leap", 0) < LEAP_EVERY - 60
-				&& s.timers.getOrDefault("push", 0) < PUSH_EVERY - 40) {
+				&& s.timers.getOrDefault("push", 0) < PUSH_EVERY - 40 && s.timers.getOrDefault("rush", 0) < RUSH_EVERY_FIERCE - 50) {
 			throwStarts(s, f, level, corner);
+			return;
+		}
+
+		// Phase 26: the ring's rush (not right after her leap or throw).
+		if (phase >= 2 && !s.timer("rush") && distance > RUSH_FROM && distance < RUSH_TO && clear && s.timers.getOrDefault("leap", 0) < LEAP_EVERY - 50
+				&& s.timers.getOrDefault("throw", 0) < THROW_EVERY - 60) {
+			rushStarts(s, f, level, corner);
+			return;
+		}
+
+		// Phase 26: in the first phase she lunges in with a thrust from a few steps away.
+		if (phase == 1 && !s.timer("lunge") && distance > LUNGE_FROM && distance < LUNGE_TO && clear) {
+			s.timer("lunge", LUNGE_EVERY);
+			f.pattern = -1;
+			f.combo = 1;
+			f.lunge = true;
+			blowStarts(f, THRUST, WINDUPS[1] + 4, level, s);
+			lunges++;
 			return;
 		}
 
 		if (distance <= BLOW_REACH - 0.4) {
 			// A combo: one of her patterns (not the same twice running).
-			int[][] patterns = PATTERNS[phase];
+			int[][] patterns = patterns(f, phase);
 			int pick = random.nextInt(patterns.length);
 
 			if (pick == f.pattern && patterns.length > 1) {
@@ -928,9 +1032,29 @@ final class Finale {
 		}
 	}
 
+	/** Phase 26: her combos now (the last quarter of her strength has its own). */
+	static int[][] patterns(Figure f, int phase) {
+		return fierce(f) ? FIERCE_PATTERNS : PATTERNS[phase];
+	}
+
+	/** Phase 26: whether she is in the last quarter of her strength (she fights harder). */
+	static boolean fierce(Figure f) {
+		return f.health <= FIERCE;
+	}
+
+	/** Phase 26: how long she circles between attacks (shorter in the last quarter). */
+	static int pause(Figure f, int phase) {
+		return fierce(f) ? PAUSES[2] * 2 / 3 : PAUSES[phase];
+	}
+
+	/** Phase 26: the wind-up of the blows after a combo's first (quicker in the last quarter). */
+	static int follow(Figure f, int phase) {
+		return fierce(f) ? FOLLOW[2] - 2 : FOLLOW[phase];
+	}
+
 	/** The kind of her next blow in the combo (a riposte or a leap's blow: by chance). */
 	private static int nextKind(Figure f, int phase, RandomSource random) {
-		int[][] patterns = PATTERNS[phase];
+		int[][] patterns = patterns(f, phase);
 		int[] pattern = f.pattern >= 0 && f.pattern < patterns.length ? patterns[f.pattern] : null;
 		int index = pattern == null ? -1 : pattern.length - f.combo;
 		return pattern != null && index >= 0 && index < pattern.length ? pattern[index] : 1 + random.nextInt(3);
@@ -961,6 +1085,7 @@ final class Finale {
 		Vec3 at = contact(f, me).add(corner);
 		RandomSource random = player.getRandom();
 		f.combo--;
+		f.lunge = false;
 		boolean evading = SaberAbilities.evading(player);
 
 		if (distance > reach || evading || Math.abs(me.y - f.y) > 2.0) {
@@ -974,7 +1099,7 @@ final class Finale {
 			}
 
 			if (f.combo > 0) {
-				blowStarts(f, nextKind(f, phase, random), FOLLOW[phase], level, s);
+				blowStarts(f, nextKind(f, phase, random), follow(f, phase), level, s);
 			} else {
 				act(f, OPEN_UP, STAGGER, OPENINGS[phase] - (evading ? 0 : 6));
 				f.hits = 0;
@@ -1007,11 +1132,6 @@ final class Finale {
 				act(f, OPEN_UP, STAGGER, OPENINGS[phase] + 8);
 				f.hits = 0;
 				f.parried = 0;
-
-				if (!s.has("tmp.hint_perfect")) {
-					s.set("tmp.hint_perfect");
-					s.hint("sabercraft.story.hint.duel_perfect");
-				}
 			} else if (f.combo > 0) {
 				if (phase >= 2) {
 					// The second phase presses: each blocked blow drives the player back a little.
@@ -1020,7 +1140,7 @@ final class Finale {
 					player.hurtMarked = true;
 				}
 
-				blowStarts(f, nextKind(f, phase, random), FOLLOW[phase], level, s);
+				blowStarts(f, nextKind(f, phase, random), follow(f, phase), level, s);
 			} else {
 				// The last blow of the combo blocked: she staggers. The opening.
 				act(f, OPEN_UP, STAGGER, OPENINGS[phase]);
@@ -1099,11 +1219,8 @@ final class Finale {
 		throwsStarted++;
 		Vec3 at = f.position().add(corner).add(0.0, 1.4, 0.0);
 		level.playSound(null, at.x, at.y, at.z, ShipInteriors.sound("saber.swing"), SoundSource.HOSTILE, 0.9F, 0.6F);
-
-		if (!s.has("tmp.hint_throw")) {
-			s.set("tmp.hint_throw");
-			s.hint("sabercraft.story.hint.duel_throw");
-		}
+		// Phase 26: the ring spins up as she draws it back (heard and seen: the warning, no words).
+		level.playSound(null, at.x, at.y, at.z, ShipInteriors.sound("story.ring_spin"), SoundSource.HOSTILE, 0.9F, 1.0F);
 	}
 
 	/**
@@ -1178,7 +1295,7 @@ final class Finale {
 			f.react = 0;
 			f.reactTicks = 0;
 			act(f, GUARD, 0, 0);
-			f.cooldown = PAUSES[phase(f)];
+			f.cooldown = pause(f, phase(f));
 		}
 	}
 
@@ -1217,6 +1334,156 @@ final class Finale {
 		Story.cue(s, Story.CUE_DUEL, "hurt", "", Math.round(THROW_DAMAGE), java.util.List.of(at));
 	}
 
+	// --- Phase 26: the ring's rush ------------------------------------------------------------------
+
+	/** The ring spins up round the grip (its whirr rising, the blades blurring into a disc): the warning. */
+	private static void rushStarts(StorySession s, Figure f, ServerLevel level, Vec3 corner) {
+		act(f, RUSH, 0, RUSH_TICKS);
+		f.windup = RUSH_WIND;
+		f.react(Figure.RING, RUSH_WIND + RUSH_TICKS);
+		s.timer("rush", fierce(f) ? RUSH_EVERY_FIERCE : RUSH_EVERY);
+		rushes++;
+		Vec3 at = f.position().add(corner).add(0.0, 1.3, 0.0);
+		level.playSound(null, at.x, at.y, at.z, ShipInteriors.sound("story.ring_spin"), SoundSource.HOSTILE, 1.0F, 1.0F);
+	}
+
+	/** Each tick of the rush: spinning up in place, then driving at the player behind the disc. */
+	private static void rushTick(StorySession s, Figure f, ServerPlayer player, Vec3 me, ServerLevel level, Vec3 corner) {
+		if (f.windup > 0) {
+			f.speed = 0.0F;
+			f.turnTowards(me, 12.0F, true);
+			f.headYaw = Crew.yaw(f.position(), me);
+			--f.windup;
+			return;
+		}
+
+		// She turns after the player only slowly while she drives on (a step aside gets one out of her way).
+		f.turnTowards(me, 4.5F, true);
+		f.headYaw = Crew.yaw(f.position(), me);
+		Vec3 ahead = f.position().add(f.look().scale(2.0));
+		boolean moved = Stealth.step(f, ahead, RUSH_SPEED, level, corner);
+		Vec3 at = f.position().add(corner).add(0.0, 1.3, 0.0);
+
+		if (f.timer % 5 == 0) {
+			level.playSound(null, at.x, at.y, at.z, ShipInteriors.sound("saber.swing"), SoundSource.HOSTILE, 0.7F, 1.45F);
+		}
+
+		Vec3 toMe = new Vec3(me.x - f.x, 0.0, me.z - f.z);
+		double distance = toMe.length();
+
+		if (distance < RUSH_REACH && Math.abs(me.y - f.y) < 2.0 && (distance < 0.6 || toMe.normalize().dot(f.look()) > 0.3)) {
+			rushMeets(s, f, player, me, level, corner);
+			return;
+		}
+
+		if (!moved || --f.timer <= 0) {
+			// Into a wall, or out of breath: the ring winds down; she stands open.
+			rushEnds(f, level, corner, 0);
+		}
+	}
+
+	/** The rush reaches the player: dodged, blocked (a perfect parry throws her off balance), or it hurts. */
+	private static void rushMeets(StorySession s, Figure f, ServerPlayer player, Vec3 me, ServerLevel level, Vec3 corner) {
+		Vec3 at = contact(f, me).add(corner);
+		Vec3 back = new Vec3(me.x - f.x, 0.0, me.z - f.z);
+		back = back.lengthSqr() < 1.0E-4 ? f.look() : back.normalize();
+
+		if (SaberAbilities.evading(player)) {
+			// Gone past: she overshoots.
+			dodges++;
+			s.counters.merge("dodged", 1, Integer::sum);
+			Story.cue(s, Story.CUE_DUEL, "dodged", "", f.id);
+			rushEnds(f, level, corner, 6);
+			return;
+		}
+
+		Vec3 look = player.getLookAngle();
+		boolean facing = new Vec3(look.x, 0.0, look.z).normalize().dot(back.scale(-1.0)) > 0.35;
+		long guard = guardTicks(player);
+
+		if (guard >= 0 && facing) {
+			boolean perfect = guard <= PERFECT;
+			rushBlocks++;
+			level.sendParticles(ParticleTypes.ELECTRIC_SPARK, at.x, at.y, at.z, perfect ? 34 : 22, 0.15, 0.15, 0.15, 0.5);
+			level.playSound(null, at.x, at.y, at.z, ShipInteriors.sound("story.clash_big"), SoundSource.HOSTILE, 1.1F, perfect ? 1.15F : 0.9F);
+			s.counters.merge(perfect ? "perfect" : "blocked", 1, Integer::sum);
+			s.focus = Math.min(1.0F, s.focus + (perfect ? 0.5F : FOCUS_BLOCK));
+			Story.cue(s, Story.CUE_DUEL, perfect ? "perfect" : "blocked", "", f.id, java.util.List.of(at));
+			player.push(back.x * (perfect ? 0.4 : 0.8), 0.15, back.z * (perfect ? 0.4 : 0.8));
+			player.hurtMarked = true;
+
+			if (perfect) {
+				perfects++;
+				f.react = 0;
+				rushEnds(f, level, corner, 8);
+				f.react(Figure.STUMBLE, 14);
+			} else {
+				rushEnds(f, level, corner, 0);
+			}
+
+			return;
+		}
+
+		rushHits++;
+		s.counters.merge("duel_hurt", 1, Integer::sum);
+		player.hurtServer(level, level.damageSources().generic(), BLOWS[2]);
+		player.push(back.x * 0.7, 0.25, back.z * 0.7);
+		player.hurtMarked = true;
+		level.playSound(null, at.x, at.y, at.z, ShipInteriors.sound("saber.hit"), SoundSource.HOSTILE, 1.0F, 0.85F);
+		level.sendParticles(ParticleTypes.ELECTRIC_SPARK, player.getX(), player.getY() + 1.1, player.getZ(), 14, 0.15, 0.2, 0.15, 0.3);
+		Story.cue(s, Story.CUE_DUEL, "hurt", "", Math.round(BLOWS[2]), java.util.List.of(f.position().add(corner)));
+		// (Still an opening after it, a shorter one.)
+		rushEnds(f, level, corner, -RUSH_OPENING);
+	}
+
+	/** The rush is over: the ring winds down and she staggers (the opening: longer than after a combo). */
+	private static void rushEnds(Figure f, ServerLevel level, Vec3 corner, int more) {
+		if (f.react == Figure.RING) {
+			f.react = 0;
+			f.reactTicks = 0;
+		}
+
+		f.speed = 0.0F;
+		f.combo = 0;
+		f.hits = 0;
+		f.parried = 0;
+		act(f, OPEN_UP, STAGGER, OPENINGS[2] + RUSH_OPENING + more);
+		Vec3 at = f.position().add(corner).add(0.0, 1.2, 0.0);
+		level.playSound(null, at.x, at.y, at.z, ShipInteriors.sound("saber.swing"), SoundSource.HOSTILE, 0.7F, 0.55F);
+	}
+
+	/** A stroke into the spinning disc from the front: turned aside, the player thrown back a little. */
+	private static void discTurns(StorySession s, Figure f, ServerPlayer player, Vec3 me, ServerLevel level, Vec3 corner) {
+		Vec3 contact = contact(f, me).add(corner);
+		level.sendParticles(ParticleTypes.ELECTRIC_SPARK, contact.x, contact.y, contact.z, 14, 0.1, 0.1, 0.1, 0.45);
+		level.playSound(null, contact.x, contact.y, contact.z, ShipInteriors.sound("saber.clash"), SoundSource.HOSTILE, 1.0F, 1.2F);
+		Vec3 back = new Vec3(me.x - f.x, 0.0, me.z - f.z);
+		back = back.lengthSqr() < 1.0E-4 ? f.look() : back.normalize();
+		player.push(back.x * 0.5, 0.1, back.z * 0.5);
+		player.hurtMarked = true;
+		Story.cue(s, Story.CUE_DUEL, "parried", "", f.id, java.util.List.of(contact));
+		s.counters.merge("parried", 1, Integer::sum);
+	}
+
+	private static int rushes;
+	private static int rushBlocks;
+	private static int rushHits;
+	private static int lunges;
+
+	/** Phase 26, for the tests: rushes begun, blocked, hits; lunges begun. */
+	static int[] rushesForTest() {
+		return new int[] {rushes, rushBlocks, rushHits, lunges};
+	}
+
+	/** Phase 26, for the tests: she begins the ring's rush now. */
+	static void rushForTest(StorySession s, Figure f) {
+		ServerLevel level = Chapter1.interiors(s);
+
+		if (level != null) {
+			rushStarts(s, f, level, Vec3.atLowerCornerOf(s.origin(f.ship)));
+		}
+	}
+
 	/** A push with the Force: the guard takes most of it. */
 	private static void push(StorySession s, Figure f, ServerPlayer player, ServerLevel level, Vec3 corner) {
 		Vec3 me = player.position().subtract(corner);
@@ -1234,7 +1501,6 @@ final class Finale {
 		Vec3 at = f.position().add(corner).add(0.0, 1.2, 0.0);
 		level.playSound(null, at.x, at.y, at.z, ShipInteriors.sound("saber.push"), SoundSource.HOSTILE, 1.0F, 0.8F);
 		level.sendParticles(ParticleTypes.CLOUD, at.x + away.x, at.y, at.z + away.z, 12, 0.3, 0.3, 0.3, 0.05);
-		s.hint("sabercraft.story.hint.push");
 	}
 
 	/**
@@ -1252,6 +1518,15 @@ final class Finale {
 		f.burst = 0;
 		f.pushX = 0.0;
 		f.pushZ = 0.0;
+		// Phase 26: the scene begins the same way whatever the player was doing (running past her,
+		// striking, blocking, dodging): first held still (a guard or dash going on ends, no stroke
+		// counts any more), then both set at the lock's distance, facing each other, and only then
+		// the camera. (Phiro's playtest: struck while running forward, the player stood with their
+		// back to her after the scene.)
+		f.react = 0;
+		f.reactTicks = 0;
+		f.throwFrom = null;
+		me = settleForScene(s, f, player, level, corner);
 		// Phase 24: as a scene: the lock lasts until the burst in it (the player cannot press against it then).
 		act(f, LOCK, 0, BOSS_LOCK);
 		f.react(Figure.LOCK, BOSS_LOCK);
@@ -1270,6 +1545,99 @@ final class Finale {
 		locks++;
 		bossScenes++;
 		s.dirty = true;
+	}
+
+	/** Phase 26: how far apart the two stand when the blades lock (feet to feet). */
+	static final double LOCK_DISTANCE = 1.45;
+	/** Phase 26: after the burst the player lands this many ticks later (and is held there again). */
+	static final int BURST_LAND = 12;
+
+	/**
+	 * Phase 26: steps 1 to 4 of the blade lock's scene: the player stops (no movement left over,
+	 * no item in use, no guard, dash or spin going on), she stands at the lock's distance in front
+	 * of them on the line between them (or the player before her, where she has no room), and both
+	 * face each other; the player's place and view are kept for the scene ({@link #holdForScene}).
+	 * Returns where the player stands now (plot space).
+	 */
+	private static Vec3 settleForScene(StorySession s, Figure f, ServerPlayer player, ServerLevel level, Vec3 corner) {
+		player.stopUsingItem();
+		SaberAbilities.interrupt(player);
+		player.setDeltaMovement(Vec3.ZERO);
+		player.hurtMarked = true;
+		Vec3 me = player.position().subtract(corner);
+		Vec3 dir = new Vec3(f.x - me.x, 0.0, f.z - me.z);
+
+		if (dir.lengthSqr() < 1.0E-4) {
+			Vec3 look = player.getLookAngle();
+			dir = new Vec3(look.x, 0.0, look.z);
+		}
+
+		dir = dir.lengthSqr() < 1.0E-4 ? new Vec3(0.0, 0.0, 1.0) : dir.normalize();
+		Vec3 her = me.add(dir.scale(LOCK_DISTANCE));
+		double height = f.crew.height();
+
+		if (Stealth.free(level, corner, her.x, f.y, her.z, height) && Hits.floor(level, corner, her.x, f.y, her.z)) {
+			f.x = her.x;
+			f.z = her.z;
+		} else {
+			// No room for her there: the player steps before her instead (if there is room).
+			Vec3 mine = f.position().subtract(dir.scale(LOCK_DISTANCE));
+			Vec3 world = mine.add(corner);
+
+			if (level.noCollision(player, player.getBoundingBox().move(world.x - player.getX(), 0.0, world.z - player.getZ()))
+					&& Hits.floor(level, corner, mine.x, me.y, mine.z)) {
+				player.connection.teleport(world.x, player.getY(), world.z, player.getYRot(), player.getXRot());
+				me = new Vec3(mine.x, me.y, mine.z);
+			}
+		}
+
+		f.speed = 0.0F;
+		f.yaw = Crew.yaw(f.position(), me);
+		f.headYaw = f.yaw;
+		Vec3 eye = player.getEyePosition();
+		Vec3 at = f.position().add(corner).add(0.0, 1.5, 0.0);
+		Vec3 d = at.subtract(eye);
+		float yaw = (float) Math.toDegrees(Math.atan2(-d.x, d.z));
+		float pitch = Mth.clamp((float) -Math.toDegrees(Math.atan2(d.y, Math.sqrt(d.x * d.x + d.z * d.z))), -30.0F, 30.0F);
+		player.connection.teleport(player.getX(), player.getY(), player.getZ(), yaw, pitch);
+		s.sceneAt = player.position();
+		scenesSettled++;
+		return me;
+	}
+
+	/**
+	 * Phase 26: while the scene runs the player stays where it put them (the burst may throw them
+	 * back: they land and are held there), with nothing in their hands going on.
+	 */
+	private static void holdForScene(StorySession s, ServerPlayer player, int t) {
+		if (t > BOSS_LOCK && t < BOSS_LOCK + BURST_LAND) {
+			// Thrown back by the burst: the flight is part of the scene.
+			return;
+		}
+
+		if (t == BOSS_LOCK + BURST_LAND || s.sceneAt == null) {
+			s.sceneAt = player.position();
+		}
+
+		Vec3 at = s.sceneAt;
+
+		if (player.isUsingItem()) {
+			player.stopUsingItem();
+		}
+
+		if (player.position().distanceToSqr(at) > 0.0025 || player.getDeltaMovement().horizontalDistanceSqr() > 1.0E-4) {
+			player.setDeltaMovement(Vec3.ZERO);
+			player.connection.teleport(at.x, at.y, at.z, player.getYRot(), player.getXRot());
+			held++;
+		}
+	}
+
+	private static int scenesSettled;
+	private static int held;
+
+	/** Phase 26, for the tests: how often the scene's start set the two up, and how often the player was held in place. */
+	static int[] sceneHoldsForTest() {
+		return new int[] {scenesSettled, held};
 	}
 
 	/** Phase 24, only for tests: a light stroke hits her now (as from behind). */
@@ -1310,6 +1678,7 @@ final class Finale {
 		}
 
 		Vec3 corner = Vec3.atLowerCornerOf(s.origin(s.here));
+		holdForScene(s, player, t);
 		Vec3 me = player.position().subtract(corner);
 
 		if (f.action == LOCK) {
@@ -1390,14 +1759,27 @@ final class Finale {
 		f.react = 0;
 		f.reactTicks = 0;
 		f.lockScene = false;
+		f.pushX = 0.0;
+		f.pushZ = 0.0;
 		act(f, GUARD, 0, 0);
 		f.cooldown = 24;
 		player.removeEffect(net.minecraft.world.effect.MobEffects.SLOWNESS);
-		s.hint("sabercraft.story.hint.duel_phase2");
-		// Her push and leap come a little after the scene, not at once (Phase 25: and her throw).
+		// Phase 26: step 6: the fight as before the scene, the player facing her (also when the
+		// scene was skipped before its own turn towards her), nothing left over in their hands.
+		player.stopUsingItem();
+		SaberAbilities.interrupt(player);
+		player.setDeltaMovement(Vec3.ZERO);
+		player.hurtMarked = true;
+		face(s, player, f, corner);
+		s.sceneAt = null;
+		s.lastStroke = s.time();
+		s.timer("stroke", 4);
+		// Her push and leap come a little after the scene, not at once (Phase 25: and her throw;
+		// Phase 26: and the ring's rush).
 		s.timer("push", 70);
-		s.timer("leap", 120);
-		s.timer("throw", 160);
+		s.timer("rush", 95);
+		s.timer("leap", 130);
+		s.timer("throw", 175);
 		s.dirty = true;
 	}
 
@@ -1456,13 +1838,13 @@ final class Finale {
 
 		if (!f.lockScene) {
 			s.hear("shadow", "sabercraft.story.shout.shadow_phase2");
-			s.hint("sabercraft.story.hint.duel_phase2");
 			Story.cue(s, Story.CUE_DUEL, "phase", "", 2);
 		}
 
 		Story.cue(s, Story.CUE_DUEL, "lock_end", "", f.id, java.util.List.of(contact));
 		// The push and the leap come soon after.
 		s.timer("push", 60);
+		s.timer("rush", 85);
 		s.timer("leap", 110);
 		s.timer("throw", 160);
 		s.dirty = true;

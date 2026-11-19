@@ -60,12 +60,28 @@ public final class Vents {
 		return null;
 	}
 
+	/**
+	 * Phase 26: a hatch just shut by hand does not open again from a click that comes right after
+	 * (the same click, repeated by the held key or sent twice): ticks it stays shut at least.
+	 */
+	static final int SHUT_TICKS = 6;
+
+	/** Phase 26: when each hatch was last shut by hand (world position, game time). */
+	private static final Map<BlockPos, Long> SHUT = new HashMap<>();
+
 	/** A click on a closed hatch opens it. */
 	static void open(ServerPlayer player, BlockPos origin, Hatch hatch) {
 		ServerLevel level = player.level();
 		BlockPos at = origin.offset(hatch.cell());
 
 		if (!level.getBlockState(at).is(Blocks.BARRIER)) {
+			return;
+		}
+
+		Long shut = SHUT.get(at);
+
+		if (shut != null && level.getGameTime() - shut < SHUT_TICKS && level.getGameTime() >= shut) {
+			reopensRefused++;
 			return;
 		}
 
@@ -79,7 +95,7 @@ public final class Vents {
 
 	/** Every second: open hatches nobody is near close again. */
 	static void tick(MinecraftServer server) {
-		if (server.getTickCount() % 20 != 0 || OPEN.isEmpty()) {
+		if (server.getTickCount() % 20 != 0 || OPEN.isEmpty() && SHUT.isEmpty()) {
 			return;
 		}
 
@@ -91,6 +107,7 @@ public final class Vents {
 		}
 
 		long now = level.getGameTime();
+		SHUT.values().removeIf(at -> now - at > SHUT_TICKS || now < at);
 		OPEN.entrySet().removeIf(entry -> {
 			BlockPos at = entry.getKey();
 
@@ -121,6 +138,7 @@ public final class Vents {
 
 		level.setBlock(at, Blocks.BARRIER.defaultBlockState(), 3);
 		OPEN.remove(at);
+		SHUT.put(at.immutable(), level.getGameTime());
 
 		if (sound) {
 			level.playSound(null, at.getX() + 0.5, at.getY() + 0.5, at.getZ() + 0.5, ShipInteriors.sound("ship.door"), SoundSource.BLOCKS, 0.3F, 1.75F);
@@ -199,6 +217,14 @@ public final class Vents {
 	/** Forgets the open hatches (a plot rebuilt or the server stopping). */
 	static void reset() {
 		OPEN.clear();
+		SHUT.clear();
+	}
+
+	private static int reopensRefused;
+
+	/** Phase 26, for tests: how often a click right after shutting a hatch was not let open it again. */
+	public static int reopensRefusedForTest() {
+		return reopensRefused;
 	}
 
 	/**

@@ -440,6 +440,11 @@ public final class DestroyerInterior extends InteriorPlan {
 	public static final int AIRLOCK_WALL = 7;
 	public static final AABB AIRLOCK = new AABB(2, HANGAR + 1, 8, 12, HANGAR + 4, 12);
 	public static final BlockPos MAINTENANCE_HATCH = new BlockPos(10, HANGAR + 1, -9);
+	/**
+	 * Phase 26: the middle (z) of the security desk on the hangar corridor's east wall (1.9 wide),
+	 * between the corridor's frames at z -11 and -8 (at -8.5 it reached into the second one's post).
+	 */
+	public static final double SECURITY_DESK_Z = -9.25;
 	/** The machinery block in the middle of the maintenance room (the patrol walks round it). */
 	public static final AABB MACHINERY = new AABB(5, HANGAR + 1, -2, 9, HANGAR + 3, 2);
 	/** The armory east of the hangar corridor: lockers, racks, the quartermaster's desk. */
@@ -731,7 +736,8 @@ public final class DestroyerInterior extends InteriorPlan {
 		// a bay of its own behind the lobby (the detention door no longer beside it); the reactor an
 		// open shaft far down, platforms and narrow bridges instead of the floor and the catwalk.
 		// 11 (Phase 25): the maintenance walkway, door, chamber and crawl way out of the reactor.
-		return 11;
+		// 12 (Phase 26): the security desk half a block north (clear of a corridor frame's post).
+		return 12;
 	}
 
 	@Override
@@ -914,9 +920,10 @@ public final class DestroyerInterior extends InteriorPlan {
 			b.shaped(CX - 3, HANGAR + 2, z, net.minecraft.world.phys.shapes.Shapes.box(0.0, 0.0, 0.0, 0.55, 0.85, 1.0), false);
 		}
 
-		for (int z = -10; z <= -8; z++) {
-			double z0 = Math.max(0.0, -9.45 - z);
-			double z1 = Math.min(1.0, -7.55 - z);
+		// Phase 26: moved half a block north, clear of the frame's post at z -8.
+		for (int z = -11; z <= -9; z++) {
+			double z0 = Math.max(0.0, SECURITY_DESK_Z - 0.95 - z);
+			double z1 = Math.min(1.0, SECURITY_DESK_Z + 0.95 - z);
 			b.shaped(CX + 3, HANGAR + 1, z, net.minecraft.world.phys.shapes.Shapes.box(0.12, 0.0, z0, 0.95, 1.0, z1), false);
 		}
 	}
@@ -961,6 +968,34 @@ public final class DestroyerInterior extends InteriorPlan {
 	@Override
 	public List<Hatch> hatches() {
 		return HATCHES;
+	}
+
+	/**
+	 * Phase 26: the props of the story a droid keeps off: the saber's holder in its field (one
+	 * walked onto it just as the player took the saber), the holo projector, the tracker, the cell
+	 * console, the consoles round the core and the one on the catwalk.
+	 */
+	public static final List<AABB> KEEP_CLEAR = keepClearList();
+
+	private static List<AABB> keepClearList() {
+		List<AABB> list = new java.util.ArrayList<>();
+		list.add(new AABB(SABER_FIELD).expandTowards(0.0, 1.5, 0.0).inflate(0.75, 0.0, 0.75));
+		list.add(new AABB(HOLO).expandTowards(0.0, 1.5, 0.0).inflate(0.45, 0.0, 0.45));
+		list.add(new AABB(TRACKER_X - TRACKER_R - 0.4, REACTOR_BOTTOM, TRACKER_Z - TRACKER_R - 0.4, TRACKER_X + TRACKER_R + 0.4, REACTOR_BOTTOM + 3.5,
+				TRACKER_Z + TRACKER_R + 0.4));
+		list.add(new AABB(CELL_CONSOLE).expandTowards(1.0, 1.5, 0.0).inflate(0.35, 0.0, 0.35));
+		list.add(new AABB(CATWALK_DESK).expandTowards(0.0, 1.5, 0.0).inflate(0.35, 0.0, 0.35));
+
+		for (BlockPos console : REACTOR_CONSOLES) {
+			list.add(new AABB(console).expandTowards(0.0, 1.5, 0.0).inflate(0.35, 0.0, 0.35));
+		}
+
+		return List.copyOf(list);
+	}
+
+	@Override
+	public List<AABB> keepClear() {
+		return KEEP_CLEAR;
 	}
 
 	@Override

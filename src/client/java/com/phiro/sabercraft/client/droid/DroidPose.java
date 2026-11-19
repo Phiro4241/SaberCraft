@@ -31,6 +31,13 @@ public record DroidPose(float walkPos, float walkSpeed, float headYaw, float hea
 	public static final byte TALK = 1;
 	public static final byte ABILITY = 2;
 	public static final byte ARRIVE = 3;
+	/** Phase 26: at work on something in front of it (M-31 at the cell's field emitter): short quick jolts. */
+	public static final byte WORK = 4;
+	/**
+	 * Phase 26: how far (degrees) an astromech's dome tilts up or down. Its dome turns all round on
+	 * its ring but hardly tilts: it pointed up at faces 35 degrees, which no dome on a ring can.
+	 */
+	public static final float DOME_TILT = 6.0F;
 	/** BB-8's ball radius, in blocks; the ball turns by way / radius. */
 	private static final float BB8_RADIUS = 0.27F;
 
@@ -97,7 +104,9 @@ public record DroidPose(float walkPos, float walkSpeed, float headYaw, float hea
 					poseStack.mulPose(Axis.ZP.rotationDegrees(this.playing(TALK) ? 24.0F * this.bump() : 0.0F));
 				}
 
-				poseStack.mulPose(Axis.XP.rotationDegrees(Math.clamp(pitch, -35.0F, 35.0F)));
+				// Phase 26: a dome on its ring (R2, Chopper) barely tilts; heads on necks as before.
+				float tilt = droid == DroidType.R2D2 || droid == DroidType.CHOPPER ? DOME_TILT : 35.0F;
+				poseStack.mulPose(Axis.XP.rotationDegrees(Math.clamp(pitch, -tilt, tilt)));
 			}
 			case "body" -> {
 				if (droid == DroidType.BB8) {
@@ -109,6 +118,11 @@ public record DroidPose(float walkPos, float walkSpeed, float headYaw, float hea
 					poseStack.mulPose(Axis.YP.rotationDegrees(-this.headYaw + (this.playing(ABILITY) ? 360.0F * ease(this.progress) : 0.0F)));
 				} else if (droid == DroidType.MOUSE && (this.playing(TALK) || this.playing(ABILITY))) {
 					poseStack.mulPose(Axis.YP.rotationDegrees(360.0F * ease(this.progress)));
+				} else if (this.playing(WORK)) {
+					// Phase 26: nose down into the work, jolting left and right in short bursts.
+					float burst = Mth.sin(this.progress * Mth.PI * 5.0F) > 0.0F ? 1.0F : 0.25F;
+					poseStack.mulPose(Axis.YP.rotationDegrees(Mth.sin(this.age * 2.3F) * 7.0F * burst));
+					poseStack.mulPose(Axis.XP.rotationDegrees(6.0F * Math.min(1.0F, this.bump() * 4.0F)));
 				}
 			}
 			case "leg_l" -> poseStack.mulPose(Axis.XP.rotation(swing));

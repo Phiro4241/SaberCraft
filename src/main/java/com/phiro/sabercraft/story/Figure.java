@@ -163,6 +163,11 @@ public final class Figure {
 	/** Phase 25: her saber staff drawn back to be thrown, and away in flight (her hand out after it). */
 	public static final int THROW_WIND = 11;
 	public static final int THROWN = 12;
+	/**
+	 * Phase 26: her Inquisitor's saber: the ring with its two blades spinning round the grip as she
+	 * rushes at the player (the first part: it spins up, the rest: the rush).
+	 */
+	public static final int RING = 13;
 
 	/** Phase 23: drawn into a fight (they hunted the player when it began): a fighter until it ends. */
 	public boolean engaged;
@@ -202,6 +207,8 @@ public final class Figure {
 	public int throwBack;
 	public int throwAge;
 	public int throwHit;
+	/** Phase 26: her thrust carries her in fast (a lunge from a few steps away). */
+	public boolean lunge;
 	/** Phase 23: quick hits in a row (several light hits throw one off balance too). */
 	public int strokes;
 	public long strokeAt = -1000L;
@@ -243,6 +250,27 @@ public final class Figure {
 		return this.crew.kind();
 	}
 
+	/**
+	 * Phase 26: speaking with the player now (a dialog with them is open): standing, they talk with
+	 * their hands; sitting on their seat, they stay sitting.
+	 */
+	public boolean talking;
+
+	/**
+	 * Phase 26: whether they stand at their routine's place (for a place with a seat or a console:
+	 * within a step of it). Anyone walking a round is always at their routine.
+	 */
+	public boolean atPlace() {
+		if (!this.crew.path().isEmpty()) {
+			return true;
+		}
+
+		double[] at = this.crew.where(0L);
+		double dx = this.x - at[0];
+		double dz = this.z - at[2];
+		return dx * dx + dz * dz < 0.36 && Math.abs(this.y - at[1]) < 0.6;
+	}
+
 	/** Their pose as drawn now: walking whenever they move off their routine. */
 	public String pose() {
 		if (this.mode == DOWN) {
@@ -250,7 +278,20 @@ public final class Figure {
 		}
 
 		if (this.mode == ROUTINE || this.mode == HELD) {
-			return this.crew.pose();
+			String place = this.crew.pose();
+
+			// Phase 26: a seat's pose (or a console's) only on the seat (at the console). Spoken to
+			// on the way there (Kestrel on her way to her cot) one stood in the middle of the room
+			// with the legs of someone sitting: now they stop and stand (and talk).
+			if ((Crew.SIT.equals(place) || Crew.WORK.equals(place)) && !this.atPlace()) {
+				return this.speed > 0.05F ? Crew.PATROL : this.talking && this.gestures() ? Crew.TALK : Crew.STAND;
+			}
+
+			if (this.talking && Crew.STAND.equals(place) && this.speed <= 0.05F && this.gestures()) {
+				return Crew.TALK;
+			}
+
+			return place;
 		}
 
 		// Phase 22: someone whose place is a seat stays sitting while they are on it (looking
@@ -260,6 +301,12 @@ public final class Figure {
 		}
 
 		return this.speed > 0.05F ? Crew.PATROL : Crew.STAND;
+	}
+
+	/** Phase 26: whether they talk with their hands (not a trooper with a rifle, not a droid). */
+	private boolean gestures() {
+		String kind = this.kind();
+		return !Crew.TROOPER.equals(kind) && !Crew.GUARD.equals(kind) && !kind.startsWith("droid") && !this.saber;
 	}
 
 	public Vec3 position() {
@@ -326,6 +373,7 @@ public final class Figure {
 		this.reactTicks = 0;
 		this.pushX = 0.0;
 		this.pushZ = 0.0;
+		this.talking = false;
 	}
 
 	/**

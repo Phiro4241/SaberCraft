@@ -462,19 +462,8 @@ final class StoryHud implements HudElement {
 				graphics.fill(mx, y - 2, mx + 1, y + 7, 0xFFE8EEF6);
 			}
 
-			// What he is about to do (the name of his move, never how to answer it).
-			int kind = shadow.windup() >> 5;
-
-			if (kind >= 1 && kind <= 3) {
-				Component warn = Component.translatable("sabercraft.story.duel.blow" + kind);
-				graphics.centeredText(client.font, warn, centre, y + 9, 0xFFFFC060);
-			} else if (kind == 6) {
-				// Phase 22: what he does, not what to do (no green "strike now"): the player finds
-				// out by themselves what an opening is for.
-				graphics.centeredText(client.font, Component.translatable("sabercraft.story.duel.open"), centre, y + 9, 0xFFD8DCE2);
-			} else if (kind == 4 || kind == 5) {
-				graphics.centeredText(client.font, Component.translatable("sabercraft.story.duel.force" + kind), centre, y + 9, 0xFF8CC0FF);
-			}
+			// Phase 26: no words under her bar any more (her moves were named there): what she is
+			// about to do is seen and heard (the wind-ups, the ring spinning up, its whirr).
 		}
 
 		if (StoryClient.meterShown()) {
