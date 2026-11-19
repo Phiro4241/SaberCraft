@@ -93,6 +93,8 @@ final class Finale {
 	static final int ESCAPE = 7;
 	/** Phase 23: the blades met (both struck at once): both thrown apart a little, then on guard. */
 	static final int CLASHED = 8;
+	/** Phase 25: her saber staff thrown (the second phase): drawn back, out at the player, back to her hand. */
+	static final int THROW = 9;
 	/** How it looks ({@link Figure#attack}), sent to the client in the top bits of the wind-up byte. */
 	static final int OVERHEAD = 1;
 	static final int SWEEP = 2;
@@ -115,7 +117,24 @@ final class Finale {
 	static final int[] PARRIES = {0, 3, 2};
 	/** Phase 23: her combos, per phase: the kinds of blow one after the other (the second phase's are longer and mixed). */
 	static final int[][][] PATTERNS = {{}, {{OVERHEAD}, {SWEEP}, {THRUST}, {OVERHEAD, SWEEP}, {SWEEP, THRUST}, {SWEEP, OVERHEAD}},
-			{{SWEEP, SWEEP, OVERHEAD}, {THRUST, SWEEP, THRUST}, {OVERHEAD, THRUST}, {SWEEP, OVERHEAD, SWEEP}, {OVERHEAD, SWEEP, THRUST}}};
+			{{SWEEP, SWEEP, OVERHEAD}, {THRUST, SWEEP, THRUST}, {OVERHEAD, THRUST}, {SWEEP, OVERHEAD, SWEEP}, {OVERHEAD, SWEEP, THRUST},
+					// Phase 25: with the staff she spins too (both blades round her: blocked or dodged as any blow).
+					{SPIN, THRUST}, {SWEEP, SPIN}, {OVERHEAD, SPIN, SWEEP}}};
+	/** Phase 25: a spin's wind-up is longer (the staff twirls round her: to be seen coming), and it reaches a little further. */
+	static final int SPIN_WINDUP = 20;
+	static final double SPIN_REACH = 3.5;
+	/**
+	 * Phase 25: the throw: how long she draws the staff back (the warning), how often at most, from
+	 * how far to how far she throws, what it takes when it hits, how near it must come to hit, and
+	 * how far past the player it flies.
+	 */
+	static final int THROW_WIND = 22;
+	static final int THROW_EVERY = 260;
+	static final double THROW_FROM = 4.0;
+	static final double THROW_TO = 12.0;
+	static final float THROW_DAMAGE = 3.0F;
+	static final double THROW_HIT = 0.85;
+	static final double THROW_PAST = 2.5;
 	/** For the tests: an opening as long as the first phase's. */
 	static final int OPEN = 30;
 	static final double BLOW_REACH = 3.2;
@@ -173,6 +192,12 @@ final class Finale {
 	private static int dodges;
 	private static int locks;
 	private static int disarms;
+	/** Phase 25: throws begun, hits (out, back), blocked, dodged. */
+	private static int throwsStarted;
+	private static int throwHits;
+	private static int throwBlocks;
+	private static int throwDodges;
+	private static int spins;
 
 	private Finale() {
 	}
@@ -513,6 +538,20 @@ final class Finale {
 				clash(s, f, player, me, level, corner);
 				return;
 			}
+			case THROW -> {
+				if (f.windup > 0) {
+					// Into the staff she draws back: the blades meet.
+					f.react = 0;
+					f.reactTicks = 0;
+					s.timer("throw", THROW_EVERY / 2);
+					clash(s, f, player, me, level, corner);
+				} else {
+					// Her staff is away: she has nothing to parry with.
+					bossHit(s, f, player, me, level, corner, at, heavy);
+				}
+
+				return;
+			}
 			case LEAP -> {
 				if (f.windup <= 0) {
 					// Into her leap: the blades meet in the air.
@@ -545,7 +584,15 @@ final class Finale {
 		f.hits++;
 		s.counters.merge("duel_hits", 1, Integer::sum);
 		s.counters.merge(heavy ? "duel_heavy" : "duel_light", 1, Integer::sum);
-		f.react(heavy ? Figure.HEAVY : Figure.FLINCH, heavy ? 14 : 8);
+		boolean flying = f.action == THROW && f.windup <= 0 && f.throwFrom != null;
+
+		if (flying) {
+			// (Not finished while her staff is out: it comes back to her hand first.)
+			f.health = Math.max(0.01F, f.health);
+		} else {
+			f.react(heavy ? Figure.HEAVY : Figure.FLINCH, heavy ? 14 : 8);
+		}
+
 		Hits.push(f, me, heavy ? 0.32 : 0.15);
 		level.sendParticles(ParticleTypes.SMOKE, at.x, at.y, at.z, heavy ? 10 : 6, 0.1, 0.2, 0.1, 0.02);
 		level.sendParticles(ParticleTypes.ELECTRIC_SPARK, at.x, at.y, at.z, heavy ? 24 : 12, 0.1, 0.12, 0.1, heavy ? 0.4 : 0.25);
@@ -571,6 +618,11 @@ final class Finale {
 		// Phase 24: once per fight (a mark of this fight, gone with a checkpoint's restart).
 		if (before == 1 && f.health <= PHASE_TWO && !s.has(BOSS_DONE)) {
 			lockStarts(s, f, player, me, level, corner);
+			return;
+		}
+
+		if (flying) {
+			// She waits for her staff (the throw goes on).
 			return;
 		}
 
@@ -798,6 +850,7 @@ final class Finale {
 				}
 			}
 			case LEAP -> leap(s, f, player, me, level, corner, phase);
+			case THROW -> throwTick(s, f, player, me, level, corner);
 			case PUSH -> {
 				f.speed = 0.0F;
 
@@ -851,6 +904,13 @@ final class Finale {
 			return;
 		}
 
+		// Phase 25: from a distance she throws her staff (not too soon after her leap or push).
+		if (phase >= 2 && !s.timer("throw") && distance > THROW_FROM && distance < THROW_TO && clear && s.timers.getOrDefault("leap", 0) < LEAP_EVERY - 60
+				&& s.timers.getOrDefault("push", 0) < PUSH_EVERY - 40) {
+			throwStarts(s, f, level, corner);
+			return;
+		}
+
 		if (distance <= BLOW_REACH - 0.4) {
 			// A combo: one of her patterns (not the same twice running).
 			int[][] patterns = PATTERNS[phase];
@@ -878,6 +938,11 @@ final class Finale {
 
 	/** A blow begins: the blade goes up (or back, or in). */
 	private static void blowStarts(Figure f, int kind, int ticks, ServerLevel level, StorySession s) {
+		if (kind == SPIN) {
+			ticks = Math.max(ticks, SPIN_WINDUP);
+			spins++;
+		}
+
 		act(f, WINDUP, kind, ticks);
 		f.windup = ticks;
 		Vec3 at = f.position().add(Vec3.atLowerCornerOf(s.origin(f.ship)));
@@ -892,7 +957,7 @@ final class Finale {
 	 */
 	private static void blow(StorySession s, Figure f, ServerPlayer player, Vec3 me, ServerLevel level, Vec3 corner, int phase) {
 		double distance = Math.hypot(me.x - f.x, me.z - f.z);
-		double reach = f.attack == THRUST ? THRUST_REACH : BLOW_REACH;
+		double reach = f.attack == THRUST ? THRUST_REACH : f.attack == SPIN ? SPIN_REACH : BLOW_REACH;
 		Vec3 at = contact(f, me).add(corner);
 		RandomSource random = player.getRandom();
 		f.combo--;
@@ -1017,6 +1082,139 @@ final class Finale {
 			act(f, WINDUP, OVERHEAD, 6);
 			f.windup = 6;
 		}
+	}
+
+	/**
+	 * Phase 25: she draws her staff back over her shoulder to throw it, twirling (the warning: a
+	 * sound, the staff spinning in her hand, a word the first time).
+	 */
+	private static void throwStarts(StorySession s, Figure f, ServerLevel level, Vec3 corner) {
+		act(f, THROW, 0, THROW_WIND);
+		f.windup = THROW_WIND;
+		f.throwFrom = null;
+		f.throwAge = 0;
+		f.throwHit = 0;
+		f.react(Figure.THROW_WIND, THROW_WIND);
+		s.timer("throw", THROW_EVERY);
+		throwsStarted++;
+		Vec3 at = f.position().add(corner).add(0.0, 1.4, 0.0);
+		level.playSound(null, at.x, at.y, at.z, ShipInteriors.sound("saber.swing"), SoundSource.HOSTILE, 0.9F, 0.6F);
+
+		if (!s.has("tmp.hint_throw")) {
+			s.set("tmp.hint_throw");
+			s.hint("sabercraft.story.hint.duel_throw");
+		}
+	}
+
+	/**
+	 * Phase 25: the throw, each tick: drawn back, then let go at the player (past where they stand,
+	 * not through a wall), and back to her hand. It hurts on the way out and on the way back (once
+	 * each); a guard raised towards it turns it aside, a dash goes under it. She stands meanwhile,
+	 * her hand out after it: a stroke at her then hits.
+	 */
+	private static void throwTick(StorySession s, Figure f, ServerPlayer player, Vec3 me, ServerLevel level, Vec3 corner) {
+		f.speed = 0.0F;
+
+		if (f.windup > 0) {
+			if (--f.windup > 0) {
+				return;
+			}
+
+			// Let go.
+			Vec3 look = f.look();
+			Vec3 start = f.position().add(corner).add(0.0, 1.45, 0.0).add(look.scale(0.35)).add(new Vec3(-look.z, 0.0, look.x).scale(-0.3));
+			Vec3 target = player.position().add(0.0, 1.0, 0.0);
+			Vec3 dir = target.subtract(start).normalize();
+			Vec3 far = target.add(dir.scale(THROW_PAST));
+			net.minecraft.world.phys.BlockHitResult wall = level.clip(new net.minecraft.world.level.ClipContext(start, far,
+					net.minecraft.world.level.ClipContext.Block.COLLIDER, net.minecraft.world.level.ClipContext.Fluid.NONE, player));
+
+			if (wall.getType() != net.minecraft.world.phys.HitResult.Type.MISS) {
+				far = wall.getLocation().subtract(dir.scale(0.45));
+			}
+
+			int out = Mth.clamp((int) Math.round(start.distanceTo(far) / 0.7), 8, 20);
+			f.throwFrom = start;
+			f.throwFar = far;
+			f.throwHand = f.position().add(corner).add(0.0, 1.4, 0.0).add(look.scale(0.45));
+			f.throwOut = out;
+			f.throwBack = out + 2;
+			f.throwAge = 0;
+			f.throwHit = 0;
+			f.react(Figure.THROWN, f.throwOut + f.throwBack);
+			level.playSound(null, start.x, start.y, start.z, ShipInteriors.sound("saber.swing"), SoundSource.HOSTILE, 1.1F, 1.2F);
+			Story.cue(s, Story.CUE_DUEL, "throw", "", f.throwOut * 1000 + f.throwBack, java.util.List.of(start, far, f.throwHand));
+			return;
+		}
+
+		if (f.throwFrom == null || f.throwFar == null || f.throwHand == null) {
+			act(f, GUARD, 0, 0);
+			return;
+		}
+
+		f.turnTowards(me, 8.0F, true);
+		f.headYaw = Crew.yaw(f.position(), me);
+		int t = ++f.throwAge;
+		Vec3 was = StaffThrow.at(f.throwFrom, f.throwFar, f.throwHand, f.throwOut, f.throwBack, t - 1);
+		Vec3 now = StaffThrow.at(f.throwFrom, f.throwFar, f.throwHand, f.throwOut, f.throwBack, t);
+
+		if (t % 4 == 0) {
+			level.playSound(null, now.x, now.y, now.z, ShipInteriors.sound("saber.swing"), SoundSource.HOSTILE, 0.8F, 1.3F);
+		}
+
+		int leg = t <= f.throwOut ? 1 : 2;
+		net.minecraft.world.phys.AABB body = player.getBoundingBox().inflate(THROW_HIT - 0.3);
+
+		if ((f.throwHit & leg) == 0 && (body.contains(now) || body.clip(was, now).isPresent())) {
+			f.throwHit |= leg;
+			throwMeets(s, f, player, level, corner, now);
+		}
+
+		if (t >= f.throwOut + f.throwBack) {
+			// Back in her hand.
+			level.playSound(null, f.throwHand.x, f.throwHand.y, f.throwHand.z, ShipInteriors.sound("saber.swing"), SoundSource.HOSTILE, 0.8F, 0.6F);
+			Story.cue(s, Story.CUE_DUEL, "caught", "", f.id);
+			f.throwFrom = null;
+			f.react = 0;
+			f.reactTicks = 0;
+			act(f, GUARD, 0, 0);
+			f.cooldown = PAUSES[phase(f)];
+		}
+	}
+
+	/** Phase 25: the thrown staff reaches the player: dodged, turned aside by the guard, or it hurts. */
+	private static void throwMeets(StorySession s, Figure f, ServerPlayer player, ServerLevel level, Vec3 corner, Vec3 at) {
+		if (SaberAbilities.evading(player)) {
+			throwDodges++;
+			s.counters.merge("throw_dodged", 1, Integer::sum);
+			Story.cue(s, Story.CUE_DUEL, "dodged", "", f.id);
+			return;
+		}
+
+		Vec3 look = player.getLookAngle();
+		Vec3 to = at.subtract(player.getEyePosition());
+		boolean facing = to.lengthSqr() < 1.0E-4 || new Vec3(look.x, 0.0, look.z).normalize().dot(new Vec3(to.x, 0.0, to.z).normalize()) > 0.2;
+
+		if (guardTicks(player) >= 0 && facing) {
+			throwBlocks++;
+			s.counters.merge("throw_blocked", 1, Integer::sum);
+			s.focus = Math.min(1.0F, s.focus + FOCUS_BLOCK);
+			level.sendParticles(ParticleTypes.ELECTRIC_SPARK, at.x, at.y, at.z, 20, 0.12, 0.12, 0.12, 0.45);
+			level.playSound(null, at.x, at.y, at.z, ShipInteriors.sound("saber.clash"), SoundSource.HOSTILE, 1.1F, 1.05F);
+			Story.cue(s, Story.CUE_DUEL, "blocked", "", f.id, java.util.List.of(at));
+			return;
+		}
+
+		throwHits++;
+		s.counters.merge("throw_hit", 1, Integer::sum);
+		player.hurtServer(level, level.damageSources().generic(), THROW_DAMAGE);
+		Vec3 push = new Vec3(player.getX() - at.x, 0.0, player.getZ() - at.z);
+		push = push.lengthSqr() < 1.0E-4 ? Vec3.ZERO : push.normalize().scale(0.45);
+		player.push(push.x, 0.2, push.z);
+		player.hurtMarked = true;
+		level.playSound(null, at.x, at.y, at.z, ShipInteriors.sound("saber.hit"), SoundSource.HOSTILE, 1.0F, 1.0F);
+		level.sendParticles(ParticleTypes.ELECTRIC_SPARK, at.x, at.y, at.z, 14, 0.15, 0.2, 0.15, 0.3);
+		Story.cue(s, Story.CUE_DUEL, "hurt", "", Math.round(THROW_DAMAGE), java.util.List.of(at));
 	}
 
 	/** A push with the Force: the guard takes most of it. */
@@ -1196,9 +1394,10 @@ final class Finale {
 		f.cooldown = 24;
 		player.removeEffect(net.minecraft.world.effect.MobEffects.SLOWNESS);
 		s.hint("sabercraft.story.hint.duel_phase2");
-		// Her push and leap come a little after the scene, not at once.
+		// Her push and leap come a little after the scene, not at once (Phase 25: and her throw).
 		s.timer("push", 70);
 		s.timer("leap", 120);
+		s.timer("throw", 160);
 		s.dirty = true;
 	}
 
@@ -1265,6 +1464,7 @@ final class Finale {
 		// The push and the leap come soon after.
 		s.timer("push", 60);
 		s.timer("leap", 110);
+		s.timer("throw", 160);
 		s.dirty = true;
 	}
 
@@ -1406,6 +1606,7 @@ final class Finale {
 			case PUSH -> 31 * (HAND_TICKS - f.windup) / HAND_TICKS;
 			case OPEN_UP, ESCAPE -> 31;
 			case RECOIL -> f.attack == SPIN ? 31 * (RECOIL_TICKS - Math.max(0, f.timer)) / RECOIL_TICKS : 0;
+			case THROW -> 0;
 			default -> 0;
 		};
 
@@ -1431,6 +1632,31 @@ final class Finale {
 
 	static int[] countsForTest() {
 		return new int[] {clashes, perfects, dodges, locks, disarms};
+	}
+
+	/** Phase 25, for the tests: she throws now. */
+	static void throwForTest(StorySession s, Figure f) {
+		ServerLevel level = Chapter1.interiors(s);
+
+		if (level != null) {
+			throwStarts(s, f, level, Vec3.atLowerCornerOf(s.origin(f.ship)));
+		}
+	}
+
+	/** Phase 25, for the tests: she spins now (a single blow). */
+	static void spinForTest(StorySession s, Figure f) {
+		ServerLevel level = Chapter1.interiors(s);
+
+		if (level != null) {
+			f.combo = 1;
+			f.pattern = -1;
+			blowStarts(f, SPIN, SPIN_WINDUP, level, s);
+		}
+	}
+
+	/** Phase 25, for the tests: throws begun, hits, blocked, dodged; spins begun. */
+	static int[] throwsForTest() {
+		return new int[] {throwsStarted, throwHits, throwBlocks, throwDodges, spins};
 	}
 
 	static int strokesForTest() {

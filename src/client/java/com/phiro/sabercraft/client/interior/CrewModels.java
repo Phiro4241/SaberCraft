@@ -96,6 +96,9 @@ final class CrewModels {
 	static final int PARRY = 8;
 	static final int DODGE = 9;
 	static final int LOCK = 10;
+	/** Phase 25: her saber staff drawn back to be thrown (twirling over the shoulder), and away in flight (the hand out after it). */
+	static final int THROW_WIND = 11;
+	static final int THROWN = 12;
 
 	/** Phase 23: how far a reaction throws the body back (degrees; negative is forward) at that point of it. */
 	static float reactLean(Gear gear, float t, int seed) {
@@ -274,6 +277,14 @@ final class CrewModels {
 
 		// The arms: where the hands go.
 		float[] hilt = saber ? saberHold(shoulder, gear) : null;
+		// Phase 25: her saber staff (the second phase): held in the middle with both hands, a blade
+		// at each end, kept clear of her body; or thrown (the hand out after it, the staff in flight).
+		boolean thrown = saber && gear.twin() > 0.0F && gear.react() == THROWN;
+		float[] staff = saber && gear.twin() > 0.0F && !thrown ? staffHold(shoulder, gear, hilt) : null;
+
+		if (thrown) {
+			hilt = null;
+		}
 		float fling = gear.down() ? 0.0F : reactFling(gear);
 		boolean pistol = gear.pistol() && !gear.down() && !sit;
 
@@ -281,6 +292,20 @@ final class CrewModels {
 			float sx = side * (HALF_W + LIMB * 0.9F);
 			float[] hand = hilt != null ? new float[] {hilt[0] - hilt[3] * (side < 0 ? 0.05F : 0.17F), hilt[1] - hilt[4] * (side < 0 ? 0.05F : 0.17F),
 					hilt[2] - hilt[5] * (side < 0 ? 0.05F : 0.17F)} : hand(crew, side, shoulder, swing, t, seed, rifle, walking);
+
+			if (staff != null) {
+				// Phase 25: the right hand on the half of the staff to her right, the left on the other
+				// (drawn back to throw: the right hand alone, at its middle).
+				float k = staff[3] <= 0.0F ? 1.0F : -1.0F;
+				float at = gear.react() == THROW_WIND ? (side < 0 ? 0.0F : Float.NaN) : side < 0 ? 0.17F * k : -0.17F * k;
+				hand = Float.isNaN(at) ? hand(crew, side, shoulder, 0.0F, t, seed, false, false)
+						: new float[] {staff[0] + staff[3] * at, staff[1] + staff[4] * at, staff[2] + staff[5] * at};
+			} else if (thrown && side < 0) {
+				// Phase 25: the staff thrown: her right hand out after it (she guides it back with the Force).
+				float p = Mth.clamp(gear.reactP(), 0.0F, 1.0F);
+				float out = Mth.clamp(Math.min(p * 6.0F, 1.0F), 0.0F, 1.0F);
+				hand = new float[] {Mth.lerp(out, hand[0], -0.14F), Mth.lerp(out, hand[1], shoulder + 0.06F), Mth.lerp(out, hand[2], 0.6F)};
+			}
 
 			if (pistol && side < 0) {
 				// Phase 23: an officer's pistol in the right hand: low and ready, aimed out at shoulder height.
@@ -315,7 +340,7 @@ final class CrewModels {
 				float k = Mth.clamp(gear.aim(), 0.0F, 1.0F);
 				hand = new float[] {hand[0] * (1.0F - k * 0.4F), hand[1] + k * 0.24F, hand[2] + k * 0.04F};
 			}
-			float[] pole = hilt != null ? new float[] {side * 0.9F, -0.8F, -0.2F} : pole(crew, side, rifle, walking);
+			float[] pole = hilt != null || staff != null ? new float[] {side * 0.9F, -0.8F, -0.2F} : pole(crew, side, rifle, walking);
 			arm(b, look, sx, shoulder, 0.0F, hand[0], hand[1], hand[2], pole);
 		}
 
@@ -328,8 +353,12 @@ final class CrewModels {
 			pistol(b, at[0], at[1], at[2], dir[0], dir[1], dir[2]);
 		}
 
-		if (hilt != null) {
-			lightsaber(b, hilt, gear.saber(), gear.twin());
+		if (staff != null) {
+			saberStaff(b, staff, gear.saber(), gear.twin());
+		} else if (hilt != null) {
+			lightsaber(b, hilt, gear.saber(), 0.0F);
+		} else if (thrown) {
+			// (In flight: drawn where it flies, see StoryModels.)
 		} else if (gear.saber() != 0 && !gear.unarmed()) {
 			// The hilt at the belt.
 			b.fit(InteriorAtlas.IMP_BLACK);
@@ -402,9 +431,10 @@ final class CrewModels {
 	/**
 	 * Phase 19: where a lightsaber is held (body space) and which way its blade points: on guard
 	 * (low, forward and up), raised over the right shoulder for a blow, swept down to the left
-	 * after it. Returns x, y, z of the hilt's top and the blade's direction.
+	 * after it. Returns x, y, z of the hilt's top and the blade's direction. (Phase 25: not private,
+	 * for {@link MeshAudit#staffInBody}.)
 	 */
-	private static float[] saberHold(float shoulder, Gear gear) {
+	static float[] saberHold(float shoulder, Gear gear) {
 		float[] guard = {-0.02F, shoulder - 0.4F, 0.36F};
 		float[] raised = {-0.18F, shoulder + 0.14F, 0.04F};
 		float[] through = {0.14F, shoulder - 0.56F, 0.34F};
@@ -496,6 +526,231 @@ final class CrewModels {
 	static final int STAGGER = 6;
 	static final int SPIN = 7;
 
+	/** Phase 25: the half length of her saber staff, and the length of each blade. */
+	static final float STAFF_HALF = 0.5F;
+	static final float STAFF_BLADE = 0.95F;
+
+	/**
+	 * Phase 25: how she holds her saber staff in the second phase (body space): its middle and the
+	 * direction of the first blade. Held in both hands across her front, at an angle (one blade up
+	 * to her right, the other down to her left); raised above the head, drawn back for a sweep,
+	 * pulled in at the hip for a thrust as the single blade is; twirled round in a spin; drawn back
+	 * over the shoulder, twirling, before a throw. Wherever the animation takes it, neither the
+	 * staff nor a blade goes through her: it is moved out in front of her if it would.
+	 *
+	 * <p>As the second blade comes out (the start of the second phase) the staff moves from where
+	 * the single blade was held to its own hold.
+	 */
+	static float[] staffHold(float shoulder, Gear gear, float @org.jspecify.annotations.Nullable [] single) {
+		float[] guardC = {0.0F, shoulder - 0.3F, 0.44F};
+		float[] guardD = norm(-0.8F, 0.5F, 0.3F);
+		float[] raisedC = {0.0F, shoulder + 0.36F, 0.38F};
+		float[] raisedD = norm(-0.95F, 0.2F, -0.15F);
+		float[] throughC = {0.04F, shoulder - 0.42F, 0.5F};
+		float[] throughD = norm(-0.55F, -0.75F, 0.35F);
+
+		switch (gear.attack()) {
+			case SWEEP -> {
+				// Drawn round to her right, flat: it sweeps round to her left.
+				raisedC = new float[] {-0.15F, shoulder - 0.2F, 0.42F};
+				raisedD = norm(-0.9F, 0.1F, -0.42F);
+				throughC = new float[] {0.15F, shoulder - 0.25F, 0.45F};
+				throughD = norm(0.9F, 0.05F, -0.42F);
+			}
+			case THRUST -> {
+				// Pulled in at the right hip, a blade forward: it comes straight.
+				raisedC = new float[] {-0.34F, shoulder - 0.42F, 0.2F};
+				raisedD = norm(0.03F, 0.05F, 1.0F);
+				throughC = new float[] {-0.22F, shoulder - 0.3F, 0.6F};
+				throughD = norm(0.05F, 0.03F, 1.0F);
+			}
+			case STAGGER -> {
+				raisedC = new float[] {0.0F, shoulder - 0.55F, 0.42F};
+				raisedD = norm(-0.9F, -0.3F, 0.2F);
+			}
+			case CROUCH -> {
+				raisedC = new float[] {0.0F, shoulder + 0.05F, 0.3F};
+				raisedD = norm(-0.6F, 0.75F, -0.25F);
+			}
+			default -> {
+			}
+		}
+
+		// Blade on blade: the staff upright before her (a clash, the lock), across (a parry).
+		float[] held = switch (gear.react()) {
+			case CLASH -> new float[] {0.0F, shoulder - 0.1F, 0.46F, -0.3F, 0.9F, 0.3F};
+			case PARRY -> new float[] {0.0F, shoulder - 0.2F, 0.44F, -0.85F, 0.45F, 0.2F};
+			case LOCK -> new float[] {0.0F, shoulder - 0.1F, 0.45F, -0.25F, 0.85F, 0.45F};
+			default -> null;
+		};
+
+		if (held != null) {
+			float k = gear.react() == LOCK ? 1.0F : Mth.clamp(Math.min(gear.reactP() * 5.0F, (1.0F - gear.reactP()) * 3.0F), 0.0F, 1.0F);
+			float[] dir = norm(held[3], held[4], held[5]);
+
+			for (int i = 0; i < 3; i++) {
+				guardC[i] = Mth.lerp(k, guardC[i], held[i]);
+				guardD[i] = Mth.lerp(k, guardD[i], dir[i]);
+			}
+		}
+
+		float r = Mth.clamp(gear.raise(), 0.0F, 1.0F);
+		float w = Mth.clamp(gear.swing(), 0.0F, 1.0F);
+		float[] out = new float[6];
+
+		for (int i = 0; i < 3; i++) {
+			out[i] = Mth.lerp(w, Mth.lerp(r, guardC[i], raisedC[i]), throughC[i]);
+			out[i + 3] = Mth.lerp(w, Mth.lerp(r, guardD[i], raisedD[i]), throughD[i]);
+		}
+
+		if (gear.react() == THROW_WIND) {
+			// Drawn back over the right shoulder, twirling in her hand faster and faster.
+			float p = Mth.clamp(gear.reactP(), 0.0F, 1.0F);
+			float k = Mth.clamp(p * 2.5F, 0.0F, 1.0F);
+			float a = p * p * 6.0F * Mth.PI;
+			float[] back = {-0.42F, shoulder + 0.16F, -0.02F};
+			float[] twirl = {0.0F, Mth.cos(a), Mth.sin(a)};
+
+			for (int i = 0; i < 3; i++) {
+				out[i] = Mth.lerp(k, out[i], back[i]);
+				out[i + 3] = Mth.lerp(k, out[i + 3], twirl[i]);
+			}
+		}
+
+		if (gear.spin() > 0.0F) {
+			// The spin: twirled twice round before her while she turns once round.
+			float a = gear.spin() * 4.0F * Mth.PI;
+			float c = Mth.cos(a);
+			float si = Mth.sin(a);
+			float dx = out[3] * c - out[4] * si;
+			float dy = out[3] * si + out[4] * c;
+			out[3] = dx;
+			out[4] = dy;
+			float turn = gear.spin() * Mth.TWO_PI;
+			float tc = Mth.cos(turn);
+			float ts = Mth.sin(turn);
+			float cx = out[0] * tc + out[2] * ts;
+			float cz = -out[0] * ts + out[2] * tc;
+			out[0] = cx;
+			out[2] = cz;
+			float ddx = out[3] * tc + out[5] * ts;
+			float ddz = -out[3] * ts + out[5] * tc;
+			out[3] = ddx;
+			out[5] = ddz;
+		}
+
+		float twin = Mth.clamp(gear.twin() / 0.35F, 0.0F, 1.0F);
+
+		if (single != null && twin < 1.0F) {
+			// The second blade comes out: from the single blade's hold (the staff's top at its emitter) to the staff's.
+			float e = twin * twin * (3.0F - 2.0F * twin);
+			float[] from = {single[0] - single[3] * STAFF_HALF, single[1] - single[4] * STAFF_HALF, single[2] - single[5] * STAFF_HALF};
+
+			for (int i = 0; i < 3; i++) {
+				out[i] = Mth.lerp(e, from[i], out[i]);
+				out[i + 3] = Mth.lerp(e, single[i + 3], out[i + 3]);
+			}
+		}
+
+		float[] dir = norm(out[3], out[4], out[5]);
+		out[3] = dir[0];
+		out[4] = dir[1];
+		out[5] = dir[2];
+		clearOfBody(out, shoulder);
+		return out;
+	}
+
+	/**
+	 * Phase 25: moves the staff away from her, the way its middle lies from her (in front of her,
+	 * at her side or, in a spin, behind her back), as far as needed for no part of it (staff and
+	 * both blades) to be in her body (body space: the torso, the head over it, the legs under it).
+	 * (Pushed only to the front, a staff behind her in a spin was pushed through her.)
+	 */
+	static void clearOfBody(float[] staff, float shoulder) {
+		float rx = staff[0];
+		float rz = staff[2];
+		float length = Mth.sqrt(rx * rx + rz * rz);
+
+		if (length < 0.05F) {
+			rx = 0.0F;
+			rz = 1.0F;
+		} else {
+			rx /= length;
+			rz /= length;
+		}
+
+		for (int i = 0; i < 80 && staffInBody(staff, shoulder); i++) {
+			staff[0] += rx * 0.025F;
+			staff[2] += rz * 0.025F;
+		}
+	}
+
+	/** Phase 25: whether a part of the staff (or its blades) lies in her body. */
+	static boolean staffInBody(float[] staff, float shoulder) {
+		for (float t = -(STAFF_HALF + STAFF_BLADE); t <= STAFF_HALF + STAFF_BLADE + 0.001F; t += 0.05F) {
+			if (inBody(staff[0] + staff[3] * t, staff[1] + staff[4] * t, staff[2] + staff[5] * t, shoulder)) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	/** Phase 25: whether that point (body space) is in her body. */
+	static boolean inBody(float x, float y, float z, float shoulder) {
+		float half = HALF_W + 0.06F;
+		float depth = HALF_D + 0.06F;
+		return Math.abs(x) < half && Math.abs(z) < depth && y > -LEG && y < shoulder + 0.06F + HEAD;
+	}
+
+	/**
+	 * Phase 25: her saber staff: the hilt a staff held in the middle, a blade out of each end (the
+	 * second as far as it is out, {@code twin} 0..1, while it comes out).
+	 */
+	private static void saberStaff(MeshBuilder b, float[] staff, int colour, float twin) {
+		b.push().translate(staff[0], staff[1], staff[2]);
+		pointDown(b, -staff[3], -staff[4], -staff[5]);
+		staffHilt(b);
+		blade(b, STAFF_HALF, STAFF_HALF + STAFF_BLADE, colour);
+		float second = Mth.clamp((twin - 0.35F) / 0.65F, 0.0F, 1.0F);
+
+		if (second > 0.0F) {
+			blade(b, -STAFF_HALF, -STAFF_HALF - STAFF_BLADE * second, colour);
+		}
+
+		b.layer(Layer.SOLID).worldLight().white().twoSided(false);
+		b.pop();
+	}
+
+	/** Phase 25: the staff's hilt along y (its middle at 0): black, metal bands by the grips and at the emitters. */
+	static void staffHilt(MeshBuilder b) {
+		b.layer(Layer.SOLID).worldLight().white().twoSided(false);
+		b.fit(InteriorAtlas.IMP_BLACK);
+		b.box(-0.028F, -STAFF_HALF, -0.028F, 0.028F, STAFF_HALF, 0.028F);
+		b.tile(InteriorAtlas.IMP_METAL, 1.0F);
+
+		for (int end = -1; end <= 1; end += 2) {
+			float e = end * STAFF_HALF;
+			b.box(-0.034F, Math.min(e, e - end * 0.05F), -0.034F, 0.034F, Math.max(e, e - end * 0.05F), 0.034F);
+			b.box(-0.032F, Math.min(end * 0.3F, end * 0.33F), -0.032F, 0.032F, Math.max(end * 0.3F, end * 0.33F), 0.032F);
+		}
+
+		b.box(-0.031F, -0.03F, -0.031F, 0.031F, 0.03F, 0.031F);
+	}
+
+	/**
+	 * Phase 25: the thrown saber staff in flight (plot space): spinning flat round its middle as it
+	 * flies, both blades lit.
+	 */
+	static void flyingStaff(MeshBuilder b, float x, float y, float z, float yaw, float spin, int colour) {
+		b.push().translate(x, y, z).rotateY(-yaw).rotateX(80.0F).rotateZ(spin);
+		staffHilt(b);
+		blade(b, STAFF_HALF, STAFF_HALF + STAFF_BLADE, colour);
+		blade(b, -STAFF_HALF, -STAFF_HALF - STAFF_BLADE, colour);
+		b.layer(Layer.SOLID).worldLight().white().twoSided(false);
+		b.pop();
+	}
+
 	/** Phase 19: a lightsaber: the hilt below {@code at}, the blade along its direction, glowing in its colour. */
 	private static void lightsaber(MeshBuilder b, float[] at, int colour, float twin) {
 		b.push().translate(at[0], at[1], at[2]);
@@ -543,9 +798,17 @@ final class CrewModels {
 	 * Phase 23: a saber struck from a hand (no blade): the hilt at that spot (plot space), turned by
 	 * yaw, tipped by pitch (90: lying flat). Its emitter is scorched where the blade broke off.
 	 */
-	static void looseHilt(MeshBuilder b, float x, float y, float z, float yaw, float pitch) {
+	static void looseHilt(MeshBuilder b, float x, float y, float z, float yaw, float pitch, boolean staff) {
 		b.layer(Layer.SOLID).worldLight().white().twoSided(false);
 		b.push().translate(x, y, z).rotateY(-yaw).rotateX(pitch);
+
+		if (staff) {
+			// Phase 25: struck from her hand in the second phase: the whole staff, its blades out.
+			staffHilt(b);
+			b.pop();
+			return;
+		}
+
 		// Its middle at the spot, +y along it towards the emitter.
 		b.fit(InteriorAtlas.IMP_BLACK);
 		b.box(-0.028F, -0.135F, -0.028F, 0.028F, 0.135F, 0.028F);

@@ -15,8 +15,16 @@ import net.minecraft.world.phys.Vec3;
  * one subclass and an entry in {@link #of}.
  */
 public abstract class InteriorPlan {
-	/** A named room: its name is shown when someone walks in, and the tests check every room can be reached. */
-	public record Room(String id, AABB area) {
+	/**
+	 * A named room: its name is shown when someone walks in, and the tests check every room can be
+	 * reached. Phase 25: {@code roof} whether standing on top of it counts as being on a roof (see
+	 * {@link #onRoof}); not for a room right under the floor of another.
+	 */
+	public record Room(String id, AABB area, boolean roof) {
+		public Room(String id, AABB area) {
+			this(id, area, true);
+		}
+
 		public Vec3 centre() {
 			return this.area.getCenter();
 		}
@@ -247,6 +255,12 @@ public abstract class InteriorPlan {
 
 		for (Room room : this.rooms()) {
 			AABB area = room.area();
+
+			// (Phase 25: a room right under another floor has no roof one could stand on: over it is
+			// the deck of the rooms above.)
+			if (!room.roof()) {
+				continue;
+			}
 
 			if (local.x > area.minX - 1.5 && local.x < area.maxX + 1.5 && local.z > area.minZ - 1.5 && local.z < area.maxZ + 1.5 && local.y >= area.maxY - 0.01
 					&& local.y <= area.maxY + 4.0) {

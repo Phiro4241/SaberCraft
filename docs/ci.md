@@ -16,8 +16,8 @@ Ein neuer Push auf einen PR bricht dessen noch laufenden Lauf ab. Auf `main` wir
 
 ## Grenzen
 
-- **Zeitlimit:** Der Test-Schritt bricht nach 75 Minuten ab, der ganze Job nach 85 Minuten (seit Phase 20; vorher 60 und 70: der Lauf von PR #24 mit Phase 19 brauchte schon 50,6 Minuten im Test-Schritt, und Phase 20 bringt den Film und weitere Tests dazu). Ohne Limit lief ein hängender Test bisher 6 Stunden. Bis Phase 17 waren es 45 und 55 Minuten; die Tests von Phase 17 brauchten aber schon fast 43 Minuten, und mit Phase 18 sind es etwa 50. Der erste Lauf von PR #23 brach deshalb zu Beginn von `Phase18GameTest` ab, nachdem alle Klassen davor grün waren.
-- **Artefakte:** Die JAR bleibt 7 Tage. Screenshots (ca. 0,57 GB) und die Audioaufnahme (ca. 0,2 GB) werden nur bei einem Fehlschlag oder einem manuellen Lauf hochgeladen und bleiben 3 Tage.
+- **Zeitlimit:** Der Test-Schritt bricht nach 95 Minuten ab, der ganze Job nach 110 Minuten (seit Phase 25: der Lauf von PR #29 mit Phase 24 brauchte 68 der damals erlaubten 75 Minuten im Test-Schritt, und Phase 25 bringt `Phase25GameTest` mit etwa 5 Minuten dazu). Davor waren es 75 und 85 Minuten (seit Phase 20; vorher 60 und 70: der Lauf von PR #24 mit Phase 19 brauchte schon 50,6 Minuten im Test-Schritt, und Phase 20 bringt den Film und weitere Tests dazu). Ohne Limit lief ein hängender Test bisher 6 Stunden. Bis Phase 17 waren es 45 und 55 Minuten; die Tests von Phase 17 brauchten aber schon fast 43 Minuten, und mit Phase 18 sind es etwa 50. Der erste Lauf von PR #23 brach deshalb zu Beginn von `Phase18GameTest` ab, nachdem alle Klassen davor grün waren.
+- **Artefakte:** Hochgeladen wird nur die JAR der Mod (nicht die Quellen-JAR), sie bleibt 5 Tage (seit Phase 25; vorher 7 Tage mit beiden JARs). Screenshots (ca. 0,57 GB) und die Audioaufnahme (ca. 0,2 GB) werden nur bei einem Fehlschlag oder einem manuellen Lauf hochgeladen und bleiben 3 Tage.
 - **Cache:** `setup-java` speichert den Gradle- und Loom-Cache. Er zählt nicht zum Artefaktspeicher.
 
 ## Regeln für die Entwicklung

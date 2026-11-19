@@ -506,6 +506,8 @@ public final class ArrivalFilm {
 			case GLOW -> RenderTypes.eyes(InteriorScene.ATLAS);
 			case GLASS -> RenderTypes.bannerPattern(InteriorScene.ATLAS);
 			case HOLO -> RenderTypes.entityTranslucentEmissive(InteriorScene.ATLAS);
+			// Phase 25: added light (see InteriorLight).
+			case LIGHT -> InteriorLight.TYPE;
 		};
 	}
 

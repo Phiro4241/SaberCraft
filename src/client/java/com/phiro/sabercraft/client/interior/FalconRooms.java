@@ -808,9 +808,12 @@ final class FalconRooms {
 		// Phase 19: the inside of the collar round each dome, from the deck up to the glass and from
 		// the glass up to the hull (one looked out through the hull there, past the floor's edge).
 		b.tile(InteriorAtlas.FAL_METAL_DARK, 1.0F);
-		float sin15 = Mth.sin(15.0F * Mth.DEG_TO_RAD);
-		collar(b, FLOOR + 6.0F, (float) (TOP_DOME_Y + TOP_DOME_R * sin15) + 0.06F, 4.03F);
-		collar(b, (float) (BOTTOM_DOME_Y - BOTTOM_DOME_R * sin15) - 0.06F, 5.0F, 4.03F);
+		// Phase 25: up to the outer collar's rim (it ended half a block lower: over it one looked
+		// through the back of the outer collar into the hull), closed at the rim.
+		collar(b, FLOOR + 6.0F, FalconVisuals.TOP_COLLAR_RIM, 4.03F);
+		collar(b, FalconVisuals.BOTTOM_COLLAR_RIM, 5.0F, 4.03F);
+		b.ring(CXF, FalconVisuals.TOP_COLLAR_RIM, CZF, 4.0F, 4.14F, 40, true);
+		b.ring(CXF, FalconVisuals.BOTTOM_COLLAR_RIM, CZF, 4.0F, 4.14F, 40, false);
 		b.tile(InteriorAtlas.FAL_METAL, 1.0F);
 		// Under the deck round the opening (just in front of the blocks' faces: on them it flickered).
 		b.ring(CXF, 5.0F - Skin.EPS, CZF, 3.0F, 4.05F, 40, false);

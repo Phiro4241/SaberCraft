@@ -160,6 +160,9 @@ public final class Figure {
 	public static final int DODGE = 9;
 	/** The duel: the blades locked (between the two phases): pressing against each other. */
 	public static final int LOCK = 10;
+	/** Phase 25: her saber staff drawn back to be thrown, and away in flight (her hand out after it). */
+	public static final int THROW_WIND = 11;
+	public static final int THROWN = 12;
 
 	/** Phase 23: drawn into a fight (they hunted the player when it began): a fighter until it ends. */
 	public boolean engaged;
@@ -187,6 +190,18 @@ public final class Figure {
 	/** Phase 23: the duel: which of her combos she is in (-1: a single blow), and whether her saber was struck from her hand. */
 	public int pattern = -1;
 	public boolean disarmed;
+	/**
+	 * Phase 25: her thrown saber staff: where it left her hand, its far end, the hand it comes back
+	 * to (world space), how long out and back (ticks), how long it has flown, and which ways of
+	 * its flight hit already (1 out, 2 back).
+	 */
+	public @Nullable Vec3 throwFrom;
+	public @Nullable Vec3 throwFar;
+	public @Nullable Vec3 throwHand;
+	public int throwOut;
+	public int throwBack;
+	public int throwAge;
+	public int throwHit;
 	/** Phase 23: quick hits in a row (several light hits throw one off balance too). */
 	public int strokes;
 	public long strokeAt = -1000L;

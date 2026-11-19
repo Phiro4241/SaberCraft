@@ -324,7 +324,7 @@ final class Chapter1Dialogs {
 
 		add(Dialog.of("m6_saber")
 				.say("start", "funke")
-				.ask("take", Dialog.END, Chapter1::takeSaber).ask("wait", Dialog.END)
+				.ask("take", Dialog.END, Scenes::saberBegin).ask("wait", Dialog.END)
 				.build());
 
 		add(Dialog.of("m6_shadow")

@@ -130,7 +130,8 @@ public final class Stealth {
 		Vec3 corner = Vec3.atLowerCornerOf(origin);
 		Vec3 me = player.position().subtract(corner);
 		// (Phase 24: nor during a scene of the story shot where it is, the guard's takedown.)
-		boolean watched = !s.fighting && s.grace <= 0 && !player.isSpectator() && !player.isCreative() && s.dialog == null && !s.has("tmp.takedown");
+		boolean watched = !s.fighting && s.grace <= 0 && !player.isSpectator() && !player.isCreative() && s.dialog == null && !s.has("tmp.takedown")
+				&& !s.has("tmp.scene");
 		crowd = s.figures;
 
 		if (s.grace > 0) {

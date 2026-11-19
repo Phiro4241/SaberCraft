@@ -8,6 +8,7 @@ import java.util.List;
 import org.joml.Matrix3f;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
+import org.jspecify.annotations.Nullable;
 
 import net.minecraft.util.Mth;
 
@@ -31,7 +32,13 @@ public final class MeshBuilder {
 		/** Lit, see-through (window panes). */
 		GLASS,
 		/** Unlit, see-through (holograms, force fields). */
-		HOLO
+		HOLO,
+		/**
+		 * Phase 25: light thrown onto surfaces by something glowing (the reactor's core on the floor
+		 * round it, a hologram on its table): added to what is there, so it brightens and tints and
+		 * never darkens; black adds nothing. See {@link MeshBuilder#lightFrom}.
+		 */
+		LIGHT
 	}
 
 	/** Where finished quads go. */
@@ -48,6 +55,10 @@ public final class MeshBuilder {
 
 	// The pen.
 	private int tile = InteriorAtlas.WHITE;
+	private @Nullable Vector3f lightA;
+	private @Nullable Vector3f lightB;
+	private float lightInner;
+	private float lightRadius;
 	private float scale = 1.0F;
 	private int colour = 0xFFFFFFFF;
 	private Layer layer = Layer.SOLID;
@@ -106,6 +117,42 @@ public final class MeshBuilder {
 	}
 
 	/** The next rectangles show the whole tile (or the part u0..u1, v0..v1 of it) once, stretched. */
+	/**
+	 * Phase 25: the next quads are lit by a light along the line from {@code a} to {@code b} (or at
+	 * a point, a = b): each corner gets the colour by how near it is, full at the light, fading
+	 * softly to nothing at {@code radius} (for the {@link Layer#LIGHT} layer). In the builder's own
+	 * space, like the points of the quads.
+	 */
+	public MeshBuilder lightFrom(Vector3f a, Vector3f b, float radius) {
+		return this.lightFrom(a, b, 0.0F, radius);
+	}
+
+	/** As above, full up to {@code inner} from the light (the size of what glows), fading to {@code radius}. */
+	public MeshBuilder lightFrom(Vector3f a, Vector3f b, float inner, float radius) {
+		this.lightA = new Vector3f(a);
+		this.lightB = new Vector3f(b);
+		this.lightInner = inner;
+		this.lightRadius = radius;
+		return this;
+	}
+
+	/** Phase 25: the next quads no longer fade from a light. */
+	public MeshBuilder noLight() {
+		this.lightA = null;
+		this.lightB = null;
+		return this;
+	}
+
+	/** Phase 25: how strongly a light lights a point: 1 up to {@code inner}, 0 from {@code radius} on, soft in between. */
+	static float falloff(Vector3f point, Vector3f a, Vector3f b, float inner, float radius) {
+		Vector3f ab = new Vector3f(b).sub(a);
+		float len = ab.lengthSquared();
+		float t = len < 1.0E-6F ? 0.0F : Mth.clamp(new Vector3f(point).sub(a).dot(ab) / len, 0.0F, 1.0F);
+		float d = new Vector3f(a).add(ab.mul(t)).distance(point);
+		float k = Mth.clamp(1.0F - Math.max(0.0F, d - inner) / Math.max(1.0E-3F, radius - inner), 0.0F, 1.0F);
+		return k * k;
+	}
+
 	public MeshBuilder fit(int tile) {
 		return this.fit(tile, 0.0F, 0.0F, 1.0F, 1.0F);
 	}
@@ -778,7 +825,9 @@ public final class MeshBuilder {
 			float vv = Mth.clamp(v[i], 0.0F, 1.0F);
 			this.xyzuv[i * 5 + 3] = (col + INSET + uu * (1.0F - 2.0F * INSET)) * cell;
 			this.xyzuv[i * 5 + 4] = (row + INSET + vv * (1.0F - 2.0F * INSET)) * cell;
-			this.colours[i] = colour;
+			Vector3f lightA = this.lightA;
+			Vector3f lightB = this.lightB;
+			this.colours[i] = lightA == null || lightB == null ? colour : Mesh.scale(colour, falloff(p[i], lightA, lightB, this.lightInner, this.lightRadius), false);
 			this.samples[i * 3] = Mth.floor(w.x + n.x * 0.45F);
 			this.samples[i * 3 + 1] = Mth.floor(w.y + n.y * 0.45F);
 			this.samples[i * 3 + 2] = Mth.floor(w.z + n.z * 0.45F);

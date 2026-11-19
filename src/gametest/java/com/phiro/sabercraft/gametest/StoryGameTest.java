@@ -431,7 +431,9 @@ public class StoryGameTest implements FabricClientGameTest {
 		context.takeScreenshot("story_lab");
 		this.use("saber", R);
 		this.converse("take");
-		this.waitStep("m6.escape1", 40);
+		// Phase 25: taking it is a short scene (seen whole here; skipped in Phase25GameTest).
+		check("saber".equals(this.awaitFilm(40)), "taking the saber does not play its scene");
+		this.waitStep("m6.escape1", 300);
 		check(this.on(s -> SaberVariant.canHold(me(s).getMainHandItem())), "Ilyra's saber is not in the hand");
 		this.server.runCommand("effect give @a minecraft:resistance 100000 4 true");
 		this.server.runCommand("effect give @a minecraft:instant_health 1 4 true");
@@ -528,6 +530,7 @@ public class StoryGameTest implements FabricClientGameTest {
 		this.waitStep("m3.hale", 40);
 		// Phase 23: the armory is emptied first (the security desk pages the quartermaster to the
 		// hangar), Hale waits outside meanwhile, then comes in himself, alone; nobody else speaks.
+		// (Phase 25: at once, as a short scene: the quartermaster is sent out as it begins.)
 		check(this.on(s -> session(s).has("qm.away")), "the quartermaster is not paged out when Hale's scene begins");
 		check(this.on(s -> session(s).figure("hale") != null && !DestroyerInterior.ARMORY.contains(session(s).figure("hale").position().add(0.0, 0.5, 0.0))),
 				"Hale is in the armory before it is empty");
@@ -948,6 +951,15 @@ public class StoryGameTest implements FabricClientGameTest {
 		check(droids, where + ": the droids are not with the player after the capture");
 		this.server.runOnServer(s -> StoryTesting.unseen(session(s), 0));
 		int captures = this.on(s -> Story.capturesForTest());
+		// Phase 25: the escape out of the reactor begins with the chase, as it did the first time
+		// (the same troopers): there the place is fair if no chaser is at hand and nobody catches
+		// the player in the first seconds; everywhere else nobody may see the player at all.
+		boolean chase = where.equals("m5.escape");
+		double nearest = this.on(s -> {
+			Vec3 me = session(s).local(Story.DESTROYER);
+			return session(s).figures.stream().filter(f -> Story.DESTROYER.equals(f.ship) && f.mode == Figure.CHASE)
+					.mapToDouble(f -> f.position().distanceTo(me)).min().orElse(99.0);
+		});
 		float most = 0.0F;
 
 		for (int i = 0; i < 8; i++) {
@@ -955,7 +967,12 @@ public class StoryGameTest implements FabricClientGameTest {
 			most = Math.max(most, this.on(s -> StoryTesting.suspicion(session(s))));
 		}
 
-		check(most < 0.3F && this.on(s -> Story.capturesForTest()) == captures, where + ": the checkpoint's place is not safe (suspicion " + most + ")");
+		if (chase) {
+			check(nearest > 6.0 && this.on(s -> Story.capturesForTest()) == captures,
+					where + ": after the capture a chaser is at hand at once (" + String.format(Locale.ROOT, "%.1f", nearest) + " blocks) or catches the player");
+		} else {
+			check(most < 0.3F && this.on(s -> Story.capturesForTest()) == captures, where + ": the checkpoint's place is not safe (suspicion " + most + ")");
+		}
 		this.unseen();
 		SaberCraft.LOGGER.info("STORY: checkpoint of {} restored ({})", where, kept);
 	}
@@ -1179,6 +1196,31 @@ public class StoryGameTest implements FabricClientGameTest {
 		}
 
 		String key = trooper.key;
+		// Phase 25: nobody shoots while the strokes are counted. Besides a stroke, the only thing that
+		// hurts a trooper in the fight is a bolt the saber turned (a swing turns bolts coming from the
+		// front, Phase 22; half his strength). In CI (PR #30) the lab's guard, who now stands out on the
+		// platform in the troopers' line of fire, was down after a heavy and a light stroke. So the
+		// troopers hold their fire, the bolts already flying land, and he starts whole; if a stroke
+		// still misses, the hits counted so far are in the message.
+		this.server.runOnServer(s -> {
+			for (Figure f : session(s).figures) {
+				if (f.hostile) {
+					f.cooldown = 1000;
+					f.windup = 0;
+					f.burst = 0;
+				}
+			}
+		});
+		this.context.waitTicks(30);
+		int returned = this.on(s -> session(s).counters.getOrDefault("returned_hits", 0));
+		this.server.runOnServer(s -> {
+			Figure f = session(s).figure(key);
+
+			if (f.mode != Figure.DOWN) {
+				f.health = 1.0F;
+			}
+		});
+		check(this.on(s -> session(s).figure(key).mode != Figure.DOWN), key + " is down before the first stroke");
 
 		// Phase 23: a heavy stroke throws him back (he reels, arms out); light ones make him flinch; a
 		// trooper takes four light strokes (Phase 22) or a heavy and two light ones.
@@ -1202,7 +1244,9 @@ public class StoryGameTest implements FabricClientGameTest {
 			double moved = this.on(s -> session(s).figure(key).position().distanceTo(from));
 			int sent = this.context.computeOnClient(client -> StoryInput.struckForTest());
 			check(sent > struck, "the attack key with the saber sends no stroke");
-			check(after < before, "the stroke does not hit " + key + " (" + before + " -> " + after + ")");
+			String hits = this.on(s -> "heavy " + session(s).counters.getOrDefault("heavy_hits", 0) + ", light " + session(s).counters.getOrDefault("light_hits", 0)
+					+ ", bolts sent back " + (session(s).counters.getOrDefault("returned_hits", 0) - returned));
+			check(after < before, "stroke " + stroke + " does not hit " + key + " (" + before + " -> " + after + "; hits so far: " + hits + ")");
 
 			if (heavy) {
 				check(reaction == Figure.HEAVY, "a heavy stroke does not throw " + key + " back (reaction " + reaction + ")");
@@ -1214,6 +1258,7 @@ public class StoryGameTest implements FabricClientGameTest {
 		}
 
 		check(this.on(s -> session(s).figure(key).mode == Figure.DOWN), key + " is not down after a heavy and two light strokes");
+		check(this.on(s -> session(s).counters.getOrDefault("returned_hits", 0)) == returned, "a bolt sent back hit someone while the strokes were counted");
 		this.context.runOnClient(client -> client.options.setCameraType(CameraType.THIRD_PERSON_BACK));
 		this.context.waitTicks(20);
 		this.context.takeScreenshot("story_trooper_down");

@@ -37,7 +37,125 @@ final class StoryRooms {
 		detention(b);
 		lab(b);
 		reactorValve(b);
+		serviceWay(b);
 		b.layer(Layer.SOLID).worldLight().white().anim(0).twoSided(false);
+	}
+
+	// --- Phase 25: the maintenance way out of the reactor -----------------------------------------
+
+	/** Where the frame round the maintenance way's mouth stands (in the round wall's cut). */
+	private static final float SERVICE_MOUTH = 13.45F;
+	/** The drawn release box (inside the interaction box, clear of the frame's west post). */
+	private static final float RELEASE_Z0 = (float) SERVICE_RELEASE.minZ;
+	private static final float RELEASE_Z1 = (float) SERVICE_RELEASE.maxZ - 0.4F;
+
+	/**
+	 * Phase 25: the passage at the end of the walkway (a hazard-striped frame round its mouth, a
+	 * plate over the door), the emergency release on its west wall, the chamber behind the door with
+	 * pipes along its walls, the panel that bolts the door on its east wall. The lamps that show the
+	 * way are drawn by {@link #serviceLights} (they come on with the alarm).
+	 */
+	private static void serviceWay(MeshBuilder b) {
+		float x0 = SERVICE_WAY.x0();
+		float x1 = SERVICE_WAY.x1() + 1;
+		float mouth = SERVICE_MOUTH;
+		b.layer(Layer.SOLID).worldLight().white().anim(0).twoSided(false);
+		// The mouth's frame: posts and a lintel striped like a warning, a sill. (In the round wall's
+		// cut, so that the west post stands in the wall and not in the shaft where one walks.)
+		b.fit(InteriorAtlas.IMP_HAZARD);
+		b.box(x0 - 0.16F, R, mouth - 0.12F, x0 + 0.02F, R + 3.0F, mouth + 0.12F, MeshBuilder.ALL & ~MeshBuilder.DOWN);
+		b.box(x1 - 0.02F, R, mouth - 0.12F, x1 + 0.16F, R + 3.0F, mouth + 0.12F, MeshBuilder.ALL & ~MeshBuilder.DOWN);
+		b.box(x0 - 0.16F, R + 2.86F, mouth - 0.12F, x1 + 0.16F, R + 3.08F, mouth + 0.12F, MeshBuilder.ALL);
+		b.box(x0, R, mouth - 0.3F, x1, R + 0.03F, mouth + 0.1F, MeshBuilder.UP);
+		// A plate over the door: the maintenance mark.
+		b.fit(InteriorAtlas.IMP_BLACK);
+		b.box(x0 + 0.3F, R + 2.62F, SERVICE_DOOR_Z + 1.02F, x1 - 0.3F, R + 2.9F, SERVICE_DOOR_Z + 1.06F, MeshBuilder.SOUTH);
+		b.layer(Layer.GLOW).fullBright().colour(0xFFE0A040).fit(InteriorAtlas.IMP_SCREEN_TEXT_GLOW);
+		b.box(x0 + 0.38F, R + 2.66F, SERVICE_DOOR_Z + 1.07F, x1 - 0.38F, R + 2.86F, SERVICE_DOOR_Z + 1.08F, MeshBuilder.SOUTH);
+		b.white().layer(Layer.SOLID).worldLight();
+
+		// The emergency release: a box on the west wall, a handle, a screen.
+		float rx = (float) SERVICE_RELEASE.maxX;
+		float rz0 = RELEASE_Z0;
+		float rz1 = RELEASE_Z1;
+		b.fit(InteriorAtlas.IMP_CONSOLE);
+		b.box(rx - 0.14F, R + 0.78F, rz0, rx, R + 1.62F, rz1, MeshBuilder.ALL & ~MeshBuilder.WEST);
+		b.tile(InteriorAtlas.IMP_METAL_LIGHT, 1.0F).colour(0xFFD8A030);
+		// (A flat bar: no deeper into the way than where one's body passes.)
+		b.box(rx, R + 0.98F, rz0 + 0.25F, rx + 0.045F, R + 1.06F, rz1 - 0.25F, MeshBuilder.ALL & ~MeshBuilder.WEST);
+		b.white();
+
+		// The chamber: pipes along the west wall and under the ceiling, a valve wheel, a cable tray.
+		b.tile(InteriorAtlas.IMP_PIPE, 1.0F);
+		b.pipe(0.11F, 6, 47.18F, R, 6.4F, 47.18F, R + 2.7F, 6.4F, 50.6F, R + 2.7F, 6.4F);
+		b.pipe(0.08F, 6, 47.15F, R + 0.4F, 9.6F, 47.15F, R + 0.4F, 6.6F, 47.15F, R + 2.5F, 6.6F);
+		b.pipe(0.07F, 6, 50.8F, R + 2.85F, 6.3F, 50.8F, R + 2.85F, 9.7F);
+		b.colour(0xFFB03020).tile(InteriorAtlas.IMP_METAL, 1.0F).twoSided(true);
+		b.push().translate(47.32F, R + 1.4F, 7.9F).rotateZ(90.0F);
+		b.ring(0, 0, 0, 0.18F, 0.23F, 14, true);
+		b.pop();
+		b.white().twoSided(false);
+		// The panel that bolts the door, on the east wall by the door.
+		float lx = (float) SERVICE_LOCK.minX + 0.4F;
+		float lz0 = (float) SERVICE_LOCK.minZ + 0.1F;
+		float lz1 = (float) SERVICE_LOCK.maxZ - 0.1F;
+		b.fit(InteriorAtlas.IMP_CONSOLE);
+		b.box(lx, R + 0.78F, lz0, lx + 0.15F, R + 1.62F, lz1, MeshBuilder.ALL & ~MeshBuilder.EAST);
+		b.tile(InteriorAtlas.IMP_METAL_LIGHT, 1.0F).colour(0xFFD8A030);
+		b.box(lx - 0.1F, R + 0.98F, lz0 + 0.3F, lx, R + 1.06F, lz1 - 0.3F, MeshBuilder.ALL & ~MeshBuilder.EAST);
+		b.white();
+		// Arrows on the crawl way's hatch frame: this way out.
+		b.layer(Layer.GLOW).fullBright().colour(0xFFC08030).fit(InteriorAtlas.IMP_WALL_STRIP_GLOW, 0.0F, 0.4F, 1.0F, 0.6F);
+		b.box(SERVICE_HATCH.getX() + 0.08F, R + 1.08F, SERVICE_HATCH.getZ() + 1.01F, SERVICE_HATCH.getX() + 0.92F, R + 1.14F, SERVICE_HATCH.getZ() + 1.02F,
+				MeshBuilder.SOUTH);
+		b.white().layer(Layer.SOLID).worldLight();
+	}
+
+	/**
+	 * Phase 25: what of the maintenance way the story changes, every frame: once the alarm runs,
+	 * amber lamps along the walkway's edge run towards the door (the way out), a beacon over the
+	 * mouth turns; the release's screen pulses amber until it is pulled, then green; the bolt
+	 * panel inside pulses until the door is bolted, then shows red.
+	 */
+	private static void serviceLights(MeshBuilder b, float seconds, boolean story) {
+		boolean lit = story && StoryClient.has("service.lit");
+		boolean open = story && StoryClient.has("service.open");
+		boolean locked = story && StoryClient.has("service.locked");
+
+		if (lit && !locked) {
+			// Running lamps along both edges of the walkway, from the platform to the door.
+			for (int i = 0; i < 6; i++) {
+				float z = 19.6F - i;
+				float phase = (seconds * 3.0F - i * 0.5F) % 3.0F;
+				float glow = phase < 0.5F ? 1.0F : 0.28F;
+				int amber = 0xFF000000 | Math.round(0xE0 * glow) << 16 | Math.round(0x98 * glow) << 8 | Math.round(0x30 * glow);
+				b.layer(Layer.GLOW).fullBright().anim(0).colour(amber).fit(InteriorAtlas.IMP_CEILING_LIGHT_GLOW);
+				b.box(48.02F, R + 0.01F, z - 0.12F, 48.12F, R + 0.05F, z + 0.12F, MeshBuilder.ALL & ~MeshBuilder.DOWN);
+				b.box(49.88F, R + 0.01F, z - 0.12F, 49.98F, R + 0.05F, z + 0.12F, MeshBuilder.ALL & ~MeshBuilder.DOWN);
+			}
+
+			// The beacon over the mouth: a lamp that flashes as it turns.
+			float turn = seconds * 4.0F % ((float) Math.PI * 2.0F);
+			float flash = 0.45F + 0.55F * Math.max(0.0F, Mth.cos(turn));
+			int c = 0xFF000000 | Math.round(0xF0 * flash) << 16 | Math.round(0xA0 * flash) << 8 | Math.round(0x30 * flash);
+			b.layer(Layer.GLOW).fullBright().colour(c).fit(InteriorAtlas.IMP_CEILING_LIGHT_GLOW);
+			b.box(48.82F, R + 3.08F, SERVICE_MOUTH - 0.18F, 49.18F, R + 3.3F, SERVICE_MOUTH + 0.17F, MeshBuilder.ALL & ~MeshBuilder.DOWN);
+			b.layer(Layer.HOLO).fullBright().colourAlpha(Math.round(0x50 * flash) << 24 | 0xF0A040).fit(InteriorAtlas.IMP_CEILING_LIGHT_GLOW).twoSided(true);
+			b.rect(49.0F + Mth.cos(turn) * 0.2F, R + 3.19F, SERVICE_MOUTH + Mth.sin(turn) * 0.2F, Mth.cos(turn) * 1.3F, 0, Mth.sin(turn) * 1.3F, 0, 0.12F, 0);
+			b.twoSided(false);
+		}
+
+		// The release's screen.
+		float rx = (float) SERVICE_RELEASE.maxX;
+		int release = open ? 0xFF50E070 : lit ? 0xFFF0A030 : 0xFF904020;
+		b.layer(Layer.GLOW).fullBright().anim(open || !lit ? 0 : InteriorScene.ANIM_PULSE).colour(release).fit(InteriorAtlas.IMP_SCREEN_TEXT_GLOW);
+		b.box(rx + 0.001F, R + 1.18F, RELEASE_Z0 + 0.15F, rx + 0.006F, R + 1.5F, RELEASE_Z1 - 0.15F, MeshBuilder.EAST);
+		// The bolt panel's screen.
+		float lx = (float) SERVICE_LOCK.minX + 0.4F;
+		int bolt = locked ? 0xFFFF4030 : open ? 0xFFF0A030 : 0xFF604020;
+		b.colour(bolt).anim(open && !locked ? InteriorScene.ANIM_PULSE : 0);
+		b.box(lx - 0.006F, R + 1.18F, (float) SERVICE_LOCK.minZ + 0.25F, lx - 0.001F, R + 1.5F, (float) SERVICE_LOCK.maxZ - 0.25F, MeshBuilder.WEST);
+		b.white().anim(0).layer(Layer.SOLID).worldLight();
 	}
 
 	// --- The maintenance room and the airlock ------------------------------------------------------
@@ -455,6 +573,7 @@ final class StoryRooms {
 		BlockPos o = plot.origin();
 		b.layer(Layer.SOLID).worldLight().white().anim(0).twoSided(false);
 		collapse(b, seconds, plot, story);
+		serviceLights(b, seconds, story);
 
 		// The cells' force fields, while their barriers stand.
 		for (int[] cell : CELLS) {
@@ -518,7 +637,7 @@ final class StoryRooms {
 			Props.holoBeam(b, 22.5F, H + 1.12F, -4.5F, 0.05F, 0.14F, 0.25F, 0x405A8AFF);
 		}
 
-		lab(b, seconds, story);
+		lab(b, seconds, story, plot);
 
 		// Phase 24: her TIE fighter in the hangar for the duel: parked on its wings, then (in the film
 		// of her flight) lifting off and gone through the field.
@@ -561,8 +680,25 @@ final class StoryRooms {
 	}
 
 	/** The tracker running (or failing once the saber is gone), the saber in its field, Ilyra's message. */
-	private static void lab(MeshBuilder b, float seconds, boolean story) {
+	private static void lab(MeshBuilder b, float seconds, boolean story, InteriorVisuals.PlotView plot) {
 		boolean taken = story && StoryClient.has("saber.taken");
+		// Phase 25: what glows in the lab lights the floor round it: the saber's field green, the
+		// tracker magenta (only a weak flicker once it fails), the message's figure blue.
+		float fieldX = SABER_FIELD.getX() + 0.5F;
+		float fieldZ = SABER_FIELD.getZ() + 0.5F;
+
+		if (!taken) {
+			floorLight(b, plot, fieldX, R, fieldZ, 0.3F, 3.2F, 0xFF1C6A50, InteriorScene.ANIM_SHIMMER);
+			floorLight(b, plot, (float) TRACKER_X, R, (float) TRACKER_Z, (float) TRACKER_R - 0.2F, (float) TRACKER_R + 2.6F, 0xFF5A1E56, 0);
+		} else {
+			floorLight(b, plot, (float) TRACKER_X, R, (float) TRACKER_Z, (float) TRACKER_R - 0.2F, (float) TRACKER_R + 1.6F, 0xFF3A1030,
+					InteriorScene.ANIM_FLICKER);
+		}
+
+		if (story && StoryClient.mission() == 5 && StoryClient.has("lab.open") && !taken) {
+			floorLight(b, plot, HOLO.getX() + 0.5F, R, HOLO.getZ() + 0.5F, 0.25F, 2.2F, 0xFF1C3A7C, InteriorScene.ANIM_SHIMMER);
+		}
+
 		// Phase 20: the lab door's lamp over the threshold: red and pulsing while it is locked, green
 		// once it opens (in the story it opens only with the code; outside it is an ordinary door).
 		boolean open = !story || StoryClient.has("lab.open");
@@ -631,6 +767,35 @@ final class StoryRooms {
 		}
 	}
 
+	/**
+	 * Phase 25: the light of something glowing on the open floor round it (added light, fading out
+	 * from {@code inner} to {@code radius}): on each floor cell near it where nothing stands, just
+	 * over the floor's plates.
+	 */
+	private static void floorLight(MeshBuilder b, InteriorVisuals.PlotView plot, float x, float y, float z, float inner, float radius, int colour,
+			int anim) {
+		Vector3f at = new Vector3f(x, y, z);
+		b.layer(Layer.LIGHT).fullBright().anim(anim).colour(colour).fit(InteriorAtlas.WHITE).lightFrom(at, at, inner, radius);
+		int reach = Mth.ceil(radius);
+		int fy = Mth.floor(y);
+
+		for (int cx = Mth.floor(x) - reach; cx <= Mth.floor(x) + reach; cx++) {
+			for (int cz = Mth.floor(z) - reach; cz <= Mth.floor(z) + reach; cz++) {
+				float dx = Math.max(0.0F, Math.abs(cx + 0.5F - x) - 0.5F);
+				float dz = Math.max(0.0F, Math.abs(cz + 0.5F - z) - 0.5F);
+				BlockPos cell = plot.origin().offset(cx, fy, cz);
+
+				if (dx * dx + dz * dz >= radius * radius || !plot.level().getBlockState(cell).isAir() || !plot.level().getBlockState(cell.below()).canOcclude()) {
+					continue;
+				}
+
+				Skin.face(b, cx, fy, cz, net.minecraft.core.Direction.DOWN, Skin.EPS * 3, 0.0F, 0.0F, 1.0F, 1.0F);
+			}
+		}
+
+		b.noLight().layer(Layer.SOLID).worldLight().white().anim(0);
+	}
+
 	/** A small standing figure of light: a robe, the head with her face, the hands folded; flickering. */
 	private static void hologram(MeshBuilder b, float x, float y, float z, float yaw, float seconds) {
 		Props.holoBeam(b, x, y, z, 0.2F, 0.32F, 0.25F, 0x305A8AFF);
@@ -650,7 +815,20 @@ final class StoryRooms {
 		b.colourAlpha(0x8C8CB0FF).fit(InteriorAtlas.CREW_HAIR_TOP);
 		b.box(-h, 1.38F, -h, h, 1.38F + CrewModels.HEAD, h, MeshBuilder.ALL & ~MeshBuilder.SOUTH);
 		b.pop();
-		b.layer(Layer.SOLID).worldLight().white().anim(0);
+		// Phase 25: she is light, not a picture: a faint glow round her, bands of brighter light
+		// running up through her, and now and then the whole picture jumps.
+		float top = (1.38F + CrewModels.HEAD) * k;
+		b.layer(Layer.HOLO).fullBright().anim(InteriorScene.ANIM_SHIMMER).twoSided(true).colourAlpha(0x186A98F0).fit(InteriorAtlas.IMP_HOLO);
+		b.cylinder(new Vector3f(x + flicker, y + 0.22F, z), new Vector3f(0, top + 0.08F, 0), 0.3F, 0.22F, 14, 1.0F, false, false);
+		b.anim(0).colourAlpha(0x387AB0FF);
+
+		for (int i = 0; i < 2; i++) {
+			float rise = (seconds * 0.4F + i * 0.5F) % 1.0F;
+			float band = Mth.lerp(rise, 0.24F, 0.13F);
+			b.cylinder(new Vector3f(x + flicker, y + 0.25F + rise * top, z), new Vector3f(0, 0.03F, 0), band, band, 14, 1.0F, false, false);
+		}
+
+		b.twoSided(false).layer(Layer.SOLID).worldLight().white().anim(0);
 	}
 
 	/** A housing panelled with a tile per block column, the full height each. */

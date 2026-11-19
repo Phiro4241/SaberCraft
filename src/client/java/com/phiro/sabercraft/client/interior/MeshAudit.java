@@ -1117,4 +1117,65 @@ public final class MeshAudit {
 
 		return false;
 	}
+	/**
+	 * Phase 25: her saber staff in every pose of the duel's animations (each kind of blow at every
+	 * point of its wind-up and swing, each reaction, the spin, the throw's wind-up, the second blade
+	 * coming out): the poses in which a part of the staff or of a blade lies in her body (the body
+	 * as it is drawn: torso, head, legs). The first line counts the poses looked at and those found.
+	 */
+	public static List<String> staffInBody() {
+		List<String> found = new ArrayList<>();
+		float shoulder = CrewModels.BODY - 0.06F;
+		int[] attacks = {0, CrewModels.OVERHEAD, CrewModels.SWEEP, CrewModels.THRUST, CrewModels.CROUCH, CrewModels.STAGGER};
+		int[] reacts = {0, CrewModels.FLINCH, CrewModels.HEAVY, CrewModels.CLASH, CrewModels.PARRY, CrewModels.LOCK, CrewModels.THROW_WIND};
+		float[] steps = {0.0F, 0.25F, 0.5F, 0.75F, 1.0F};
+		float[] spins = {0.0F, 0.125F, 0.25F, 0.375F, 0.5F, 0.625F, 0.75F, 0.875F};
+		float[] twins = {0.1F, 0.3F, 0.5F, 0.75F, 1.0F};
+		int poses = 0;
+		int inBody = 0;
+
+		for (int attack : attacks) {
+			for (float raise : steps) {
+				for (float swing : steps) {
+					for (int react : reacts) {
+						for (float reactP : react == 0 ? new float[] {0.0F} : steps) {
+							for (float spin : spins) {
+								for (float twin : twins) {
+									CrewModels.Gear gear = new CrewModels.Gear(false, 0xFFFF2020, true, raise, swing, false, false, attack, 0.0F, 0.0F, 0.0F,
+											0.0F, spin, react, reactP, false, false, twin);
+									float[] staff = CrewModels.staffHold(shoulder, gear, CrewModels.saberHold(shoulder, gear));
+									poses++;
+									// The second blade only as far as it is out (as drawn).
+									float second = Mth.clamp((twin - 0.35F) / 0.65F, 0.0F, 1.0F);
+									float from = -(CrewModels.STAFF_HALF + CrewModels.STAFF_BLADE * second);
+									float to = CrewModels.STAFF_HALF + CrewModels.STAFF_BLADE;
+
+									for (float t = from; t <= to + 0.001F; t += 0.04F) {
+										float x = staff[0] + staff[3] * t;
+										float y = staff[1] + staff[4] * t;
+										float z = staff[2] + staff[5] * t;
+
+										if (Math.abs(x) < CrewModels.HALF_W && Math.abs(z) < CrewModels.HALF_D && y > -CrewModels.LEG
+												&& y < shoulder + CrewModels.HEAD) {
+											inBody++;
+
+											if (found.size() < 40) {
+												found.add(String.format(java.util.Locale.ROOT, "attack %d raise %.2f swing %.2f react %d/%.2f spin %.3f twin %.2f: %.2f along at %.2f,%.2f,%.2f",
+														attack, raise, swing, react, reactP, spin, twin, t, x, y, z));
+											}
+
+											break;
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+
+		found.add(0, poses + " poses, " + inBody + " with the staff in her body");
+		return found;
+	}
 }
