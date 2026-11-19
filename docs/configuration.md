@@ -1,6 +1,6 @@
 # Configuration reference
 
-SaberCraft keeps its settings in JSON files in `config/sabercraft/` inside your Minecraft folder (for a server: next to the server JAR). Most of them can be changed in the in-game menu (key **V**), which writes these files for you.
+SaberCraft keeps its settings in JSON files in `config/sabercraft/` inside your Minecraft folder (for a server: next to the server JAR). Most of them can be changed in the in-game menu (key **I**, before Phase 27 **V**), which writes these files for you.
 
 How the files behave:
 

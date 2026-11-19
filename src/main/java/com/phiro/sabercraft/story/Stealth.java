@@ -699,7 +699,11 @@ public final class Stealth {
 				}
 			}
 			case Figure.INVESTIGATE -> {
-				if (figure.target == null || figure.position().distanceTo(figure.target) < 1.2
+				// Phase 27: drawn by a noise, they go right up to where they mean to look (the lure's
+				// spot is already a step short of the noise), not stop a step short of that again.
+				double near = figure.luredFrom != null && figure.suspicion < ALERTED ? 0.6 : 1.2;
+
+				if (figure.target == null || figure.position().distanceTo(figure.target) < near
 						|| !go(figure, Combat.apart(s, figure, figure.target, level, corner), s.searching ? WALK * 1.4 : WALK, level, corner, time)) {
 					// There (or no way on): look round a while; then the next place to search, or back.
 					figure.speed = 0.0F;

@@ -647,15 +647,30 @@ public class Phase27GameTest implements FabricClientGameTest {
 		int[] noise = this.on(s -> StoryTesting.noise(this.session(s), new Vec3(37.5, R, 34.0)));
 		check(noise[0] == 1, "the lab's guard does not go to see M-31's noise");
 		double off = 0.0;
+		double first = 0.0;
 
-		for (int i = 0; i < 12; i++) {
+		// He goes to where the noise was and looks there a while; then he searches on past it.
+		for (int i = 0; i < 26; i++) {
 			this.context.waitTicks(10);
-			Figure lured = this.on(s -> this.session(s).figure("lab_guard"));
-			off = Math.max(off, lured.position().distanceTo(post));
-			SaberCraft.LOGGER.info("PHASE27 LAB GUARD LURE: tick {} at {} mode {} target {}", (i + 1) * 10, lured.position(), lured.mode, lured.target);
+			String at = this.on(s -> {
+				Figure lured = this.session(s).figure("lab_guard");
+				return lured.position().distanceTo(post) + " " + lured.position() + " mode " + lured.mode;
+			});
+			double now = Double.parseDouble(at.substring(0, at.indexOf(' ')));
+			off = Math.max(off, now);
+
+			if (i < 10) {
+				first = Math.max(first, now);
+			}
+
+			if (i % 3 == 2) {
+				SaberCraft.LOGGER.info("PHASE27 LAB GUARD LURE: tick {}: off {}", (i + 1) * 10, at);
+			}
 		}
 
-		check(off > 2.5, "M-31's noise does not draw the lab's guard off his post (" + String.format(Locale.ROOT, "%.1f", off) + ")");
+		SaberCraft.LOGGER.info("PHASE27 LAB GUARD LURE: off his post {} within 5 s, {} at most", String.format(Locale.ROOT, "%.1f", first), String.format(Locale.ROOT, "%.1f", off));
+		check(first > 2.5, "M-31's noise does not draw the lab's guard off his post (" + String.format(Locale.ROOT, "%.1f", first) + ")");
+		check(off > 3.5, "the lab's guard does not search on past M-31's noise (" + String.format(Locale.ROOT, "%.1f", off) + ")");
 		boolean back = false;
 
 		for (int i = 0; i < 60 && !back; i++) {
