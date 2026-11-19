@@ -147,6 +147,13 @@ public class StoryMenuScreen extends SaberMenuScreen {
 				.create(this.column(0), this.row(3), COLUMN_WIDTH, 20, Component.translatable("sabercraft.menu.story.mission"), (button, v) -> this.chosen = v));
 		mission.active = server && unlocked > 0;
 		Button play = this.button(1, 3, Component.translatable("sabercraft.menu.story.play"), () -> {
+			if (!saved) {
+				// Phase 27: a new story (only the first mission can be chosen then): first the difficulty.
+				this.choosing = true;
+				this.rebuildWidgets();
+				return true;
+			}
+
 			this.act(StoryActionPayload.MISSION, this.chosen);
 			return true;
 		});
@@ -216,8 +223,18 @@ public class StoryMenuScreen extends SaberMenuScreen {
 
 	/** Sends a choice and closes the menu (the server answers with a message if it cannot). */
 	private void act(byte action, int value) {
-		this.sendDifficulty();
+		// (Leaving: first leave, so the calm progress is kept as by leaving alone; the difficulty
+		// then goes into the save without setting the story back to its checkpoint.)
+		if (action != StoryActionPayload.LEAVE) {
+			this.sendDifficulty();
+		}
+
 		StoryClient.send(action, "", value);
+
+		if (action == StoryActionPayload.LEAVE) {
+			this.sendDifficulty();
+		}
+
 		this.onClose();
 	}
 

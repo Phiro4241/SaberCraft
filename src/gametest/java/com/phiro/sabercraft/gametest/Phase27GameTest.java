@@ -575,6 +575,16 @@ public class Phase27GameTest implements FabricClientGameTest {
 		this.context.waitTicks(5);
 		check(this.on(s -> this.session(s).dialog != null), "the dialog is gone on the server after the film");
 		check(this.context.computeOnClient(client -> client.gui.screen() instanceof DialogScreen), "the dialog does not come back after a film hid it");
+		// A film the story begins ends an open dialog first (after Dax's jump the objective waited for it forever).
+		int broken = this.on(s -> StorySession.interruptsForTest());
+		this.server.runOnServer(s -> Story.cue(this.session(s), Story.CUE_CINEMA, "takedown", "", 40));
+		this.context.waitTicks(3);
+		check(this.on(s -> this.session(s).dialog == null), "a film beginning does not end the open dialog on the server");
+		check(this.on(s -> StorySession.interruptsForTest()) == broken + 1, "a film beginning is not counted as breaking off the dialog");
+		this.context.runOnClient(client -> StoryCinema.skipForTest());
+		this.context.waitTicks(5);
+		this.server.runOnServer(s -> this.session(s).talk("kestrel_idle", null));
+		this.waitScreen(true);
 		// Seen: the dialog closes, the player can run.
 		String trooper = this.on(s -> {
 			for (Figure figure : this.session(s).figures) {

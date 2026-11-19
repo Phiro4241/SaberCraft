@@ -73,9 +73,12 @@ public final class Vents {
 	 * Phase 27: a hatch opened with a click is a way in: for a few seconds, one goes down on all
 	 * fours in front of it as when crouching there (no need to know the crouch key). Worked out
 	 * on both sides: the server when it opens the hatch, the client when the click goes out
-	 * ({@link #intend}). Per player object (client and server have their own), until the game tick.
+	 * ({@link #intend}). Per player, until the game tick. One map per side: in singleplayer the
+	 * client's and the server's player share their entity id (and so count as equal), but not
+	 * their tick count.
 	 */
-	private static final Map<Player, Long> INTENT = java.util.Collections.synchronizedMap(new java.util.WeakHashMap<>());
+	private static final Map<Player, Long> INTENT_SERVER = java.util.Collections.synchronizedMap(new java.util.WeakHashMap<>());
+	private static final Map<Player, Long> INTENT_CLIENT = java.util.Collections.synchronizedMap(new java.util.WeakHashMap<>());
 	/** Phase 27: how long (ticks) a click on a hatch keeps one ready to crawl in. */
 	public static final int INTENT_TICKS = 100;
 	/**
@@ -90,19 +93,24 @@ public final class Vents {
 
 	/** Phase 27: the player means to crawl in (clicked a hatch): for {@link #INTENT_TICKS}. */
 	public static void intend(Player player) {
-		INTENT.put(player, (long) player.tickCount + INTENT_TICKS);
+		intents(player).put(player, (long) player.tickCount + INTENT_TICKS);
+	}
+
+	private static Map<Player, Long> intents(Player player) {
+		return player.level().isClientSide() ? INTENT_CLIENT : INTENT_SERVER;
 	}
 
 	/** Phase 27: whether the player clicked a hatch a moment ago (and has not crawled in since). */
 	public static boolean intends(Player player) {
-		Long until = INTENT.get(player);
+		Map<Player, Long> intents = intents(player);
+		Long until = intents.get(player);
 
 		if (until == null) {
 			return false;
 		}
 
 		if (player.tickCount > until || player.tickCount < until - INTENT_TICKS - 1) {
-			INTENT.remove(player);
+			intents.remove(player);
 			return false;
 		}
 
@@ -342,7 +350,9 @@ public final class Vents {
 		boolean crawling = player.getPose() == Pose.SWIMMING;
 		// Phase 27: or a hatch clicked a moment ago (a single click is enough to get in), or
 		// walking up to an open opening facing it: no crouch key needed.
-		boolean intent = !crouching && !crawling && intends(player);
+		// (The click's reach holds whether already down or not, so one who went down at its edge
+		// stays down; it ends once they are in the opening.)
+		boolean intent = !crouching && intends(player);
 		boolean walking = !crouching && !crawling && !intent;
 		double reach = crouching ? MOUTH_REACH : intent ? INTENT_REACH : crawling ? KEEP_REACH : WALK_REACH;
 
@@ -360,6 +370,11 @@ public final class Vents {
 			double dy = player.getY() - at.getY();
 
 			if (dx * dx + dz * dz < reach * reach && dy > -0.2 && dy < 0.6 && player.level().getBlockState(at).isAir() && (!walking || facing(player, dx, dz))) {
+				if (intent && crawling && dx * dx + dz * dz < KEEP_REACH * KEEP_REACH) {
+					// Crawled in: the click is used up (coming out, they stand up as usual).
+					intents(player).remove(player);
+				}
+
 				return true;
 			}
 		}

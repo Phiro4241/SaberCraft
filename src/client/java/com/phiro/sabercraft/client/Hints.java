@@ -38,6 +38,8 @@ public final class Hints {
 	private static int ventLook;
 	private static int crawled;
 	private static long reminded = -VENT_REMIND_EVERY;
+	/** Counts client ticks in a world; unlike the player's tickCount it does not start again on a dimension change. */
+	private static long clock;
 	private static boolean migrated;
 	private static boolean moved;
 	private static int toasts;
@@ -127,6 +129,7 @@ public final class Hints {
 			return;
 		}
 
+		clock++;
 		net.minecraft.client.Options options = client.options;
 		boolean crawling = client.player.getPose() == net.minecraft.world.entity.Pose.SWIMMING && !client.player.isInWater()
 				&& com.phiro.sabercraft.interior.ShipInteriors.isInterior(client.level);
@@ -141,9 +144,10 @@ public final class Hints {
 
 		if (ventLook == VENT_LOOK && ImmersionConfig.markShown(VENT)) {
 			toast(client, Component.translatable("sabercraft.hint.vent", keyName(options.keyUse), keyName(options.keyShift)));
-			reminded = client.player.tickCount;
-		} else if (ventLook == VENT_REMIND && client.player.tickCount - reminded > VENT_REMIND_EVERY) {
-			reminded = client.player.tickCount;
+			reminded = clock;
+		} else if (ventLook == VENT_REMIND && clock - reminded > VENT_REMIND_EVERY
+				&& com.phiro.sabercraft.interior.Vents.looked(client.player) == null) {
+			reminded = clock;
 			reminders++;
 			client.gui.hud.setOverlayMessage(Component.translatable("sabercraft.hint.vent_short", keyName(options.keyUse)), false);
 		}

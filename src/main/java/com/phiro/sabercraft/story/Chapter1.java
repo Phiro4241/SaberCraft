@@ -2014,6 +2014,13 @@ public final class Chapter1 implements Chapter {
 				}
 			}
 			case "m1.droid" -> overhear(s);
+			case "m2.return" -> {
+				// Phase 27: the stick taken and the container shut: Kestrel names the second way back.
+				if (s.has("tmp.side_hatch") && s.dialog == null) {
+					s.unset("tmp.side_hatch");
+					s.radio("kestrel", "sabercraft.story.radio.m2_side_hatch");
+				}
+			}
 			case "m1.distract" -> {
 				if (fired(s, "droid_hint")) {
 					s.hint("sabercraft.story.hint.droid_distract");
@@ -3524,8 +3531,9 @@ public final class Chapter1 implements Chapter {
 			}
 			case "m2.return" -> {
 				// Phase 27: the way back: to flight control's door, there to the crawl way's hatch,
-				// in the crawl way on to the hideout (the marker pointed at Kestrel through the walls).
-				if (inCrawlWay(s)) {
+				// in the crawl way on to the hideout (the marker pointed at Kestrel through the walls);
+				// in the hideout, Kestrel herself.
+				if (inCrawlWay(s) && !s.inside(D, HIDDEN)) {
 					return HIDEOUT_MOUTH;
 				}
 
@@ -3675,6 +3683,12 @@ public final class Chapter1 implements Chapter {
 	@Override
 	public boolean trusts(StorySession s, Mission.Step step, String ship, Vec3 at) {
 		Mission.Place own = this.place(s, step);
+
+		// A save from before keeps the airlock's old checkpoint, within the inner door's reach
+		// (moved only 0.7 blocks, so the tolerance below would still take it).
+		if (D.equals(ship) && "m1.droid".equals(step.id()) && at.distanceTo(AIRLOCK) < 0.05) {
+			return false;
+		}
 
 		if (own.ship().equals(ship) && own.at().distanceTo(at) < 1.0) {
 			return true;

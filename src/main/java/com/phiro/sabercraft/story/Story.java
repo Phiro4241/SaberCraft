@@ -127,6 +127,8 @@ public final class Story {
 			}
 
 			SESSIONS.clear();
+			// (A difficulty picked before a first start belongs to this world's save only.)
+			PENDING_DIFFICULTY.clear();
 		});
 		// Phase 27: hurt (a bolt, a blow, a fall): an open dialog ends, the player has to act. Not in
 		// a fight: the boss's last words stay open while her duel begins.
@@ -208,10 +210,11 @@ public final class Story {
 
 		StorySession running = SESSIONS.get(player.getUUID());
 		StoryProgress progress = running != null ? running.progress : StoryStore.load(server, player.getUUID());
-		// Phase 27: the difficulty chosen before the first start.
+		// Phase 27: the difficulty chosen before the first start (only for a story not saved yet:
+		// a saved one keeps its own).
 		String pending = PENDING_DIFFICULTY.remove(player.getUUID());
 
-		if (pending != null) {
+		if (pending != null && running == null && !StoryStore.exists(server, player.getUUID())) {
 			progress.difficulty = pending;
 		}
 		Chapter chapter = CHAPTERS.getOrDefault(progress.chapter, Chapter1.INSTANCE);
@@ -1104,7 +1107,7 @@ public final class Story {
 			if (session.alarm <= 0) {
 				session.stuns = 0;
 				session.set("tmp.reinforce");
-				session.timer("reinforce", Stealth.REINFORCE_DELAY);
+				session.timer("reinforce", reinforceDelay(session));
 			}
 
 			session.raiseAlarm(Stealth.SEARCH_LONG + Stealth.LOSE);
@@ -1137,7 +1140,7 @@ public final class Story {
 
 		if (!session.has("tmp.reinforce") && session.figures.stream().noneMatch(figure -> figure.key.startsWith(Stealth.REINFORCEMENT))) {
 			session.set("tmp.reinforce");
-			session.timer("reinforce", Stealth.REINFORCE_DELAY);
+			session.timer("reinforce", reinforceDelay(session));
 		}
 
 		session.raiseAlarm(Stealth.SEARCH_LONG + Stealth.LOSE);
@@ -1390,6 +1393,7 @@ public final class Story {
 			case StoryActionPayload.RESTART -> {
 				if (session != null) {
 					SESSIONS.remove(player.getUUID());
+					keepDifficulty(player, session);
 				}
 
 				message(player, enter(player, Start.RESTART, 0));
@@ -1397,6 +1401,7 @@ public final class Story {
 			case StoryActionPayload.MISSION -> {
 				if (session != null) {
 					SESSIONS.remove(player.getUUID());
+					keepDifficulty(player, session);
 				}
 
 				message(player, enter(player, Start.MISSION, payload.value()));
@@ -1496,7 +1501,9 @@ public final class Story {
 		session.progress.difficulty = chosen.id;
 		save(session);
 		difficultyChanges++;
-		session.interrupt(true);
+		// (A dialog ends; screens stay: the change is sent as the menu closes or a tab of it opens,
+		// and the tab just opened should not close again.)
+		session.interrupt(false);
 		session.grace = StorySession.GRACE;
 		session.fighting = false;
 		cue(session, CUE_FADE, "", "sabercraft.story.difficulty.changed." + chosen.id, 30);
@@ -1505,9 +1512,24 @@ public final class Story {
 		sendState(session);
 	}
 
+	/**
+	 * Phase 27: a story started again (or a mission chosen) before its first checkpoint was saved
+	 * keeps the difficulty it ran at (with no file yet, the new start would read Normal).
+	 */
+	private static void keepDifficulty(ServerPlayer player, StorySession session) {
+		if (!StoryStore.exists(player.level().getServer(), player.getUUID())) {
+			PENDING_DIFFICULTY.putIfAbsent(player.getUUID(), session.progress.difficulty);
+		}
+	}
+
 	/** Phase 27: a difficulty chosen before the story's first start (by player), until it starts. */
 	private static final Map<UUID, String> PENDING_DIFFICULTY = new HashMap<>();
 	private static int difficultyChanges;
+
+	/** Phase 27: how long until help comes after a call (later on Easy, sooner on Hard). */
+	static int reinforceDelay(StorySession session) {
+		return session.difficulty().ticks(Stealth.REINFORCE_DELAY, session.difficulty().cooldown);
+	}
 
 	/** For the tests: how often a running story was set back to its checkpoint for a new difficulty. */
 	public static int difficultyChangesForTest() {

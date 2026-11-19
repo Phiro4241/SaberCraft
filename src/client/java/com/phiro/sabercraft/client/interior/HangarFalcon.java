@@ -65,6 +65,13 @@ public final class HangarFalcon {
 	private static int arrivals;
 	/** Phase 27: the flag there within this long of coming into the story: it was there already. */
 	static final long ARRIVE_LOADED_MILLIS = 1500L;
+	/**
+	 * Phase 27: the entry ({@link StoryClient#enteredMillis}) this was last drawn in, and whether
+	 * the Falcon was waiting already the first time it was drawn after it (a load at the escape,
+	 * however far from the hangar one comes in): then it does not rise but simply waits.
+	 */
+	private static long seenEntered = Long.MIN_VALUE;
+	private static boolean thereAtEntry;
 
 	/** For tests: how far below its place it was drawn last (blocks; 0 in its place). */
 	public static float belowForTest() {
@@ -76,8 +83,16 @@ public final class HangarFalcon {
 
 	/** Draws it if it waits in this plot now (the pose stack at the plot's origin). */
 	static void submit(PoseStack poseStack, SubmitNodeCollector collector, ClientLevel level, BlockPos origin, float seconds, boolean shadow) {
+		long entered = StoryClient.enteredMillis();
+
+		if (entered != seenEntered) {
+			seenEntered = entered;
+			thereAtEntry = StoryClient.has(WAITING);
+		}
+
 		if (!StoryClient.has(WAITING)) {
 			since = -1L;
+			thereAtEntry = false;
 			return;
 		}
 
@@ -93,7 +108,7 @@ public final class HangarFalcon {
 				return;
 			}
 
-			boolean there = now - StoryClient.enteredMillis() < ARRIVE_LOADED_MILLIS;
+			boolean there = thereAtEntry || now - entered < ARRIVE_LOADED_MILLIS;
 			since = there ? now - (long) (ARRIVE_SECONDS * 1000.0F) : now;
 
 			if (!there) {

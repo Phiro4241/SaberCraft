@@ -32,7 +32,7 @@ A hard landing often cost only half a heart: the damage was measured from the bi
 - sideways, the speed **into** the wall counts (85 %), not along it: glancing touches are mild, a straight hit is hard;
 - the damage curve is a little steeper (exponent 1.2), so a hard landing is felt. Below the safe speed nothing happens, as before; the wreck speed is unchanged.
 
-Measured in the test (X-Wing, safe up to 0.5 blocks/tick, wreck at 1.75): see the results in section 13.
+Measured in the test (X-Wing, safe up to 0.5 blocks/tick, wreck at 1.75): see the results in section 17.
 
 ## 4. Dax's objective after the hyperspace film
 
@@ -52,10 +52,10 @@ Phiro: the way back was too hard and the N-lure of the flight control officer un
 
 - **The officer walks a round** between the consoles (north–south, z −55 to −43, slow), instead of standing still facing the door and the hatch. Going north, the door and the crawl way's hatch are behind him. One can watch his round and pass when he walks away.
 - **He hears M-31 further** (10 blocks instead of 7.5), so a lure from the door reaches him.
-- **A lure that works.** A guard who hears M-31 goes **right up to the spot** (a step short of the noise), looks round there for 5 seconds (his head sweeping towards the noise, not back towards his post), then **searches on past it**, away from where he stood, for another 4 seconds, and only then goes back. In the test, the lured officer stayed on the far side of the room for the time logged in section 13. Seated crew only look; they do not get up.
+- **A lure that works.** A guard who hears M-31 goes **right up to the spot** (a step short of the noise), looks round there for 5 seconds (his head sweeping towards the noise, not back towards his post), then **searches on past it**, away from where he stood, for another 4 seconds, and only then goes back. In the test, the lured officer stayed on the far side of the room for the time given in section 17. Seated crew only look; they do not get up.
 - **A second noise at once is not believed** (he only looks); after a minute he believes one again. Before, every noise drew him, so a lure could also pull him back to the door.
 - **A checkpoint with the stick**, in the hangar's south-west corner beside the containers, out of the patrols' way. Before, being caught on the way back meant finding the right container all over again.
-- **An alternative route (checked and added):** a second maintenance hatch **low in the hangar's west wall, beside the crate stack**, with a short crawl way into the existing one to the hideout. It avoids flight control altogether, but it lies in the hangar, so one still has to slip past the patrols. Kestrel mentions it over the comm once the stick is taken. Both ways stay stealth: there is no way past without being unseen.
+- **An alternative route (checked and added):** a second maintenance hatch **low in the hangar's west wall, beside the crate stack**, with a short crawl way into the existing one to the hideout. It avoids flight control altogether, but it lies in the hangar, so one still has to slip past the patrols. Kestrel mentions it over the comm (with her portrait, as long as a comm line stays) once the stick is taken and the container is shut. Both ways stay stealth: there is no way past without being unseen.
 - **The marker** leads the way back (section 5).
 
 ## 7. Crawling faster
@@ -135,14 +135,14 @@ Automated tests run in the cloud container with a real client (Xvfb, software re
 | 1 | Checkpoints and respawns | yes, `Phase27GameTest.checkpoints`, `oldSave`, `consoleSafe` | no checkpoint in or by a hatch; one deep in a crawl way, back there on all fours with room; a save from before with a spot in a hatch is put at the step's safe place; nobody sees the player in the bearings; the cell console's respawn: suspicion stays 0 | playing through and being caught in many places |
 | 2 | Officers at the prison door | yes, `popin` | the block's people are there before the door opens | how it looks |
 | 3 | Hard landings | yes, `shipDamage` (real X-Wing, dropped at three speeds) | the impact measured is the landing speed; hull lost grows with speed; resting on the ground costs nothing | flying and landing by hand |
-| 4 | Dax after the film | yes, `interrupt` | a dialog open when a film begins is ended; a hidden dialog comes back | the hyperspace film by hand |
+| 4 | Dax after the film | yes, `interrupt` | a film the story begins ends a dialog open on the server; a film shown only on the client leaves the dialog open and it comes back afterwards | the hyperspace film by hand |
 | 5 | Marker to Kestrel | yes, `ventMarker`, `mission2` | in the crawl way the marker points to the hideout's mouth; on the way back to the door, the hatch, the hideout | – |
-| 6 | Mission 2 way back | yes, `mission2` | the officer's round (more than 6 blocks, on its line); he hears 10 blocks; the lure: he goes, the seated crew stay; he gets far enough from the door and stays away long enough; a second noise at once only makes him look, a minute later he goes again; the checkpoint with the stick (with room, keeps the stick); the second hatch in the hangar opens with one click and leads into the crawl way | **yes**: whether it feels fair |
+| 6 | Mission 2 way back | yes, `mission2` | the officer's round (more than 6 blocks, on its line); his hearing is set to 10 blocks; the lure: he goes, the seated crew stay; he gets far enough from the door and stays away long enough; a second noise at once only makes him look, a minute later he goes again; the checkpoint with the stick (with room, keeps the stick); the second hatch in the hangar opens with one click and leads into the crawl way | **yes**: whether it feels fair |
 | 7 | Crawling faster | yes, `mission2` | the crawl bonus is on in the crawl way; distance per second | – |
 | 8 | Screens close when seen | yes, `interrupt` | seen: the dialog ends on the server and its screen closes on the client | menus and inventory by hand |
 | 9 | Brightness | yes, `brightness` | default Normal; kept after save and load; the brightest setting lifts enough | **yes**: how it looks |
 | 10 | Menu key | yes, `keys` | default I, not V; a key on V moves to I; the move happens only once (a player who sets V again keeps it); the hint names the key as bound | the toasts; with Simple Voice Chat installed |
-| 11 | Crawl ways | yes, `mission2` | one click on a hatch opens it and is taken as wanting in; walking into an open one facing it gets the player crawling | **yes**: whether the hatches are recognisable, the hints |
+| 11 | Crawl ways | yes, `mission2` | one click on a hatch opens it, and walking in right after gets the player crawling | **yes**: whether the hatches are recognisable, the hints; walking into a hatch opened long before, facing it, without a click |
 | 12 | Difficulty | yes, `difficulty`, `StoryGameTest` | a new story asks for it first (StoryGameTest picks Normal on that page); a change in a running mission goes back to the checkpoint exactly once; kept in the player's save after leaving and continuing; enemies in the hangar mission 9/10/13 | **yes**: playing on all three, the stun marks, two players with different difficulties |
 | 13 | Boss harder | partly, `Phase26GameTest.boss`, `StoryGameTest` | the duel still runs through, she still loses strength by hits | **yes**: the fight on all three difficulties |
 | 14 | Falcon after the boss | yes, `falcon`, `Phase26GameTest.falcon` | not there in the escape; there after the duel and her film; loaded at the escape, it does not rise again | **yes**: the rise |

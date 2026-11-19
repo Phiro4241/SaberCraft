@@ -281,6 +281,8 @@ public final class Stealth {
 					figure.searches = 3 + figure.id % 2;
 					figure.windup = 0;
 					figure.burst = 0;
+					// (Phase 27: the search after a chase is no lure's.)
+					figure.luredFrom = null;
 				}
 			}
 
@@ -689,7 +691,8 @@ public final class Stealth {
 					Vec3 to = lure.subtract(figure.position()).multiply(1.0, 0.0, 1.0);
 					figure.lure = null;
 					figure.mode = Figure.INVESTIGATE;
-					figure.target = to.length() > 1.6 ? lure.subtract(to.normalize().scale(1.2)) : figure.position();
+					// (Phase 27: a place they can stand on, so they get there and do not walk on the spot.)
+					figure.target = lureSpot(figure, lure, level, corner);
 					// Phase 27: a lure keeps them longer: they look round where the noise was, then
 					// search on past it, away from where they stood (and from whoever slips by there).
 					figure.luredFrom = figure.position();
@@ -701,7 +704,8 @@ public final class Stealth {
 			case Figure.INVESTIGATE -> {
 				// Phase 27: drawn by a noise, they go right up to where they mean to look (the lure's
 				// spot is already a step short of the noise), not stop a step short of that again.
-				double near = figure.luredFrom != null && figure.suspicion < ALERTED ? 0.6 : 1.2;
+				double near = figure.luredFrom != null && figure.suspicion < ALERTED && figure.target != null
+						&& free(level, corner, figure.target.x, figure.target.y, figure.target.z, figure.crew.height()) ? 0.6 : 1.2;
 
 				if (figure.target == null || figure.position().distanceTo(figure.target) < near
 						|| !go(figure, Combat.apart(s, figure, figure.target, level, corner), s.searching ? WALK * 1.4 : WALK, level, corner, time)) {
@@ -847,6 +851,7 @@ public final class Stealth {
 	 */
 	private static void settle(Figure figure, double[] at) {
 		figure.mode = Figure.ROUTINE;
+		figure.luredFrom = null;
 		figure.x = at[0];
 		figure.y = at[1];
 		figure.z = at[2];
@@ -959,6 +964,35 @@ public final class Stealth {
 		}
 
 		return null;
+	}
+
+	/**
+	 * Phase 27: where one drawn by a noise goes to look: a step short of it (1.2 blocks) on the way
+	 * from them, or nearer to them where that is no place to stand (a wall, a console); where they
+	 * are if there is none.
+	 */
+	private static Vec3 lureSpot(Figure figure, Vec3 lure, ServerLevel level, Vec3 corner) {
+		Vec3 to = lure.subtract(figure.position()).multiply(1.0, 0.0, 1.0);
+		double length = to.length();
+
+		if (length <= 1.6) {
+			return figure.position();
+		}
+
+		Vec3 dir = to.scale(1.0 / length);
+		double height = figure.crew.height();
+
+		for (double back = 1.2; back < length - 0.4; back += 0.25) {
+			double x = lure.x - dir.x * back;
+			double z = lure.z - dir.z * back;
+			Double y = Paths.stand(level, corner, x, lure.y, z, height);
+
+			if (y != null && Math.abs(y - lure.y) < 1.1 && free(level, corner, x, y, z, height)) {
+				return new Vec3(x, y, z);
+			}
+		}
+
+		return figure.position();
 	}
 
 	private static @Nullable Vec3 searchPoint(Figure figure, Vec3 around, ServerLevel level, Vec3 corner, long time) {
@@ -1086,6 +1120,10 @@ public final class Stealth {
 			}
 
 			if (figure.position().distanceTo(first.position()) < 12.0 || figure.position().distanceTo(me) < 10.0) {
+				// (Phase 27: a noise that drew them counts no more.)
+				figure.luredFrom = null;
+				figure.lure = null;
+
 				if (Combat.armed(figure) && joined < 3) {
 					figure.mode = Figure.CHASE;
 					figure.suspicion = 1.0F;

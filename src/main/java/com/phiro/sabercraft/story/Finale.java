@@ -182,6 +182,8 @@ final class Finale {
 	 * her (on Normal; the difficulty scales it further).
 	 */
 	static final float STRENGTH = 1.15F;
+	/** Her push's damage to one not on guard (Phase 27: times her power by the difficulty). */
+	static final float PUSH_DAMAGE = 2.0F;
 	static final int RUSH_OPENING = 12;
 	/** Phase 25: a spin's wind-up is longer (the staff twirls round her: to be seen coming), and it reaches a little further. */
 	static final int SPIN_WINDUP = 20;
@@ -1015,8 +1017,8 @@ final class Finale {
 
 		// Phase 25: from a distance she throws her staff (not too soon after her leap or push).
 		// (Phase 26: nor right after the ring's rush.)
-		if (phase >= 2 && !s.timer("throw") && distance > THROW_FROM && distance < THROW_TO && clear && s.timers.getOrDefault("leap", 0) < LEAP_EVERY - 60
-				&& s.timers.getOrDefault("push", 0) < PUSH_EVERY - 40 && s.timers.getOrDefault("rush", 0) < RUSH_EVERY_FIERCE - 50) {
+		if (phase >= 2 && !s.timer("throw") && distance > THROW_FROM && distance < THROW_TO && clear && since(s, f, "leap", LEAP_EVERY, 60)
+				&& since(s, f, "push", PUSH_EVERY, 40) && since(s, f, "rush", RUSH_EVERY_FIERCE, 50)) {
 			throwStarts(s, f, level, corner);
 			return;
 		}
@@ -1024,8 +1026,8 @@ final class Finale {
 		// Phase 26: the ring's rush (not right after her leap or throw). Phase 27: in the first
 		// phase too, rarer, once she has lost some strength (one blade whirling), not right after a push.
 		if ((phase >= 2 || f.health <= RING_FROM) && !s.timer("rush") && distance > RUSH_FROM && distance < RUSH_TO && clear
-				&& s.timers.getOrDefault("leap", 0) < LEAP_EVERY - 50 && s.timers.getOrDefault("throw", 0) < THROW_EVERY - 60
-				&& (phase >= 2 || s.timers.getOrDefault("push", 0) < PUSH_EVERY_FIRST - 60)) {
+				&& since(s, f, "leap", LEAP_EVERY, 50) && since(s, f, "throw", THROW_EVERY, 60)
+				&& (phase >= 2 || since(s, f, "push", PUSH_EVERY_FIRST, 60))) {
 			rushStarts(s, f, level, corner);
 			return;
 		}
@@ -1081,6 +1083,14 @@ final class Finale {
 	/** Phase 27: a time of hers (a pause, a wind-up, the time until she does it again) by her tempo (the difficulty). */
 	static int scaled(Figure f, int ticks) {
 		return Math.max(1, Math.round(ticks / Math.max(0.1F, f.tempo)));
+	}
+
+	/**
+	 * Phase 27: whether at least {@code gap} ticks (at her tempo) passed since a move whose timer
+	 * was set to {@code every} (at her tempo): the gaps between her moves scale as the timers do.
+	 */
+	static boolean since(StorySession s, Figure f, String timer, int every, int gap) {
+		return s.timers.getOrDefault(timer, 0) <= scaled(f, every) - scaled(f, gap);
 	}
 
 	/** Phase 27: how long an opening of hers lasts by the difficulty (never shorter than a stroke needs). */
@@ -1530,8 +1540,10 @@ final class Finale {
 		player.hurtMarked = true;
 
 		if (!guard) {
-			player.hurtServer(level, level.damageSources().generic(), 2.0F);
-			Story.cue(s, Story.CUE_DUEL, "hurt", "", 2, java.util.List.of(f.position().add(corner)));
+			// (Phase 27: by the difficulty, as her other attacks.)
+			float damage = PUSH_DAMAGE * f.power;
+			player.hurtServer(level, level.damageSources().generic(), damage);
+			Story.cue(s, Story.CUE_DUEL, "hurt", "", Math.round(damage), java.util.List.of(f.position().add(corner)));
 		}
 
 		Vec3 at = f.position().add(corner).add(0.0, 1.2, 0.0);
