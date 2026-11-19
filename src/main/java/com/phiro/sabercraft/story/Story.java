@@ -82,11 +82,16 @@ public final class Story {
 	 * value: how long, ticks; points: where, world space).
 	 */
 	public static final byte CUE_EFFECT = 12;
+	/**
+	 * Phase 27: the player has to act at once (seen, the alarm, hit, caught): the client closes any
+	 * dialog, menu or inventory screen still open, so the controls are free.
+	 */
+	public static final byte CUE_INTERRUPT = 13;
 
 	/** How far one reaches to use a thing or speak to someone (blocks). */
 	static final double REACH = 4.5;
 	/** How far people are sent to the client (blocks). */
-	static final double SEND_RANGE = 48.0;
+	static final double SEND_RANGE = 72.0;
 
 	private static final Map<String, Chapter> CHAPTERS = Map.of(Chapter1.ID, Chapter1.INSTANCE);
 	private static final Map<UUID, StorySession> SESSIONS = new HashMap<>();
@@ -110,12 +115,44 @@ public final class Story {
 				OutfitSync.override(handler.getPlayer(), null);
 			}
 		});
-		ServerLifecycleEvents.SERVER_STOPPING.register(server -> SESSIONS.clear());
+		ServerLifecycleEvents.SERVER_STOPPING.register(server -> {
+			// Phase 27: a server stopping with players still in the story keeps how far they got
+			// (as leaving does: only when all is calm, at the step's safe place).
+			for (StorySession session : List.copyOf(SESSIONS.values())) {
+				try {
+					session.keepOnLeave();
+				} catch (RuntimeException e) {
+					SaberCraft.LOGGER.warn("Story: could not keep the progress of {} at shutdown", session.player, e);
+				}
+			}
+
+			SESSIONS.clear();
+		});
+		// Phase 27: hurt (a bolt, a blow, a fall): an open dialog ends, the player has to act. Not in
+		// a fight: the boss's last words stay open while her duel begins.
+		ServerLivingEntityEvents.AFTER_DAMAGE.register((entity, source, base, taken, blocked) -> {
+			if (entity instanceof ServerPlayer player && taken > 0.0F) {
+				StorySession session = SESSIONS.get(player.getUUID());
+
+				if (session != null && !session.fighting) {
+					session.interrupt(false);
+				}
+			}
+		});
 		ServerLivingEntityEvents.ALLOW_DEATH.register((entity, source, amount) -> {
 			if (entity instanceof ServerPlayer player && SESSIONS.containsKey(player.getUUID())) {
 				// Nobody dies in the story: it counts as being caught.
+				StorySession session = SESSIONS.get(player.getUUID());
 				player.setHealth(player.getMaxHealth());
-				capture(SESSIONS.get(player.getUUID()), null);
+
+				// Phase 27: also in the grace after a capture (it was swallowed: healed where one fell),
+				// but not again in the first moments after being put back.
+				if (session.grace > 0 && session.stepTicks > 40) {
+					session.grace = 0;
+					session.shield = 0;
+				}
+
+				capture(session, null);
 				return false;
 			}
 
@@ -171,11 +208,17 @@ public final class Story {
 
 		StorySession running = SESSIONS.get(player.getUUID());
 		StoryProgress progress = running != null ? running.progress : StoryStore.load(server, player.getUUID());
+		// Phase 27: the difficulty chosen before the first start.
+		String pending = PENDING_DIFFICULTY.remove(player.getUUID());
+
+		if (pending != null) {
+			progress.difficulty = pending;
+		}
 		Chapter chapter = CHAPTERS.getOrDefault(progress.chapter, Chapter1.INSTANCE);
 		int missions = chapter.missions().size();
 
 		if (start == Start.MISSION && (mission < 0 || mission >= missions || mission > unlocked(progress, missions))) {
-			return Component.translatable("sabercraft.story.locked");
+			return Component.translatable("sabercraft.story.locked", menuKey());
 		}
 
 		if (!progress.active) {
@@ -717,16 +760,23 @@ public final class Story {
 				player.getFoodData().setFoodLevel(20);
 			}
 
+			// Phase 27: the enemies of this player's story move at its difficulty's pace.
+			Stealth.pace = session.difficulty().speed;
+			bearings(session);
+
 			if (interiors != null) {
 				Stealth.tick(session, player, interiors);
 			}
 
 			if (SESSIONS.get(session.player) != session) {
+				Stealth.pace = 1.0;
 				continue;
 			}
 
 			session.chapter.tick(session);
 			session.afterTick();
+			Stealth.pace = 1.0;
+			followMarker(session, server.getTickCount());
 
 			if (server.getTickCount() % 40 == 0 && session.dialog == null) {
 				keepDroidsNear(session, player);
@@ -788,7 +838,12 @@ public final class Story {
 
 	/** Phase 22: what the normal SaberCraft functions answer while a story runs. */
 	public static Component lockedMessage() {
-		return Component.translatableWithFallback("sabercraft.story.locked", "Not available during a story mission.");
+		return Component.translatableWithFallback("sabercraft.story.locked", "Not available during a story mission.", menuKey());
+	}
+
+	/** Phase 27: the key of the SaberCraft menu as the player has it bound (shown by their game). */
+	public static Component menuKey() {
+		return Component.keybind("key.sabercraft.customize");
 	}
 
 	/** On to the next step, the next mission, or the chapter's end. */
@@ -839,6 +894,14 @@ public final class Story {
 
 		boolean own = !progress.placeShip.isEmpty() && progress.step == session.stepIndex && progress.mission == session.mission;
 		Mission.Place safe = session.chapter.place(session, step);
+
+		// Phase 27: a kept place the chapter does not count among its safe ones (a save from before:
+		// a spot in a hatch, on the cot, a place that moved) gives way to the step's safe place.
+		if (own && !session.chapter.trusts(session, step, progress.placeShip, new Vec3(progress.placeX, progress.placeY, progress.placeZ))) {
+			own = false;
+			untrusted++;
+		}
+
 		String ship = own ? progress.placeShip : safe.ship();
 		Vec3 at = own ? new Vec3(progress.placeX, progress.placeY, progress.placeZ) : safe.at();
 		float yaw = own ? progress.placeYaw : safe.yaw();
@@ -846,12 +909,96 @@ public final class Story {
 		player.setDeltaMovement(Vec3.ZERO);
 		player.fallDistance = 0.0F;
 		place(session, ship, at, yaw);
+
+		// Phase 27: no room even on all fours there (a wall, a shut hatch): the step's safe place.
+		if (own && !fits(player)) {
+			SaberCraft.LOGGER.warn("Story: no room at the checkpoint of {} ({} {}), put at its safe place", step.id(), ship, at);
+			untrusted++;
+			place(session, safe.ship(), safe.at(), safe.yaw());
+		}
+
 		player.setHealth(player.getMaxHealth());
 
 		// In a crawl way: down on all fours at once (there is no room to stand).
 		if (crawlway(player)) {
 			player.setPose(net.minecraft.world.entity.Pose.SWIMMING);
 		}
+	}
+
+	/** Phase 27: kept places refused or without room since the start (for the tests). */
+	private static int untrusted;
+
+	public static int untrustedForTest() {
+		return untrusted;
+	}
+
+	/** Phase 27: whether there is room for the player where they are, at least on all fours. */
+	static boolean fits(ServerPlayer player) {
+		AABB crawling = player.getDimensions(net.minecraft.world.entity.Pose.SWIMMING).makeBoundingBox(player.position()).deflate(1.0E-7);
+		return player.level().noCollision(player, crawling);
+	}
+
+	/**
+	 * Phase 27: back at a checkpoint, the search patrols an alarm left (kept as flags) are not
+	 * there where the player is put: whoever's way passes within a few blocks of that place is not
+	 * placed this time (they walked to the spot again and again, seeing the player at once).
+	 */
+	static void clearRespawn(StorySession session) {
+		ServerPlayer player = session.player();
+
+		if (player == null || session.here == null) {
+			return;
+		}
+
+		Vec3 me = session.local(session.here);
+		session.figures.removeIf(figure -> figure.key.startsWith("patrol.") && session.here.equals(figure.ship) && passesNear(figure, me, 4.0));
+	}
+
+	private static boolean passesNear(Figure figure, Vec3 at, double reach) {
+		if (Math.hypot(figure.crew.x() - at.x, figure.crew.z() - at.z) < reach) {
+			return true;
+		}
+
+		for (Vec3 point : figure.crew.path()) {
+			if (Math.hypot(point.x - at.x, point.z - at.z) < reach && Math.abs(point.y - at.y) < 2.5) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	/**
+	 * Phase 27: the bearings after a checkpoint: while the player stays near where they were put
+	 * and does nothing there, nobody sees them (at most {@link StorySession#SHIELD} ticks). Moving
+	 * off, using something, a takedown or a fight ends it.
+	 */
+	private static void bearings(StorySession session) {
+		if (session.shield <= 0) {
+			return;
+		}
+
+		session.shield--;
+		Vec3 at = session.shieldAt;
+
+		if (at == null || session.here == null || session.fighting || session.alarm > 0) {
+			session.shield = 0;
+			return;
+		}
+
+		Vec3 me = session.local(session.here);
+
+		if (Math.hypot(me.x - at.x, me.z - at.z) > StorySession.SHIELD_REACH || Math.abs(me.y - at.y) > 2.0) {
+			session.shield = 0;
+			return;
+		}
+
+		session.grace = Math.max(session.grace, 2);
+	}
+
+	/** Phase 27: the player acts (uses something, talks, overpowers someone): their bearings end. */
+	static void acted(StorySession session) {
+		session.shield = 0;
 	}
 
 	/** Whether there is no room to stand where the player is (a crawl way). */
@@ -911,6 +1058,8 @@ public final class Story {
 		figure.pathGoal = null;
 		figure.pathReaches = true;
 		cue(session, CUE_SOUND, "", "story.detected", figure.id);
+		// Phase 27: seen: no dialog or menu keeps the player standing there.
+		session.interrupt(true);
 
 		// Phase 21: where the player was seen (the squad goes there when they lose sight).
 		session.huntSeen = session.time();
@@ -1105,15 +1254,22 @@ public final class Story {
 		}
 
 		Vec3 door = nearest(doors, near, 45.0, me);
+		// Phase 27: how many come, and how many may be about at once, by the difficulty.
+		StoryDifficulty difficulty = session.difficulty();
 
-		if (door == null || already >= 4) {
+		if (door == null || already >= difficulty.reinforceMax) {
 			return;
 		}
 
-		for (int i = 0; i < 2; i++) {
-			double side = i == 0 ? -0.6 : 0.6;
+		int come = (int) Math.min(difficulty.reinforce, difficulty.reinforceMax - already);
+
+		for (int i = 0; i < come; i++) {
+			double side = come == 1 ? 0.0 : i == 0 ? -0.6 : i == 1 ? 0.6 : 0.0;
+			double back = i >= 2 ? 1.2 : 0.0;
+			Vec3 away = door.subtract(me).multiply(1.0, 0.0, 1.0);
+			away = away.lengthSqr() < 1.0E-4 ? Vec3.ZERO : away.normalize().scale(back);
 			Figure template = new Figure(0, Stealth.REINFORCEMENT + session.figures.size() + "." + i,
-					Crew.at(Crew.TROOPER, Crew.STAND, door.x + side, door.y, door.z, Crew.yaw(door, me)));
+					Crew.at(Crew.TROOPER, Crew.STAND, door.x + side + away.x, door.y, door.z + away.z, Crew.yaw(door, me)));
 			template.ship = ship;
 			template.observer = true;
 			template.talks = false;
@@ -1143,10 +1299,15 @@ public final class Story {
 
 		session.stuns++;
 		stunHits++;
+		// (Phase 27: a hit ends a dialog; menus stay, so the story's menu can still be used in a chase.)
+		session.interrupt(false);
 		cue(session, CUE_SOUND, "", "story.stun_hit", 0);
-		cue(session, CUE_HINT, "stun", "sabercraft.story.hint.stunned", session.stuns);
+		StoryDifficulty level = session.difficulty();
+		cue(session, CUE_HINT, "stun", level == StoryDifficulty.NORMAL ? "sabercraft.story.hint.stunned" : "sabercraft.story.hint.stunned_" + level.id,
+				session.stuns);
 
-		if (session.stuns >= Combat.STUN_HITS) {
+		// Phase 27: Easy one more, Hard one fewer.
+		if (session.stuns >= session.difficulty().stunHits) {
 			Figure by = Combat.nearestChaser(session, session.local(session.here != null ? session.here : DESTROYER));
 
 			if (by != null) {
@@ -1175,6 +1336,7 @@ public final class Story {
 		session.cornered = Stealth.CORNERED;
 		session.cornerer = figure;
 		cornerings++;
+		session.interrupt(true);
 		figure.speed = 0.0F;
 		session.hear(voice(figure), "sabercraft.story.shout.hands_up");
 		player.addEffect(new net.minecraft.world.effect.MobEffectInstance(net.minecraft.world.effect.MobEffects.SLOWNESS, Stealth.CORNERED + 6, 5, false, false));
@@ -1198,6 +1360,7 @@ public final class Story {
 		}
 		cue(session, CUE_FADE, "", "sabercraft.story.caught", 30);
 		cue(session, CUE_SOUND, "", "story.caught", 0);
+		session.interrupt(true);
 		session.grace = StorySession.GRACE;
 		session.fighting = false;
 		session.begin(true);
@@ -1207,6 +1370,7 @@ public final class Story {
 
 	/** A section that had to be done unseen failed: back to its checkpoint, with a word why. */
 	public static void fail(StorySession session, String hint) {
+		session.interrupt(true);
 		session.grace = StorySession.GRACE;
 		cue(session, CUE_FADE, "", hint, 30);
 		session.begin(true);
@@ -1247,6 +1411,9 @@ public final class Story {
 				if (session != null) {
 					session.answer(payload.value());
 					session.afterTick();
+				} else if (ServerPlayNetworking.canSend(player, StoryDialogPayload.TYPE)) {
+					// Phase 27: out of the story: the screen closes (nobody would answer it).
+					ServerPlayNetworking.send(player, StoryDialogPayload.closed());
 				}
 			}
 			case StoryActionPayload.USE -> {
@@ -1268,10 +1435,12 @@ public final class Story {
 			}
 			case StoryActionPayload.STRIKE -> {
 				if (session != null && session.chapter instanceof Chapter1 chapter) {
+					acted(session);
 					chapter.strike(session, player);
 					session.afterTick();
 				}
 			}
+			case StoryActionPayload.DIFFICULTY -> difficulty(player, session, payload.value());
 			case StoryActionPayload.FOCUS -> {
 				if (session != null) {
 					String hint = Finale.focus(session);
@@ -1286,6 +1455,61 @@ public final class Story {
 			default -> {
 			}
 		}
+	}
+
+	/**
+	 * Phase 27: a player chose the story's difficulty in the menu. Kept with their save (each
+	 * player their own). Out of the story it holds from the next start; with no save yet it waits
+	 * for the story's start (a file is not written for it alone). In a running mission it takes
+	 * effect at once from the last checkpoint: everyone is placed anew for it there (as after being
+	 * caught, but not counted as caught), so no enemy appears or vanishes in the middle of a scene
+	 * and nothing done before that checkpoint is lost.
+	 */
+	static void difficulty(ServerPlayer player, @Nullable StorySession session, int index) {
+		StoryDifficulty chosen = StoryDifficulty.byIndex(index);
+		MinecraftServer server = player.level().getServer();
+
+		if (session == null) {
+			if (!StoryStore.exists(server, player.getUUID())) {
+				PENDING_DIFFICULTY.put(player.getUUID(), chosen.id);
+				return;
+			}
+
+			StoryProgress progress = StoryStore.load(server, player.getUUID());
+
+			if (!chosen.id.equals(progress.difficulty)) {
+				progress.difficulty = chosen.id;
+				StoryStore.save(server, player.getUUID(), progress);
+			}
+
+			sendState(player, progress, null);
+			return;
+		}
+
+		if (chosen.id.equals(session.progress.difficulty)) {
+			sendState(session);
+			return;
+		}
+
+		session.progress.difficulty = chosen.id;
+		save(session);
+		difficultyChanges++;
+		session.interrupt(true);
+		session.grace = StorySession.GRACE;
+		session.fighting = false;
+		cue(session, CUE_FADE, "", "sabercraft.story.difficulty.changed." + chosen.id, 30);
+		session.begin(true);
+		session.hint("sabercraft.story.difficulty.changed." + chosen.id);
+		sendState(session);
+	}
+
+	/** Phase 27: a difficulty chosen before the story's first start (by player), until it starts. */
+	private static final Map<UUID, String> PENDING_DIFFICULTY = new HashMap<>();
+	private static int difficultyChanges;
+
+	/** For the tests: how often a running story was set back to its checkpoint for a new difficulty. */
+	public static int difficultyChangesForTest() {
+		return difficultyChanges;
 	}
 
 	/**
@@ -1318,7 +1542,14 @@ public final class Story {
 
 	/** Uses a thing, if it is there to be used and within reach. */
 	public static boolean use(StorySession session, ServerPlayer player, String id) {
-		if (session.dialog != null || session.here == null) {
+		if (session.dialog != null) {
+			// Phase 27: a dialog is still open here, but the player's screen is not (they could not
+			// click otherwise): its line comes back instead of nothing happening.
+			sendDialog(session);
+			return true;
+		}
+
+		if (session.here == null) {
 			return false;
 		}
 
@@ -1335,6 +1566,7 @@ public final class Story {
 					return true;
 				}
 
+				acted(session);
 				session.chapter.use(session, point);
 				return true;
 			}
@@ -1345,7 +1577,13 @@ public final class Story {
 
 	/** Speaks to someone, if they are there and within reach. */
 	public static boolean talk(StorySession session, ServerPlayer player, int id) {
-		if (session.dialog != null || session.here == null) {
+		if (session.dialog != null) {
+			// Phase 27: as for use: the open line comes back.
+			sendDialog(session);
+			return true;
+		}
+
+		if (session.here == null) {
 			return false;
 		}
 
@@ -1357,6 +1595,7 @@ public final class Story {
 					return false;
 				}
 
+				acted(session);
 				return session.chapter.talk(session, figure);
 			}
 		}
@@ -1368,8 +1607,41 @@ public final class Story {
 		ServerPlayer player = session.player();
 
 		if (player != null) {
+			session.markerSent = marker(session);
 			sendState(player, session.progress, session);
 		}
+	}
+
+	/** Phase 27: where the marker points now (world space), or null. */
+	static @Nullable Vec3 marker(StorySession session) {
+		Mission.Target goal = session.chapter instanceof Chapter1 c1 ? c1.target(session) : session.step().target();
+		return goal == null ? null : goal.at().add(Vec3.atLowerCornerOf(session.origin(goal.ship())));
+	}
+
+	/**
+	 * Phase 27: the marker follows where it should point although nothing else changed (it hangs
+	 * on where the player is: from the first crawl way on to the hideout, past the north hatch on
+	 * to the containers, over a guard who moves): checked a few times a second, sent when it moved.
+	 */
+	private static void followMarker(StorySession session, int tick) {
+		if (session.dirty || tick % 5 != 2) {
+			return;
+		}
+
+		Vec3 now = marker(session);
+		Vec3 sent = session.markerSent;
+
+		if ((now == null) != (sent == null) || now != null && now.distanceToSqr(sent) > 0.36) {
+			session.dirty = true;
+			markerMoves++;
+		}
+	}
+
+	private static int markerMoves;
+
+	/** For the tests: how often the marker was sent again because it moved by itself. */
+	public static int markerMovesForTest() {
+		return markerMoves;
 	}
 
 	private static void sendState(ServerPlayer player, StoryProgress progress, @Nullable StorySession session) {
@@ -1402,6 +1674,9 @@ public final class Story {
 				known.add(flag);
 			}
 		}
+
+		// Phase 27: the difficulty (for the menu and the HUD).
+		known.add("difficulty." + StoryDifficulty.of(saved ? progress.difficulty : PENDING_DIFFICULTY.getOrDefault(player.getUUID(), progress.difficulty)).id);
 
 		if (session != null) {
 			Mission.Step step = session.step();
@@ -1496,7 +1771,9 @@ public final class Story {
 
 		Figure partner = session.partner;
 
-		if (partner != null && partner.mode != Figure.SCRIPTED && partner.mode != Figure.FIGHT && partner.mode != Figure.DOWN) {
+		// (Phase 27: nor one running to the wall comm or after the player: the call is not held up by the talk.)
+		if (partner != null && partner.mode != Figure.SCRIPTED && partner.mode != Figure.FIGHT && partner.mode != Figure.DOWN && partner.mode != Figure.CALL
+				&& partner.mode != Figure.CHASE) {
 			// They stop and look at the player (unless a script sends them off, or they fight).
 			partner.mode = Figure.HELD;
 			partner.target = session.local(partner.ship);
@@ -1517,6 +1794,13 @@ public final class Story {
 
 		if (player == null) {
 			return;
+		}
+
+		if (cue == CUE_CINEMA) {
+			// Phase 27: a film begins: a dialog still open ends first (the film's screen took its place
+			// on the client and nobody could answer it any more; the story then waited for it forever,
+			// as after Dax's jump: the arrival film over, the objective stayed "talk to Dax").
+			session.interrupt(false);
 		}
 
 		if (cue == CUE_SOUND && !ServerPlayNetworking.canSend(player, StoryCuePayload.TYPE)) {

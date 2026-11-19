@@ -607,6 +607,55 @@ final class StoryRooms {
 		b.twoSided(false).layer(Layer.SOLID).worldLight().white().anim(0);
 	}
 
+	/** Phase 27: how the security barrier is drawn: its field (red) and the lamps on its pylons. */
+	static final int BARRIER_FIELD = 0x58FF4434;
+	static final int BARRIER_LAMP = 0xFFFF4030;
+
+	/**
+	 * Phase 27: the security barrier security put up before the turbolift to the bridge: two
+	 * pylons (hazard bands, a red lamp on top, blinking in turn) with a red force field between
+	 * them, glowing bars along its top and foot. It stands in the lobby's last row before the
+	 * lift's bay ({@link com.phiro.sabercraft.story.Chapter1#sealBridge}); the field is drawn on its
+	 * near face, where one walks into it.
+	 */
+	static void bridgeBarrier(MeshBuilder b, float seconds) {
+		float x0 = com.phiro.sabercraft.story.Chapter1.BRIDGE_BARRIER_X0;
+		float x1 = com.phiro.sabercraft.story.Chapter1.BRIDGE_BARRIER_X1 + 1;
+		float z = com.phiro.sabercraft.story.Chapter1.BRIDGE_BARRIER_Z;
+
+		for (int side = 0; side < 2; side++) {
+			float px = side == 0 ? x0 - 0.17F : x1 + 0.17F;
+			b.layer(Layer.SOLID).worldLight().white().anim(0).twoSided(false);
+			// Foot, post, hazard band and the lamp's housing.
+			b.tile(InteriorAtlas.IMP_METAL, 1.0F);
+			b.box(px - 0.24F, H, z - 0.2F, px + 0.24F, H + 0.12F, z + 0.28F);
+			b.tile(InteriorAtlas.IMP_HULL_DARK, 1.0F);
+			b.box(px - 0.13F, H + 0.12F, z - 0.1F, px + 0.13F, H + 2.85F, z + 0.18F);
+			b.tile(InteriorAtlas.IMP_HAZARD, 0.5F);
+			b.box(px - 0.135F, H + 1.0F, z - 0.105F, px + 0.135F, H + 1.3F, z + 0.185F, MeshBuilder.ALL & ~MeshBuilder.UP & ~MeshBuilder.DOWN);
+			b.tile(InteriorAtlas.IMP_METAL, 1.0F);
+			b.box(px - 0.15F, H + 2.85F, z - 0.12F, px + 0.15F, H + 2.95F, z + 0.2F);
+			// The lamp: blinking, one pylon after the other.
+			boolean on = ((seconds + side * 0.6F) % 1.2F) < 0.6F;
+			b.layer(Layer.GLOW).fullBright().colour(on ? BARRIER_LAMP : 0xFF601810).fit(InteriorAtlas.IMP_WALL_STRIP_GLOW, 0.0F, 0.42F, 1.0F, 0.58F);
+			b.box(px - 0.09F, H + 2.95F, z - 0.06F, px + 0.09F, H + 3.07F, z + 0.14F);
+			// The emitter's strip down the inner side of the post.
+			float inner = side == 0 ? px + 0.13F : px - 0.13F;
+			b.colour(BARRIER_LAMP).anim(InteriorScene.ANIM_PULSE);
+			b.box(side == 0 ? inner : inner - 0.02F, H + 0.2F, z - 0.04F, side == 0 ? inner + 0.02F : inner, H + 2.75F, z + 0.04F);
+			b.anim(0);
+		}
+
+		// The field, a hair before the barrier's cells, and its bars.
+		b.layer(Layer.HOLO).fullBright().colourAlpha(BARRIER_FIELD).tile(InteriorAtlas.IMP_FORCE_FIELD_GLOW, 1.0F).anim(InteriorScene.ANIM_SHIMMER).twoSided(true);
+		b.rect(x0 - 0.04F, H + 2.75F, z - 0.02F, x1 - x0 + 0.08F, 0, 0, 0, -2.6F, 0);
+		b.layer(Layer.GLOW).fullBright().colour(BARRIER_LAMP).anim(InteriorScene.ANIM_PULSE).twoSided(false)
+				.fit(InteriorAtlas.IMP_WALL_STRIP_GLOW, 0.0F, 0.42F, 1.0F, 0.58F);
+		b.box(x0 - 0.04F, H + 2.75F, z - 0.05F, x1 + 0.04F, H + 2.79F, z + 0.01F);
+		b.box(x0 - 0.04F, H + 0.11F, z - 0.05F, x1 + 0.04F, H + 0.15F, z + 0.01F);
+		b.twoSided(false).layer(Layer.SOLID).worldLight().white().anim(0);
+	}
+
 	/** Phase 26: a repeatable noise 0..1 from two numbers. */
 	private static float hash(int a, int b) {
 		int h = a * 0x27D4EB2D ^ b * 0x165667B1;
@@ -648,6 +697,12 @@ final class StoryRooms {
 				b.rect(x0, H + 2.86F, CELL_FRONT + 0.5F, x1 - x0, 0, 0, 0, -2.74F, 0);
 				b.twoSided(false).layer(Layer.SOLID).worldLight().white().anim(0);
 			}
+		}
+
+		// Phase 27: the security barrier before the lift to the bridge, while its cells stand.
+		if (story && plot.level().getBlockState(o.offset(com.phiro.sabercraft.story.Chapter1.BRIDGE_BARRIER_X0, (int) H,
+				com.phiro.sabercraft.story.Chapter1.BRIDGE_BARRIER_Z)).is(Blocks.BARRIER)) {
+			bridgeBarrier(b, seconds);
 		}
 
 		// The coolant valve's wheel: turned (and a warning lamp) once the story turned it.

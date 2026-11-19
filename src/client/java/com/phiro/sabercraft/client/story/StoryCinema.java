@@ -21,6 +21,7 @@ import net.minecraft.world.phys.Vec3;
 import com.phiro.sabercraft.client.interior.ArrivalFilm;
 import com.phiro.sabercraft.client.interior.EscapeFilm;
 import com.phiro.sabercraft.network.StoryActionPayload;
+import com.phiro.sabercraft.network.StoryDialogPayload;
 
 /**
  * Phase 20: the story's films. The server starts one with a cue (for now only the Falcon's arrival
@@ -182,6 +183,13 @@ public final class StoryCinema {
 
 		if (client.gui.screen() instanceof FilmScreen) {
 			client.gui.setScreen(null);
+
+			// Phase 27: a dialog the server still has open comes back (the film had only hidden it).
+			StoryDialogPayload open = StoryClient.openDialog();
+
+			if (open != null && client.player != null) {
+				DialogScreen.open(client, open);
+			}
 		}
 	}
 

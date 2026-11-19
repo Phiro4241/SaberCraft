@@ -82,8 +82,8 @@ public final class SaberSwords {
 
 		if (toSaber) {
 			return switch (ItemConversion.toSaber(stack, null, null)) {
-				case DONE -> Component.translatableWithFallback("sabercraft.command.converted", "%s is now a lightsaber. Change hilt, color and style with V.",
-						stack.getHoverName());
+				case DONE -> Component.translatableWithFallback("sabercraft.command.converted", "%s is now a lightsaber. Change hilt, color and style in the SaberCraft menu (%s).",
+						stack.getHoverName(), Component.keybind("key.sabercraft.customize"));
 				case ALREADY -> Component.translatableWithFallback("sabercraft.saber.convert.already", "This sword already is a lightsaber.");
 				case NOT_ALLOWED -> Component.translatableWithFallback("sabercraft.saber.convert.not_allowed", "This kind of sword cannot become a lightsaber on this server.");
 				default -> Component.translatableWithFallback("sabercraft.command.not_a_sword",

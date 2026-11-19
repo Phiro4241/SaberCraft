@@ -100,6 +100,12 @@ public final class Stealth {
 	private Stealth() {
 	}
 
+	/**
+	 * Phase 27: how fast the enemies of the session being run move (its difficulty), set by the
+	 * story around each session's tick (the server runs them one after another).
+	 */
+	static double pace = 1.0;
+
 	/** How far that kind of person sees (blocks). */
 	public static double range(Figure figure) {
 		if (figure.sight > 0.0) {
@@ -248,7 +254,7 @@ public final class Stealth {
 
 		if (seen) {
 			s.unseen = 0;
-			s.alarm = Math.max(s.alarm, SEARCH_LONG + LOSE);
+			s.alarm = Math.max(s.alarm, s.difficulty().ticks(SEARCH_LONG, s.difficulty().search) + LOSE);
 
 			if (s.searching) {
 				s.searching = false;
@@ -271,7 +277,7 @@ public final class Stealth {
 				}
 			}
 
-			s.alarm = Math.min(s.alarm, SEARCH_LONG);
+			s.alarm = Math.min(s.alarm, s.difficulty().ticks(SEARCH_LONG, s.difficulty().search));
 			s.hear("intercom", "sabercraft.story.shout.search");
 			s.hint("sabercraft.story.hint.searching");
 		} else if (s.searching && s.unseen % 240 == 0 && s.huntAt != null) {
@@ -451,8 +457,10 @@ public final class Stealth {
 		Vec3 chest = me.add(0.0, player.getPose() == Pose.SWIMMING ? 0.3 : 0.9, 0.0);
 		Vec3 to = chest.subtract(eye);
 		double distance = to.length();
-		double range = range(figure);
-		float factor = 1.0F;
+		// Phase 27: on Hard they see farther, on Easy less far.
+		StoryDifficulty difficulty = s.difficulty();
+		double range = range(figure) * difficulty.sight;
+		float factor = (float) difficulty.notice;
 
 		// Busy people notice less; after an alarm, everyone more.
 		String pose = figure.pose();
@@ -838,6 +846,9 @@ public final class Stealth {
 	 * between they go straight. Returns whether they moved.
 	 */
 	static boolean go(Figure figure, Vec3 goal, double speed, ServerLevel level, Vec3 corner, long time) {
+		// Phase 27: faster on Hard, slower on Easy (searching, chasing, fighting; scripted ways keep their pace).
+		speed *= pace;
+
 		if (horizontal(figure.position(), goal) < 0.2 && Math.abs(figure.y - goal.y) < 1.2) {
 			figure.speed = 0.0F;
 			return false;

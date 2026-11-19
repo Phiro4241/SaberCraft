@@ -102,6 +102,13 @@ public final class DialogScreen extends Screen {
 
 		if (this.sent) {
 			this.sentAge++;
+
+			// Phase 27: the server always answers now; should a reply be lost, the screen closes by
+			// itself after two seconds instead of holding the player (it used to wait for Escape).
+			if (this.sentAge > 40) {
+				this.onClose();
+				return;
+			}
 		}
 
 		if (!this.typing()) {

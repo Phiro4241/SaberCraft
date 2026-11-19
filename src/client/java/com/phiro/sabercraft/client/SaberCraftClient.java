@@ -54,14 +54,18 @@ import com.phiro.sabercraft.client.sky.PlanetSky;
  * ({@code assets/minecraft/items/netherite_sword.json}) draws a hilt plus the animated blade
  * whenever the sword is held. Phase 4 adds the ignite and retract animation and the sounds, both
  * driven by {@link SaberTracker} once per tick. Phase 5 adds hilts and colors per sword, chosen in
- * the {@link SaberCustomizeScreen} (key V), and the per-color settings file. Phase 6 adds the
+ * the {@link SaberCustomizeScreen} (key I, V before Phase 27), and the per-color settings file. Phase 6 adds the
  * fighting moves ({@link CombatLibrary}), light trails and sparks, and the abilities
  * ({@link SaberAbilityClient}). The config screen follows later.
  */
 public class SaberCraftClient implements ClientModInitializer {
 	public static final KeyMapping.Category KEY_CATEGORY = KeyMapping.Category.register(SaberCraft.id("main"));
+	/**
+	 * The SaberCraft menu. Phase 27: on I (was V, which Simple Voice Chat uses for its own menu; a
+	 * key still on V moves once, {@link Hints#moveMenuKey}). Changed in the game's key settings.
+	 */
 	public static final KeyMapping CUSTOMIZE_KEY = new KeyMapping(
-			"key.sabercraft.customize", InputConstants.Type.KEYSYM, InputConstants.KEY_V, KEY_CATEGORY
+			"key.sabercraft.customize", InputConstants.Type.KEYSYM, InputConstants.KEY_I, KEY_CATEGORY
 	);
 
 	@Override
@@ -81,6 +85,8 @@ public class SaberCraftClient implements ClientModInitializer {
 		ClientTickEvents.END_CLIENT_TICK.register(SaberTracker.INSTANCE::tick);
 
 		KeyMappingHelper.registerKeyMapping(CUSTOMIZE_KEY);
+		// Phase 27: hints shown once (the menu key at the first start), and its move off V.
+		Hints.init();
 		SaberAbilityClient.init();
 		// Phase 7: the optional music; your own files are read again on every join.
 		ClientTickEvents.END_CLIENT_TICK.register(SaberMusic::tick);

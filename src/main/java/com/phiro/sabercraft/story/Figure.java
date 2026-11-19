@@ -209,6 +209,13 @@ public final class Figure {
 	public int throwHit;
 	/** Phase 26: her thrust carries her in fast (a lunge from a few steps away). */
 	public boolean lunge;
+	/**
+	 * Phase 27: the boss by the story's difficulty (set each tick of the duel): how fast she
+	 * attacks (shorter pauses and wind-ups above 1), how long her openings last, how hard her blows are.
+	 */
+	public float tempo = 1.0F;
+	public float openness = 1.0F;
+	public float power = 1.0F;
 	/** Phase 23: quick hits in a row (several light hits throw one off balance too). */
 	public int strokes;
 	public long strokeAt = -1000L;

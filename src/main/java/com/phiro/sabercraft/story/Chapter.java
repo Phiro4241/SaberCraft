@@ -110,4 +110,21 @@ public interface Chapter {
 	default boolean emergency(StorySession session) {
 		return false;
 	}
+
+	/**
+	 * Phase 27: whether a place kept with the checkpoint is still one to be put back at (a chapter
+	 * refuses one that is not among its safe places: a save from before, a spot in a hatch). If not,
+	 * the step's safe place is used.
+	 */
+	default boolean trusts(StorySession session, Mission.Step step, String ship, net.minecraft.world.phys.Vec3 at) {
+		return true;
+	}
+
+	/**
+	 * Phase 27: whether the step begins in a chase or a fight the story stages (there, nobody waits
+	 * for the player to get their bearings after being caught: only the short grace as before).
+	 */
+	default boolean scriptedRespawn(StorySession session, Mission.Step step) {
+		return false;
+	}
 }

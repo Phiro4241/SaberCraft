@@ -48,12 +48,32 @@ public final class StoryTesting {
 	/** Nobody sees the player for that long (a test walking the story through), or again at once (0). */
 	public static void unseen(StorySession s, int ticks) {
 		s.grace = ticks;
+		// Phase 27: also no bearings after a checkpoint (the test decides).
+		s.shield = 0;
+	}
+
+	/** Phase 27: the bearings after a checkpoint left (ticks; 0 once over). */
+	public static int shield(StorySession s) {
+		return s.shield;
+	}
+
+	/** Phase 27: the place kept with the checkpoint set to that (as a save from before kept it). */
+	public static void keptPlace(StorySession s, String ship, Vec3 at, float yaw) {
+		s.progress.placeShip = ship;
+		s.progress.placeX = at.x;
+		s.progress.placeY = at.y;
+		s.progress.placeZ = at.z;
+		s.progress.placeYaw = yaw;
+	}
+
+	/** Phase 27: a safe checkpoint now, if the chapter makes one where the player is. */
+	public static void safeCheckpointNow(StorySession s) {
+		Chapter1.safeCheckpointForTest(s);
 	}
 
 	/** Where the marker points now (world space), or null. */
 	public static @Nullable Vec3 marker(StorySession s) {
-		Mission.Target goal = s.chapter instanceof Chapter1 c1 ? c1.target(s) : s.step().target();
-		return goal == null ? null : goal.at().add(Vec3.atLowerCornerOf(s.origin(goal.ship())));
+		return Story.marker(s);
 	}
 
 	/** A thing to use by its id (world space centre), or null when it is not there now. */
@@ -375,8 +395,14 @@ public final class StoryTesting {
 		return Finale.fociForTest();
 	}
 
+	/** What a light stroke takes of her on Normal (Phase 27: she is stronger). */
 	public static float hit() {
-		return Finale.HIT;
+		return Finale.HIT / Finale.STRENGTH;
+	}
+
+	/** Phase 27: what a light stroke takes of her at that difficulty. */
+	public static float hit(StoryDifficulty difficulty) {
+		return Finale.HIT / (Finale.STRENGTH * difficulty.bossHealth);
 	}
 
 	public static float phaseTwo() {
@@ -821,7 +847,7 @@ public final class StoryTesting {
 
 	/** Phase 26: a stroke takes her just below her last quarter (she turns fierce). */
 	public static void lastStrength(StorySession s, Figure figure, net.minecraft.server.level.ServerPlayer player) {
-		figure.health = Finale.FIERCE + Finale.HIT - 0.005F;
+		figure.health = Finale.FIERCE + hit(s.difficulty()) - 0.005F;
 		s.lastStroke = s.time();
 		Finale.bossHitForTest(s, figure, player);
 	}

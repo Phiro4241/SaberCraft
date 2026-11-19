@@ -118,18 +118,21 @@ final class Finale {
 	 * what a blow takes of the player, how long an opening lasts, how long she circles between
 	 * attacks, and how many strokes into her guard before she answers.
 	 */
-	static final int[] WINDUPS = {0, 18, 14};
-	static final int[] FOLLOW = {0, 14, 11};
+	static final int[] WINDUPS = {0, 16, 14};
+	static final int[] FOLLOW = {0, 13, 11};
 	static final float[] BLOWS = {0.0F, 3.0F, 3.5F};
 	static final int[] OPENINGS = {0, 30, 24};
-	static final int[] PAUSES = {0, 34, 18};
+	/** (Phase 27: the first phase's pause shorter, 34 before: she presses on sooner.) */
+	static final int[] PAUSES = {0, 28, 18};
 	static final int[] PARRIES = {0, 3, 2};
 	/**
 	 * Phase 23: her combos, per phase: the kinds of blow one after the other (the second phase's are
 	 * longer and mixed). Phase 26: a few more of each (a three-blow combo in the first phase too).
 	 */
 	static final int[][][] PATTERNS = {{}, {{OVERHEAD}, {SWEEP}, {THRUST}, {OVERHEAD, SWEEP}, {SWEEP, THRUST}, {SWEEP, OVERHEAD}, {THRUST, OVERHEAD},
-			{OVERHEAD, SWEEP, THRUST}},
+			{OVERHEAD, SWEEP, THRUST},
+			// Phase 27: the first phase harder and more varied: longer and mixed combos too.
+			{THRUST, SWEEP, OVERHEAD}, {SWEEP, THRUST, SWEEP}, {OVERHEAD, OVERHEAD, THRUST}},
 			{{SWEEP, SWEEP, OVERHEAD}, {THRUST, SWEEP, THRUST}, {OVERHEAD, THRUST}, {SWEEP, OVERHEAD, SWEEP}, {OVERHEAD, SWEEP, THRUST},
 					// Phase 25: with the staff she spins too (both blades round her: blocked or dodged as any blow).
 					{SPIN, THRUST}, {SWEEP, SPIN}, {OVERHEAD, SPIN, SWEEP}}};
@@ -166,6 +169,19 @@ final class Finale {
 	static final double RUSH_TO = 9.0;
 	static final int RUSH_EVERY = 230;
 	static final int RUSH_EVERY_FIERCE = 150;
+	/**
+	 * Phase 27: the ring's rush in the first phase too (one blade whirling round the grip), rarer,
+	 * and only once she has lost some strength ({@link #RING_FROM}): the fight begins with plain
+	 * blade work and grows. Her push likewise, rarer than in the second phase.
+	 */
+	static final int RUSH_EVERY_FIRST = 300;
+	static final float RING_FROM = 0.85F;
+	static final int PUSH_EVERY_FIRST = 340;
+	/**
+	 * Phase 27: her strength (times Phase 26's): the light and heavy strokes take this much less of
+	 * her (on Normal; the difficulty scales it further).
+	 */
+	static final float STRENGTH = 1.15F;
 	static final int RUSH_OPENING = 12;
 	/** Phase 25: a spin's wind-up is longer (the staff twirls round her: to be seen coming), and it reaches a little further. */
 	static final int SPIN_WINDUP = 20;
@@ -397,7 +413,8 @@ final class Finale {
 					// Phase 26: now and then a second shot right after the first (never a third).
 					boolean again = figure.burst == 0 && player.getRandom().nextFloat() < DOUBLE_CHANCE;
 					figure.burst = again ? 1 : 0;
-					figure.cooldown = again ? DOUBLE_GAP : SHOT_MIN + player.getRandom().nextInt(SHOT_RANDOM);
+					// Phase 27: by the difficulty (more often on Hard, less on Easy).
+					figure.cooldown = again ? DOUBLE_GAP : s.difficulty().ticks(SHOT_MIN + player.getRandom().nextInt(SHOT_RANDOM), s.difficulty().cooldown);
 				}
 			}
 
@@ -657,7 +674,8 @@ final class Finale {
 	/** Phase 23: a stroke hits her: she reels (a heavy one throws her back), the phases and the end. */
 	private static void bossHit(StorySession s, Figure f, ServerPlayer player, Vec3 me, ServerLevel level, Vec3 corner, Vec3 at, boolean heavy) {
 		int before = phase(f);
-		f.health = Math.max(0.0F, f.health - (heavy ? HIT_HEAVY : HIT));
+		// Phase 27: she is stronger (more on Hard, less on Easy).
+		f.health = Math.max(0.0F, f.health - (heavy ? HIT_HEAVY : HIT) / (STRENGTH * s.difficulty().bossHealth));
 		f.hurtAt = s.time();
 		f.parried = 0;
 		f.burst = 0;
@@ -841,6 +859,11 @@ final class Finale {
 
 	private static void duel(StorySession s, Figure f, ServerPlayer player, Vec3 me, ServerLevel level, Vec3 corner) {
 		int phase = phase(f);
+		// Phase 27: how she fights by the story's difficulty.
+		StoryDifficulty difficulty = s.difficulty();
+		f.tempo = difficulty.bossTempo;
+		f.openness = difficulty.bossOpening;
+		f.power = difficulty.bossDamage;
 		double distance = Math.hypot(me.x - f.x, me.z - f.z);
 
 		switch (f.action) {
@@ -974,10 +997,11 @@ final class Finale {
 			return;
 		}
 
-		if (phase >= 2 && !s.timer("push") && distance > 2.5 && distance < 8.0 && clear) {
+		if (!s.timer("push") && distance > 2.5 && distance < 8.0 && clear && (phase >= 2 || f.health <= RING_FROM)) {
 			act(f, PUSH, HAND, HAND_TICKS);
 			f.windup = HAND_TICKS;
-			s.timer("push", PUSH_EVERY);
+			// (Phase 27: in the first phase too, rarer.)
+			s.timer("push", scaled(f, phase >= 2 ? PUSH_EVERY : PUSH_EVERY_FIRST));
 			return;
 		}
 
@@ -985,7 +1009,7 @@ final class Finale {
 			act(f, LEAP, CROUCH, CROUCH_TICKS);
 			f.windup = CROUCH_TICKS;
 			f.lure = null;
-			s.timer("leap", LEAP_EVERY);
+			s.timer("leap", scaled(f, LEAP_EVERY));
 			return;
 		}
 
@@ -997,9 +1021,11 @@ final class Finale {
 			return;
 		}
 
-		// Phase 26: the ring's rush (not right after her leap or throw).
-		if (phase >= 2 && !s.timer("rush") && distance > RUSH_FROM && distance < RUSH_TO && clear && s.timers.getOrDefault("leap", 0) < LEAP_EVERY - 50
-				&& s.timers.getOrDefault("throw", 0) < THROW_EVERY - 60) {
+		// Phase 26: the ring's rush (not right after her leap or throw). Phase 27: in the first
+		// phase too, rarer, once she has lost some strength (one blade whirling), not right after a push.
+		if ((phase >= 2 || f.health <= RING_FROM) && !s.timer("rush") && distance > RUSH_FROM && distance < RUSH_TO && clear
+				&& s.timers.getOrDefault("leap", 0) < LEAP_EVERY - 50 && s.timers.getOrDefault("throw", 0) < THROW_EVERY - 60
+				&& (phase >= 2 || s.timers.getOrDefault("push", 0) < PUSH_EVERY_FIRST - 60)) {
 			rushStarts(s, f, level, corner);
 			return;
 		}
@@ -1010,7 +1036,7 @@ final class Finale {
 			f.pattern = -1;
 			f.combo = 1;
 			f.lunge = true;
-			blowStarts(f, THRUST, WINDUPS[1] + 4, level, s);
+			blowStarts(f, THRUST, scaled(f, WINDUPS[1] + 4), level, s);
 			lunges++;
 			return;
 		}
@@ -1026,7 +1052,7 @@ final class Finale {
 
 			f.pattern = pick;
 			f.combo = patterns[pick].length;
-			blowStarts(f, patterns[pick][0], WINDUPS[phase], level, s);
+			blowStarts(f, patterns[pick][0], scaled(f, WINDUPS[phase]), level, s);
 		} else if (!Stealth.step(f, me, 3.8, level, corner)) {
 			f.speed = 0.0F;
 		}
@@ -1044,12 +1070,22 @@ final class Finale {
 
 	/** Phase 26: how long she circles between attacks (shorter in the last quarter). */
 	static int pause(Figure f, int phase) {
-		return fierce(f) ? PAUSES[2] * 2 / 3 : PAUSES[phase];
+		return scaled(f, fierce(f) ? PAUSES[2] * 2 / 3 : PAUSES[phase]);
 	}
 
 	/** Phase 26: the wind-up of the blows after a combo's first (quicker in the last quarter). */
 	static int follow(Figure f, int phase) {
-		return fierce(f) ? FOLLOW[2] - 2 : FOLLOW[phase];
+		return scaled(f, fierce(f) ? FOLLOW[2] - 2 : FOLLOW[phase]);
+	}
+
+	/** Phase 27: a time of hers (a pause, a wind-up, the time until she does it again) by her tempo (the difficulty). */
+	static int scaled(Figure f, int ticks) {
+		return Math.max(1, Math.round(ticks / Math.max(0.1F, f.tempo)));
+	}
+
+	/** Phase 27: how long an opening of hers lasts by the difficulty (never shorter than a stroke needs). */
+	static int opening(Figure f, int ticks) {
+		return Math.max(12, Math.round(ticks * f.openness));
 	}
 
 	/** The kind of her next blow in the combo (a riposte or a leap's blow: by chance). */
@@ -1101,7 +1137,7 @@ final class Finale {
 			if (f.combo > 0) {
 				blowStarts(f, nextKind(f, phase, random), follow(f, phase), level, s);
 			} else {
-				act(f, OPEN_UP, STAGGER, OPENINGS[phase] - (evading ? 0 : 6));
+				act(f, OPEN_UP, STAGGER, opening(f, OPENINGS[phase] - (evading ? 0 : 6)));
 				f.hits = 0;
 			}
 
@@ -1129,7 +1165,7 @@ final class Finale {
 				f.combo = 0;
 				f.react(Figure.STUMBLE, 14);
 				Hits.push(f, me, 0.25);
-				act(f, OPEN_UP, STAGGER, OPENINGS[phase] + 8);
+				act(f, OPEN_UP, STAGGER, opening(f, OPENINGS[phase] + 8));
 				f.hits = 0;
 				f.parried = 0;
 			} else if (f.combo > 0) {
@@ -1143,7 +1179,7 @@ final class Finale {
 				blowStarts(f, nextKind(f, phase, random), follow(f, phase), level, s);
 			} else {
 				// The last blow of the combo blocked: she staggers. The opening.
-				act(f, OPEN_UP, STAGGER, OPENINGS[phase]);
+				act(f, OPEN_UP, STAGGER, opening(f, OPENINGS[phase]));
 				f.hits = 0;
 				f.parried = 0;
 			}
@@ -1153,13 +1189,13 @@ final class Finale {
 
 		// Neither blocked nor dodged: it hurts.
 		s.counters.merge("duel_hurt", 1, Integer::sum);
-		player.hurtServer(level, level.damageSources().generic(), BLOWS[phase]);
+		player.hurtServer(level, level.damageSources().generic(), BLOWS[phase] * f.power);
 		Vec3 push = new Vec3(me.x - f.x, 0.0, me.z - f.z).normalize().scale(0.6);
 		player.push(push.x, 0.25, push.z);
 		player.hurtMarked = true;
 		level.playSound(null, at.x, at.y, at.z, ShipInteriors.sound("saber.hit"), SoundSource.HOSTILE, 1.0F, 0.9F);
 		level.sendParticles(ParticleTypes.ELECTRIC_SPARK, player.getX(), player.getY() + 1.1, player.getZ(), 12, 0.15, 0.2, 0.15, 0.3);
-		Story.cue(s, Story.CUE_DUEL, "hurt", "", Math.round(BLOWS[phase]), java.util.List.of(f.position().add(corner)));
+		Story.cue(s, Story.CUE_DUEL, "hurt", "", Math.round(BLOWS[phase] * f.power), java.util.List.of(f.position().add(corner)));
 		f.combo = 0;
 		f.burst = 0;
 		act(f, RECOIL, 0, 10);
@@ -1215,7 +1251,7 @@ final class Finale {
 		f.throwAge = 0;
 		f.throwHit = 0;
 		f.react(Figure.THROW_WIND, THROW_WIND);
-		s.timer("throw", THROW_EVERY);
+		s.timer("throw", scaled(f, THROW_EVERY));
 		throwsStarted++;
 		Vec3 at = f.position().add(corner).add(0.0, 1.4, 0.0);
 		level.playSound(null, at.x, at.y, at.z, ShipInteriors.sound("saber.swing"), SoundSource.HOSTILE, 0.9F, 0.6F);
@@ -1324,14 +1360,14 @@ final class Finale {
 
 		throwHits++;
 		s.counters.merge("throw_hit", 1, Integer::sum);
-		player.hurtServer(level, level.damageSources().generic(), THROW_DAMAGE);
+		player.hurtServer(level, level.damageSources().generic(), THROW_DAMAGE * f.power);
 		Vec3 push = new Vec3(player.getX() - at.x, 0.0, player.getZ() - at.z);
 		push = push.lengthSqr() < 1.0E-4 ? Vec3.ZERO : push.normalize().scale(0.45);
 		player.push(push.x, 0.2, push.z);
 		player.hurtMarked = true;
 		level.playSound(null, at.x, at.y, at.z, ShipInteriors.sound("saber.hit"), SoundSource.HOSTILE, 1.0F, 1.0F);
 		level.sendParticles(ParticleTypes.ELECTRIC_SPARK, at.x, at.y, at.z, 14, 0.15, 0.2, 0.15, 0.3);
-		Story.cue(s, Story.CUE_DUEL, "hurt", "", Math.round(THROW_DAMAGE), java.util.List.of(at));
+		Story.cue(s, Story.CUE_DUEL, "hurt", "", Math.round(THROW_DAMAGE * f.power), java.util.List.of(at));
 	}
 
 	// --- Phase 26: the ring's rush ------------------------------------------------------------------
@@ -1341,7 +1377,7 @@ final class Finale {
 		act(f, RUSH, 0, RUSH_TICKS);
 		f.windup = RUSH_WIND;
 		f.react(Figure.RING, RUSH_WIND + RUSH_TICKS);
-		s.timer("rush", fierce(f) ? RUSH_EVERY_FIERCE : RUSH_EVERY);
+		s.timer("rush", scaled(f, fierce(f) ? RUSH_EVERY_FIERCE : phase(f) == 1 ? RUSH_EVERY_FIRST : RUSH_EVERY));
 		rushes++;
 		Vec3 at = f.position().add(corner).add(0.0, 1.3, 0.0);
 		level.playSound(null, at.x, at.y, at.z, ShipInteriors.sound("story.ring_spin"), SoundSource.HOSTILE, 1.0F, 1.0F);
@@ -1426,12 +1462,12 @@ final class Finale {
 
 		rushHits++;
 		s.counters.merge("duel_hurt", 1, Integer::sum);
-		player.hurtServer(level, level.damageSources().generic(), BLOWS[2]);
+		player.hurtServer(level, level.damageSources().generic(), BLOWS[2] * f.power);
 		player.push(back.x * 0.7, 0.25, back.z * 0.7);
 		player.hurtMarked = true;
 		level.playSound(null, at.x, at.y, at.z, ShipInteriors.sound("saber.hit"), SoundSource.HOSTILE, 1.0F, 0.85F);
 		level.sendParticles(ParticleTypes.ELECTRIC_SPARK, player.getX(), player.getY() + 1.1, player.getZ(), 14, 0.15, 0.2, 0.15, 0.3);
-		Story.cue(s, Story.CUE_DUEL, "hurt", "", Math.round(BLOWS[2]), java.util.List.of(f.position().add(corner)));
+		Story.cue(s, Story.CUE_DUEL, "hurt", "", Math.round(BLOWS[2] * f.power), java.util.List.of(f.position().add(corner)));
 		// (Still an opening after it, a shorter one.)
 		rushEnds(f, level, corner, -RUSH_OPENING);
 	}
@@ -1447,7 +1483,7 @@ final class Finale {
 		f.combo = 0;
 		f.hits = 0;
 		f.parried = 0;
-		act(f, OPEN_UP, STAGGER, OPENINGS[2] + RUSH_OPENING + more);
+		act(f, OPEN_UP, STAGGER, opening(f, OPENINGS[2] + RUSH_OPENING + more));
 		Vec3 at = f.position().add(corner).add(0.0, 1.2, 0.0);
 		level.playSound(null, at.x, at.y, at.z, ShipInteriors.sound("saber.swing"), SoundSource.HOSTILE, 0.7F, 0.55F);
 	}

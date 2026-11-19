@@ -214,6 +214,79 @@ public final class InteriorClient {
 		return true;
 	}
 
+	/**
+	 * Phase 27: the use key on a shut hatch (it goes to the server as a click on the block, which
+	 * opens it): the player is ready to crawl in, here as on the server, so that both put them down
+	 * on all fours in front of it. Never takes the key.
+	 */
+	public static boolean hatchIntent(Minecraft client) {
+		if (client.player == null || client.level == null || client.player.getPose() == net.minecraft.world.entity.Pose.SWIMMING
+				|| !ShipInteriors.isInterior(client.level) || !(client.hitResult instanceof net.minecraft.world.phys.BlockHitResult hit)
+				|| hit.getType() != net.minecraft.world.phys.HitResult.Type.BLOCK) {
+			return false;
+		}
+
+		BlockPos at = hit.getBlockPos();
+		BlockPos origin = ShipInteriors.originAt(at.getX() + 0.5, at.getZ() + 0.5);
+		com.phiro.sabercraft.interior.InteriorPlan plan = ShipInteriors.planAt(at.getX() + 0.5, at.getZ() + 0.5);
+
+		if (origin == null || plan == null || !client.level.getBlockState(at).is(net.minecraft.world.level.block.Blocks.BARRIER)) {
+			return false;
+		}
+
+		for (com.phiro.sabercraft.interior.InteriorPlan.Hatch hatch : plan.hatches()) {
+			if (origin.offset(hatch.cell()).equals(at)) {
+				com.phiro.sabercraft.interior.Vents.intend(client.player);
+				intents++;
+				return false;
+			}
+		}
+
+		return false;
+	}
+
+	private static int intents;
+
+	/**
+	 * Phase 27: whether the player looks at a hatch of a crawl way within reach, shut (the block
+	 * aimed at) or open ({@link com.phiro.sabercraft.interior.Vents#looked}).
+	 */
+	public static boolean aimsAtHatch(Minecraft client) {
+		if (client.player == null || client.level == null || !ShipInteriors.isInterior(client.level)) {
+			return false;
+		}
+
+		if (com.phiro.sabercraft.interior.Vents.looked(client.player) != null) {
+			return true;
+		}
+
+		if (!(client.hitResult instanceof net.minecraft.world.phys.BlockHitResult hit) || hit.getType() != net.minecraft.world.phys.HitResult.Type.BLOCK
+				|| hit.getLocation().distanceTo(client.player.getEyePosition()) > com.phiro.sabercraft.interior.Vents.REACH) {
+			return false;
+		}
+
+		BlockPos at = hit.getBlockPos();
+		BlockPos origin = ShipInteriors.originAt(at.getX() + 0.5, at.getZ() + 0.5);
+		com.phiro.sabercraft.interior.InteriorPlan plan = ShipInteriors.planAt(at.getX() + 0.5, at.getZ() + 0.5);
+
+		if (origin == null || plan == null) {
+			return false;
+		}
+
+		for (com.phiro.sabercraft.interior.InteriorPlan.Hatch hatch : plan.hatches()) {
+			if (origin.offset(hatch.cell()).equals(at)) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	/** For tests: how often the use key on a shut hatch got the player ready to crawl in. */
+	public static int intentsForTest() {
+		return intents;
+	}
+
 	/** Phase 26: the hatch the use key just shut, while the key is still held (else null). */
 	private static @Nullable BlockPos shutHatch;
 
