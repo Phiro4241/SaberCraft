@@ -668,6 +668,18 @@ static final int CHECKPOINT_TICKS = 60;
 				flash(0x00FFF4E8, 0);
 			}
 			case "dodged" -> zoom(-0.03F, 8);
+			case "slam_wind" -> {
+				// Phase 29: her slam winds up: a low rumble in the view, closing in a little (the warning).
+				slamsSeen++;
+				shake(0.25F, Math.max(6, value));
+				zoom(0.025F, Math.max(6, value));
+			}
+			case "slam" -> {
+				// Phase 29: ... and falls: the floor shakes hard, a warm flash.
+				shake(2.0F, 14);
+				zoom(0.05F, 12);
+				flash(0x00FF9A6A, 0);
+			}
 			// Phase 28: her scene is over (her film ended or was skipped): her saber is gone with her.
 			case "saber_gone" -> clearDuelProps();
 			case "disarm" -> {
@@ -971,6 +983,13 @@ static final int CHECKPOINT_TICKS = 60;
 
 	public static int[] guardStrainsForTest() {
 		return new int[] {strains, guardBreaks};
+	}
+
+	/** Phase 29: her slams seen winding up (tests). */
+	private static int slamsSeen;
+
+	public static int slamsSeenForTest() {
+		return slamsSeen;
 	}
 
 	/** Phase 28: whether a mission's title card shows now (the hint cards wait until it is gone). */

@@ -101,6 +101,12 @@ public final class Chapter1 implements Chapter {
 	static final Vec3 LIFT_TOP = new Vec3(28.8, H, 25.0);
 	/** Phase 20: the containers of the dead drop (their mark, the west end of each along x), the contact's is K-7. */
 	static final String[][] CRATES = {{"c3", "20"}, {"f9", "23"}, {"k7", "26"}};
+
+	static {
+		// Phase 29: every thing one can use in this chapter (its words: sabercraft.story.point.<id>).
+		Mission.Point.declare("sign", "pad", "security", "locker", "locker2", "card", "console", "coolant", "recorder", "cell1", "cell3", "lab_door",
+				"holo", "saber", "terminal", "crate_c3", "crate_f9", "crate_k7", "takedown", "service_release", "service_lock", "vent_cover", "toolbox");
+	}
 	/** Phase 20: by the stack of crates on the hangar's east side. */
 	static final Vec3 HANGAR_CRATES = new Vec3(57.3, H, -27.9);
 	/**

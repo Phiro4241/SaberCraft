@@ -358,7 +358,12 @@ public class Phase26GameTest implements FabricClientGameTest {
 		this.door(wrong, "a patrol walking past close by", door, false, new Vec3(1.0, 0.0, 11.4), new Vec3(0.6, 0.0, 11.4), false, false);
 		this.door(wrong, "a patrol walking past an open door", door, false, new Vec3(1.0, 0.0, 11.4), new Vec3(0.6, 0.0, 11.4), true, false);
 		this.door(wrong, "a player walking towards it", door, true, new Vec3(1.5, 0.0, 12.4), new Vec3(1.5, 0.0, 12.6), false, true);
-		this.door(wrong, "a trooper walking towards it", door, false, new Vec3(1.5, 0.0, 12.4), new Vec3(1.5, 0.0, 12.6), false, true);
+		// (Phase 29: the story's people open a door only on their way through it, see Phase29GameTest; coming near is not enough.)
+		this.door(wrong, "a trooper only walking towards it", door, false, new Vec3(1.5, 0.0, 12.4), new Vec3(1.5, 0.0, 12.6), false, false);
+		this.door(wrong, "a trooper on his way through it", door, false, new Vec3(1.5, 0.0, 12.4), new Vec3(1.5, 0.0, 12.6), false, true,
+				List.of(new Vec3(1.5, 0.0, 11.0), new Vec3(1.5, 0.0, 9.0)));
+		this.door(wrong, "a trooper turning before it", door, false, new Vec3(1.5, 0.0, 12.0), new Vec3(1.5, 0.0, 12.4), false, false,
+				List.of(new Vec3(1.5, 0.0, 11.8), new Vec3(1.5, 0.0, 12.6), new Vec3(1.5, 0.0, 14.0)));
 		this.door(wrong, "a player in the doorway", door, true, new Vec3(1.5, 0.0, 10.9), new Vec3(1.5, 0.0, 10.9), false, true);
 		this.door(wrong, "a trooper standing a step before it", door, false, new Vec3(1.5, 0.0, 11.3), new Vec3(1.5, 0.0, 11.3), false, false);
 		this.door(wrong, "a player standing before the open door", door, true, new Vec3(1.5, 0.0, 12.0), new Vec3(1.5, 0.0, 12.0), true, true);
@@ -372,6 +377,14 @@ public class Phase26GameTest implements FabricClientGameTest {
 
 	private void door(List<String> wrong, String who, InteriorPlan.Door door, boolean player, Vec3 at, @Nullable Vec3 was, boolean open, boolean expected) {
 		if (InteriorSystems.wantedForTest(door, player, at, was, open) != expected) {
+			wrong.add(who + (expected ? " does not open it" : " opens it"));
+		}
+	}
+
+	/** Phase 29: the same for one of the story's people with where they mean to walk next. */
+	private void door(List<String> wrong, String who, InteriorPlan.Door door, boolean player, Vec3 at, @Nullable Vec3 was, boolean open, boolean expected,
+			List<Vec3> intent) {
+		if (InteriorSystems.wantedForTest(door, player, at, was, null, intent, open, false) != expected) {
 			wrong.add(who + (expected ? " does not open it" : " opens it"));
 		}
 	}

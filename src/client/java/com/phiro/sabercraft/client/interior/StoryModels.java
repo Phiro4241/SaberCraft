@@ -187,7 +187,8 @@ final class StoryModels {
 		float raiseGoal = blowKind ? progress : kind == CrewModels.STAGGER || kind == CrewModels.CROUCH ? 1.0F : 0.0F;
 		state[0] = approach(state[0], raiseGoal, dt * 9.0F);
 		state[1] = Math.max(0.0F, state[1] - dt * 4.0F);
-		state[5] = approach(state[5], kind == CrewModels.CROUCH ? progress : 0.0F, dt * 6.0F);
+		// (Phase 29: her slam's wind-up crouches her too, a little less than a leap's.)
+		state[5] = approach(state[5], kind == CrewModels.CROUCH ? progress : fig.reactKind() == CrewModels.SLAM ? 0.7F * fig.reactProgress() : 0.0F, dt * 6.0F);
 		state[6] = Math.max(approach(state[6], kind == CrewModels.STAGGER && lit ? 1.0F : 0.0F, dt * 5.0F), hit(fig.id()));
 		state[7] = approach(state[7], kind == CrewModels.HAND ? progress : 0.0F, dt * 8.0F);
 		state[2] = kind;

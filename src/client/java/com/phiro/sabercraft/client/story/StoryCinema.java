@@ -116,7 +116,25 @@ public final class StoryCinema {
 		});
 		ClientTickEvents.END_CLIENT_TICK.register(StoryCinema::tick);
 		ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> stop(client, false));
+		// Phase 29: after a film shot where the story is, the game comes back out of black (the film
+		// went into black at its end, not through the player's head into their eyes).
+		net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry.addLast(com.phiro.sabercraft.SaberCraft.id("film_fade"), (graphics, delta) -> {
+			if (afterglow > 0 && film == null) {
+				float k = Mth.clamp((afterglow - delta.getGameTimeDeltaPartialTick(false)) / AFTERGLOW, 0.0F, 1.0F);
+				int alpha = Math.round(k * k * 255.0F);
+
+				if (alpha > 0) {
+					graphics.fill(0, 0, graphics.guiWidth(), graphics.guiHeight(), alpha << 24);
+				}
+			}
+		});
 	}
+
+	/** Phase 29: how long (ticks) the game comes out of black after a film shot where the story is, and how much of it is left. */
+	static final int AFTERGLOW = 10;
+	private static int afterglow;
+	/** Phase 29: how long (ticks) a short scene aboard opens from black and goes into black at its end. */
+	static final int DIP = 6;
 
 	/** The server starts a film. */
 	static void start(Minecraft client, String name, int ticks, List<Vec3> points) {
@@ -138,6 +156,8 @@ public final class StoryCinema {
 		focus = points.isEmpty() ? null : points.getFirst();
 		axis = null;
 		age = 0;
+		afterglow = 0;
+		FilmCamera.reset();
 		played++;
 		// Half way between the plots, which lie 1024 blocks apart: nothing else is near.
 		double x = Math.floor(client.player.getX() / 1024.0) * 1024.0 + 512.0;
@@ -175,6 +195,9 @@ public final class StoryCinema {
 			StoryClient.send(StoryActionPayload.SKIP, film, 0);
 		}
 
+		// Phase 29: a film shot where the story is: the game comes back out of black.
+		afterglow = inWorld() ? AFTERGLOW : 0;
+		FilmCamera.reset();
 		film = null;
 
 		if (client.gui.hud.isHidden() != hudWasHidden) {
@@ -194,6 +217,10 @@ public final class StoryCinema {
 	}
 
 	private static void tick(Minecraft client) {
+		if (afterglow > 0 && film == null) {
+			afterglow--;
+		}
+
 		if (film == null) {
 			return;
 		}
@@ -340,8 +367,12 @@ public final class StoryCinema {
 		return film != null && !elsewhere();
 	}
 
-	/** Phase 25: how near the player's eyes a film's camera hides the player's own body. */
-	static final double AT_EYES = 1.4;
+	/**
+	 * Phase 25: how near the player's eyes a film's camera hides the player's own body. Phase 29:
+	 * only right at their eyes (1.4 before: over the shoulder the figure vanished from the picture);
+	 * the film camera keeps out of their head ({@link FilmCamera#EYE_CLEAR}).
+	 */
+	static final double AT_EYES = 0.35;
 
 	/**
 	 * Phase 25: whether a film's camera is so near the player's eyes (as it glides out of them or
@@ -365,11 +396,30 @@ public final class StoryCinema {
 			}
 
 			Vec3 player = client.player.getPosition(partial);
+			String name = film;
+			float t = time(partial);
+			Vec3 eyeAt = client.player.getEyePosition(partial);
+			// Phase 29: every shot is fitted into the rooms (never through a wall, out of the people).
+			List<net.minecraft.world.phys.AABB> bodies = new java.util.ArrayList<>();
+			bodies.add(client.player.getBoundingBox().move(player.subtract(client.player.position())));
 
 			if (SceneFilm.has(film)) {
 				// Phase 25: a short scene aboard, shot from fixed places of the ship (its corner with the cue).
-				ArrivalFilm.Shot eye = new ArrivalFilm.Shot(client.player.getEyePosition(partial), client.player.getViewYRot(partial), client.player.getViewXRot(partial));
-				return SceneFilm.camera(film, time(partial), focus != null ? focus : Vec3.ZERO, eye);
+				ArrivalFilm.Shot eye = new ArrivalFilm.Shot(eyeAt, client.player.getViewYRot(partial), client.player.getViewXRot(partial));
+				Vec3 corner = focus != null ? focus : Vec3.ZERO;
+				ArrivalFilm.Shot raw = SceneFilm.camera(film, t, corner, eye);
+				Vec3 at = SceneFilm.lookAt(film, t, corner);
+
+				if (at == null) {
+					return raw;
+				}
+
+				// The point it is about: what it looks at, a little towards the camera (out of the thing looked at).
+				Vec3 back = raw.position().subtract(at);
+				Vec3 about = back.lengthSqr() < 1.0E-4 ? at : at.add(back.normalize().scale(Math.min(1.0, back.length() * 0.4)));
+				float[] span = SceneFilm.span(film, t);
+				return FilmCamera.settle(film + ":" + SceneFilm.shotIndex(film, t), t, span[0], span[1], tt -> SceneFilm.camera(name, tt, corner, eye), about, bodies,
+						eyeAt);
 			}
 
 			if ("takedown".equals(film)) {
@@ -381,7 +431,11 @@ public final class StoryCinema {
 					axis = to.lengthSqr() > 1.0E-4 ? to.normalize() : new Vec3(0.0, 0.0, -1.0);
 				}
 
-				return DuelFilm.takedown(time(partial), player, guard, axis);
+				Vec3 line = axis;
+				bodies.add(new net.minecraft.world.phys.AABB(guard.x - 0.32, guard.y, guard.z - 0.32, guard.x + 0.32, guard.y + 1.85, guard.z + 0.32));
+				float[] span = DuelFilm.span(film, t);
+				Vec3 about = t >= 24.0F && t < 50.0F ? guard.add(0.0, 1.1, 0.0) : player.lerp(guard, 0.5).add(0.0, 1.2, 0.0);
+				return FilmCamera.settle(film + ":" + span[0], t, span[0], span[1], tt -> DuelFilm.takedown(tt, player, guard, line), about, bodies, eyeAt);
 			}
 
 			Vec3 shadow = StoryClient.saberFigure(partial);
@@ -393,8 +447,24 @@ public final class StoryCinema {
 				shadowStart = shadow != null ? shadow : player.add(axis.scale(7.0));
 			}
 
-			ArrivalFilm.Shot eye = new ArrivalFilm.Shot(client.player.getEyePosition(partial), client.player.getViewYRot(partial), client.player.getViewXRot(partial));
-			return DuelFilm.camera(film, time(partial), player, shadowStart, shadow != null ? shadow : shadowStart, axis, eye, focus);
+			ArrivalFilm.Shot eye = new ArrivalFilm.Shot(eyeAt, client.player.getViewYRot(partial), client.player.getViewXRot(partial));
+			Vec3 her = shadow != null ? shadow : shadowStart;
+			Vec3 start = shadowStart;
+			Vec3 line = axis;
+			Vec3 tie = focus;
+			Vec3 about = DuelFilm.subject(film, t, player, start, her, tie);
+
+			if (about == null) {
+				return DuelFilm.camera(film, t, player, start, her, line, eye, tie);
+			}
+
+			if (shadow != null && shadow.distanceTo(player) < 40.0) {
+				bodies.add(new net.minecraft.world.phys.AABB(her.x - 0.34, her.y, her.z - 0.34, her.x + 0.34, her.y + 1.9, her.z + 0.34));
+			}
+
+			float[] span = DuelFilm.span(film, t);
+			return FilmCamera.settle(film + ":" + span[0], t, span[0], span[1], tt -> DuelFilm.camera(name, tt, player, start, her, line, eye, tie), about, bodies,
+					eyeAt);
 		}
 
 		float t = time(partial);
@@ -444,6 +514,11 @@ public final class StoryCinema {
 	/** Only for tests: starts a film with its point (the guard, her TIE) as the server would. */
 	public static void startForTest(String name, Vec3 point) {
 		start(Minecraft.getInstance(), name, 10000, List.of(point));
+	}
+
+	/** Phase 29, only for tests: starts a film of that length with its point (a scene aboard: the plot's corner), as the server would. */
+	public static void startForTest(String name, int ticks, Vec3 point) {
+		start(Minecraft.getInstance(), name, ticks, List.of(point));
 	}
 
 	/** Only for tests: how long the film runs. */
@@ -560,6 +635,18 @@ public final class StoryCinema {
 
 			int fade = arrival || escape ? 20 : 10;
 			int black = !scene && t > length - fade ? Math.round(Mth.clamp((t - (length - fade)) / fade, 0.0F, 1.0F) * 255.0F) : 0;
+
+			// Phase 29: the short scenes open from black and go into black at their end (the game then
+			// comes back out of it), instead of gliding out of the player's eyes and back in.
+			if (scene) {
+				if (t < DIP) {
+					black = Math.max(black, Math.round((1.0F - t / DIP) * 255.0F));
+				}
+
+				if (t > length - DIP) {
+					black = Math.max(black, Math.round(Mth.clamp((t - (length - DIP)) / DIP, 0.0F, 1.0F) * 255.0F));
+				}
+			}
 
 			// Phase 21: the duel's film comes out of black (Phase 24: so does the end of the Tenebris).
 			if (!arrival && !scene && t < 8.0F) {

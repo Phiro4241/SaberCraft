@@ -63,18 +63,22 @@ final class SceneFilm {
 					new Shot(96, 128, v(45.0, R + 6.5, 22.0), v(44.2, R + 7.0, 23.0), v(49.0, R, 18.5), v(48.0, R, 22.0)),
 					// In the crawl way, low, after the player (into black, then the hideout).
 					new Shot(128, 150, v(48.5, R + 0.35, 7.6), v(48.5, R + 0.32, 6.2), v(48.5, R + 0.3, 2.0), v(48.5, R + 0.3, 1.0))),
+			// Phase 29 (Phiro: the camera went into the player, the figure vanished): no shot glides out of
+			// the player's eyes or back into them any more (through their head); the scene opens from
+			// black behind the player and ends through a moment of black back in their eyes. Every
+			// camera stays well clear of the player (more than two blocks), the figure always drawn.
 			"saber", List.of(
-					// Behind the player, low: the field, the saber in its holder, the player steps up.
-					new Shot(0, 40, null, v(43.2, R + 1.5, 47.4), null, v(44.5, R + 1.3, 50.4)),
-					// Close by the holder, from the side (far enough from the player's eyes for them to be
-					// drawn): the hand closes on the hilt and takes it.
-					new Shot(40, 80, v(42.9, R + 1.55, 49.6), v(43.1, R + 1.5, 49.8), v(44.5, R + 1.2, 50.4), v(44.4, R + 1.3, 50.1)),
+					// Behind the player, over the right shoulder: the field, the saber in its holder; the player steps up.
+					new Shot(0, 40, v(45.7, R + 1.95, 46.1), v(45.4, R + 1.85, 46.6), v(44.5, R + 1.25, 50.4), v(44.5, R + 1.3, 50.3)),
+					// By the holder from the side, the player's face and hand in the picture (more than
+					// two blocks off them): the hand closes on the hilt and takes it.
+					new Shot(40, 80, v(42.4, R + 1.55, 50.3), v(42.6, R + 1.5, 50.1), v(44.4, R + 1.3, 49.6), v(44.4, R + 1.3, 49.9)),
 					// Wide over the lab: the field dies, the lights flicker, sparks from the panels.
 					new Shot(80, 132, v(39.0, R + 3.6, 43.0), v(39.6, R + 3.4, 43.4), v(44.5, R + 0.9, 48.5), v(45.0, R + 1.0, 47.5)),
 					// Out through the door to the shaft: the core flares, the first tremor.
 					new Shot(132, 176, v(44.0, R + 2.2, 38.2), v(44.0, R + 2.6, 37.0), v(41.0, R + 2.0, 28.0), v(40.6, R + 4.0, 25.0)),
-					// Back to the player (over their shoulder, the empty holder before them), and into their eyes.
-					new Shot(176, 200, v(43.4, R + 2.1, 47.1), null, v(44.5, R + 1.3, 50.0), null)));
+					// Back to the player (over their shoulder, the empty holder before them); into their eyes through black.
+					new Shot(176, 200, v(45.8, R + 2.0, 46.4), v(45.5, R + 1.9, 46.8), v(44.5, R + 1.3, 50.0), v(44.5, R + 1.3, 50.1))));
 
 	private SceneFilm() {
 	}
@@ -131,6 +135,35 @@ final class SceneFilm {
 		}
 
 		return DuelFilm.look(cam, at);
+	}
+
+	/** Phase 29: when the shot a scene is in now begins and ends (ticks), for the film camera. */
+	static float[] span(String film, float t) {
+		Shot shot = SHOTS.get(film).get(shotIndex(film, t));
+		return new float[] {shot.from(), shot.to()};
+	}
+
+	/** Phase 29: whether a scene's shot begins or ends in the player's eyes (none does any more: for the tests). */
+	static boolean touchesEyes(String film) {
+		for (Shot shot : SHOTS.get(film)) {
+			if (shot.camA() == null || shot.camB() == null) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	/** Phase 29: what a scene's shot looks at now (world space), or null where it looks out of the player's eyes. */
+	static @Nullable Vec3 lookAt(String film, float t, Vec3 corner) {
+		Shot shot = SHOTS.get(film).get(shotIndex(film, t));
+
+		if (shot.lookA() == null || shot.lookB() == null) {
+			return null;
+		}
+
+		float u = ease(Mth.clamp((t - shot.from()) / (float) Math.max(1, shot.to() - shot.from()), 0.0F, 1.0F));
+		return corner.add(shot.lookA()).lerp(corner.add(shot.lookB()), u);
 	}
 
 	/** Phase 25: the shot a scene is in now (for the tests: each shot is a different picture). */

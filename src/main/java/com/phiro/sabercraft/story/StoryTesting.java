@@ -126,7 +126,25 @@ public final class StoryTesting {
 			}
 		}
 
+		// Phase 29: the things to use too (the cover's and the toolbox's words were missing), and
+		// the plain words shown for a thing whose words are missing.
+		for (String id : pointIds()) {
+			keys.add(Mission.Point.LABEL_PREFIX + id);
+		}
+
+		keys.add(Mission.Point.LABEL_PREFIX + "generic");
 		return keys;
+	}
+
+	/** Phase 29: every thing to use the chapter declares (Chapter1's class is loaded first: it declares them). */
+	public static java.util.Set<String> pointIds() {
+		Chapter1.INSTANCE.id();
+		return Mission.Point.declaredForTest();
+	}
+
+	/** Phase 29: things used in the story so far that were never declared (their words may be missing). */
+	public static java.util.Set<String> undeclaredPoints() {
+		return Mission.Point.undeclaredForTest();
 	}
 
 	/** In the finale: the fighter is open (as after a blocked blow), so the next stroke hits. */
@@ -1071,6 +1089,9 @@ public final class StoryTesting {
 	 * difficulty before it breaks (as her blows strain it); the stamina is full again after.
 	 */
 	public static int blocksHeld(net.minecraft.server.level.ServerPlayer player, StoryDifficulty difficulty, float stamina) {
+		// Phase 29: under that difficulty's stricter guard (blows in a row cost more each), from a fresh state.
+		com.phiro.sabercraft.ability.SaberAbilities.strictGuard(player, null);
+		com.phiro.sabercraft.ability.SaberAbilities.strictGuard(player, Finale.strictGuard(difficulty));
 		com.phiro.sabercraft.ability.SaberAbilities.setStaminaForTests(player, stamina);
 		int held = 50;
 
@@ -1082,8 +1103,109 @@ public final class StoryTesting {
 			}
 		}
 
+		com.phiro.sabercraft.ability.SaberAbilities.strictGuard(player, null);
 		com.phiro.sabercraft.ability.SaberAbilities.setStaminaForTests(player, com.phiro.sabercraft.ability.AbilityConfig.get().staminaMax);
 		return held;
+	}
+
+	// --- Phase 29 ------------------------------------------------------------------------------------
+
+	/**
+	 * Phase 29: the boss's tallies since the game started: strokes from behind that hit, turned
+	 * aside; turn-about blows, answers to one behind her, shoves, pushes out of her body; slams,
+	 * dodged, hits, blocked; strokes dodged while her staff was away; scenes that waited for the
+	 * player to land, players set down on the floor.
+	 */
+	public static int[] boss29() {
+		return Finale.phase29ForTest();
+	}
+
+	/** Phase 29: how the scene at half her strength set the two up: on the line, turned round the player, the player moved. */
+	public static int[] scenePlaced() {
+		return Finale.scenePlacedForTest();
+	}
+
+	/** Phase 29: she begins her slam now. */
+	public static void slam(StorySession s, Figure f) {
+		Finale.slamForTest(s, f);
+	}
+
+	/** Phase 29: how often she chose each of her moves (see {@link #moveName}). */
+	public static int[] moves() {
+		return Finale.movesForTest();
+	}
+
+	/** Phase 29: the name of one of her moves (as counted by {@link #moves}), or null for a number that is none. */
+	public static @Nullable String moveName(int move) {
+		return switch (move) {
+			case Finale.WINDUP -> "blades";
+			case Finale.LEAP -> "leap";
+			case Finale.PUSH -> "push";
+			case Finale.THROW -> "throw";
+			case Finale.RUSH -> "rush";
+			case Finale.SLAM -> "slam";
+			case Finale.MOVE_LUNGE -> "lunge";
+			case Finale.MOVE_SHOVE -> "shove";
+			case Finale.MOVE_TURN -> "turn";
+			default -> null;
+		};
+	}
+
+	/** Phase 29: what she does now, her slam, throw and rush included (else as {@link #action}). */
+	public static String act(Figure figure) {
+		return switch (figure.action) {
+			case Finale.SLAM -> "slam";
+			case Finale.THROW -> "throw";
+			case Finale.RUSH -> "rush";
+			default -> action(figure);
+		};
+	}
+
+	/** Phase 29: whether the scene at half her strength waits for the player to land. */
+	public static boolean scenePending(StorySession s) {
+		return s.has(Finale.SCENE_PENDING);
+	}
+
+	/** Phase 29: whether the scene at half her strength runs now (the blade lock and what follows). */
+	public static boolean bossSceneOn(StorySession s) {
+		return s.has(Finale.BOSS_SCENE);
+	}
+
+	/** Phase 29: after how many ticks behind her she notices the player there; how long a stroke from behind is remembered. */
+	public static int[] rearTiming(StorySession s) {
+		return new int[] {Finale.notice(s), Finale.REAR_MEMORY[Math.min(Finale.REAR_MEMORY.length - 1, s.difficulty().ordinal())]};
+	}
+
+	/** Phase 29: the stricter guard of her fight at that difficulty. */
+	public static com.phiro.sabercraft.ability.SaberAbilities.StrictGuard strictGuard(StoryDifficulty difficulty) {
+		return Finale.strictGuard(difficulty);
+	}
+
+	/** Phase 29: the stricter guard's state turned off now (the next tick of the duel turns it on afresh). */
+	public static void freshGuard(net.minecraft.server.level.ServerPlayer player) {
+		com.phiro.sabercraft.ability.SaberAbilities.strictGuard(player, null);
+		com.phiro.sabercraft.ability.SaberAbilities.readyForTests(player, com.phiro.sabercraft.ability.SaberAbility.GUARD);
+	}
+
+	/** Phase 29: these flags taken out of a player's saved story (a test going back to a point before them). */
+	public static void forget(net.minecraft.server.MinecraftServer server, java.util.UUID player, String... flags) {
+		StoryProgress progress = StoryStore.load(server, player);
+
+		for (String flag : flags) {
+			progress.flags.remove(flag);
+		}
+
+		StoryStore.save(server, player, progress);
+	}
+
+	/** Phase 29: the detention block guard's flag once he is down. */
+	public static String detGuardDown() {
+		return Chapter1.GUARD_DOWN;
+	}
+
+	/** Phase 29: how far her slam reaches, and how wide its arc is (degrees to each side). */
+	public static double[] slamReach() {
+		return new double[] {Finale.SLAM_REACH, Finale.SLAM_ARC};
 	}
 
 	/** Phase 28: the objective's key for the step now (the text of the refusing branch, else the step's own). */

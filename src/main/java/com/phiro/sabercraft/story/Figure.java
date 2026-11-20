@@ -104,6 +104,12 @@ public final class Figure {
 	public @Nullable Vec3 pathGoal;
 	/** Phase 23: whether the way found reaches its goal (else they stop at its end, not at the wall). */
 	public boolean pathReaches = true;
+	/**
+	 * Phase 29: when they last walked along that way (game time of the story). A way found a while
+	 * ago and no longer walked (the boss stepping at the player in a fight) is no intent to go
+	 * anywhere: it opens no door.
+	 */
+	public long pathUsedAt = -1000L;
 	/** Phase 20: how many more places they search after losing the player. */
 	public int searches;
 	/** Phase 20: ticks they found no way on (going back: then they slip into place, unseen). */
@@ -184,6 +190,11 @@ public final class Figure {
 	 * rushes at the player (the first part: it spins up, the rest: the rush).
 	 */
 	public static final int RING = 13;
+	/**
+	 * Phase 29: her heavy slam: the blade raised high in both hands, crouching, the floor before her
+	 * glowing (the warning), then down into the floor with a shock wave in front of her.
+	 */
+	public static final int SLAM = 14;
 
 	/** Phase 23: drawn into a fight (they hunted the player when it began): a fighter until it ends. */
 	public boolean engaged;
@@ -243,6 +254,36 @@ public final class Figure {
 	/** Phase 23: quick hits in a row (several light hits throw one off balance too). */
 	public int strokes;
 	public long strokeAt = -1000L;
+	/**
+	 * Phase 29: the boss and the player behind her: strokes from behind lately and when the last
+	 * one was (the second soon after is turned aside), and how long (ticks) the player has been
+	 * behind her back now (she notices it after a moment and turns, steps round or strikes back).
+	 */
+	public int rearHits;
+	public long rearAt = -1000L;
+	public int behindTicks;
+	/** Phase 29: a blow that turns her round with it (she whirls towards one behind her while she winds it up). */
+	public boolean turnabout;
+	/** Phase 29: her moves lately (newest first), so that she does not do the same thing over and over. */
+	public final int[] moves = new int[4];
+	/** Phase 29: her slam: the way it goes (locked a little before it falls, so a late step aside escapes it). */
+	public @Nullable Vec3 slamDir;
+	/** Phase 29: her push is a short shove (the player came too close), not the long push from afar. */
+	public boolean shove;
+	/** Phase 29: her staff thrown low (jumped over or dashed under) instead of at the chest. */
+	public boolean throwLow;
+	/** Phase 29: strokes that hit her while her staff was away (only a few: then she dodges). */
+	public int flightHits;
+	/**
+	 * Phase 29: the player's guard as she last saw it (up or not), when it last came down, and
+	 * whether the guard up now was raised again at once (raising it over and over parries nothing perfectly).
+	 */
+	public boolean guardSeenUp;
+	public long guardDownAt = -1000L;
+	public boolean raiseSpam;
+	/** Phase 29: where her own turning put her head this tick, and when (her steps no longer swing it round). */
+	public float aimHead;
+	public long aimAt = -1000L;
 
 	/** Phase 23: starts a reaction of that kind for that many ticks. */
 	public void react(int kind, int ticks) {
@@ -300,6 +341,49 @@ public final class Figure {
 		double dx = this.x - at[0];
 		double dz = this.z - at[2];
 		return dx * dx + dz * dz < 0.36 && Math.abs(this.y - at[1]) < 0.6;
+	}
+
+	/** Phase 29: how far ahead (game ticks) a round's way counts as where they mean to go. */
+	static final int ROUND_AHEAD = 80;
+
+	/**
+	 * Phase 29: where they mean to walk next (plot space, the next points of it, nearest first), for
+	 * the doors: a door opens for one of the story's people only when this way leads through it,
+	 * never because they come near it (a patrol turning before a door, the boss fighting beside
+	 * one). Their scripted way, the way they walk now round walls, or their round's next few
+	 * seconds; standing, held, lying or fighting on the spot: nowhere.
+	 */
+	public java.util.List<Vec3> intent(long time) {
+		if (this.mode == DOWN || this.mode == HELD) {
+			return java.util.List.of();
+		}
+
+		java.util.List<Vec3> out = new java.util.ArrayList<>();
+
+		if (this.mode == SCRIPTED) {
+			for (int i = this.wayIndex; i < this.way.size() && out.size() < 4; i++) {
+				out.add(this.way.get(i));
+			}
+
+			return out;
+		}
+
+		if (time - this.pathUsedAt <= 3 && this.pathIndex < this.path.size()) {
+			for (int i = this.pathIndex; i < this.path.size() && out.size() < 4; i++) {
+				out.add(this.path.get(i));
+			}
+
+			return out;
+		}
+
+		if (this.mode == ROUTINE && !this.crew.path().isEmpty()) {
+			for (int k = 5; k <= ROUND_AHEAD; k += 5) {
+				double[] at = this.crew.where(time + k);
+				out.add(new Vec3(at[0], at[1], at[2]));
+			}
+		}
+
+		return out;
 	}
 
 	/** Their pose as drawn now: walking whenever they move off their routine. */
