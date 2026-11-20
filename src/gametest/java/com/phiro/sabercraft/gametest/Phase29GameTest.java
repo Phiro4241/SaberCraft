@@ -1228,6 +1228,8 @@ public class Phase29GameTest implements FabricClientGameTest {
 		double[] reach = StoryTesting.slamReach();
 		// Standing before her, guard down: it hits (after its warning, seen on the client).
 		this.fresh(2.6);
+		this.server.runOnServer(s -> this.faced(s, 2.6));
+		this.context.waitTicks(2);
 		int seen = this.context.computeOnClient(client -> StoryClient.slamsSeenForTest());
 		int[] b0 = this.on(s -> StoryTesting.boss29());
 		int hurt = this.on(s -> this.session(s).counters.getOrDefault("duel_hurt", 0));
@@ -1257,28 +1259,51 @@ public class Phase29GameTest implements FabricClientGameTest {
 		check("open".equals(this.on(s -> StoryTesting.action(this.her(s)))) || "recoil".equals(this.on(s -> StoryTesting.action(this.her(s)))),
 				"after her slam she is neither open nor stepping back");
 
-		// A step aside, walking (no sprint, no dash), begun a moment after its warning: she follows
-		// until its way is set, then it misses, and she is open (her blade in the floor).
+		// A step aside, walking (no sprint, no dash), begun a moment after its warning, staying within
+		// its reach (the walk stops short of it): out of its arc it misses, and she is open (her blade
+		// in the floor). (Standing still before her it hits: measured above.)
 		this.fresh(2.6);
+		this.server.runOnServer(s -> this.faced(s, 2.6));
+		this.context.waitTicks(2);
 		int[] c0 = this.on(s -> StoryTesting.boss29());
 		this.server.runOnServer(s -> StoryTesting.slam(this.session(s), this.her(s)));
 		this.context.waitTicks(5);
 		this.context.getInput().holdKey(options -> options.keyLeft);
+		// Where the player was against the way it strikes when it fell: how far, how many degrees off.
+		double[] aside = {0.0, 0.0};
 
 		for (int i = 0; i < 40 && this.on(s -> StoryTesting.boss29())[7] + this.on(s -> StoryTesting.boss29())[8] == c0[7] + c0[8]; i++) {
+			double[] now = this.on(s -> {
+				Figure f = this.her(s);
+				Vec3 me = this.session(s).local(Story.DESTROYER);
+				Vec3 flat = new Vec3(me.x - f.x, 0.0, me.z - f.z);
+				Vec3 way = StoryTesting.slamWay(f);
+				double off = way == null || flat.lengthSqr() < 1.0E-6 ? -1.0
+						: Math.toDegrees(Math.acos(Mth.clamp(flat.normalize().dot(new Vec3(way.x, 0.0, way.z).normalize()), -1.0, 1.0)));
+				return new double[] {flat.length(), off};
+			});
+			aside = now;
+
+			// (Let go well short of its reach: one slides on a little after.)
+			if (now[0] >= reach[0] - 0.65) {
+				this.context.getInput().releaseKey(options -> options.keyLeft);
+			}
+
 			this.context.waitTick();
 		}
 
 		this.context.getInput().releaseKey(options -> options.keyLeft);
 		int[] c1 = this.on(s -> StoryTesting.boss29());
-		check(c1[7] == c0[7] + 1 && c1[8] == c0[8], "walking aside after her slam's warning does not escape it (missed " + (c1[7] - c0[7]) + ", hit " + (c1[8] - c0[8]) + ")");
+		SaberCraft.LOGGER.info("PHASE29 SLAM: walked aside within its reach: {} blocks from her, {} degrees off its way as it fell; missed {}, hit {}",
+				String.format(Locale.ROOT, "%.2f", aside[0]), String.format(Locale.ROOT, "%.1f", aside[1]), c1[7] - c0[7], c1[8] - c0[8]);
+		check(aside[0] <= reach[0], "(the test) the walk aside left her slam's reach (" + String.format(Locale.ROOT, "%.2f", aside[0]) + "): it says nothing about its arc");
+		check(c1[7] == c0[7] + 1 && c1[8] == c0[8], "walking aside out of her slam's arc does not escape it (missed " + (c1[7] - c0[7]) + ", hit " + (c1[8] - c0[8]) + ")");
 		check("open".equals(this.on(s -> StoryTesting.action(this.her(s)))), "after her missed slam she is not open");
-
-		// Standing still on the same spot it does hit (the step aside is what saved the player).
-		// (Measured above: standing before her it hit.)
 
 		// A jump over the shock wave.
 		this.fresh(2.6);
+		this.server.runOnServer(s -> this.faced(s, 2.6));
+		this.context.waitTicks(2);
 		int[] d0 = this.on(s -> StoryTesting.boss29());
 		this.server.runOnServer(s -> StoryTesting.slam(this.session(s), this.her(s)));
 		this.untilWindup(4);
@@ -1292,6 +1317,7 @@ public class Phase29GameTest implements FabricClientGameTest {
 
 		// On guard: it holds, but costs much.
 		this.fresh(2.6);
+		this.server.runOnServer(s -> this.faced(s, 2.6));
 
 		if (!this.raise()) {
 			return;

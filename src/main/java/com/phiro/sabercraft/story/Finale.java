@@ -341,11 +341,14 @@ final class Finale {
 	 * (a longer opening).
 	 */
 	static final int SLAM_WIND = 24;
-	// (Locked 12 ticks before it falls, 40 degrees to each side: a real step aside, walking, gets out
-	// of its way in time; at first 8 ticks and 55 degrees, which only a dash or a jump escaped.)
-	static final int SLAM_LOCK = 12;
+	// (Its way set 18 ticks before it falls (she aims only at the start of her wind-up: the glow on
+	// the floor then shows where it will strike), 35 degrees to each side: a step aside, walking,
+	// gets out of the glowing arc in time while still within its reach. At first 8 ticks and 55
+	// degrees, which only a dash or a jump escaped; then 12 and 40, which a walk aside escaped only
+	// by leaving its reach, since she kept aiming at the walker until 12 ticks before.)
+	static final int SLAM_LOCK = 18;
 	static final double SLAM_REACH = 3.9;
-	static final float SLAM_ARC = 40.0F;
+	static final float SLAM_ARC = 35.0F;
 	static final float SLAM_DAMAGE = 6.0F;
 	static final float STRAIN_SLAM = 0.42F;
 	static final int SLAM_EVERY = 200;

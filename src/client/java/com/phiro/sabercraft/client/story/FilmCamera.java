@@ -42,9 +42,11 @@ import com.phiro.sabercraft.client.interior.MeshRays;
  * {@link #SPEED} blocks a tick. Where the fitted place leaps further (the people moved suddenly, a
  * wall came between, the point it is about had to move out of something), the camera follows it
  * that fast, but only through places that are themselves clear (in nothing, in nobody, nothing
- * between it and the point); where even that is not clear it holds its last place (still clear)
- * and turns to look; only where its last place is no longer clear either does it take the fitted
- * place at once (never a frame inside a wall or a person).</li>
+ * between it and the point, room round it): straight towards it, or round what stands in the way
+ * (turned a little to a side, up or down). Where no step is clear it holds its last place (still
+ * clear) and turns to look, at most {@link #HOLD_MAX} ticks; then it takes the fitted place (a cut,
+ * never into something: a fitted place that is not clear itself is never taken while the last one
+ * still is).</li>
  * </ol>
  *
  * <p>Walls are the blocks one collides with (the ship's barriers, closed doors) and the drawn rooms
@@ -68,6 +70,12 @@ public final class FilmCamera {
 	private static final int SAMPLES = 10;
 	/** How fast the camera may move at most within a shot (blocks a tick; at least a quarter tick's way a frame). */
 	static final double SPEED = 0.8;
+	/** How long (ticks) the camera holds its last place at most while its fitted place, clear, cannot be reached. */
+	static final float HOLD_MAX = 6.0F;
+	/** How much room round it a camera that follows or holds keeps at least (blocks; the near plane is 0.05). */
+	private static final double ROOM = 0.12;
+	/** The ways round tried when the straight step towards the fitted place is not clear (degrees: sideways, then up or down). */
+	private static final double[][] DETOURS = {{35.0, 0.0}, {-35.0, 0.0}, {0.0, 40.0}, {0.0, -40.0}, {65.0, 0.0}, {-65.0, 0.0}, {35.0, 35.0}, {-35.0, 35.0}};
 
 	/** A film's planned camera at a moment (ticks). */
 	@FunctionalInterface
@@ -105,6 +113,8 @@ public final class FilmCamera {
 	private static @Nullable Vec3 lastShown;
 	private static String lastShownKey = "";
 	private static float lastShownAt;
+	/** Since when (film time) the camera has held its last place, or below 0. */
+	private static float holdSince = -1.0F;
 	/** What happened to the frame last fitted (for the tests' record). */
 	private static String note = "";
 
@@ -136,6 +146,7 @@ public final class FilmCamera {
 		shotKey = "";
 		lastShown = null;
 		lastShownKey = "";
+		holdSince = -1.0F;
 		blendTicks = 0.0F;
 		arm = -1.0;
 		placedAt = -1000.0F;
@@ -195,13 +206,16 @@ public final class FilmCamera {
 			choose(level, t, t, to, plan, pivot, bodies, eye);
 
 			if (Math.abs(Mth.wrapDegrees(turn - oldTurn)) > 1.0E-3 || Math.abs(raise - oldRaise) > 1.0E-3) {
-				Vec3 c = placed.shot().position();
+				// (The way round the point at the planned arm: the arm, pulled in here, eases back out
+				// to it as the camera glides.)
+				Vec3 c = raw.position();
 				double radius = Math.max(1.0, Math.hypot(c.x - pivot.x, c.z - pivot.z));
 				double way = Math.toRadians(Math.abs(Mth.wrapDegrees(turn - oldTurn))) * radius + Math.abs(raise - oldRaise);
 				blendTurn = oldTurn;
 				blendRaise = oldRaise;
 				blendAt = t;
-				blendTicks = (float) Mth.clamp(way / GLIDE, 8.0, 40.0);
+				// (GLIDE at its fastest, in the middle: an eased glide runs half again as fast there as on average.)
+				blendTicks = (float) Mth.clamp(way * 1.5 / GLIDE, 8.0, 40.0);
 				glides++;
 			}
 
@@ -212,20 +226,27 @@ public final class FilmCamera {
 		Vec3 c = fitted;
 		ArrivalFilm.Shot shown = placed.shot();
 
+		boolean holding = false;
+
 		if (lastShown != null && key.equals(lastShownKey)) {
 			// Never a jump within a shot: at most that fast, through clear places only.
 			double step = SPEED * Math.max(0.25, t - lastShownAt);
 			double gap = fitted.distanceTo(lastShown);
+			boolean far = gap > step;
+			boolean fittedClear = clear(level, fitted, pivot, bodies, eye);
 
-			if (gap > step) {
-				Vec3 next = lastShown.add(fitted.subtract(lastShown).scale(step / gap));
+			if (far || !fittedClear) {
+				Vec3 next = far ? toward(level, lastShown, fitted, step, pivot, bodies, eye) : null;
 
-				if (clear(level, next, pivot, bodies, eye)) {
+				if (next != null) {
 					c = next;
 					followed++;
 					note += "follow ";
-				} else if (clear(level, lastShown, pivot, bodies, eye)) {
+				} else if (clear(level, lastShown, pivot, bodies, eye) && (!fittedClear || holdSince < 0.0F || t - holdSince < HOLD_MAX)) {
+					// (Held a while at most when the fitted place is clear: then a cut to it. Never
+					// into a fitted place that is not clear while the last one still is.)
 					c = lastShown;
+					holding = true;
 					held++;
 					note += "hold ";
 				} else {
@@ -240,6 +261,8 @@ public final class FilmCamera {
 			}
 		}
 
+		holdSince = holding ? holdSince < 0.0F ? t : holdSince : -1.0F;
+
 		lastShown = c;
 		lastShownKey = key;
 		lastShownAt = t;
@@ -253,10 +276,71 @@ public final class FilmCamera {
 		return shown;
 	}
 
-	/** Whether the camera may be at that place: in nothing solid, in nobody, nothing solid between it and the point the shot is about. */
+	/**
+	 * The camera's next place on its way from its last place towards its fitted one, that far at
+	 * most: straight on, or round what stands in the way; kept off surfaces and out of people as
+	 * every frame; null when no such step is clear and brings it closer.
+	 */
+	private static @Nullable Vec3 toward(ClientLevel level, Vec3 from, Vec3 to, double step, Vec3 pivot, List<AABB> bodies, @Nullable Vec3 eye) {
+		Vec3 d = to.subtract(from);
+		double gap = d.length();
+
+		if (gap < 1.0E-6) {
+			return null;
+		}
+
+		Vec3 dir = d.scale(1.0 / gap);
+		Vec3 straight = settled(level, from.add(dir.scale(step)), bodies, eye);
+
+		if (straight.distanceTo(to) < gap - 1.0E-3 && clear(level, straight, pivot, bodies, eye)) {
+			return straight;
+		}
+
+		Vec3 flat = new Vec3(dir.x, 0.0, dir.z);
+
+		for (double[] detour : DETOURS) {
+			Vec3 way = rotate(dir, detour[0]);
+
+			if (detour[1] != 0.0 && flat.lengthSqr() > 1.0E-6) {
+				// Tilted up or down out of its way (towards the upright through it).
+				way = way.scale(Math.cos(Math.toRadians(detour[1]))).add(0.0, Math.sin(Math.toRadians(detour[1])), 0.0).normalize();
+			}
+
+			Vec3 p = settled(level, from.add(way.scale(step)), bodies, eye);
+
+			if (p.distanceTo(to) < gap - 1.0E-3 && clear(level, p, pivot, bodies, eye)) {
+				return p;
+			}
+		}
+
+		return null;
+	}
+
+	/** A place kept off the surfaces round it and out of people (as {@link #place} does). */
+	private static Vec3 settled(ClientLevel level, Vec3 p, List<AABB> bodies, @Nullable Vec3 eye) {
+		Vec3 at = pushOut(level, p);
+
+		for (int i = 0; i < 3 && nearBody(at, bodies, eye); i++) {
+			at = outOfBodies(at, bodies, eye);
+		}
+
+		return at;
+	}
+
+	/**
+	 * Whether the camera may be at that place: in nothing solid, in nobody (nor right at them), with
+	 * room round it, nothing solid between it and the point the shot is about.
+	 */
 	private static boolean clear(ClientLevel level, Vec3 p, Vec3 pivot, List<AABB> bodies, @Nullable Vec3 eye) {
-		if (inside(level, p) || inBody(p, bodies, eye)) {
+		if (inside(level, p) || inBody(p, bodies, eye) || !roomy(level, p, ROOM)) {
 			return false;
+		}
+
+		for (AABB body : bodies) {
+			// (outOfBodies puts a place just outside the box with BODY round it.)
+			if (body.inflate(BODY - 0.03).contains(p)) {
+				return false;
+			}
 		}
 
 		double reach = p.distanceTo(pivot);
@@ -409,7 +493,8 @@ public final class FilmCamera {
 		}
 
 		// (Out of one person can be into another standing close: until it is out of all, a few times.)
-		for (int i = 0; i < 3 && inBody(at, bodies, eye); i++) {
+		// (Kept BODY out of everyone's box and EYE_CLEAR from the player's eyes, every frame.)
+		for (int i = 0; i < 3 && nearBody(at, bodies, eye); i++) {
 			at = outOfBodies(at, bodies, eye);
 			note += i == 0 ? "body " : "";
 		}
@@ -503,8 +588,13 @@ public final class FilmCamera {
 
 	/** Whether no surface is nearer than {@link #NEAR} round a point. */
 	private static boolean roomy(ClientLevel level, Vec3 point) {
+		return roomy(level, point, NEAR);
+	}
+
+	/** Whether no surface is nearer than that round a point. */
+	private static boolean roomy(ClientLevel level, Vec3 point, double near) {
 		for (Vec3 axis : AXES) {
-			if (free(level, point, point.add(axis.scale(NEAR))) < NEAR - 1.0E-3) {
+			if (free(level, point, point.add(axis.scale(near))) < near - 1.0E-3) {
 				return false;
 			}
 		}

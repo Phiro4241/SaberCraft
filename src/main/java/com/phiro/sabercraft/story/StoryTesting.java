@@ -1244,6 +1244,11 @@ public final class StoryTesting {
 		return Chapter1.GUARD_DOWN;
 	}
 
+	/** Phase 29: the way her slam will strike (plot space, level), once it is set; null before (or without a slam). */
+	public static @Nullable Vec3 slamWay(Figure f) {
+		return f.slamDir;
+	}
+
 	/** Phase 29: how far her slam reaches, and how wide its arc is (degrees to each side). */
 	public static double[] slamReach() {
 		return new double[] {Finale.SLAM_REACH, Finale.SLAM_ARC};
