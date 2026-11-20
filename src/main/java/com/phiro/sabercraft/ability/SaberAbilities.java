@@ -592,6 +592,7 @@ public final class SaberAbilities {
 			state.lockedUntil = Long.MIN_VALUE / 2;
 			state.regenFrom = Long.MIN_VALUE / 2;
 			state.chain = 0;
+			state.chainAt = Long.MIN_VALUE / 2;
 			state.blockStart = -1;
 			return;
 		}
