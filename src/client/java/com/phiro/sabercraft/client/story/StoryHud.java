@@ -652,12 +652,52 @@ public final class StoryHud implements HudElement {
 		Component key = client.options.keyUse.getTranslatedKeyMessage();
 		Component text = target.figure() > 0 ? Component.translatable("sabercraft.story.hud.talk", key, StoryPortraits.name(target.speaker()))
 				: Component.translatable(target.hack() ? "sabercraft.story.hud.use_hack" : "sabercraft.story.hud.use", key,
-						Component.translatable(target.label()));
+						words(target.label(), "sabercraft.story.point.generic"));
 		int w = client.font.width(text);
 		int x = width / 2 - w / 2;
 		int y = height / 2 + 14;
 		graphics.fill(x - 4, y - 2, x + w + 4, y + 10, 0x80000000);
 		graphics.text(client.font, text, x, y, target.hack() ? 0xFFB0C8E8 : TEXT);
+	}
+
+	/** Phase 29: the keys already reported as having no words (each once). */
+	private static final java.util.Set<String> WORDLESS = new java.util.HashSet<>();
+	private static int wordless;
+
+	/**
+	 * Phase 29: the words of a key, never the key itself: a key the language has no words for (the
+	 * cover and the toolbox of Phase 28 showed "sabercraft.story.point.vent_cover" under the
+	 * crosshair) shows the words of {@code fallback} instead, and is logged once.
+	 */
+	public static Component words(String key, String fallback) {
+		if (net.minecraft.locale.Language.getInstance().has(key)) {
+			return Component.translatable(key);
+		}
+
+		wordless++;
+
+		if (WORDLESS.add(key)) {
+			com.phiro.sabercraft.SaberCraft.LOGGER.warn("Story: no words for '{}', shown as '{}'", key, fallback);
+		}
+
+		return Component.translatable(fallback);
+	}
+
+	/** Phase 29, for tests: how often words were missing (and the fallback shown). */
+	public static int wordlessForTest() {
+		return wordless;
+	}
+
+	/** Phase 29, for tests: the text under the crosshair now, or null. */
+	public static @org.jspecify.annotations.Nullable String promptForTest(Minecraft client) {
+		StoryInput.Target target = StoryInput.target(client, 1.0F);
+
+		if (target == null || target.figure() > 0) {
+			return null;
+		}
+
+		return Component.translatable(target.hack() ? "sabercraft.story.hud.use_hack" : "sabercraft.story.hud.use", client.options.keyUse.getTranslatedKeyMessage(),
+				words(target.label(), "sabercraft.story.point.generic")).getString();
 	}
 
 	// --- Lines and hints -----------------------------------------------------------------------------

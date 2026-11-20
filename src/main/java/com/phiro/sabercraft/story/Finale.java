@@ -112,6 +112,15 @@ final class Finale {
 	static final int HAND = 5;
 	static final int STAGGER = 6;
 	static final int SPIN = 7;
+	/**
+	 * Phase 29: her slam ({@link Figure#action}; it looks like an overhead blow raised high, see
+	 * {@link #slamStarts}).
+	 */
+	static final int SLAM = 11;
+	/** Phase 29: her moves as remembered ({@link Figure#moves}): besides the actions, a lunge and a shove. */
+	static final int MOVE_LUNGE = 12;
+	static final int MOVE_SHOVE = 13;
+	static final int MOVE_TURN = 14;
 
 	/**
 	 * Phase 23: per phase (1, 2): the wind-up of a combo's first blow and of the blows after it,
@@ -119,11 +128,14 @@ final class Finale {
 	 * attacks, and how many strokes into her guard before she answers.
 	 */
 	static final int[] WINDUPS = {0, 16, 14};
-	static final int[] FOLLOW = {0, 13, 11};
-	static final float[] BLOWS = {0.0F, 3.0F, 3.5F};
-	static final int[] OPENINGS = {0, 30, 24};
-	/** (Phase 27: the first phase's pause shorter, 34 before: she presses on sooner.) */
-	static final int[] PAUSES = {0, 28, 18};
+	/** (Phase 29: a tick quicker, 13 and 11 before; and a tick or two of chance in it: no beat to parry by.) */
+	static final int[] FOLLOW = {0, 12, 10};
+	/** (Phase 29: harder, 3.0 and 3.5 before: a blow not blocked or dodged is felt.) */
+	static final float[] BLOWS = {0.0F, 3.5F, 4.0F};
+	/** (Phase 29: a little shorter, 30 and 24 before; still long enough for two or three strokes.) */
+	static final int[] OPENINGS = {0, 28, 22};
+	/** (Phase 27: the first phase's pause shorter, 34 before: she presses on sooner. Phase 29: shorter still, 28 and 18 before.) */
+	static final int[] PAUSES = {0, 22, 14};
 	static final int[] PARRIES = {0, 3, 2};
 	/**
 	 * Phase 23: her combos, per phase: the kinds of blow one after the other (the second phase's are
@@ -167,7 +179,7 @@ final class Finale {
 	static final double RUSH_REACH = 1.9;
 	static final double RUSH_FROM = 2.6;
 	static final double RUSH_TO = 9.0;
-	static final int RUSH_EVERY = 230;
+	static final int RUSH_EVERY = 210;
 	static final int RUSH_EVERY_FIERCE = 150;
 	/**
 	 * Phase 27: the ring's rush in the first phase too (one blade whirling round the grip), rarer,
@@ -182,8 +194,8 @@ final class Finale {
 	 * her (on Normal; the difficulty scales it further).
 	 */
 	static final float STRENGTH = 1.15F;
-	/** Her push's damage to one not on guard (Phase 27: times her power by the difficulty). */
-	static final float PUSH_DAMAGE = 2.0F;
+	/** Her push's damage to one not on guard (Phase 27: times her power by the difficulty; Phase 29: 2.0 before). */
+	static final float PUSH_DAMAGE = 2.5F;
 	static final int RUSH_OPENING = 12;
 	/** Phase 25: a spin's wind-up is longer (the staff twirls round her: to be seen coming), and it reaches a little further. */
 	static final int SPIN_WINDUP = 20;
@@ -197,7 +209,8 @@ final class Finale {
 	static final int THROW_EVERY = 260;
 	static final double THROW_FROM = 4.0;
 	static final double THROW_TO = 12.0;
-	static final float THROW_DAMAGE = 3.0F;
+	/** (Phase 29: 3.0 before.) */
+	static final float THROW_DAMAGE = 3.5F;
 	static final double THROW_HIT = 0.85;
 	static final double THROW_PAST = 2.5;
 	/**
@@ -206,7 +219,7 @@ final class Finale {
 	 * ({@code THROW_BACK_TO}), and throws from a little nearer too if the player follows her
 	 * ({@code THROW_NEAR}); in her last quarter the second one comes soon ({@code THROW_FIERCE}).
 	 */
-	static final int THROWS_MAX = 2;
+	static final int THROWS_MAX = 3;
 	static final double THROW_BACK_TO = 5.2;
 	static final double THROW_NEAR = 3.3;
 	static final int THROW_FIERCE = 90;
@@ -238,7 +251,7 @@ final class Finale {
 	/** Strokes that hit her in one opening, at most. */
 	static final int HITS_PER_OPENING = 3;
 	/** Her answer to strokes into her guard: a quick thrust (still to be seen and blocked). */
-	static final int RIPOSTE = 10;
+	static final int RIPOSTE = 9;
 	/**
 	 * Phase 23: a stroke of the player into her wind-up meets her blade: the blades clash (nobody
 	 * is hurt; both are thrown apart a little). Two clashes in a row and she follows up at once.
@@ -250,8 +263,8 @@ final class Finale {
 	static final int CROUCH_TICKS = 18;
 	static final double LEAP_SPEED = 11.0;
 	static final int HAND_TICKS = 16;
-	static final int PUSH_EVERY = 220;
-	static final int LEAP_EVERY = 180;
+	static final int PUSH_EVERY = 200;
+	static final int LEAP_EVERY = 160;
 	static final int RECOIL_TICKS = 14;
 	/**
 	 * What a light and a heavy stroke take of her (she has 1); the second phase begins at half.
@@ -278,6 +291,99 @@ final class Finale {
 	static final String BOSS_DONE = "tmp.boss_mid_done";
 	/** Phase 23: the end: how long she stares at her empty hand (ticks) before she runs. */
 	static final int DISARMED_TICKS = 92;
+	/**
+	 * Phase 29: the player behind her (Phiro: one jumped behind her and struck again and again while
+	 * she did nothing). Her head no longer turns to the player at once each tick (that made every
+	 * stroke one from the front, while her body, drawn as it turned slowly, still showed her back):
+	 * she turns as fast as one can ({@link #TURN}; towards one at her side or behind her faster,
+	 * {@link #TURN_AWARE}, once she noticed: after {@link #NOTICE} ticks by the difficulty), her body
+	 * close behind her head. A stroke from behind hits once; the next within {@link #REAR_MEMORY}
+	 * ticks (by the difficulty) she turns aside, whirling round, and strikes back at once (a
+	 * turn-about blow that reaches behind her, {@link #TURNABOUT}). Standing behind her she turns
+	 * round, steps round or strikes back; standing in her or on her one is pushed out
+	 * ({@link #BODY}). Her blows reach only before her and to the sides ({@link #arc}): behind her
+	 * one is safe from a plain blow, but not for long.
+	 */
+	static final float BEHIND_ANGLE = 100.0F;
+	static final double BEHIND_NEAR = 4.5;
+	static final int[] NOTICE = {14, 9, 6};
+	static final int[] REAR_MEMORY = {50, 70, 90};
+	static final float TURN = 16.0F;
+	static final float TURN_AWARE = 26.0F;
+	static final float TURN_HELD = 12.0F;
+	static final int TURNABOUT = 9;
+	static final float TURNABOUT_TURN = 24.0F;
+	static final double BODY = 0.75;
+	/** Phase 29: a stroke from behind: she flinches only this long (ticks) before she whirls round. */
+	static final int REAR_FLINCH = 5;
+	/** Phase 29: how far (degrees) she whirls round at once as she turns a stroke from behind aside (the rest in her blow's wind-up). */
+	static final float REAR_WHIRL = 45.0F;
+	/**
+	 * Phase 29: close pressure: one this near her (blocks) is shoved away with the Force, a quick
+	 * hand (to be seen: {@link #SHOVE_TICKS}), at most this often; it hurts a little, costs the
+	 * guard a little stamina.
+	 */
+	static final double SHOVE_NEAR = 1.5;
+	static final int SHOVE_TICKS = 8;
+	static final int SHOVE_EVERY = 70;
+	static final float SHOVE_DAMAGE = 1.5F;
+	static final float STRAIN_SHOVE = 0.1F;
+	/** Phase 29: her push from afar on the guard costs stamina too. */
+	static final float STRAIN_PUSH = 0.16F;
+	/**
+	 * Phase 29: the slam, her strong attack (from the last fifth of her first phase on): she raises
+	 * the blade high in both hands and crouches, the floor before her glows where it will strike
+	 * (the warning, {@link #SLAM_WIND} ticks at her tempo, the way locked {@link #SLAM_LOCK} ticks
+	 * before it falls), then the blade goes down into the floor and a shock wave runs out before
+	 * her ({@link #SLAM_REACH} blocks, {@link #SLAM_ARC} degrees to each side). It hurts more than
+	 * any blow ({@link #SLAM_DAMAGE}); a step aside out of its way, a dash, or a jump over the wave
+	 * escapes it; the guard holds it at a high cost of stamina. Afterwards her blade is stuck a moment
+	 * (a longer opening).
+	 */
+	static final int SLAM_WIND = 24;
+	// (Its way set 18 ticks before it falls (she aims only at the start of her wind-up: the glow on
+	// the floor then shows where it will strike), 35 degrees to each side: a step aside, walking,
+	// gets out of the glowing arc in time while still within its reach. At first 8 ticks and 55
+	// degrees, which only a dash or a jump escaped; then 12 and 40, which a walk aside escaped only
+	// by leaving its reach, since she kept aiming at the walker until 12 ticks before.)
+	static final int SLAM_LOCK = 18;
+	static final double SLAM_REACH = 3.9;
+	static final float SLAM_ARC = 35.0F;
+	static final float SLAM_DAMAGE = 6.0F;
+	static final float STRAIN_SLAM = 0.42F;
+	static final int SLAM_EVERY = 200;
+	static final float SLAM_FROM = 0.8F;
+	static final int SLAM_OPENING = 10;
+	/** Phase 29: strokes that hit her while her staff is away: at most this many, then she dodges. */
+	static final int FLIGHT_HITS = 2;
+	/** Phase 29: a guard held this long (ticks) when she chooses: she goes for what breaks it (the push, the slam). */
+	static final int TURTLE = 20;
+	/** Phase 29: a guard raised again this soon after it came down parries nothing perfectly (no parrying by mashing the key). */
+	// (6, not 12: the guard lowered after a blow and raised in time for her next blow of the same
+	// combo still parries it perfectly; only raising it again at once, mashing, does not.)
+	static final int RAISE_LOCK = 6;
+	/**
+	 * Phase 29: the scene at half her strength never starts with the player in the air (Phiro: frozen
+	 * in mid-air): she steps back and waits for them to land (nothing hurts meanwhile), at most this
+	 * long (ticks); then they are set down on the floor under them.
+	 */
+	static final int SCENE_WAIT = 40;
+	static final String SCENE_PENDING = "tmp.boss_pending";
+
+	/**
+	 * Phase 29: the stricter guard in her fight, by the difficulty (Easy, Normal, Hard; see
+	 * {@link SaberAbilities.StrictGuard}): holding the guard costs stamina all the time, blows in a
+	 * row cost more each, stamina comes back later and slower, a broken guard leaves one worn out.
+	 */
+	static final SaberAbilities.StrictGuard[] STRICT = {
+			new SaberAbilities.StrictGuard(0.35F, 30, 0.2F, 1.6F, 18, 20, 0.75F, 0.6F, 0.4F, 1.3F, 24),
+			new SaberAbilities.StrictGuard(0.55F, 36, 0.3F, 2.0F, 24, 32, 0.6F, 0.5F, 0.5F, 1.5F, 32),
+			new SaberAbilities.StrictGuard(0.75F, 42, 0.4F, 2.4F, 30, 44, 0.5F, 0.45F, 0.55F, 1.7F, 40)};
+
+	static SaberAbilities.StrictGuard strictGuard(StoryDifficulty difficulty) {
+		return STRICT[Math.min(STRICT.length - 1, difficulty.ordinal())];
+	}
+
 	/** Focus: how long, how much a block and each tick adds. */
 	static final int FOCUS_TICKS = 80;
 	static final float FOCUS_BLOCK = 0.34F;
@@ -366,7 +472,9 @@ final class Finale {
 				}
 
 				if (figure.saber) {
+					float body = figure.yaw;
 					duel(s, figure, player, me, level, corner);
+					keepHead(s, figure, body);
 				} else {
 					trooper(s, figure, player, me, level, corner);
 				}
@@ -631,7 +739,19 @@ final class Finale {
 		Vec3 corner = Vec3.atLowerCornerOf(s.origin(s.here));
 		Vec3 me = player.position().subtract(corner);
 
+		// Phase 29: she waits for the player to land before the scene at half her strength: nothing counts meanwhile.
+		if (s.has(SCENE_PENDING)) {
+			return;
+		}
+
 		switch (f.action) {
+			case SLAM -> {
+				if (f.windup > 0) {
+					// Phase 29: in her slam she is set on it: the stroke is turned aside, she does not flinch.
+					turnedAside(s, f, player, me, level, corner);
+					return;
+				}
+			}
 			case LOCK -> {
 				// Pressing against her blade: it ends the lock sooner (it lasts a moment at least, to be seen).
 				int elapsed = LOCK_TICKS - f.timer;
@@ -657,9 +777,12 @@ final class Finale {
 					f.reactTicks = 0;
 					s.timer("throw", THROW_EVERY / 2);
 					clash(s, f, player, me, level, corner);
+				} else if (++f.flightHits > FLIGHT_HITS) {
+					// Phase 29: her staff is away, but she is not a target to strike at at will: she dodges.
+					flightEvades(s, f, me, level, corner);
 				} else {
 					// Her staff is away: she has nothing to parry with.
-					bossHit(s, f, player, me, level, corner, at, heavy);
+					bossHit(s, f, player, me, level, corner, at, heavy, false);
 				}
 
 				return;
@@ -680,8 +803,8 @@ final class Finale {
 					f.reactTicks = 0;
 					clash(s, f, player, me, level, corner);
 				} else if (toMe.dot(f.look()) < -0.35) {
-					// From behind, while she drives on: it hits.
-					bossHit(s, f, player, me, level, corner, at, heavy);
+					// From behind, while she drives on: it hits (Phase 29: once; the next soon after she turns aside).
+					fromBehind(s, f, player, me, level, corner, at, heavy);
 				} else {
 					// Into the spinning disc: turned aside, and one is thrown back a little.
 					discTurns(s, f, player, me, level, corner);
@@ -696,16 +819,98 @@ final class Finale {
 		Vec3 toPlayer = new Vec3(eye.x - f.x, 0.0, eye.z - f.z).normalize();
 		boolean behind = toPlayer.dot(f.look()) < -0.35;
 
-		if (f.action == OPEN_UP || behind && f.action != LEAP) {
-			bossHit(s, f, player, me, level, corner, at, heavy);
+		if (f.action == OPEN_UP) {
+			bossHit(s, f, player, me, level, corner, at, heavy, false);
+			return;
+		}
+
+		if (behind && f.action != LEAP) {
+			fromBehind(s, f, player, me, level, corner, at, heavy);
 			return;
 		}
 
 		parried(s, f, player, me, level, corner);
 	}
 
+	/**
+	 * Phase 29: a stroke from behind her. The first hits (she flinches only a moment, then whirls
+	 * round with a blow that reaches behind her); the next soon after ({@link #REAR_MEMORY}) she
+	 * turns aside, whirling round, and strikes back at once. Jumping behind her and striking again
+	 * and again does not work any more.
+	 */
+	private static void fromBehind(StorySession s, Figure f, ServerPlayer player, Vec3 me, ServerLevel level, Vec3 corner, Vec3 at, boolean heavy) {
+		long now = s.time();
+
+		if (f.rearHits > 0 && now - f.rearAt <= REAR_MEMORY[Math.min(2, s.difficulty().ordinal())]) {
+			rearParry(s, f, player, me, level, corner);
+			return;
+		}
+
+		f.rearHits = 1;
+		f.rearAt = now;
+		rearHits++;
+		s.counters.merge("rear_hits", 1, Integer::sum);
+		bossHit(s, f, player, me, level, corner, at, heavy, true);
+	}
+
+	/** Phase 29: she turns a stroke from behind aside, whirling round (a good part of the way at once), and strikes back. */
+	private static void rearParry(StorySession s, Figure f, ServerPlayer player, Vec3 me, ServerLevel level, Vec3 corner) {
+		Vec3 contact = contact(f, me).add(corner);
+		level.sendParticles(ParticleTypes.ELECTRIC_SPARK, contact.x, contact.y, contact.z, 14, 0.08, 0.08, 0.08, 0.4);
+		level.playSound(null, contact.x, contact.y, contact.z, ShipInteriors.sound("saber.clash"), SoundSource.HOSTILE, 1.05F, 0.8F + player.getRandom().nextFloat() * 0.15F);
+		Story.cue(s, Story.CUE_DUEL, "parried", "", f.id, java.util.List.of(contact));
+		s.counters.merge("rear_parried", 1, Integer::sum);
+		rearParries++;
+		// The blade swept round behind her: she whirls a good part of the way with it (the rest in
+		// her turn-about blow's wind-up, quickly but not in one jump).
+		float wanted = Crew.yaw(f.position(), me);
+		f.headYaw += Mth.clamp(Mth.wrapDegrees(wanted - f.headYaw), -REAR_WHIRL, REAR_WHIRL);
+		float off = Mth.wrapDegrees(f.headYaw - f.yaw);
+
+		if (Math.abs(off) > 25.0F) {
+			f.yaw = f.headYaw - Math.signum(off) * 25.0F;
+		}
+
+		f.rearAt = s.time();
+		f.react = 0;
+		f.reactTicks = 0;
+		turnaboutBlow(s, f, level, TURNABOUT - 2);
+	}
+
+	/** Phase 29: a blow that turns her round with it (towards one behind her): a sweep that reaches round behind her. */
+	private static void turnaboutBlow(StorySession s, Figure f, ServerLevel level, int ticks) {
+		f.parried = 0;
+		f.burst = 0;
+		f.combo = 1;
+		f.pattern = -1;
+		f.behindTicks = 0;
+		blowStarts(f, SWEEP, scaled(f, ticks), level, s);
+		f.turnabout = true;
+		turnabouts++;
+		remember(f, MOVE_TURN);
+	}
+
+	/** Phase 29: a stroke into her slam's wind-up: turned aside, blade on blade; she goes on with it. */
+	private static void turnedAside(StorySession s, Figure f, ServerPlayer player, Vec3 me, ServerLevel level, Vec3 corner) {
+		Vec3 contact = contact(f, me).add(corner);
+		level.sendParticles(ParticleTypes.ELECTRIC_SPARK, contact.x, contact.y, contact.z, 8, 0.08, 0.08, 0.08, 0.3);
+		level.playSound(null, contact.x, contact.y, contact.z, ShipInteriors.sound("saber.clash"), SoundSource.HOSTILE, 0.9F, 0.7F);
+		Story.cue(s, Story.CUE_DUEL, "parried", "", f.id, java.util.List.of(contact));
+		s.counters.merge("parried", 1, Integer::sum);
+	}
+
+	/** Phase 29: strokes while her staff is away: after a few she dodges back out of reach. */
+	private static void flightEvades(StorySession s, Figure f, Vec3 me, ServerLevel level, Vec3 corner) {
+		f.react(Figure.DODGE, 8);
+		Hits.push(f, me, 0.38);
+		Vec3 at = f.position().add(corner).add(0.0, 1.0, 0.0);
+		level.playSound(null, at.x, at.y, at.z, ShipInteriors.sound("saber.swing"), SoundSource.HOSTILE, 0.6F, 1.3F);
+		s.counters.merge("flight_evaded", 1, Integer::sum);
+		flightEvasions++;
+	}
+
 	/** Phase 23: a stroke hits her: she reels (a heavy one throws her back), the phases and the end. */
-	private static void bossHit(StorySession s, Figure f, ServerPlayer player, Vec3 me, ServerLevel level, Vec3 corner, Vec3 at, boolean heavy) {
+	private static void bossHit(StorySession s, Figure f, ServerPlayer player, Vec3 me, ServerLevel level, Vec3 corner, Vec3 at, boolean heavy, boolean rear) {
 		int before = phase(f);
 		// Phase 27: she is stronger (more on Hard, less on Easy).
 		f.health = Math.max(0.0F, f.health - (heavy ? HIT_HEAVY : HIT) / (STRENGTH * s.difficulty().bossHealth));
@@ -720,6 +925,9 @@ final class Finale {
 		if (flying) {
 			// (Not finished while her staff is out: it comes back to her hand first.)
 			f.health = Math.max(0.01F, f.health);
+		} else if (rear) {
+			// Phase 29: struck from behind she flinches only a moment (a heavy stroke throws her no longer): then she whirls round.
+			f.react(Figure.FLINCH, REAR_FLINCH);
 		} else {
 			f.react(heavy ? Figure.HEAVY : Figure.FLINCH, heavy ? 14 : 8);
 		}
@@ -747,8 +955,14 @@ final class Finale {
 		}
 
 		// Phase 24: once per fight (a mark of this fight, gone with a checkpoint's restart).
+		// Phase 29: never with the player in the air or in a dash: she waits for them to land.
 		if (before == 1 && f.health <= PHASE_TWO && !s.has(BOSS_DONE)) {
-			lockStarts(s, f, player, me, level, corner);
+			if (sceneReady(player)) {
+				lockStarts(s, f, player, me, level, corner);
+			} else {
+				sceneWaits(s, f);
+			}
+
 			return;
 		}
 
@@ -771,6 +985,13 @@ final class Finale {
 
 		if (flying) {
 			// She waits for her staff (the throw goes on).
+			return;
+		}
+
+		if (rear) {
+			// Phase 29: she whirls round with a blow that reaches behind her (after the short flinch).
+			f.hits = 0;
+			turnaboutBlow(s, f, level, TURNABOUT);
 			return;
 		}
 
@@ -875,6 +1096,23 @@ final class Finale {
 		// Phase 28: a new fight: no throws yet, the ring still.
 		shadow.thrown = 0;
 		shadow.ringOn = false;
+		// Phase 29: nothing remembered of a fight before (a checkpoint's restart), the guard's rules afresh.
+		shadow.rearHits = 0;
+		shadow.rearAt = -1000L;
+		shadow.behindTicks = 0;
+		shadow.turnabout = false;
+		java.util.Arrays.fill(shadow.moves, 0);
+		shadow.slamDir = null;
+		shadow.shove = false;
+		shadow.flightHits = 0;
+		shadow.guardSeenUp = false;
+		shadow.raiseSpam = false;
+		s.unset(SCENE_PENDING);
+		s.timers.remove("boss_pending");
+
+		if (s.player() != null) {
+			SaberAbilities.strictGuard(s.player(), null);
+		}
 		s.timers.remove("throw_back");
 		s.timers.remove("guard_broken");
 		act(shadow, GUARD, 0, 0);
@@ -899,6 +1137,7 @@ final class Finale {
 		f.attack = attack;
 		f.timer = ticks;
 		f.windup = 0;
+		f.turnabout = false;
 	}
 
 	private static void duel(StorySession s, Figure f, ServerPlayer player, Vec3 me, ServerLevel level, Vec3 corner) {
@@ -909,10 +1148,19 @@ final class Finale {
 		f.openness = difficulty.bossOpening;
 		f.power = difficulty.bossDamage;
 		double distance = Math.hypot(me.x - f.x, me.z - f.z);
+		// Phase 29: the stricter guard in her fight (renewed each tick: it lapses by itself when the fight ends).
+		SaberAbilities.strictGuard(player, strictGuard(difficulty));
+		raiseWatch(s, f, player);
 
 		// Phase 28: a block held with the use key gets no stamina back while it is up (as the guard).
 		if (SaberAbilities.guardTicks(player) < 0 && player.isUsingItem() && SaberVariant.canHold(player.getUseItem())) {
 			SaberAbilities.holdStamina(player);
+		}
+
+		// Phase 29: the scene at half her strength waits until the player stands on the floor.
+		if (s.has(SCENE_PENDING)) {
+			scenePending(s, f, player, me, level, corner, distance);
+			return;
 		}
 
 		switch (f.action) {
@@ -929,12 +1177,14 @@ final class Finale {
 			}
 		}
 
+		// Phase 29: nobody stands in her (or on her): pushed out, as against anyone.
+		bodyContact(f, player, me, distance);
+
 		// Phase 23: thrown back by a hit, turning a stroke aside, reeling from a perfect parry.
 		boolean held = Hits.tick(f, level, corner);
 
 		if (f.action == CLASHED) {
-			f.turnTowards(me, 10.0F, true);
-			f.headYaw = Crew.yaw(f.position(), me);
+			aware(s, f, me, distance, 10.0F);
 
 			if (--f.timer <= 0) {
 				if (f.burst >= 2) {
@@ -950,10 +1200,10 @@ final class Finale {
 		}
 
 		if (held) {
-			f.turnTowards(me, 6.0F, true);
-			f.headYaw = Crew.yaw(f.position(), me);
+			// (Phase 29: reeling she still turns towards one at her side or behind her, faster than before.)
+			aware(s, f, me, distance, 6.0F);
 
-			if (f.action == WINDUP || f.action == RUSH) {
+			if (f.action == WINDUP && !f.turnabout || f.action == RUSH) {
 				act(f, GUARD, 0, 0);
 				f.lunge = false;
 				f.cooldown = pause(f, phase);
@@ -962,12 +1212,11 @@ final class Finale {
 			return;
 		}
 
-		// (Phase 26: driving on in the ring's rush she turns slowly, see rushTick.)
-		if ((f.action != LEAP || f.windup > 0) && (f.action != RUSH || f.windup > 0)) {
-			f.turnTowards(me, f.action == WINDUP ? 9.0F : 16.0F, true);
+		// (Phase 26: driving on in the ring's rush she turns slowly, see rushTick; Phase 29: in her
+		// slam and her throw she turns by their own rules; her head no longer snaps to the player.)
+		if ((f.action != LEAP || f.windup > 0) && (f.action != RUSH || f.windup > 0) && f.action != SLAM && f.action != THROW) {
+			aware(s, f, me, distance, f.action == WINDUP ? f.turnabout ? TURNABOUT_TURN : 9.0F : TURN);
 		}
-
-		f.headYaw = Crew.yaw(f.position(), me);
 
 		switch (f.action) {
 			case WINDUP -> {
@@ -1008,17 +1257,231 @@ final class Finale {
 			case LEAP -> leap(s, f, player, me, level, corner, phase);
 			case THROW -> throwTick(s, f, player, me, level, corner);
 			case RUSH -> rushTick(s, f, player, me, level, corner);
+			case SLAM -> slamTick(s, f, player, me, level, corner, phase);
 			case PUSH -> {
 				f.speed = 0.0F;
 
 				if (--f.windup <= 0) {
 					push(s, f, player, level, corner);
 					act(f, GUARD, 0, 0);
-					f.cooldown = 20;
+					f.cooldown = f.shove ? 12 : 20;
+					f.shove = false;
 				}
 			}
 			default -> guard(s, f, player, me, level, corner, phase, distance);
 		}
+	}
+
+	/**
+	 * Phase 29: she turns towards the player as one does: on guard quickly ({@code base} degrees a
+	 * tick), towards one at her side or behind her faster still once she noticed them there (after
+	 * {@link #NOTICE} ticks by the difficulty), her body close behind her head. Counts how long the
+	 * player has been behind her.
+	 */
+	private static void aware(StorySession s, Figure f, Vec3 me, double distance, float base) {
+		float off = Math.abs(Mth.wrapDegrees(Crew.yaw(f.position(), me) - f.headYaw));
+
+		if (off > BEHIND_ANGLE && distance < BEHIND_NEAR) {
+			f.behindTicks++;
+		} else {
+			f.behindTicks = Math.max(0, f.behindTicks - 2);
+		}
+
+		float step = base;
+
+		if (off > 60.0F) {
+			step = Math.max(base, f.behindTicks >= notice(s) ? TURN_AWARE : Math.max(TURN_HELD, base * 1.3F));
+		}
+
+		turn(f, me, step);
+		f.aimHead = f.headYaw;
+		f.aimAt = s.time();
+	}
+
+	/** Phase 29: how far her body turns towards where she walks in a tick at most. */
+	static final float BODY_STEP = 20.0F;
+
+	/**
+	 * Phase 29: her head stays where her own turning put it this tick ({@link #aware}): a step of
+	 * hers (circling, backing off, closing in) no longer swings her head round to where she walks
+	 * (that made her snap round and lose sight of the player). Her body turns towards her way only
+	 * so fast, and stays close behind her head.
+	 */
+	private static void keepHead(StorySession s, Figure f, float bodyBefore) {
+		if (f.aimAt != s.time()) {
+			return;
+		}
+
+		f.headYaw = f.aimHead;
+		float body = bodyBefore + Mth.clamp(Mth.wrapDegrees(f.yaw - bodyBefore), -BODY_STEP, BODY_STEP);
+		float off = Mth.wrapDegrees(f.headYaw - body);
+
+		if (Math.abs(off) > 35.0F) {
+			body = f.headYaw - Math.signum(off) * 35.0F;
+		}
+
+		f.yaw = body;
+	}
+
+	/** Phase 29: after how many ticks behind her she notices the player there (by the difficulty). */
+	static int notice(StorySession s) {
+		return NOTICE[Math.min(NOTICE.length - 1, s.difficulty().ordinal())];
+	}
+
+	/** Phase 29: turns her towards a point, at most {@code step} degrees a tick, her body at most 35 degrees behind her head. */
+	static void turn(Figure f, Vec3 to, float step) {
+		f.turnTowards(to, step, true);
+		float off = Mth.wrapDegrees(f.headYaw - f.yaw);
+
+		if (Math.abs(off) > 35.0F) {
+			f.yaw = f.headYaw - Math.signum(off) * 35.0F;
+		}
+	}
+
+	/**
+	 * Phase 29: the player's guard as she sees it each tick: raised again right after it came down
+	 * ({@link #RAISE_LOCK}) it parries nothing perfectly.
+	 */
+	private static void raiseWatch(StorySession s, Figure f, ServerPlayer player) {
+		boolean up = guardTicks(player) >= 0;
+		long now = s.time();
+
+		if (up && !f.guardSeenUp) {
+			f.raiseSpam = now - f.guardDownAt < RAISE_LOCK;
+		}
+
+		if (!up && f.guardSeenUp) {
+			f.guardDownAt = now;
+		}
+
+		f.guardSeenUp = up;
+	}
+
+	/**
+	 * Phase 29: whether a guard raised just now parries perfectly: not shaking, not worn out, not
+	 * raised again at once, and (the saber's guard) its parry not locked by the settings.
+	 */
+	static boolean perfectReady(Figure f, ServerPlayer player) {
+		return !shaky(player) && !SaberAbilities.tired(player) && !f.raiseSpam && SaberAbilities.parryReady(player);
+	}
+
+	/** Phase 29: one standing in her (or on her) is pushed out, a little each tick, as against anyone. */
+	private static void bodyContact(Figure f, ServerPlayer player, Vec3 me, double distance) {
+		double dy = me.y - f.y;
+
+		if (distance >= BODY || dy < -1.0 || dy > f.crew.height() + 0.3) {
+			return;
+		}
+
+		Vec3 away = distance < 1.0E-3 ? f.look().scale(-1.0) : new Vec3(me.x - f.x, 0.0, me.z - f.z).scale(1.0 / distance);
+		double by = (BODY - distance) * 0.4 + (dy > 1.0 ? 0.1 : 0.0);
+		player.push(away.x * by, 0.0, away.z * by);
+		player.hurtMarked = true;
+		bodyPushes++;
+	}
+
+	/** Phase 29: whether the scene at half her strength may begin now: the player stands on the floor, not in a dash. */
+	static boolean sceneReady(ServerPlayer player) {
+		return standing(player) && !SaberAbilities.evading(player) && !player.isPassenger();
+	}
+
+	/**
+	 * Phase 29: whether the player really stands on something: the floor right under their feet
+	 * (what the world holds, not only the on-ground flag their game sent last: after a teleport it
+	 * can be stale either way), and not on their way up.
+	 */
+	static boolean standing(ServerPlayer player) {
+		net.minecraft.world.phys.AABB box = player.getBoundingBox();
+		net.minecraft.world.phys.AABB under = new net.minecraft.world.phys.AABB(box.minX + 0.02, box.minY - 0.08, box.minZ + 0.02, box.maxX - 0.02, box.minY + 0.01, box.maxZ - 0.02);
+		return player.getDeltaMovement().y < 0.05 && !player.level().noCollision(player, under);
+	}
+
+	/**
+	 * Phase 29: half her strength reached with the player in the air (or in a dash): she steps back
+	 * on guard and waits for them to land ({@link #SCENE_WAIT} at most); nothing hurts meanwhile.
+	 */
+	private static void sceneWaits(StorySession s, Figure f) {
+		f.health = PHASE_TWO;
+		ringStops(f);
+		f.throwFrom = null;
+		f.react = 0;
+		f.reactTicks = 0;
+		f.combo = 0;
+		f.hits = 0;
+		f.parried = 0;
+		f.burst = 0;
+		f.lunge = false;
+		act(f, GUARD, 0, 0);
+		f.cooldown = SCENE_WAIT + 10;
+		s.set(SCENE_PENDING);
+		s.timer("boss_pending", SCENE_WAIT);
+		scenesWaited++;
+		s.dirty = true;
+	}
+
+	/** Phase 29: each tick while the scene waits: she keeps her distance facing the player; when they stand (or the wait ran out), it begins. */
+	private static void scenePending(StorySession s, Figure f, ServerPlayer player, Vec3 me, ServerLevel level, Vec3 corner, double distance) {
+		Hits.tick(f, level, corner);
+		turn(f, me, TURN);
+
+		if (distance < 2.0) {
+			Stealth.step(f, f.position().add(f.position().subtract(me).normalize().scale(1.5)), Stealth.WALK, level, corner);
+		} else {
+			f.speed = 0.0F;
+		}
+
+		if (!sceneReady(player) && s.timer("boss_pending")) {
+			return;
+		}
+
+		if (!standing(player)) {
+			// Still in the air when the wait ran out: set down on the floor under them first.
+			setDown(player, level);
+		}
+
+		s.unset(SCENE_PENDING);
+		s.timers.remove("boss_pending");
+		lockStarts(s, f, player, player.position().subtract(corner), level, corner);
+	}
+
+	/** Phase 29: sets the player down on the floor under them (no flight left over), when there is one within reach. */
+	static boolean setDown(ServerPlayer player, ServerLevel level) {
+		Vec3 top = player.position().add(0.0, 0.1, 0.0);
+		net.minecraft.world.phys.BlockHitResult hit = level.clip(new net.minecraft.world.level.ClipContext(top, top.subtract(0.0, 12.0, 0.0),
+				net.minecraft.world.level.ClipContext.Block.COLLIDER, net.minecraft.world.level.ClipContext.Fluid.NONE,
+				net.minecraft.world.phys.shapes.CollisionContext.empty()));
+		player.setDeltaMovement(Vec3.ZERO);
+		player.hurtMarked = true;
+
+		if (hit.getType() == net.minecraft.world.phys.HitResult.Type.MISS) {
+			return false;
+		}
+
+		player.connection.teleport(player.getX(), hit.getLocation().y, player.getZ(), player.getYRot(), player.getXRot());
+		setDowns++;
+		return true;
+	}
+
+	/** Phase 29: remembers a move of hers (newest first). */
+	private static void remember(Figure f, int move) {
+		System.arraycopy(f.moves, 0, f.moves, 1, f.moves.length - 1);
+		f.moves[0] = move;
+
+		if (move >= 0 && move < MOVES_MADE.length) {
+			MOVES_MADE[move]++;
+		}
+	}
+
+	/** Phase 29, for the tests: how often she chose each move (by its number: the actions, a lunge, a shove, a turn). */
+	private static final int[] MOVES_MADE = new int[16];
+
+	static int[] movesForTest() {
+		return MOVES_MADE.clone();
+	}
+
+	/** Phase 29: how much she wants a move again: less right after it, a little less the time before. */
+	private static double fresh(Figure f, int move) {
+		return f.moves[0] == move ? 0.3 : f.moves[1] == move ? 0.6 : f.moves[2] == move ? 0.85 : 1.0;
 	}
 
 	/** On guard: circling at sword's length until she goes in (in the second phase sooner, and with more ways to attack). */
@@ -1028,6 +1491,18 @@ final class Finale {
 
 		// Phase 28: her throw is due (once or twice a fight): she keeps off to throw from there.
 		boolean throwDue = throwDue(s, f, phase);
+
+		// Phase 29: the player behind her for a moment (she noticed): she answers it, whatever else she meant to do.
+		if (f.behindTicks >= notice(s) && distance < BEHIND_NEAR && !s.timer("rear_answer")) {
+			rearAnswer(s, f, player, me, level, corner, distance, random);
+			return;
+		}
+
+		// Phase 29: one crowding her is shoved away (close pressure), also while she circles.
+		if (distance < SHOVE_NEAR && !s.timer("shove") && f.cooldown <= pause(f, phase) / 2 + 4) {
+			shoveStarts(s, f, level, corner);
+			return;
+		}
 
 		if (f.cooldown > 0) {
 			f.cooldown--;
@@ -1048,7 +1523,11 @@ final class Finale {
 			} else if (distance < 1.6) {
 				Stealth.step(f, f.position().add(f.position().subtract(me).normalize()), Stealth.WALK, level, corner);
 			} else {
-				// Circling: a step to the side.
+				// Circling: a step to the side (Phase 29: now and then the other way, not round and round one way).
+				if (random.nextInt(60) == 0) {
+					f.strafe = -f.strafe;
+				}
+
 				Vec3 to = f.position().subtract(me).normalize();
 				Vec3 side = new Vec3(-to.z, 0.0, to.x).scale(f.strafe);
 
@@ -1062,7 +1541,8 @@ final class Finale {
 
 		// Phase 28: the throw first, when it is due (else push and leap took every chance of it).
 		if (throwDue && clear && distance > THROW_NEAR && distance < THROW_TO) {
-			throwStarts(s, f, level, corner);
+			throwStarts(s, f, level, corner, random);
+			remember(f, THROW);
 			return;
 		}
 
@@ -1076,20 +1556,19 @@ final class Finale {
 			return;
 		}
 
+		// Phase 29: what she does next is chosen by weight among what she can do now (no fixed order:
+		// the order made her predictable), less what she did just now, more of what answers how the
+		// player fights (a guard held up all the time draws the push and the slam; one far off the
+		// leap, the lunge, the rush).
+		boolean turtle = guardTicks(s, player) >= TURTLE;
+		double[] weights = new double[15];
+
 		if (!s.timer("push") && distance > 2.5 && distance < 8.0 && clear && (phase >= 2 || f.health <= RING_FROM)) {
-			act(f, PUSH, HAND, HAND_TICKS);
-			f.windup = HAND_TICKS;
-			// (Phase 27: in the first phase too, rarer.)
-			s.timer("push", scaled(f, phase >= 2 ? PUSH_EVERY : PUSH_EVERY_FIRST));
-			return;
+			weights[PUSH] = 1.4 * (turtle ? 2.4 : 1.0) * fresh(f, PUSH);
 		}
 
 		if (phase >= 2 && !s.timer("leap") && distance > LEAP_FROM && distance < 9.0 && clear) {
-			act(f, LEAP, CROUCH, CROUCH_TICKS);
-			f.windup = CROUCH_TICKS;
-			f.lure = null;
-			s.timer("leap", scaled(f, LEAP_EVERY));
-			return;
+			weights[LEAP] = (distance > 6.0 ? 2.2 : 1.4) * fresh(f, LEAP);
 		}
 
 		// Phase 26: the ring's rush (not right after her leap or throw). Phase 27: in the first
@@ -1097,38 +1576,146 @@ final class Finale {
 		if ((phase >= 2 || f.health <= RING_FROM) && !s.timer("rush") && distance > RUSH_FROM && distance < RUSH_TO && clear
 				&& since(s, f, "leap", LEAP_EVERY, 50) && since(s, f, "throw", THROW_EVERY, 60)
 				&& (phase >= 2 || since(s, f, "push", PUSH_EVERY_FIRST, 60))) {
-			rushStarts(s, f, level, corner);
-			return;
+			weights[RUSH] = 1.3 * fresh(f, RUSH);
 		}
 
-		// Phase 26: in the first phase she lunges in with a thrust from a few steps away.
-		if (phase == 1 && !s.timer("lunge") && distance > LUNGE_FROM && distance < LUNGE_TO && clear) {
-			s.timer("lunge", LUNGE_EVERY);
-			f.pattern = -1;
-			f.combo = 1;
-			f.lunge = true;
-			blowStarts(f, THRUST, scaled(f, WINDUPS[1] + 4), level, s);
-			lunges++;
-			return;
+		// Phase 26: she lunges in with a thrust from a few steps away (Phase 29: in the second phase too, less often).
+		if (!s.timer("lunge") && distance > LUNGE_FROM && distance < LUNGE_TO && clear) {
+			weights[MOVE_LUNGE] = (phase == 1 ? 1.6 : 0.8) * fresh(f, MOVE_LUNGE);
+		}
+
+		// Phase 29: her slam, from the last fifth of her first phase on, with the player before her at its reach.
+		if ((phase >= 2 || f.health <= SLAM_FROM) && !s.timer("slam") && distance > 1.2 && distance < SLAM_REACH - 0.4 && clear
+				&& Math.abs(Mth.wrapDegrees(Crew.yaw(f.position(), me) - f.headYaw)) < 40.0F) {
+			weights[SLAM] = 1.3 * (turtle ? 2.8 : 1.0) * fresh(f, SLAM);
 		}
 
 		if (distance <= BLOW_REACH - 0.4) {
-			// A combo: one of her patterns (not the same twice running).
-			int[][] patterns = patterns(f, phase);
-			int pick = random.nextInt(patterns.length);
+			// Close: her blade work first of all (the pressure).
+			weights[WINDUP] = (distance < 2.0 ? 3.6 : 3.0) * Math.max(0.55, fresh(f, WINDUP));
+		}
 
-			if (pick == f.pattern && patterns.length > 1) {
-				pick = (pick + 1) % patterns.length;
+		double total = 0.0;
+
+		for (double weight : weights) {
+			total += weight;
+		}
+
+		if (total <= 0.0) {
+			if (!(clear && Stealth.step(f, me, 3.8, level, corner)) && !Stealth.go(f, me, 3.8, level, corner, s.time())) {
+				// Phase 28: out of her sight (round a corner, through a door) she comes the way round, as
+				// the troopers do, instead of standing at the wall between for the rest of the fight.
+				f.speed = 0.0F;
 			}
 
-			f.pattern = pick;
-			f.combo = patterns[pick].length;
-			blowStarts(f, patterns[pick][0], scaled(f, WINDUPS[phase]), level, s);
-		} else if (!(clear && Stealth.step(f, me, 3.8, level, corner)) && !Stealth.go(f, me, 3.8, level, corner, s.time())) {
-			// Phase 28: out of her sight (round a corner, through a door) she comes the way round, as
-			// the troopers do, instead of standing at the wall between for the rest of the fight.
-			f.speed = 0.0F;
+			return;
 		}
+
+		double roll = random.nextDouble() * total;
+		int move = WINDUP;
+
+		for (int m = 0; m < weights.length; m++) {
+			if (weights[m] <= 0.0) {
+				continue;
+			}
+
+			move = m;
+			roll -= weights[m];
+
+			if (roll < 0.0) {
+				break;
+			}
+		}
+
+		remember(f, move);
+
+		switch (move) {
+			case PUSH -> {
+				act(f, PUSH, HAND, HAND_TICKS);
+				f.windup = HAND_TICKS;
+				f.shove = false;
+				// (Phase 27: in the first phase too, rarer.)
+				s.timer("push", scaled(f, phase >= 2 ? PUSH_EVERY : PUSH_EVERY_FIRST));
+			}
+			case LEAP -> {
+				act(f, LEAP, CROUCH, CROUCH_TICKS);
+				f.windup = CROUCH_TICKS;
+				f.lure = null;
+				s.timer("leap", scaled(f, LEAP_EVERY));
+			}
+			case RUSH -> rushStarts(s, f, level, corner);
+			case MOVE_LUNGE -> {
+				s.timer("lunge", LUNGE_EVERY);
+				f.pattern = -1;
+				f.combo = 1;
+				f.lunge = true;
+				blowStarts(f, THRUST, scaled(f, WINDUPS[1] + 4), level, s);
+				lunges++;
+			}
+			case SLAM -> slamStarts(s, f, level, corner);
+			default -> {
+				// A combo: one of her patterns (not the same twice running).
+				int[][] patterns = patterns(f, phase);
+				int pick = random.nextInt(patterns.length);
+
+				if (pick == f.pattern && patterns.length > 1) {
+					pick = (pick + 1) % patterns.length;
+				}
+
+				f.pattern = pick;
+				f.combo = patterns[pick].length;
+				blowStarts(f, patterns[pick][0], scaled(f, WINDUPS[phase]), level, s);
+			}
+		}
+	}
+
+	/**
+	 * Phase 29: the player has been behind her for a moment: she whirls round with a blow that
+	 * reaches behind her, shoves one close away with a turn, or steps round to have them before her
+	 * again (by chance, not the same twice running).
+	 */
+	private static void rearAnswer(StorySession s, Figure f, ServerPlayer player, Vec3 me, ServerLevel level, Vec3 corner, double distance, RandomSource random) {
+		s.timer("rear_answer", 24);
+		rearAnswers++;
+		s.counters.merge("rear_answers", 1, Integer::sum);
+		double roll = random.nextDouble();
+
+		if (distance < SHOVE_NEAR + 0.3 && !s.timer("shove") && roll < 0.35 && f.moves[0] != MOVE_SHOVE) {
+			shoveStarts(s, f, level, corner);
+			return;
+		}
+
+		if (roll < 0.8 || f.moves[0] == MOVE_TURN && f.moves[1] == MOVE_TURN) {
+			turnaboutBlow(s, f, level, TURNABOUT);
+			return;
+		}
+
+		// A step round (away and to the side) while turning: the player is before her again.
+		Vec3 away = f.position().subtract(me);
+		away = away.lengthSqr() < 1.0E-4 ? f.look() : away.normalize();
+		Vec3 side = new Vec3(-away.z, 0.0, away.x).scale(f.strafe);
+
+		if (!Stealth.step(f, f.position().add(away.add(side).scale(1.2)), Stealth.WALK * 2.0, level, corner)) {
+			f.strafe = -f.strafe;
+		}
+
+		// (She turns as she steps: aware() turned her this tick already, quickly; no second turn on top.)
+		f.behindTicks = 0;
+		f.cooldown = Math.max(f.cooldown, 6);
+		remember(f, MOVE_TURN);
+	}
+
+	/** Phase 29: a quick shove with the Force at one too close (her hand comes up first: to be seen). */
+	private static void shoveStarts(StorySession s, Figure f, ServerLevel level, Vec3 corner) {
+		act(f, PUSH, HAND, scaled(f, SHOVE_TICKS));
+		f.windup = f.timer;
+		f.shove = true;
+		f.behindTicks = 0;
+		s.timer("shove", scaled(f, SHOVE_EVERY));
+		shoves++;
+		remember(f, MOVE_SHOVE);
+		Vec3 at = f.position().add(corner).add(0.0, 1.2, 0.0);
+		level.playSound(null, at.x, at.y, at.z, ShipInteriors.sound("saber.swing"), SoundSource.HOSTILE, 0.5F, 0.6F);
 	}
 
 	/**
@@ -1251,6 +1838,27 @@ final class Finale {
 		f.combo--;
 		f.lunge = false;
 		boolean evading = SaberAbilities.evading(player);
+		boolean turnabout = f.turnabout;
+		f.turnabout = false;
+
+		// Phase 29: a plain blow reaches before her and to her sides, not behind her (a spin all
+		// round, a turn-about blow round behind her): one who got behind her is not hit, but no
+		// opening comes of it either: she whirls round at once.
+		Vec3 flat = new Vec3(me.x - f.x, 0.0, me.z - f.z);
+		boolean outside = flat.lengthSqr() > 0.09 && Math.toDegrees(Math.acos(Mth.clamp(flat.normalize().dot(f.look()), -1.0, 1.0))) > arc(f.attack, turnabout);
+
+		if (outside && !evading && distance <= reach && Math.abs(me.y - f.y) <= 2.0) {
+			level.playSound(null, at.x, at.y, at.z, ShipInteriors.sound("saber.swing"), SoundSource.HOSTILE, 0.6F, 0.75F);
+			s.counters.merge("blow_behind", 1, Integer::sum);
+
+			if (f.combo > 0) {
+				blowStarts(f, nextKind(f, phase, random), follow(f, phase), level, s);
+			} else {
+				turnaboutBlow(s, f, level, TURNABOUT);
+			}
+
+			return;
+		}
 
 		if (distance > reach || evading || Math.abs(me.y - f.y) > 2.0) {
 			// Missed: the player stepped back or dodged.
@@ -1263,7 +1871,7 @@ final class Finale {
 			}
 
 			if (f.combo > 0) {
-				blowStarts(f, nextKind(f, phase, random), follow(f, phase), level, s);
+				blowStarts(f, nextKind(f, phase, random), follow(f, phase) + random.nextInt(3) - 1, level, s);
 			} else {
 				act(f, OPEN_UP, STAGGER, opening(f, OPENINGS[phase] - (evading ? 0 : 6)));
 				f.hits = 0;
@@ -1279,8 +1887,9 @@ final class Finale {
 
 		if (guardTicks >= 0 && facing) {
 			// Phase 28: a guard already shaking parries nothing perfectly any more; each blow costs stamina.
-			boolean perfect = guardTicks <= PERFECT && !shaky(player);
-			int held = strain(s, f, player, perfect ? STRAIN_PERFECT : f.attack == SPIN ? STRAIN_SPIN : phase >= 2 ? STRAIN_BLOW_2 : STRAIN_BLOW, at, level);
+			// (Phase 29: nor one worn out, or raised again at once; a perfect parry does not count as one more blow in a row.)
+			boolean perfect = guardTicks <= PERFECT && perfectReady(f, player);
+			int held = strain(s, f, player, perfect ? STRAIN_PERFECT : f.attack == SPIN ? STRAIN_SPIN : phase >= 2 ? STRAIN_BLOW_2 : STRAIN_BLOW, at, level, !perfect);
 
 			if (held == SaberAbilities.GUARD_BROKEN) {
 				// Kept up through blow after blow: the guard breaks, the blow comes through (weaker).
@@ -1320,7 +1929,7 @@ final class Finale {
 					player.hurtMarked = true;
 				}
 
-				blowStarts(f, nextKind(f, phase, random), follow(f, phase), level, s);
+				blowStarts(f, nextKind(f, phase, random), follow(f, phase) + random.nextInt(3) - 1, level, s);
 			} else {
 				// The last blow of the combo blocked: she staggers. The opening.
 				act(f, OPEN_UP, STAGGER, opening(f, OPENINGS[phase]));
@@ -1350,7 +1959,25 @@ final class Finale {
 	 * not, and -1 too while a guard she broke is still down (also one raised with the use key).
 	 */
 	static long guardTicks(StorySession s, ServerPlayer player) {
-		return s.timer("guard_broken") ? -1L : guardTicks(player);
+		// (Phase 29: nor while the stricter guard keeps a broken guard down.)
+		return s.timer("guard_broken") || SaberAbilities.guardLocked(player) ? -1L : guardTicks(player);
+	}
+
+	/**
+	 * Phase 29: how far round her a blow reaches (degrees off the way she faces, each side): a
+	 * thrust and an overhead blow before her, a sweep to her sides too, a turn-about blow round
+	 * behind her, a spin all round.
+	 */
+	static double arc(int attack, boolean turnabout) {
+		if (attack == SPIN) {
+			return 181.0;
+		}
+
+		if (turnabout) {
+			return 165.0;
+		}
+
+		return attack == SWEEP ? 115.0 : 80.0;
 	}
 
 	/** Phase 28: whether the player's guard shakes already (little stamina left): no perfect parry then. */
@@ -1365,8 +1992,13 @@ final class Finale {
 	 * heard, and said once a fight. Returns what {@link SaberAbilities#strainGuard} did.
 	 */
 	private static int strain(StorySession s, Figure f, ServerPlayer player, float share, Vec3 at, ServerLevel level) {
+		return strain(s, f, player, share, at, level, true);
+	}
+
+	/** Phase 29: as above; {@code chained} false for a perfect parry (not one more blow in a row). */
+	private static int strain(StorySession s, Figure f, ServerPlayer player, float share, Vec3 at, ServerLevel level, boolean chained) {
 		StoryDifficulty difficulty = s.difficulty();
-		int held = SaberAbilities.strainGuard(player, share * difficulty.bossStrain, UNSTABLE, difficulty.guardBreak);
+		int held = SaberAbilities.strainGuard(player, share * difficulty.bossStrain, UNSTABLE, difficulty.guardBreak, chained);
 
 		if (held == SaberAbilities.GUARD_BROKEN) {
 			guardBreaks++;
@@ -1447,7 +2079,11 @@ final class Finale {
 	 * Phase 25: she draws her staff back over her shoulder to throw it, twirling (the warning: a
 	 * sound, the staff spinning in her hand, a word the first time).
 	 */
-	private static void throwStarts(StorySession s, Figure f, ServerLevel level, Vec3 corner) {
+	private static void throwStarts(StorySession s, Figure f, ServerLevel level, Vec3 corner, RandomSource random) {
+		// Phase 29: thrown at the chest (blocked or dashed under) or low at the legs (jumped over,
+		// dashed under, blocked): the first by chance, then the other way each time.
+		f.throwLow = f.thrown == 0 ? random.nextBoolean() : !f.throwLow;
+		f.flightHits = 0;
 		f.thrown++;
 		s.timers.remove("throw_back");
 		ringGoes(s, f);
@@ -1476,16 +2112,22 @@ final class Finale {
 		f.speed = 0.0F;
 
 		if (f.windup > 0) {
+			// (Phase 29: she aims while she draws it back.)
+			turn(f, me, 10.0F);
+
 			if (--f.windup > 0) {
 				return;
 			}
 
 			// Let go.
 			Vec3 look = f.look();
-			Vec3 start = f.position().add(corner).add(0.0, 1.45, 0.0).add(look.scale(0.35)).add(new Vec3(-look.z, 0.0, look.x).scale(-0.3));
-			Vec3 target = player.position().add(0.0, 1.0, 0.0);
+			// (Phase 29: thrown low from low down, skimming at shin height: a jump clears it.)
+			Vec3 start = f.position().add(corner).add(0.0, f.throwLow ? 0.6 : 1.45, 0.0).add(look.scale(0.35)).add(new Vec3(-look.z, 0.0, look.x).scale(-0.3));
+			Vec3 target = player.position().add(0.0, f.throwLow ? 0.25 : 1.0, 0.0);
 			Vec3 dir = target.subtract(start).normalize();
-			Vec3 far = target.add(dir.scale(THROW_PAST));
+			// (Phase 29: a low throw skims on level past the player, not down into the floor.)
+			Vec3 flatDir = new Vec3(dir.x, 0.0, dir.z).lengthSqr() < 1.0E-4 ? dir : new Vec3(dir.x, 0.0, dir.z).normalize();
+			Vec3 far = target.add((f.throwLow ? flatDir : dir).scale(THROW_PAST));
 			net.minecraft.world.phys.BlockHitResult wall = level.clip(new net.minecraft.world.level.ClipContext(start, far,
 					net.minecraft.world.level.ClipContext.Block.COLLIDER, net.minecraft.world.level.ClipContext.Fluid.NONE, player));
 
@@ -1512,8 +2154,7 @@ final class Finale {
 			return;
 		}
 
-		f.turnTowards(me, 8.0F, true);
-		f.headYaw = Crew.yaw(f.position(), me);
+		turn(f, me, 8.0F);
 		int t = ++f.throwAge;
 		Vec3 was = StaffThrow.at(f.throwFrom, f.throwFar, f.throwHand, f.throwOut, f.throwBack, t - 1);
 		Vec3 now = StaffThrow.at(f.throwFrom, f.throwFar, f.throwHand, f.throwOut, f.throwBack, t);
@@ -1523,9 +2164,19 @@ final class Finale {
 		}
 
 		int leg = t <= f.throwOut ? 1 : 2;
-		net.minecraft.world.phys.AABB body = player.getBoundingBox().inflate(THROW_HIT - 0.3);
+		// (Phase 29: the low throw reaches round the player as the high one, but hardly below their
+		// feet: in the air over it one is not hit. The high one is gone under with a dash.)
+		net.minecraft.world.phys.AABB box = player.getBoundingBox();
+		double round = THROW_HIT - 0.3;
+		net.minecraft.world.phys.AABB body = f.throwLow
+				? new net.minecraft.world.phys.AABB(box.minX - round, box.minY - 0.05, box.minZ - round, box.maxX + round, box.maxY + round, box.maxZ + round)
+				: box.inflate(round);
 
-		if ((f.throwHit & leg) == 0 && (body.contains(now) || body.clip(was, now).isPresent())) {
+		// (Phase 29: the low throw hits at most once: struck on its way out, one is not struck again
+		// from behind as it is pulled back up over one's head.)
+		boolean spent = f.throwLow ? f.throwHit != 0 : (f.throwHit & leg) != 0;
+
+		if (!spent && (body.contains(now) || body.clip(was, now).isPresent())) {
 			f.throwHit |= leg;
 			throwMeets(s, f, player, level, corner, now);
 		}
@@ -1605,15 +2256,14 @@ final class Finale {
 	private static void rushTick(StorySession s, Figure f, ServerPlayer player, Vec3 me, ServerLevel level, Vec3 corner) {
 		if (f.windup > 0) {
 			f.speed = 0.0F;
-			f.turnTowards(me, 12.0F, true);
-			f.headYaw = Crew.yaw(f.position(), me);
+			turn(f, me, 12.0F);
 			--f.windup;
 			return;
 		}
 
 		// She turns after the player only slowly while she drives on (a step aside gets one out of her way).
-		f.turnTowards(me, 4.5F, true);
-		f.headYaw = Crew.yaw(f.position(), me);
+		// (Phase 29: really slowly: her head no longer snaps to the player, so she drives where she faces.)
+		turn(f, me, 4.5F);
 		Vec3 ahead = f.position().add(f.look().scale(2.0));
 		boolean moved = Stealth.step(f, ahead, RUSH_SPEED, level, corner);
 		Vec3 at = f.position().add(corner).add(0.0, 1.3, 0.0);
@@ -1657,8 +2307,8 @@ final class Finale {
 
 		if (guard >= 0 && facing) {
 			// Phase 28: the whirling disc driven into the guard costs the most stamina.
-			boolean perfect = guard <= PERFECT && !shaky(player);
-			int held = strain(s, f, player, perfect ? STRAIN_PERFECT : STRAIN_RUSH, at, level);
+			boolean perfect = guard <= PERFECT && perfectReady(f, player);
+			int held = strain(s, f, player, perfect ? STRAIN_PERFECT : STRAIN_RUSH, at, level, !perfect);
 
 			if (held == SaberAbilities.GUARD_BROKEN) {
 				rushHits++;
@@ -1729,6 +2379,31 @@ final class Finale {
 		s.counters.merge("parried", 1, Integer::sum);
 	}
 
+	/**
+	 * Phase 29, for the tests: strokes from behind that hit, and those turned aside; her turn-about
+	 * blows, her answers to one behind her; shoves; the player pushed out of her; slams begun,
+	 * dodged, hit, blocked; strokes dodged while her staff was away; the scene waiting for the
+	 * player to land, and the player set down on the floor.
+	 */
+	private static int rearHits;
+	private static int rearParries;
+	private static int turnabouts;
+	private static int rearAnswers;
+	private static int shoves;
+	private static int bodyPushes;
+	private static int slams;
+	private static int slamMisses;
+	private static int slamHits;
+	private static int slamBlocks;
+	private static int flightEvasions;
+	private static int scenesWaited;
+	private static int setDowns;
+
+	static int[] phase29ForTest() {
+		return new int[] {rearHits, rearParries, turnabouts, rearAnswers, shoves, bodyPushes, slams, slamMisses, slamHits, slamBlocks, flightEvasions,
+				scenesWaited, setDowns};
+	}
+
 	private static int rushes;
 	/** Phase 28: the ring set going and stopped; guards strained and broken. */
 	private static int ringStarted;
@@ -1753,23 +2428,199 @@ final class Finale {
 		}
 	}
 
+	// --- Phase 29: the slam -------------------------------------------------------------------------
+
+	/** Her slam begins: the blade goes up high in both hands, she crouches, the floor before her begins to glow. */
+	private static void slamStarts(StorySession s, Figure f, ServerLevel level, Vec3 corner) {
+		int wind = scaled(f, SLAM_WIND);
+		act(f, SLAM, OVERHEAD, wind);
+		f.windup = wind;
+		f.slamDir = null;
+		f.react(Figure.SLAM, wind);
+		s.timer("slam", scaled(f, SLAM_EVERY));
+		slams++;
+		s.counters.merge("slams", 1, Integer::sum);
+		Vec3 at = f.position().add(corner).add(0.0, 1.6, 0.0);
+		level.playSound(null, at.x, at.y, at.z, ShipInteriors.sound("story.ring_spin"), SoundSource.HOSTILE, 1.0F, 0.6F);
+		level.playSound(null, at.x, at.y, at.z, ShipInteriors.sound("saber.swing"), SoundSource.HOSTILE, 0.9F, 0.5F);
+		Story.cue(s, Story.CUE_DUEL, "slam_wind", "", wind, java.util.List.of(at));
+	}
+
+	/**
+	 * Each tick of the slam's wind-up: she aims at the player (slowly), until its way is set a few
+	 * ticks before it falls; the floor glows along the arc it will strike, further out the nearer it
+	 * comes. Then it falls.
+	 */
+	private static void slamTick(StorySession s, Figure f, ServerPlayer player, Vec3 me, ServerLevel level, Vec3 corner, int phase) {
+		f.speed = 0.0F;
+
+		if (f.windup > SLAM_LOCK) {
+			turn(f, me, 7.0F);
+		} else if (f.slamDir == null) {
+			f.slamDir = f.look();
+		}
+
+		Vec3 dir = f.slamDir != null ? f.slamDir : f.look();
+		float progress = 1.0F - (float) f.windup / Math.max(1, f.timer);
+
+		if (f.windup % 2 == 0) {
+			// The warning on the floor: the arc it will strike, drawn out as the wind-up goes on.
+			double reach = 1.0 + (SLAM_REACH - 1.0) * Math.min(1.0, progress * 1.3);
+			net.minecraft.core.particles.DustParticleOptions glow = new net.minecraft.core.particles.DustParticleOptions(0xFF3A1E, 1.1F);
+
+			for (int k = -3; k <= 3; k++) {
+				double a = Math.toRadians(SLAM_ARC * k / 3.0);
+				Vec3 ray = new Vec3(dir.x * Math.cos(a) - dir.z * Math.sin(a), 0.0, dir.x * Math.sin(a) + dir.z * Math.cos(a));
+				Vec3 p = f.position().add(ray.scale(reach)).add(corner).add(0.0, 0.08, 0.0);
+				level.sendParticles(glow, p.x, p.y, p.z, 1, 0.05, 0.0, 0.05, 0.0);
+			}
+		}
+
+		if (--f.windup <= 0) {
+			slamFalls(s, f, player, me, level, corner, phase, dir);
+		}
+	}
+
+	/**
+	 * The slam falls: the shock wave runs out before her. Out of its way (a step aside, behind her,
+	 * further than it reaches), in a dash or in the air over it, one is not touched; on guard it
+	 * costs much stamina and throws one back; else it hurts more than any blow. Afterwards her
+	 * blade is stuck in the floor a moment.
+	 */
+	private static void slamFalls(StorySession s, Figure f, ServerPlayer player, Vec3 me, ServerLevel level, Vec3 corner, int phase, Vec3 dir) {
+		f.slamDir = null;
+		f.react = 0;
+		f.reactTicks = 0;
+		Vec3 impact = f.position().add(dir.scale(1.3)).add(corner).add(0.0, 0.1, 0.0);
+		level.playSound(null, impact.x, impact.y, impact.z, ShipInteriors.sound("story.clash_big"), SoundSource.HOSTILE, 1.4F, 0.5F);
+		level.playSound(null, impact.x, impact.y, impact.z, ShipInteriors.sound("saber.push"), SoundSource.HOSTILE, 1.1F, 0.6F);
+
+		for (int k = -3; k <= 3; k++) {
+			double a = Math.toRadians(SLAM_ARC * k / 3.0);
+			Vec3 ray = new Vec3(dir.x * Math.cos(a) - dir.z * Math.sin(a), 0.0, dir.x * Math.sin(a) + dir.z * Math.cos(a));
+
+			for (double r = 1.0; r <= SLAM_REACH; r += 0.9) {
+				Vec3 p = f.position().add(ray.scale(r)).add(corner).add(0.0, 0.15, 0.0);
+				level.sendParticles(ParticleTypes.CLOUD, p.x, p.y, p.z, 1, 0.1, 0.05, 0.1, 0.02);
+				level.sendParticles(ParticleTypes.ELECTRIC_SPARK, p.x, p.y, p.z, 2, 0.15, 0.1, 0.15, 0.25);
+			}
+		}
+
+		Story.cue(s, Story.CUE_DUEL, "slam", "", f.id, java.util.List.of(impact));
+		Vec3 flat = new Vec3(me.x - f.x, 0.0, me.z - f.z);
+		double distance = flat.length();
+		// (Right at her the wave catches one before her or at her side, not one pressed against her back.)
+		double off = distance < 1.0E-3 ? 0.0 : Math.toDegrees(Math.acos(Mth.clamp(flat.scale(1.0 / distance).dot(dir), -1.0, 1.0)));
+		boolean inArc = distance <= SLAM_REACH && (off <= SLAM_ARC || distance < 0.8 && off <= 90.0) && Math.abs(me.y - f.y) < 1.5;
+		boolean jumped = !player.onGround() && me.y - f.y > 0.45;
+		boolean evading = SaberAbilities.evading(player);
+
+		if (!inArc || jumped || evading) {
+			slamMisses++;
+			s.counters.merge("slam_dodged", 1, Integer::sum);
+
+			if (evading || jumped) {
+				Story.cue(s, Story.CUE_DUEL, "dodged", "", f.id);
+			}
+
+			act(f, OPEN_UP, STAGGER, opening(f, OPENINGS[phase] + SLAM_OPENING));
+			f.hits = 0;
+			f.parried = 0;
+			return;
+		}
+
+		Vec3 back = distance < 1.0E-3 ? dir : flat.scale(1.0 / distance);
+		Vec3 look = player.getLookAngle();
+		boolean facing = new Vec3(look.x, 0.0, look.z).normalize().dot(back.scale(-1.0)) > 0.35;
+		long guard = guardTicks(s, player);
+
+		if (guard >= 0 && facing) {
+			boolean perfect = guard <= PERFECT && perfectReady(f, player);
+			int held = strain(s, f, player, perfect ? STRAIN_PERFECT * 2.0F : STRAIN_SLAM, impact, level, !perfect);
+
+			if (held == SaberAbilities.GUARD_BROKEN) {
+				slamHits++;
+				s.counters.merge("slam_hit", 1, Integer::sum);
+				breaksThrough(s, f, player, me, level, corner, SLAM_DAMAGE * 0.7F);
+				act(f, RECOIL, 0, 12);
+				return;
+			}
+
+			slamBlocks++;
+			s.counters.merge(perfect ? "perfect" : "slam_blocked", 1, Integer::sum);
+			s.focus = Math.min(1.0F, s.focus + (perfect ? 0.5F : FOCUS_BLOCK));
+			Story.cue(s, Story.CUE_DUEL, perfect ? "perfect" : "strained", "", f.id, java.util.List.of(impact));
+			player.push(back.x * (perfect ? 0.35 : 0.9), 0.15, back.z * (perfect ? 0.35 : 0.9));
+			player.hurtMarked = true;
+			act(f, OPEN_UP, STAGGER, opening(f, OPENINGS[phase] + (perfect ? SLAM_OPENING + 6 : 0)));
+			f.hits = 0;
+			f.parried = 0;
+			return;
+		}
+
+		slamHits++;
+		s.counters.merge("slam_hit", 1, Integer::sum);
+		s.counters.merge("duel_hurt", 1, Integer::sum);
+		float damage = SLAM_DAMAGE * f.power;
+		player.hurtServer(level, level.damageSources().generic(), damage);
+		player.push(back.x * 0.9, 0.35, back.z * 0.9);
+		player.hurtMarked = true;
+		level.sendParticles(ParticleTypes.ELECTRIC_SPARK, player.getX(), player.getY() + 0.6, player.getZ(), 16, 0.2, 0.2, 0.2, 0.35);
+		Story.cue(s, Story.CUE_DUEL, "hurt", "", Math.round(damage), java.util.List.of(f.position().add(corner)));
+		act(f, RECOIL, 0, 12);
+	}
+
+	/** Phase 29, for the tests: she begins her slam now. */
+	static void slamForTest(StorySession s, Figure f) {
+		ServerLevel level = Chapter1.interiors(s);
+
+		if (level != null) {
+			slamStarts(s, f, level, Vec3.atLowerCornerOf(s.origin(f.ship)));
+		}
+	}
+
 	/** A push with the Force: the guard takes most of it. */
 	private static void push(StorySession s, Figure f, ServerPlayer player, ServerLevel level, Vec3 corner) {
 		Vec3 me = player.position().subtract(corner);
-		Vec3 away = new Vec3(me.x - f.x, 0.0, me.z - f.z).normalize();
+		Vec3 away = new Vec3(me.x - f.x, 0.0, me.z - f.z);
+		away = away.lengthSqr() < 1.0E-4 ? f.look() : away.normalize();
+		// Phase 29: the short shove at one too close (who stepped away from her hand in time escapes it).
+		boolean shove = f.shove;
+		Vec3 at = f.position().add(corner).add(0.0, 1.2, 0.0);
+
+		if (shove && Math.hypot(me.x - f.x, me.z - f.z) > 3.0) {
+			level.playSound(null, at.x, at.y, at.z, ShipInteriors.sound("saber.push"), SoundSource.HOSTILE, 0.6F, 1.0F);
+			return;
+		}
+
 		boolean guard = guardTicks(s, player) >= 0;
-		double strength = guard ? 0.5 : 1.4;
-		player.push(away.x * strength, guard ? 0.1 : 0.35, away.z * strength);
+		float damage = (shove ? SHOVE_DAMAGE : PUSH_DAMAGE) * f.power;
+
+		if (guard) {
+			// Phase 29: the guard takes most of it, but not for nothing: it costs stamina too.
+			int held = strain(s, f, player, shove ? STRAIN_SHOVE : STRAIN_PUSH, at, level);
+
+			if (held == SaberAbilities.GUARD_BROKEN) {
+				breaksThrough(s, f, player, me, level, corner, damage * BREAK_DAMAGE);
+				level.playSound(null, at.x, at.y, at.z, ShipInteriors.sound("saber.push"), SoundSource.HOSTILE, 1.0F, 0.8F);
+				return;
+			}
+		}
+
+		double strength = shove ? guard ? 0.55 : 0.95 : guard ? 0.5 : 1.4;
+		player.push(away.x * strength, guard ? 0.1 : shove ? 0.22 : 0.35, away.z * strength);
 		player.hurtMarked = true;
 
 		if (!guard) {
 			// (Phase 27: by the difficulty, as her other attacks.)
-			float damage = PUSH_DAMAGE * f.power;
 			player.hurtServer(level, level.damageSources().generic(), damage);
 			Story.cue(s, Story.CUE_DUEL, "hurt", "", Math.round(damage), java.util.List.of(f.position().add(corner)));
 		}
 
-		Vec3 at = f.position().add(corner).add(0.0, 1.2, 0.0);
+		if (shove) {
+			s.counters.merge(guard ? "shove_blocked" : "shove_hit", 1, Integer::sum);
+		}
+
 		level.playSound(null, at.x, at.y, at.z, ShipInteriors.sound("saber.push"), SoundSource.HOSTILE, 1.0F, 0.8F);
 		level.sendParticles(ParticleTypes.CLOUD, at.x + away.x, at.y, at.z + away.z, 12, 0.3, 0.3, 0.3, 0.05);
 	}
@@ -1845,13 +2696,29 @@ final class Finale {
 		}
 
 		dir = dir.lengthSqr() < 1.0E-4 ? new Vec3(0.0, 0.0, 1.0) : dir.normalize();
-		Vec3 her = me.add(dir.scale(LOCK_DISTANCE));
 		double height = f.crew.height();
+		// Phase 29: from wherever it happens (beside her, behind her, by a wall): she steps to the
+		// nearest place before the player with room, floor and a clear view between them (the line
+		// to her first, then turned further and further round the player); only where there is none
+		// the player steps before her instead.
+		boolean placed = false;
 
-		if (Stealth.free(level, corner, her.x, f.y, her.z, height) && Hits.floor(level, corner, her.x, f.y, her.z)) {
-			f.x = her.x;
-			f.z = her.z;
-		} else {
+		for (double turn : new double[] {0.0, 25.0, -25.0, 50.0, -50.0, 80.0, -80.0, 115.0, -115.0, 150.0, -150.0, 180.0}) {
+			double a = Math.toRadians(turn);
+			Vec3 d = new Vec3(dir.x * Math.cos(a) - dir.z * Math.sin(a), 0.0, dir.x * Math.sin(a) + dir.z * Math.cos(a));
+			Vec3 her = me.add(d.scale(LOCK_DISTANCE));
+
+			if (Stealth.free(level, corner, her.x, f.y, her.z, height) && Hits.floor(level, corner, her.x, f.y, her.z)
+					&& Stealth.clear(level, corner.add(me.x, me.y + 1.3, me.z), corner.add(her.x, f.y + 1.3, her.z))) {
+				f.x = her.x;
+				f.z = her.z;
+				placed = true;
+				scenePlaced[turn == 0.0 ? 0 : 1]++;
+				break;
+			}
+		}
+
+		if (!placed) {
 			// No room for her there: the player steps before her instead (if there is room).
 			Vec3 mine = f.position().subtract(dir.scale(LOCK_DISTANCE));
 			Vec3 world = mine.add(corner);
@@ -1860,6 +2727,7 @@ final class Finale {
 					&& Hits.floor(level, corner, mine.x, me.y, mine.z)) {
 				player.connection.teleport(world.x, player.getY(), world.z, player.getYRot(), player.getXRot());
 				me = new Vec3(mine.x, me.y, mine.z);
+				scenePlaced[2]++;
 			}
 		}
 
@@ -1884,10 +2752,21 @@ final class Finale {
 	private static void holdForScene(StorySession s, ServerPlayer player, int t) {
 		if (t > BOSS_LOCK && t < BOSS_LOCK + BURST_LAND) {
 			// Thrown back by the burst: the flight is part of the scene.
+			s.sceneAt = null;
 			return;
 		}
 
-		if (t == BOSS_LOCK + BURST_LAND || s.sceneAt == null) {
+		if (s.sceneAt == null) {
+			// Phase 29: held only where they stand on the floor: never in the air. Still flying, they
+			// land first; if that takes too long, they are set down on the floor under them.
+			if (!standing(player) && t < BOSS_LOCK + BURST_LAND + 24 && t < BOSS_FILM - 2) {
+				return;
+			}
+
+			if (!standing(player) && player.level() instanceof ServerLevel level) {
+				setDown(player, level);
+			}
+
 			s.sceneAt = player.position();
 		}
 
@@ -1906,6 +2785,12 @@ final class Finale {
 
 	private static int scenesSettled;
 	private static int held;
+	/** Phase 29, for the tests: the scene set her before the player on the line between them, turned round the player, or moved the player. */
+	private static final int[] scenePlaced = new int[3];
+
+	static int[] scenePlacedForTest() {
+		return scenePlaced.clone();
+	}
 
 	/** Phase 26, for the tests: how often the scene's start set the two up, and how often the player was held in place. */
 	static int[] sceneHoldsForTest() {
@@ -1916,7 +2801,7 @@ final class Finale {
 	static void bossHitForTest(StorySession s, Figure f, ServerPlayer player) {
 		Vec3 corner = Vec3.atLowerCornerOf(s.origin(s.here));
 		Vec3 me = player.position().subtract(corner);
-		bossHit(s, f, player, me, (ServerLevel) player.level(), corner, f.position().add(corner).add(0.0, 1.2, 0.0), false);
+		bossHit(s, f, player, me, (ServerLevel) player.level(), corner, f.position().add(corner).add(0.0, 1.2, 0.0), false, false);
 	}
 
 	/** Phase 24: how often the blade lock's scene began (for the tests). */
@@ -2129,6 +3014,15 @@ final class Finale {
 	 * hand: she has lost. Then she runs (the film of her flight). Nobody kills her: she escapes.
 	 */
 	private static void disarm(StorySession s, Figure f, ServerPlayer player, Vec3 me, ServerLevel level, Vec3 corner) {
+		// Phase 29: the end begins cleanly whatever the player was doing: no guard, dash or swing
+		// going on, no run left over (a jump still comes down: the film follows them to the floor),
+		// and the guard's stricter rules end with the fight.
+		player.stopUsingItem();
+		SaberAbilities.interrupt(player);
+		player.setDeltaMovement(0.0, Math.min(0.0, player.getDeltaMovement().y), 0.0);
+		player.hurtMarked = true;
+		SaberAbilities.strictGuard(player, null);
+		s.unset(SCENE_PENDING);
 		act(f, ESCAPE, STAGGER, 0);
 		ringStops(f);
 		f.disarmed = true;
@@ -2258,7 +3152,9 @@ final class Finale {
 		int progress = switch (f.action) {
 			case WINDUP -> f.timer > 0 ? 31 * (f.timer - f.windup) / f.timer : 31;
 			case LEAP -> f.windup > 0 ? 31 * (CROUCH_TICKS - f.windup) / CROUCH_TICKS : 20;
-			case PUSH -> 31 * (HAND_TICKS - f.windup) / HAND_TICKS;
+			case PUSH -> f.shove ? 31 * Math.max(0, f.timer - f.windup) / Math.max(1, f.timer) : 31 * (HAND_TICKS - f.windup) / HAND_TICKS;
+			// Phase 29: her slam is shown as an overhead blow raised high (and the client's crouch from its reaction).
+			case SLAM -> f.timer > 0 ? 31 * (f.timer - f.windup) / f.timer : 31;
 			case OPEN_UP, ESCAPE -> 31;
 			case RECOIL -> f.attack == SPIN ? 31 * (RECOIL_TICKS - Math.max(0, f.timer)) / RECOIL_TICKS : 0;
 			case THROW -> 0;
@@ -2294,7 +3190,7 @@ final class Finale {
 		ServerLevel level = Chapter1.interiors(s);
 
 		if (level != null) {
-			throwStarts(s, f, level, Vec3.atLowerCornerOf(s.origin(f.ship)));
+			throwStarts(s, f, level, Vec3.atLowerCornerOf(s.origin(f.ship)), level.getRandom());
 		}
 	}
 

@@ -807,7 +807,8 @@ public class Phase28GameTest implements FabricClientGameTest {
 		SaberCraft.LOGGER.info("PHASE28 STRAIN on Normal: {}", outcomes);
 		check(!outcomes.isEmpty() && "held".equals(outcomes.get(0)), "a single block does not hold (" + outcomes + ")");
 		check(outcomes.contains("strained") && outcomes.indexOf("strained") < Math.max(0, outcomes.indexOf("broken")), "the guard does not shake before it breaks (" + outcomes + ")");
-		check(outcomes.contains("broken") && outcomes.indexOf("broken") >= 4, "blocking all the time does not break the guard, or breaks it too soon (" + outcomes + ")");
+		// (Phase 29: the stricter guard of her fight: holding it costs, blows in a row cost more each; a few blocks still hold.)
+		check(outcomes.contains("broken") && outcomes.indexOf("broken") >= 2, "blocking all the time does not break the guard, or breaks it too soon (" + outcomes + ")");
 		check(this.on(s -> StoryTesting.guardBroken(this.session(s))), "after the guard broke it can be raised at once");
 		check(!this.on(s -> SaberAbilities.isGuarding(this.me(s))), "the broken guard stays up");
 		this.context.waitTicks(3);

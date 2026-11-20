@@ -461,7 +461,7 @@ public final class Story {
 	 * lying beaten): a stable key and where they stand (world space, the feet), for the doors to
 	 * see who comes towards them.
 	 */
-	public static void figuresAt(BlockPos origin, java.util.function.BiConsumer<String, Vec3> out) {
+	public static void figuresAt(BlockPos origin, FigureSink out) {
 		StorySession session = at(origin);
 
 		if (session == null) {
@@ -470,12 +470,29 @@ public final class Story {
 
 		String ship = origin.equals(session.falcon) ? FALCON : DESTROYER;
 		Vec3 corner = Vec3.atLowerCornerOf(origin);
+		long time = session.time();
 
 		for (Figure figure : session.figures) {
 			if (ship.equals(figure.ship) && figure.mode != Figure.DOWN) {
-				out.accept(session.player + "/" + figure.id, figure.position().add(corner));
+				List<Vec3> intent = new ArrayList<>();
+
+				for (Vec3 point : figure.intent(time)) {
+					intent.add(point.add(corner));
+				}
+
+				out.accept(session.player + "/" + figure.id, figure.position().add(corner), intent, figure.saber && figure.hostile);
 			}
 		}
+	}
+
+	/**
+	 * Phase 29: one of the story's people for the doors: a stable key, where they stand (world
+	 * space, the feet), where they mean to walk next (world space, see {@link Figure#intent}), and
+	 * whether they fight with a saber (the boss: never a door by her moves in a fight).
+	 */
+	@FunctionalInterface
+	public interface FigureSink {
+		void accept(String key, Vec3 at, List<Vec3> intent, boolean duelist);
 	}
 
 	/** Phase 20: whether one of the people of the story whose ship has that plot corner is in a box (world space): doors open for them. */
@@ -568,6 +585,12 @@ public final class Story {
 	/** For the tests: how often the lift to the bridge stayed shut. */
 	public static int liftsRefusedForTest() {
 		return liftsRefused;
+	}
+
+	/** Phase 29: whether a story fight runs in that plot now (the doors are stricter for players then). */
+	public static boolean fightingAt(BlockPos origin) {
+		StorySession session = at(origin);
+		return session != null && session.fighting && origin.equals(session.here != null ? session.origin(session.here) : null);
 	}
 
 	/** Whether that door of a plot is locked by a story. */

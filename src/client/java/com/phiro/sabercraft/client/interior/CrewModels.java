@@ -113,6 +113,8 @@ final class CrewModels {
 	static final int THROWN = 12;
 	/** Phase 26: the ring's rush (as the server's {@code Figure.RING}): the ring spins up, then she drives in behind it. */
 	static final int RING = 13;
+	/** Phase 29: her slam winding up (as the server's {@code Figure.SLAM}): crouching, leaning back, the blade high. */
+	static final int SLAM = 14;
 	/** Phase 26: how much of the ring's rush is its spinning up (as the server's wind-up of 18 of its 42 ticks). */
 	static final float RING_WIND = 18.0F / 42.0F;
 
@@ -129,6 +131,8 @@ final class CrewModels {
 			case STUMBLE -> bell * 16.0F + Mth.sin(p * 13.0F) * 7.0F * (1.0F - p);
 			case CLASH -> bell * 12.0F;
 			case LOCK -> -10.0F + Mth.sin(t * 38.0F + seed) * 0.9F;
+			// Phase 29: the slam: she leans back as the blade goes up high, more and more (it falls forward when it ends).
+			case SLAM -> 9.0F * Mth.clamp(p * 1.6F, 0.0F, 1.0F) + Mth.sin(t * 30.0F + seed) * 0.6F * p;
 			// Thrown back by the blow (the first few ticks of it), then standing, stooped a little.
 			case DISARMED -> p < 0.08F ? p / 0.08F * 14.0F : Math.max(3.0F, 14.0F - (p - 0.08F) / 0.32F * 11.0F);
 			default -> 0.0F;

@@ -6,9 +6,9 @@ Stand: 26.10.2026, ergänzt am 15.11.2026. Als dieses Dokument entstand, war Sab
 
 | Ereignis | Was läuft | Dauer etwa |
 | --- | --- | --- |
-| Pull Request (jeder Push darauf) | Build und alle Client-Gametests | 50 min (Phase 18) |
+| Pull Request (jeder Push darauf) | Build und alle Client-Gametests | etwa 90 min (Phase 29; 50 min bei Phase 18) |
 | Push auf `main` (meist der Merge) | nur Build und JAR | 3 min |
-| Manuell: Actions > build > Run workflow | Build und alle Client-Gametests, Screenshots und Audio werden hochgeladen | 50 min |
+| Manuell: Actions > build > Run workflow | Build und alle Client-Gametests, Screenshots und Audio werden hochgeladen | etwa 90 min |
 | Push auf einen Branch ohne PR | nichts | – |
 | Nur `*.md` oder `docs/` geändert | nichts | – |
 
@@ -16,7 +16,7 @@ Ein neuer Push auf einen PR bricht dessen noch laufenden Lauf ab. Auf `main` wir
 
 ## Grenzen
 
-- **Zeitlimit:** Der Test-Schritt bricht nach 95 Minuten ab, der ganze Job nach 110 Minuten (seit Phase 25: der Lauf von PR #29 mit Phase 24 brauchte 68 der damals erlaubten 75 Minuten im Test-Schritt, und Phase 25 bringt `Phase25GameTest` mit etwa 5 Minuten dazu). Davor waren es 75 und 85 Minuten (seit Phase 20; vorher 60 und 70: der Lauf von PR #24 mit Phase 19 brauchte schon 50,6 Minuten im Test-Schritt, und Phase 20 bringt den Film und weitere Tests dazu). Ohne Limit lief ein hängender Test bisher 6 Stunden. Bis Phase 17 waren es 45 und 55 Minuten; die Tests von Phase 17 brauchten aber schon fast 43 Minuten, und mit Phase 18 sind es etwa 50. Der erste Lauf von PR #23 brach deshalb zu Beginn von `Phase18GameTest` ab, nachdem alle Klassen davor grün waren.
+- **Zeitlimit:** Der Test-Schritt bricht nach 115 Minuten ab, der ganze Job nach 130 Minuten (seit Phase 29: der Lauf von PR #33 mit Phase 28 brauchte 79 der damals erlaubten 95 Minuten im Test-Schritt, und `Phase29GameTest` bringt etwa 8 Minuten dazu). Davor waren es 95 und 110 Minuten (seit Phase 25: der Lauf von PR #29 mit Phase 24 brauchte 68 der damals erlaubten 75 Minuten im Test-Schritt, und Phase 25 bringt `Phase25GameTest` mit etwa 5 Minuten dazu). Davor waren es 75 und 85 Minuten (seit Phase 20; vorher 60 und 70: der Lauf von PR #24 mit Phase 19 brauchte schon 50,6 Minuten im Test-Schritt, und Phase 20 bringt den Film und weitere Tests dazu). Ohne Limit lief ein hängender Test bisher 6 Stunden. Bis Phase 17 waren es 45 und 55 Minuten; die Tests von Phase 17 brauchten aber schon fast 43 Minuten, und mit Phase 18 sind es etwa 50. Der erste Lauf von PR #23 brach deshalb zu Beginn von `Phase18GameTest` ab, nachdem alle Klassen davor grün waren.
 - **Artefakte:** Hochgeladen wird nur die JAR der Mod (nicht die Quellen-JAR), sie bleibt 5 Tage (seit Phase 25; vorher 7 Tage mit beiden JARs). Screenshots (ca. 0,57 GB) und die Audioaufnahme (ca. 0,2 GB) werden nur bei einem Fehlschlag oder einem manuellen Lauf hochgeladen und bleiben 3 Tage.
 - **Cache:** `setup-java` speichert den Gradle- und Loom-Cache. Er zählt nicht zum Artefaktspeicher.
 

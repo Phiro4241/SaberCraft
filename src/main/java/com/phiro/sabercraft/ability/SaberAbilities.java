@@ -110,10 +110,44 @@ public final class SaberAbilities {
 		long gripStart;
 		double gripDistance;
 		double gripBaseY;
+		/** Phase 29: the stricter guard of a hard fight (see {@link StrictGuard}), while {@code strictUntil} lasts. */
+		@Nullable StrictGuard strict;
+		long strictUntil = Long.MIN_VALUE / 2;
+		/** Phase 29: since when the guard (or a block with the use key) is held now, -1 when it is not. */
+		long blockStart = -1;
+		/** Phase 29: no stamina comes back before this (game time): the longer the guard was held, the later. */
+		long regenFrom = Long.MIN_VALUE / 2;
+		/** Phase 29: blows taken on the guard one right after the other, and when the last one was. */
+		int chain;
+		long chainAt = Long.MIN_VALUE / 2;
+		/** Phase 29: worn out (the guard broke): stamina comes back slower, the guard costs more, no perfect parry. */
+		boolean tired;
+		/** Phase 29: until when (game time) the guard cannot be raised after it broke. */
+		long lockedUntil = Long.MIN_VALUE / 2;
 
 		boolean guarding() {
 			return this.guardStart >= 0;
 		}
+
+		@Nullable StrictGuard strictNow(long now) {
+			return now <= this.strictUntil ? this.strict : null;
+		}
+	}
+
+	/**
+	 * Phase 29: the guard in a hard fight (the story's boss duel; free play keeps the rules of the
+	 * settings). Holding the guard costs stamina all the time ({@code holdDrain} a tick), blows taken
+	 * one right after the other cost more each ({@code chainStep} more per blow within
+	 * {@code chainWindow} ticks, at most {@code chainMax} times), stamina comes back only a while
+	 * after the guard came down ({@code regenDelay} ticks, and up to {@code regenDelayHeld} more the
+	 * longer it was held) and slower ({@code regenRate} of the usual), and a guard that broke leaves
+	 * the player worn out: it cannot be raised for {@code lockout} ticks, then costs more and parries
+	 * nothing perfectly, and stamina comes back slower still ({@code tiredRegen}) until
+	 * {@code tiredUntil} of it is back. Blocking stays a good defence at the right moment; holding
+	 * it up the whole time is not.
+	 */
+	public record StrictGuard(float holdDrain, int chainWindow, float chainStep, float chainMax, int regenDelay, int regenDelayHeld, float regenRate,
+			float tiredRegen, float tiredUntil, float tiredCost, int lockout) {
 	}
 
 	public static void init() {
@@ -305,6 +339,20 @@ public final class SaberAbilities {
 
 		// Out of breath: the ability waits until enough stamina is back.
 		float cost = cost(config, ability, style);
+		StrictGuard strict = state.strictNow(now);
+
+		if (ability == SaberAbility.GUARD && strict != null) {
+			// Phase 29: a broken guard stays down a moment; worn out, raising it costs more.
+			if (now < state.lockedUntil) {
+				sendCooldown(player, state, ability, now);
+				broadcast(player, new AbilityEventPayload(player.getId(), SaberAbility.GUARD, AbilityEventPayload.Event.STOP));
+				return;
+			}
+
+			if (state.tired) {
+				cost *= strict.tiredCost();
+			}
+		}
 
 		if (config.staminaEnabled && state.stamina < cost) {
 			sendCooldown(player, state, ability, now);
@@ -437,13 +485,153 @@ public final class SaberAbilities {
 			return;
 		}
 
-		if (!state.guarding() && state.gripTarget == null && now - state.staminaUsedAt >= config.staminaRegenDelay && state.stamina < config.staminaMax) {
+		StrictGuard strict = state.strictNow(now);
+
+		if (strict != null) {
+			strictStamina(player, state, config, strict, now);
+		} else if (!state.guarding() && state.gripTarget == null && now - state.staminaUsedAt >= config.staminaRegenDelay && state.stamina < config.staminaMax) {
 			state.stamina = Math.min(config.staminaMax, state.stamina + config.staminaRegen);
 		}
 
 		if (Math.abs(state.stamina - state.sentStamina) >= 1.0F || state.stamina >= config.staminaMax && state.sentStamina < config.staminaMax) {
 			sendStamina(player, state);
 		}
+	}
+
+	/** Phase 29: whether the player blocks now: the guard up, or the saber held up with the use key. */
+	private static boolean blocking(ServerPlayer player, State state) {
+		return state.guarding() || player.isUsingItem() && SaberVariant.canHold(player.getUseItem());
+	}
+
+	/** Phase 29: stamina under the stricter guard (see {@link StrictGuard}), each tick. */
+	private static void strictStamina(ServerPlayer player, State state, AbilityConfig config, StrictGuard strict, long now) {
+		if (!state.guarding() && player.isUsingItem() && SaberVariant.canHold(player.getUseItem())) {
+			// A broken guard cannot be held up with the use key either, for that moment; nor raised
+			// with it without the stamina the guard key would need (worn out: more), as the key's guard.
+			float need = config.guardCost * (state.tired ? strict.tiredCost() : 1.0F);
+
+			if (now < state.lockedUntil || state.blockStart < 0 && config.staminaEnabled && state.stamina < need) {
+				player.stopUsingItem();
+			}
+		}
+
+		boolean blocking = blocking(player, state);
+
+		if (blocking) {
+			if (state.blockStart < 0) {
+				state.blockStart = now;
+			}
+
+			state.stamina = Math.max(0.0F, state.stamina - strict.holdDrain() * config.staminaMax / 100.0F);
+			state.staminaUsedAt = now;
+
+			if (state.stamina <= 0.0F) {
+				// Held up until nothing was left: the guard gives way by itself.
+				exhaust(player, state, now, strict.lockout());
+			}
+
+			return;
+		}
+
+		if (state.blockStart >= 0) {
+			// The guard came down: the longer it was held, the later stamina comes back.
+			long held = now - state.blockStart;
+			state.regenFrom = Math.max(state.regenFrom, now + strict.regenDelay() + Math.min(strict.regenDelayHeld(), held / 2));
+			state.blockStart = -1;
+		}
+
+		if (state.gripTarget == null && now >= state.regenFrom && now - state.staminaUsedAt >= config.staminaRegenDelay && state.stamina < config.staminaMax) {
+			float rate = config.staminaRegen * strict.regenRate() * (state.tired ? strict.tiredRegen() : 1.0F);
+			state.stamina = Math.min(config.staminaMax, state.stamina + rate);
+		}
+
+		if (state.tired && state.stamina >= strict.tiredUntil() * config.staminaMax) {
+			state.tired = false;
+		}
+	}
+
+	/** Phase 29: the guard gives way (stamina gone): down, locked for a moment, worn out, slowed. */
+	private static void exhaust(ServerPlayer player, State state, long now, int lockout) {
+		state.stamina = 0.0F;
+		state.staminaUsedAt = now;
+		state.tired = true;
+		state.lockedUntil = Math.max(state.lockedUntil, now + lockout);
+		state.chain = 0;
+		state.blockStart = -1;
+		StrictGuard strict = state.strictNow(now);
+		state.regenFrom = Math.max(state.regenFrom, now + (strict != null ? strict.regenDelay() : 0));
+
+		if (state.guarding()) {
+			stopGuard(player, state, now, lockout);
+		} else {
+			startCooldown(player, state, SaberAbility.GUARD, now, lockout);
+		}
+
+		player.stopUsingItem();
+		player.addEffect(new MobEffectInstance(MobEffects.SLOWNESS, 30, 1, false, false, true));
+		broadcast(player, new AbilityEventPayload(player.getId(), SaberAbility.GUARD, AbilityEventPayload.Event.GUARD_BREAK));
+		sendStamina(player, state);
+		exhausted++;
+	}
+
+	private static int exhausted;
+
+	/**
+	 * Phase 29: the story's boss duel turns the stricter guard on for a player (for the next few
+	 * ticks: it is renewed each tick of the duel, and lapses by itself when the duel ends), or off
+	 * at once with {@code null}.
+	 */
+	public static void strictGuard(ServerPlayer player, @Nullable StrictGuard strict) {
+		State state = STATES.computeIfAbsent(player.getUUID(), id -> new State());
+		long now = player.level().getGameTime();
+
+		if (strict == null) {
+			state.strict = null;
+			state.strictUntil = Long.MIN_VALUE / 2;
+			state.tired = false;
+			state.lockedUntil = Long.MIN_VALUE / 2;
+			state.regenFrom = Long.MIN_VALUE / 2;
+			state.chain = 0;
+			state.chainAt = Long.MIN_VALUE / 2;
+			state.blockStart = -1;
+			return;
+		}
+
+		state.strict = strict;
+		state.strictUntil = now + 5;
+	}
+
+	/** Phase 29: whether the player's guard is locked after it broke under the stricter guard. */
+	public static boolean guardLocked(Player player) {
+		State state = STATES.get(player.getUUID());
+		return state != null && state.strictNow(player.level().getGameTime()) != null && player.level().getGameTime() < state.lockedUntil;
+	}
+
+	/** Phase 29: whether the player is worn out after the guard broke (no perfect parry, slower stamina). */
+	public static boolean tired(Player player) {
+		State state = STATES.get(player.getUUID());
+		return state != null && state.strictNow(player.level().getGameTime()) != null && state.tired;
+	}
+
+	/**
+	 * Phase 29: whether the guard raised now may parry perfectly: it was down long enough before
+	 * (the settings' parry lockout: raising it over and over does not parry everything).
+	 */
+	public static boolean parryReady(Player player) {
+		State state = STATES.get(player.getUUID());
+		return state == null || !state.guarding() || state.parryWindow;
+	}
+
+	/** Phase 29, for tests: the stricter guard's state: blows in a row, worn out (1/0), locked ticks left, ticks until stamina comes back, guard breaks so far. */
+	public static long[] strictForTest(ServerPlayer player) {
+		State state = STATES.get(player.getUUID());
+		long now = player.level().getGameTime();
+
+		if (state == null) {
+			return new long[] {0, 0, 0, 0, exhausted};
+		}
+
+		return new long[] {state.chain, state.tired ? 1 : 0, Math.max(0L, state.lockedUntil - now), Math.max(0L, state.regenFrom - now), exhausted};
 	}
 
 	private static void spend(State state, AbilityConfig config, float cost, long now) {
@@ -998,6 +1186,13 @@ public final class SaberAbilities {
 		}
 	}
 
+	/** Only for tests (Phase 29): an ability ready again at once (its cooldown forgotten). */
+	public static void readyForTests(ServerPlayer player, SaberAbility ability) {
+		State state = STATES.computeIfAbsent(player.getUUID(), id -> new State());
+		state.readyAt.remove(ability);
+		sendCooldown(player, state, ability, player.level().getGameTime());
+	}
+
 	/** Only for tests: sets the stamina of a player. */
 	public static void setStaminaForTests(ServerPlayer player, float stamina) {
 		State state = STATES.computeIfAbsent(player.getUUID(), id -> new State());
@@ -1034,6 +1229,14 @@ public final class SaberAbilities {
 	 * With stamina turned off in the settings it always holds.
 	 */
 	public static int strainGuard(ServerPlayer player, float share, float unstable, int cooldown) {
+		return strainGuard(player, share, unstable, cooldown, true);
+	}
+
+	/**
+	 * Phase 29: as above; {@code chained} false for a perfectly timed parry: it neither counts as
+	 * one more blow in a row nor pays for the ones before (the run of blows starts again).
+	 */
+	public static int strainGuard(ServerPlayer player, float share, float unstable, int cooldown, boolean chained) {
 		AbilityConfig config = AbilityConfig.get();
 
 		if (!config.staminaEnabled) {
@@ -1043,8 +1246,30 @@ public final class SaberAbilities {
 		State state = STATES.computeIfAbsent(player.getUUID(), id -> new State());
 		long now = player.level().getGameTime();
 		float cost = share * config.staminaMax;
+		StrictGuard strict = state.strictNow(now);
+
+		if (strict != null) {
+			// Phase 29: blows one right after the other cost more each; worn out, more still.
+			if (chained) {
+				state.chain = now - state.chainAt <= strict.chainWindow() ? state.chain + 1 : 0;
+				state.chainAt = now;
+				cost *= Math.min(strict.chainMax(), 1.0F + strict.chainStep() * state.chain);
+			} else {
+				state.chain = 0;
+				state.chainAt = Long.MIN_VALUE / 2;
+			}
+
+			if (state.tired) {
+				cost *= strict.tiredCost();
+			}
+		}
 
 		if (state.stamina < cost) {
+			if (strict != null) {
+				exhaust(player, state, now, Math.max(cooldown, strict.lockout()));
+				return GUARD_BROKEN;
+			}
+
 			state.stamina = 0.0F;
 			state.staminaUsedAt = now;
 
@@ -1063,7 +1288,7 @@ public final class SaberAbilities {
 
 		spend(state, config, cost, now);
 		sendStamina(player, state);
-		return state.stamina < unstable * config.staminaMax ? GUARD_STRAINED : GUARD_HELD;
+		return state.stamina < unstable * config.staminaMax || state.tired ? GUARD_STRAINED : GUARD_HELD;
 	}
 
 	/**

@@ -182,12 +182,14 @@ final class DuelFilm {
 	 */
 	private static ArrivalFilm.Shot bossMid(float t, Vec3 player, Vec3 shadow, Vec3 axis, Vec3 side, Vec3 up, ArrivalFilm.Shot eye) {
 		Vec3 mid = player.lerp(shadow, 0.5).add(up.scale(1.35));
-		Vec3 eyeLook = eye.position().add(Vec3.directionFromRotation(eye.pitch(), eye.yaw()).scale(4.0));
 
 		if (t < 26.0F) {
+			// (Phase 29: no longer out of the player's eyes through their head, the body popping into
+			// the picture: the scene opens from black on this shot beside the two, gliding in a little.)
 			float u = ease(t / 26.0F);
+			Vec3 from = mid.add(side.scale(5.0)).add(up.scale(0.55)).subtract(axis.scale(1.2));
 			Vec3 to = mid.add(side.scale(4.4)).add(up.scale(0.35)).subtract(axis.scale(0.6));
-			return look(eye.position().lerp(to, u), eyeLook.lerp(mid, u));
+			return look(from.lerp(to, u), mid.add(up.scale(0.05 * u)));
 		}
 
 		if (t < 58.0F) {
@@ -200,9 +202,10 @@ final class DuelFilm {
 		}
 
 		if (t < DuelFilm.BOSS_LOCK) {
-			// Close on her, over the player's shoulder.
+			// Close on her, over the player's shoulder (Phase 29: a little further back: the player's
+			// head is in the picture, the camera not in it).
 			float u = ease((t - 58.0F) / (BOSS_LOCK - 58.0F));
-			Vec3 cam = player.add(up.scale(1.78)).subtract(axis.scale(0.55 - 0.3 * u)).add(side.scale(0.55));
+			Vec3 cam = player.add(up.scale(1.82)).subtract(axis.scale(0.95 - 0.25 * u)).add(side.scale(0.62));
 			return look(cam, shadow.add(up.scale(1.55)));
 		}
 
@@ -223,11 +226,73 @@ final class DuelFilm {
 			return look(cam, shadow.add(up.scale(1.3 + 0.15 * u)));
 		}
 
-		// Back over the player's shoulder into their eyes.
+		// Back over the player's shoulder (Phase 29: it stays there, closing in a little; the scene
+		// goes back into the player's eyes through a moment of black, not through their head).
 		float u = ease((t - BOSS_RETURN) / (BOSS_LENGTH - BOSS_RETURN));
-		Vec3 from = player.add(up.scale(1.95)).subtract(axis.scale(1.4)).add(side.scale(0.6));
-		Vec3 fromLook = shadow.add(up.scale(1.3));
-		return look(from.lerp(eye.position(), u), fromLook.lerp(eyeLook, u));
+		Vec3 cam = player.add(up.scale(1.95 - 0.1 * u)).subtract(axis.scale(1.7 - 0.3 * u)).add(side.scale(0.65));
+		return look(cam, shadow.add(up.scale(1.3)));
+	}
+
+	/**
+	 * Phase 29: where the shots of a film begin and end (ticks), for the film camera: a shot is
+	 * fitted into the rooms as a whole (see {@link FilmCamera}).
+	 */
+	static float[] span(String film, float t) {
+		float[] cuts = switch (film) {
+			case "duel" -> new float[] {0, 70, 140, 178, LENGTH};
+			case "duel_end" -> new float[] {0, 18, 56, 96, AT_TIE, EscapeFilm.TIE_LIFT, TIE_OUT, TIE_BACK, END_LENGTH};
+			case "boss_mid" -> new float[] {0, 26, 58, BOSS_LOCK, BOSS_REVEAL, BOSS_RETURN, BOSS_LENGTH};
+			case "takedown" -> new float[] {0, 24, 50, TAKEDOWN_LENGTH};
+			default -> new float[] {0, 100000};
+		};
+
+		for (int i = 1; i < cuts.length; i++) {
+			if (t < cuts[i]) {
+				return new float[] {cuts[i - 1], cuts[i]};
+			}
+		}
+
+		return new float[] {cuts[cuts.length - 2], cuts[cuts.length - 1]};
+	}
+
+	/**
+	 * Phase 29: the point a shot of a duel film is about (in the room: between the two, one of
+	 * them, the hilt on the floor), for the film camera; null for a shot not fitted (the look from
+	 * high in the hangar at her TIE lifting off: the hangar is open all round it).
+	 */
+	static @Nullable Vec3 subject(String film, float t, Vec3 player, Vec3 start, Vec3 shadow, @Nullable Vec3 tie) {
+		Vec3 up = new Vec3(0.0, 1.0, 0.0);
+		Vec3 between = player.lerp(shadow, 0.5).add(up.scale(1.3));
+
+		return switch (film) {
+			case "duel" -> t < 70.0F || t >= 178.0F ? between : shadow.add(up.scale(1.4));
+			case "boss_mid" -> t >= BOSS_REVEAL && t < BOSS_RETURN ? shadow.add(up.scale(1.3)) : between;
+			case "duel_end" -> {
+				if (t < 18.0F) {
+					yield player.lerp(start, 0.5).add(up.scale(1.2));
+				}
+
+				if (t < 56.0F) {
+					Vec3 land = StoryClient.hiltLanding();
+					yield land != null ? land.add(up.scale(0.4)) : shadow.add(up.scale(0.8));
+				}
+
+				if (t < 96.0F) {
+					yield shadow.add(up.scale(1.4));
+				}
+
+				if (t < AT_TIE) {
+					yield between;
+				}
+
+				if (t < EscapeFilm.TIE_LIFT) {
+					yield tie != null && shadow.distanceTo(tie) > 12.0 ? tie.add(2.7, -1.0, 0.0) : shadow.add(up.scale(1.2));
+				}
+
+				yield t >= TIE_BACK ? player.add(up.scale(1.3)) : null;
+			}
+			default -> between;
+		};
 	}
 
 	/**

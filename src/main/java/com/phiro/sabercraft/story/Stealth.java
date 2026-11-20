@@ -919,6 +919,8 @@ public final class Stealth {
 		}
 
 		Vec3 next = figure.pathIndex < figure.path.size() ? figure.path.get(figure.pathIndex) : goal;
+		// Phase 29: walking a way: where it leads is where they mean to go (the doors on it open).
+		figure.pathUsedAt = time;
 
 		if (step(figure, next, speed, level, corner)) {
 			return true;

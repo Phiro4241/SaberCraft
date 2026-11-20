@@ -154,6 +154,8 @@ public final class InteriorScene {
 		boolean relightAll;
 		/** Phase 20: how bright a story's ship is on its emergency lights (fades in and out). */
 		float storyDim = 1.0F;
+		/** Phase 29: rays through its rooms for the film camera (built when first asked for). */
+		@Nullable MeshRays rays;
 
 		Model(String key, int version, BlockPos origin, InteriorVisuals visuals) {
 			this.key = key;
@@ -508,6 +510,27 @@ public final class InteriorScene {
 			case ANIM_SHIMMER -> 0.85F + 0.15F * Mth.sin(seconds * 3.0F + (seed & 15) * 0.4F);
 			default -> 1.0F;
 		};
+	}
+
+	/**
+	 * Phase 29: the rays through the drawn rooms round that point (world space), for the film
+	 * camera; null where no detailed model is drawn there (the plain blocks then are the walls).
+	 */
+	public static @Nullable MeshRays rays(Vec3 point) {
+		for (Model model : MODELS.values()) {
+			if (!model.bounds.inflate(4.0).contains(point)) {
+				continue;
+			}
+
+			if (model.rays == null) {
+				model.rays = new MeshRays(model);
+				SaberCraft.LOGGER.info("Built the rays of the {} interior: {} quads in {} ms", model.key, model.rays.quads(), model.rays.buildMillis());
+			}
+
+			return model.rays;
+		}
+
+		return null;
 	}
 
 	// --- For tests -----------------------------------------------------------------------------
