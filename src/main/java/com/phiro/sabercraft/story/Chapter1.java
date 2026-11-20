@@ -65,6 +65,11 @@ public final class Chapter1 implements Chapter {
 	static final Vec3 FALCON_COCKPIT = new Vec3(43.5, FF, 25.5);
 	static final Vec3 FALCON_ENTRY = new Vec3(35.5, FF, 31.5);
 	static final Vec3 AIRLOCK = new Vec3(6.5, H, 10.0);
+	/**
+	 * Phase 27: the airlock's checkpoint: a little farther from its inner door (at 10.0 the player
+	 * was put within its reach, and the door to the maintenance room opened at once).
+	 */
+	static final Vec3 AIRLOCK_SAFE = new Vec3(6.5, H, 10.7);
 	static final Vec3 HIDEOUT = new Vec3(20.5, H, -4.5);
 	static final Vec3 REACTOR_FLOOR = new Vec3(28.8, R, 25.0);
 	/**
@@ -74,10 +79,21 @@ public final class Chapter1 implements Chapter {
 	 * the door, his back to it: one comes along the platform from the west behind him, or M-31
 	 * lures him off; from the bridges in the north and east he sees one coming.)
 	 */
-	static final Vec3 LAB_GUARD = new Vec3(46.2, R, 34.0);
-	/** Phase 26: the lab guard's watch: the east bridge most of the time, now and then the shaft. */
-	static final float LAB_GUARD_BRIDGE_YAW = 205.0F;
-	static final float LAB_GUARD_SHAFT_YAW = 165.0F;
+	static final Vec3 LAB_GUARD = new Vec3(41.8, R, 35.4);
+	/**
+	 * Phase 26: the lab guard's watch. Phase 27: Phase 26's post east of the way to the door (46.2,
+	 * 34.0) had the only way there and the door always behind him: he never saw anyone, and read as
+	 * a statue. Now he stands west of the way to the door, where one comes along the platform, and
+	 * looks in turn along the platform to the west (who comes over the bridges?), over the shaft and
+	 * to the east bridge, then back: while he looks east, one gets by behind him (or M-31 draws him
+	 * off, or one overpowers him from behind). Yaws and how long he holds each look (ticks).
+	 */
+	static final float LAB_GUARD_WAY_YAW = 105.0F;
+	static final float LAB_GUARD_SHAFT_YAW = 160.0F;
+	static final float LAB_GUARD_BRIDGE_YAW = 218.0F;
+	static final float[][] LAB_WATCH = {{LAB_GUARD_WAY_YAW, 80.0F}, {LAB_GUARD_SHAFT_YAW, 45.0F}, {LAB_GUARD_BRIDGE_YAW, 140.0F}, {LAB_GUARD_SHAFT_YAW, 45.0F}};
+	/** Phase 27: how far the lab's guard hears M-31 (a little further than most: he listens on watch). */
+	static final double LAB_GUARD_HEARING = 9.0;
 	/** Phase 26: the lab guard overpowered (kept with the checkpoints after it, as the detention's guard). */
 	static final String LAB_GUARD_DOWN = "lab_guard.down";
 	static final double LAB_DOOR_HEARD = 4.5;
@@ -87,6 +103,17 @@ public final class Chapter1 implements Chapter {
 	static final String[][] CRATES = {{"c3", "20"}, {"f9", "23"}, {"k7", "26"}};
 	/** Phase 20: by the stack of crates on the hangar's east side. */
 	static final Vec3 HANGAR_CRATES = new Vec3(57.3, H, -27.9);
+	/**
+	 * Phase 27: the checkpoint with the stick: the hangar's south-west corner beside the
+	 * containers, out of the patrols' way; and the flight control officer's round between the
+	 * consoles (he stood still, facing the door and the hatch: no way past him but a lure).
+	 */
+	static final Vec3 CRATE_SAFE = new Vec3(18.6, H, -64.3);
+	static final Vec3 FLIGHT_BEAT_SOUTH = new Vec3(12.0, H, -43.0);
+	static final Vec3 FLIGHT_BEAT_NORTH = new Vec3(12.0, H, -55.0);
+	static final double FLIGHT_BEAT_SPEED = 0.6;
+	/** Phase 27: how far the flight control officer hears M-31 (from the door, a lure reaches him). */
+	static final double FLIGHT_HEARING = 10.0;
 	/** Phase 20: safe places: the maintenance room's corner by the crates (behind the guard at Kestrel's hatch), the armory once its master is gone, the crawl way at the detention block's hatch. */
 	static final Vec3 MAINT_SAFE = new Vec3(3.5, H, -5.5);
 	static final Vec3 ARMORY_SAFE = new Vec3(50.5, H, -7.5);
@@ -95,12 +122,20 @@ public final class Chapter1 implements Chapter {
 	/** Phase 20: the reactor floor's wall comm (by the lift) and the caf dispenser beside it. */
 	static final Vec3 REACTOR_COMM = new Vec3(30.4, R, 21.2);
 	static final Vec3 CAF = new Vec3(30.9, R, 28.6);
-	/** Phase 20: by the cell console where R2-V7 was (behind the detention block's guard). */
-	static final Vec3 CONSOLE_SAFE = new Vec3(27.5, H, 7.6);
+	/**
+	 * Phase 20: by the cell console where R2-V7 was. Phase 27: behind the pillar on the block's west
+	 * side (at 27.5/7.6 the guard, since Phase 24 at his post by the door, looked straight at it
+	 * from his room look and caught the player within moments).
+	 */
+	static final Vec3 CONSOLE_SAFE = new Vec3(27.3, H, 5.5);
 	/** Phase 20: the guard's post in front of Kestrel's hatch (Mission 1), facing into the room. */
 	static final Vec3 HATCH_POST = new Vec3(10.5, H, -7.35);
-	/** Phase 20: the detention block: in the corridor behind its guard (after the cell), and where M-31 waits by the bench. */
-	static final Vec3 DETENTION_SAFE = new Vec3(31.5, H, 3.6);
+	/**
+	 * Phase 20: the detention block out of the cell (a file of Phase 19), and where M-31 waits by the
+	 * bench. Phase 27: behind the pillar as {@link #CONSOLE_SAFE} (in the corridor at 31.5/3.6 the
+	 * guard saw the player from both of his looks).
+	 */
+	static final Vec3 DETENTION_SAFE = new Vec3(27.3, H, 5.5);
 	static final Vec3 BENCH = new Vec3(32.5, H, 8.4);
 	/**
 	 * Phase 26: where Kestrel waits for the player at the crawl way out of the detention block:
@@ -154,7 +189,7 @@ public final class Chapter1 implements Chapter {
 				cp("m1.briefing", F, FALCON_LOUNGE, 150.0F, at(F, 19.2, FF + 1.0, 24.8)),
 				cp("m1.cockpit", F, FALCON_LOUNGE, 150.0F, at(F, 42.5, FF + 1.0, 21.7)),
 				cp("m1.ramp", F, FALCON_COCKPIT, 0.0F, at(F, 35.5, 4.0, 40.5)),
-				cp("m1.droid", D, AIRLOCK, 180.0F, at(D, 2.6, H + 0.4, -6.0)),
+				cp("m1.droid", D, AIRLOCK_SAFE, 180.0F, at(D, 2.6, H + 0.4, -6.0)),
 				cp("m1.distract", D, MAINT_SAFE, 90.0F, at(D, 10.5, H + 1.9, -7.4)),
 				step("m1.hatch", D, MAINT_SAFE, 90.0F, at(D, 10.5, H + 0.5, -8.6))),
 				List.of(new Mission.Optional("pad", s -> true)));
@@ -163,7 +198,9 @@ public final class Chapter1 implements Chapter {
 				cp("m2.kestrel", D, HIDEOUT, 90.0F, kestrel),
 				cp("m2.terminal", D, HIDEOUT, 90.0F, at(D, 18.0, H + 1.1, -1.4)),
 				cp("m2.drop", D, HIDEOUT, 90.0F, at(D, 10.5, H + 0.5, -34.0)),
-				step("m2.return", D, HIDEOUT, 90.0F, kestrel)),
+				// Phase 27: a checkpoint by the containers with the stick (caught on the way back, one
+				// had to find the right container all over again).
+				cp("m2.return", D, CRATE_SAFE, 180.0F, kestrel)),
 				List.of(new Mission.Optional("eavesdrop", s -> true)));
 
 		Mission m3 = new Mission("m3", List.of(
@@ -189,7 +226,7 @@ public final class Chapter1 implements Chapter {
 				cp("m5.route", D, HIDEOUT, 90.0F, null),
 				step("m5.cell", D, HIDEOUT, 90.0F, null),
 				cp("m5.r2", D, VENT_DETENTION, 270.0F, at(D, 27.5, H + 0.6, 9.4)),
-				cp("m5.cell1", D, CONSOLE_SAFE, 0.0F, at(D, 27.5, H + 1.0, 2.5)),
+				cp("m5.cell1", D, CONSOLE_SAFE, 180.0F, at(D, 27.5, H + 1.0, 2.5)),
 				cp("m5.back", D, new Vec3(27.3, H, 5.5), 90.0F, hideout)),
 				List.of(new Mission.Optional("prisoner", s -> s.has("droid.r2v7"))));
 
@@ -310,7 +347,116 @@ public final class Chapter1 implements Chapter {
 		people(s, list, m, step);
 		// Phase 21: the search patrols left by alarms of this mission.
 		Stealth.patrols(s, list);
+		// Phase 27: fewer or more enemies by the difficulty.
+		byDifficulty(s, list);
 		return list;
+	}
+
+	/**
+	 * Phase 27: the difficulty's enemies. The figures are made at a checkpoint or for a new step,
+	 * so nobody appears or vanishes in the middle of a scene. Easy: the hangar's patrol walks
+	 * alone (its second trooper stays away) and two of the finale's fighters are missing. Hard: a
+	 * second patrol walks each patrol route of the hangar deck half a round behind the first (the
+	 * routes are walkable, so they never stand in a wall), and the finale's sections have a
+	 * fighter more beside some of the others (only where there is room).
+	 */
+	private static void byDifficulty(StorySession s, List<Figure> list) {
+		int more = s.difficulty().enemies;
+
+		if (more == 0) {
+			return;
+		}
+
+		if (more < 0) {
+			list.removeIf(figure -> EASY_AWAY.contains(figure.key) || figure.key.startsWith("crew:") && pairedPatrol(figure));
+			return;
+		}
+
+		List<Figure> twins = new ArrayList<>();
+
+		for (Figure figure : list) {
+			Crew c = figure.crew;
+
+			if (figure.key.startsWith("crew:") && Crew.TROOPER.equals(c.kind()) && "patrol".equals(c.role()) && c.path().size() > 1 && c.y() < 100.0) {
+				Crew twin = new Crew(c.kind(), c.pose(), c.x(), c.y(), c.z(), c.yaw(), c.path(), c.speed(), c.phase() + loop(c.path()) / 2.0, c.role());
+				Figure extra = new Figure(0, figure.key + ":hard", twin);
+				extra.ship = figure.ship;
+				extra.observer = figure.observer;
+				extra.talks = false;
+				extra.lamp = figure.lamp;
+				twins.add(extra);
+			}
+		}
+
+		for (Figure figure : list) {
+			if (figure.hostile && HARD_TWINS.contains(figure.key)) {
+				Vec3 at = room(s, figure.ship, figure.position());
+
+				if (at != null) {
+					Figure extra = fighter(figure.key + ":hard", at.x, at.y, at.z, figure.yaw);
+					extra.post = figure.post;
+					twins.add(extra);
+				}
+			}
+		}
+
+		list.addAll(twins);
+	}
+
+	/** Phase 27: on Easy these stay away (two of the finale's fighters). */
+	static final Set<String> EASY_AWAY = Set.of("h2", "h8");
+	/** Phase 27: on Hard these have a fighter beside them. */
+	static final Set<String> HARD_TWINS = Set.of("h1", "h3", "h5", "h7");
+
+	/** Phase 27: the second of a patrol walking in a pair (the same route a step behind another). */
+	private static boolean pairedPatrol(Figure figure) {
+		Crew c = figure.crew;
+
+		if (!"patrol".equals(c.role()) || c.path().size() < 2 || c.phase() <= 0.0) {
+			return false;
+		}
+
+		for (Crew other : DestroyerInterior.CREW) {
+			if (other != c && other.path().equals(c.path()) && other.phase() < c.phase() && c.phase() - other.phase() < 3.0) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	/** Phase 27: how long a closed route is (blocks). */
+	static double loop(List<Vec3> path) {
+		double total = 0.0;
+
+		for (int i = 0; i < path.size(); i++) {
+			total += path.get(i).distanceTo(path.get((i + 1) % path.size()));
+		}
+
+		return total;
+	}
+
+	/** Phase 27: a free spot a step beside that place (feet and head in the air, floor below), or null. */
+	private static @Nullable Vec3 room(StorySession s, String ship, Vec3 near) {
+		ServerLevel level = interiors(s);
+
+		if (level == null) {
+			return null;
+		}
+
+		BlockPos origin = s.origin(ship);
+
+		for (Vec3 offset : List.of(new Vec3(1.3, 0.0, 0.0), new Vec3(-1.3, 0.0, 0.0), new Vec3(0.0, 0.0, 1.3), new Vec3(0.0, 0.0, -1.3))) {
+			Vec3 at = near.add(offset);
+			BlockPos feet = origin.offset(BlockPos.containing(at.x, at.y + 0.1, at.z));
+
+			if (level.getBlockState(feet).getCollisionShape(level, feet).isEmpty() && level.getBlockState(feet.above()).getCollisionShape(level, feet.above()).isEmpty()
+					&& !level.getBlockState(feet.below()).getCollisionShape(level, feet.below()).isEmpty()) {
+				return at;
+			}
+		}
+
+		return null;
 	}
 
 	/** The Falcon's people: Mira, Dax at the controls, Rorrak at the drive; at the end everyone in the lounge. */
@@ -407,10 +553,22 @@ public final class Chapter1 implements Chapter {
 				}
 			}
 
+			// Phase 27: in Mission 2 the flight control officer walks a round between the consoles
+			// (going north, the door and the crawl way's hatch are behind him), and hears further.
+			boolean flight = m == 1 && Crew.OFFICER_OLIVE.equals(c.kind()) && "flight_control".equals(c.role());
+
+			if (flight) {
+				routine = Crew.patrol(Crew.OFFICER_OLIVE, FLIGHT_BEAT_SPEED, 0.0, FLIGHT_BEAT_SOUTH, FLIGHT_BEAT_NORTH).as("flight_control");
+			}
+
 			Figure figure = new Figure(0, "crew:" + i, routine);
 			figure.ship = D;
 			figure.observer = true;
 			figure.talks = false;
+
+			if (flight) {
+				figure.hearing = FLIGHT_HEARING;
+			}
 			// After the download the lights are low: the troops carry lamps.
 			figure.lamp = m == 4 && Crew.TROOPER.equals(c.kind());
 			list.add(figure);
@@ -419,10 +577,12 @@ public final class Chapter1 implements Chapter {
 
 	/** The people of the story aboard the Star Destroyer. */
 	private static void people(StorySession s, List<Figure> list, int m, String step) {
-		// Kestrel: in the hidden room (Missions 2 to 4, and 6), in cell 1 (Mission 5).
-		if (m >= 1 && m <= 3 || m == 5 && ("m6.plan".equals(step) || "m6.reactor".equals(step))) {
+		// Kestrel: in the hidden room (Missions 2 to 4, and 6), in cell 1 (Mission 5). Phase 27: in
+		// Mission 1 too (she waits there for the player: one crawling in found her appearing out of
+		// nothing as they came out of the way), and in cell 1 before the detention block's door opens.
+		if (m >= 0 && m <= 3 || m == 5 && ("m6.plan".equals(step) || "m6.reactor".equals(step))) {
 			list.add(person("kestrel", "kestrel", Crew.at(Crew.REBEL, Crew.SIT, 15.0, H, -5.5, 0.0F), D));
-		} else if (m == 4 && ("m5.cell".equals(step) || "m5.r2".equals(step) || "m5.cell1".equals(step))) {
+		} else if (m == 4 && ("m5.route".equals(step) || "m5.cell".equals(step) || "m5.r2".equals(step) || "m5.cell1".equals(step))) {
 			list.add(person("kestrel", "kestrel", Crew.at(Crew.REBEL, Crew.STAND, 27.0, H, 0.0, 0.0F), D));
 		} else if ("m5.back".equals(step)) {
 			list.add(person("kestrel", "kestrel", Crew.at(Crew.REBEL, Crew.STAND, KESTREL_AT_VENT.x, H, KESTREL_AT_VENT.z, 315.0F), D));
@@ -509,20 +669,37 @@ public final class Chapter1 implements Chapter {
 				lobby.lamp = true;
 				list.add(lobby);
 
-				if ("m5.cell".equals(step) && s.has("trust.hale") && !s.has("m5.trapped")) {
+				// Phase 27: the detention block's people are there before its door opens (they appeared
+				// on the threshold, the step going on as the player stepped in: as in the hangar before
+				// Phase 25). On the way there they wait: nobody sees through the door yet, nobody talks.
+				boolean route = "m5.route".equals(step);
+
+				if ((route || "m5.cell".equals(step)) && s.has("trust.hale") && !s.has("m5.trapped")) {
 					// The trap: Hale waits in the detention block with two troopers (Phase 20: they
 					// leave once the player is locked in).
-					list.add(person("hale", "hale", Crew.at(Crew.OFFICER_BLACK, Crew.STAND, 33.5, H, 4.2, 270.0F), D));
-					list.add(guard("trap1", Crew.at(Crew.TROOPER, Crew.STAND, 34.6, H, 3.2, 270.0F)));
+					Figure hale = person("hale", "hale", Crew.at(Crew.OFFICER_BLACK, Crew.STAND, 33.5, H, 4.2, 270.0F), D);
+					Figure trap = guard("trap1", Crew.at(Crew.TROOPER, Crew.STAND, 34.6, H, 3.2, 270.0F));
+
+					if (route) {
+						hale.talks = false;
+						trap.observer = false;
+					}
+
+					list.add(hale);
+					list.add(trap);
 				}
 
-				if (step.equals("m5.cell") || step.equals("m5.r2") || step.equals("m5.cell1") || step.equals("m5.back")) {
+				if (route || step.equals("m5.cell") || step.equals("m5.r2") || step.equals("m5.cell1") || step.equals("m5.back")) {
 					// The detention block: Phase 20: one guard, at the entrance, watching the door
 					// (his back to the cells: who would come out of them?). The officer went with Hale.
 					// Phase 24: by the east end, between the door and the bench, where he sees the door,
 					// the corridor, the cells and the crawl way's hatch by turning his head (he stood with
 					// his face to the wall beside the door). Overpowered, he lies where he fell.
 					Figure guard = guard("det_guard", Crew.at(Crew.TROOPER, Crew.STAND, GUARD_POST.x, H, GUARD_POST.z, GUARD_DOOR_YAW));
+
+					if (route) {
+						guard.observer = false;
+					}
 
 					if (s.has(GUARD_DOWN)) {
 						guard.mode = Figure.DOWN;
@@ -550,7 +727,10 @@ public final class Chapter1 implements Chapter {
 				if (!s.has("saber.taken") && (step.equals("m6.reactor") || step.equals("m6.door") || step.equals("m6.lab") || step.equals("m6.saber"))) {
 					// Phase 24: a few steps east of the lab's door (he stood right before it), watching
 					// the shaft and the east walkway: one gets past him with care, or lures him off.
-					Figure guard = guard("lab_guard", Crew.at(Crew.TROOPER, Crew.STAND, LAB_GUARD.x, R, LAB_GUARD.z, LAB_GUARD_BRIDGE_YAW));
+					Figure guard = guard("lab_guard", Crew.at(Crew.TROOPER, Crew.STAND, LAB_GUARD.x, R, LAB_GUARD.z, LAB_GUARD_WAY_YAW));
+					// Phase 27: a sentry: he hears M-31 a little further, and seeing one close he fires first.
+					guard.sentry = true;
+					guard.hearing = LAB_GUARD_HEARING;
 
 					if (s.has(LAB_GUARD_DOWN)) {
 						guard.mode = Figure.DOWN;
@@ -611,7 +791,7 @@ public final class Chapter1 implements Chapter {
 				list.add(fighter("h2", 48.5, R, 28.5, 120.0F));
 				// (Phase 26: unless he was overpowered before: then he still lies where he fell.)
 				if (s.has(LAB_GUARD_DOWN)) {
-					Figure down = guard("lab_guard", Crew.at(Crew.TROOPER, Crew.STAND, LAB_GUARD.x, R, LAB_GUARD.z, LAB_GUARD_BRIDGE_YAW));
+					Figure down = guard("lab_guard", Crew.at(Crew.TROOPER, Crew.STAND, LAB_GUARD.x, R, LAB_GUARD.z, LAB_GUARD_WAY_YAW));
 					down.mode = Figure.DOWN;
 					down.observer = false;
 					list.add(down);
@@ -644,8 +824,10 @@ public final class Chapter1 implements Chapter {
 				}
 			}
 			case "m6.falcon" -> {
-				list.add(fighter("h7", 37.5, H, -18.0, 180.0F));
-				list.add(fighter("h8", 43.5, H, -18.0, 180.0F));
+				// Phase 27: in the corridor behind the hangar's door: they come running in through it
+				// after the boss is gone (they stood in the hangar at once, there from nothing).
+				list.add(fighter("h7", 39.0, H, -13.0, 180.0F));
+				list.add(fighter("h8", 42.0, H, -13.0, 180.0F));
 			}
 			default -> {
 			}
@@ -1225,6 +1407,9 @@ public final class Chapter1 implements Chapter {
 			learnFocus(s, false);
 		}
 
+		// Phase 27: the bridge is no place of the story: its lift's bay is fenced off.
+		sealBridge(s);
+
 		// The ship's state at this point of the story.
 		if (m >= 4) {
 			s.set("ship.alert");
@@ -1581,22 +1766,55 @@ public final class Chapter1 implements Chapter {
 	 * (so a checkpoint or an earlier step never shows it).
 	 */
 	static final String FALCON_WAITING = "falcon.waiting";
-	static final java.util.Set<String> FALCON_WAITS = java.util.Set.of("m6.escape1", "m6.escape2", "m6.duel", "m6.falcon");
+	/**
+	 * Phase 27: only after the duel (the boss flew off through the field, her film is over, the
+	 * game goes on): before, her TIE would fly through it, and it was there too early. The client
+	 * lets it rise out of the dark below then (HangarFalcon), so it never pops up.
+	 */
+	static final java.util.Set<String> FALCON_WAITS = java.util.Set.of("m6.falcon");
 
 	static boolean falconWaits(StorySession s) {
-		return s.chapter instanceof Chapter1 && !s.has(CHAPTER_DONE) && FALCON_WAITS.contains(s.step().id());
+		return s.chapter instanceof Chapter1 && !s.has(CHAPTER_DONE) && FALCON_WAITS.contains(s.step().id()) && !s.has("tmp.film");
 	}
 
 	/**
-	 * Phase 26: the steps of the finale aboard the Star Destroyer (from the plan in the hideout to
-	 * going aboard the Falcon): the bridge is sealed off then, its lift does not go up (Story.liftRefused).
-	 * The earlier missions keep the lift as it was.
+	 * Phase 26: the steps of the finale aboard the Star Destroyer: the bridge is sealed off then,
+	 * its lift does not go up (Story.liftRefused). Phase 27: through the whole story (the story has
+	 * nothing up there, and players got lost on the bridge): a security barrier stands across the
+	 * lift's bay in the lobby ({@link #sealBridge}), and the lift refuses as before.
 	 */
-	static final java.util.Set<String> BRIDGE_CLOSED = java.util.Set.of("m6.plan", "m6.reactor", "m6.door", "m6.lab", "m6.saber", "m6.escape1",
-			"m6.escape2", "m6.duel", "m6.falcon");
-
 	static boolean bridgeClosed(StorySession s) {
-		return s.chapter instanceof Chapter1 && s.mission == 5 && !s.has(CHAPTER_DONE) && BRIDGE_CLOSED.contains(s.step().id());
+		return s.chapter instanceof Chapter1;
+	}
+
+	/**
+	 * Phase 27: the security barrier in front of the turbolift's bay (plot space, the lobby's last
+	 * row before the bay's mouth): a force field between two pylons, which collides like a wall (the
+	 * client draws it while its cells stand, as the cells' fields).
+	 */
+	public static final int BRIDGE_BARRIER_X0 = DestroyerInterior.CX - 2;
+	public static final int BRIDGE_BARRIER_X1 = DestroyerInterior.CX + 2;
+	public static final int BRIDGE_BARRIER_Z = DestroyerInterior.LIFT_Z0 - 1;
+	/** Phase 27: in front of the barrier, where the player is told why it stands there. */
+	static final AABB BRIDGE_BARRIER_NEAR = new AABB(BRIDGE_BARRIER_X0 - 0.5, H, BRIDGE_BARRIER_Z - 1.4, BRIDGE_BARRIER_X1 + 1.5, H + 2, BRIDGE_BARRIER_Z);
+
+	/** Phase 27: puts up the barrier in front of the lift to the bridge (if it is not there yet). */
+	static void sealBridge(StorySession s) {
+		ServerLevel level = interiors(s);
+
+		if (level == null || !bridgeClosed(s)) {
+			return;
+		}
+
+		for (int x = BRIDGE_BARRIER_X0; x <= BRIDGE_BARRIER_X1; x++) {
+			for (int y = H; y <= H + 2; y++) {
+				BlockPos pos = s.destroyer.offset(x, y, BRIDGE_BARRIER_Z);
+
+				if (level.getBlockState(pos).isAir()) {
+					level.setBlock(pos, Blocks.BARRIER.defaultBlockState(), 3);
+				}
+			}
+		}
 	}
 
 	/** Phase 23: the steps after the reactor's bridge broke (it stays down). */
@@ -1751,7 +1969,15 @@ public final class Chapter1 implements Chapter {
 			}
 		}
 
-		safeCheckpoint(s, player);
+		if (s.stepTicks % 20 == 7) {
+			safeCheckpoint(s, player);
+		}
+
+		// Phase 27: at the barrier before the lift to the bridge: why it stands there (now and then).
+		if (s.stepTicks % 10 == 3 && s.dialog == null && s.inside(D, BRIDGE_BARRIER_NEAR) && player.tickCount - s.bridgeHint > 600) {
+			s.hint("sabercraft.story.hint.bridge_sealed");
+			s.bridgeHint = player.tickCount;
+		}
 		Companions.tick(s);
 
 		if (s.mission == 1 || s.mission == 2) {
@@ -1788,6 +2014,13 @@ public final class Chapter1 implements Chapter {
 				}
 			}
 			case "m1.droid" -> overhear(s);
+			case "m2.return" -> {
+				// Phase 27: the stick taken and the container shut: Kestrel names the second way back.
+				if (s.has("tmp.side_hatch") && s.dialog == null) {
+					s.unset("tmp.side_hatch");
+					s.radio("kestrel", "sabercraft.story.radio.m2_side_hatch");
+				}
+			}
 			case "m1.distract" -> {
 				if (fired(s, "droid_hint")) {
 					s.hint("sabercraft.story.hint.droid_distract");
@@ -2126,11 +2359,13 @@ public final class Chapter1 implements Chapter {
 
 	/**
 	 * Phase 20: in a safe place (the hideout, a crawl way) with nobody after the player, nobody
-	 * suspicious and nothing under way, a checkpoint is made where the player is, if anything kept
-	 * by checkpoints changed since the last one.
+	 * suspicious and nothing under way, a checkpoint is made, if anything kept by checkpoints
+	 * changed since the last one. Phase 27: never at the very spot the player is: in the hideout at
+	 * its own safe place, in a crawl way only well inside it (not in or by a hatch, whose opening is
+	 * shut again at a restore), in the middle of the way.
 	 */
 	private static void safeCheckpoint(StorySession s, ServerPlayer player) {
-		if (s.stepTicks % 20 != 7 || !D.equals(s.here) || s.dialog != null || s.pending != null || s.completing() || s.alarm > 0 || s.fighting
+		if (!D.equals(s.here) || s.dialog != null || s.pending != null || s.completing() || s.alarm > 0 || s.fighting
 				|| s.suspicion >= Stealth.SUSPICIOUS || !s.unsaved() || NO_SAFE_CHECKPOINT.contains(s.step().id())) {
 			return;
 		}
@@ -2149,11 +2384,59 @@ public final class Chapter1 implements Chapter {
 
 		Vec3 me = s.local(D);
 
-		if (!HIDDEN.contains(me.add(0.0, 0.5, 0.0)) && !inVent(me) || !player.onGround() && !inVent(me)) {
+		if (HIDDEN.contains(me.add(0.0, 0.5, 0.0))) {
+			if (player.onGround()) {
+				s.checkpoint(D, HIDEOUT, 90.0F);
+			}
+
 			return;
 		}
 
-		s.checkpoint(D, new Vec3(me.x, Math.floor(me.y + 0.01), me.z), player.getYRot());
+		Vec3 crawl = crawlAnchor(me);
+
+		if (crawl != null) {
+			s.checkpoint(D, crawl, player.getYRot());
+		}
+	}
+
+	static void safeCheckpointForTest(StorySession s) {
+		ServerPlayer player = s.player();
+
+		if (player != null) {
+			safeCheckpoint(s, player);
+		}
+	}
+
+	/** Phase 27: how near a hatch (blocks, to its opening's middle) a crawl way is no place to be put back at. */
+	static final double HATCH_CLEAR = 2.5;
+
+	/**
+	 * Phase 27: where in a crawl way one may be put back (plot space, the feet): in the middle of
+	 * the way across, on its floor, well away from every hatch; null when that point is not such a
+	 * place.
+	 */
+	static @Nullable Vec3 crawlAnchor(Vec3 at) {
+		Vec3 body = at.add(0.0, 0.3, 0.0);
+
+		for (AABB vent : DestroyerInterior.VENTS) {
+			if (!vent.contains(body)) {
+				continue;
+			}
+
+			double x = vent.getXsize() <= 1.01 ? vent.minX + 0.5 : Mth.clamp(at.x, vent.minX + 0.5, vent.maxX - 0.5);
+			double z = vent.getZsize() <= 1.01 ? vent.minZ + 0.5 : Mth.clamp(at.z, vent.minZ + 0.5, vent.maxZ - 0.5);
+			Vec3 spot = new Vec3(x, vent.minY, z);
+
+			for (com.phiro.sabercraft.interior.InteriorPlan.Hatch hatch : DestroyerInterior.HATCHES) {
+				if (Math.hypot(hatch.cell().getX() + 0.5 - x, hatch.cell().getZ() + 0.5 - z) < HATCH_CLEAR && Math.abs(hatch.cell().getY() - spot.y) < 1.5) {
+					return null;
+				}
+			}
+
+			return spot;
+		}
+
+		return null;
 	}
 
 	/** Phase 20: steps where a safe place makes no checkpoint (scenes, the cell, the finale). */
@@ -2742,17 +3025,16 @@ public final class Chapter1 implements Chapter {
 		return x * x * (3.0F - 2.0F * x);
 	}
 
-	/** Phase 26: the lab guard's watch: the bridge this long, a turn, the shaft this long, a turn back (ticks). */
-	static final int LAB_BRIDGE_TICKS = 150;
-	static final int LAB_SHAFT_TICKS = 70;
+	/** Phase 26: how long the lab guard takes to turn from one look to the next (ticks). */
 	static final int LAB_TURN_TICKS = 24;
 
 	/**
-	 * Phase 26: the lab's guard keeps watch over the reactor's platform: mostly the east bridge
-	 * (who comes over it?), now and then he turns and looks down the shaft; his head moves within
-	 * the look. His back stays to the lab's door and the platform's west end (one gets past him
-	 * with care, as in Phase 25). What he sees and hears he reacts to as anyone (Stealth); from
-	 * close behind he can be overpowered, the same scene as the detention's guard.
+	 * Phase 26: the lab's guard keeps watch over the reactor's platform; his head moves within the
+	 * look. Phase 27: from his post west of the way to the door he looks in turn along the platform
+	 * to the west, over the shaft, to the east bridge and back over the shaft ({@link #LAB_WATCH}):
+	 * coming along the platform, one waits for him to look east. What he sees and hears he reacts
+	 * to as anyone (Stealth: he goes to look, raises the alarm, fires); from close behind he can be
+	 * overpowered, the same scene as the detention's guard.
 	 */
 	private static void labGuardTick(StorySession s, ServerPlayer player, ServerLevel level) {
 		Figure guard = s.figure("lab_guard");
@@ -2770,23 +3052,59 @@ public final class Chapter1 implements Chapter {
 			return;
 		}
 
-		int cycle = LAB_BRIDGE_TICKS + LAB_SHAFT_TICKS + 2 * LAB_TURN_TICKS;
-		long t = (s.time() + guard.id * 29L) % cycle;
-		float yaw;
+		float yaw = labWatchYaw(s.time() + guard.id * 29L);
+		guard.yaw = yaw;
+		guard.headYaw = yaw + 12.0F * Mth.sin((s.time() + guard.id) / 21.0F);
+	}
 
-		if (t < LAB_BRIDGE_TICKS) {
-			yaw = LAB_GUARD_BRIDGE_YAW;
-		} else if (t < LAB_BRIDGE_TICKS + LAB_TURN_TICKS) {
-			yaw = Mth.rotLerp(smooth((t - LAB_BRIDGE_TICKS) / (float) LAB_TURN_TICKS), LAB_GUARD_BRIDGE_YAW, LAB_GUARD_SHAFT_YAW);
-		} else if (t < LAB_BRIDGE_TICKS + LAB_TURN_TICKS + LAB_SHAFT_TICKS) {
-			yaw = LAB_GUARD_SHAFT_YAW;
-		} else {
-			yaw = Mth.rotLerp(smooth((t - LAB_BRIDGE_TICKS - LAB_TURN_TICKS - LAB_SHAFT_TICKS) / (float) LAB_TURN_TICKS), LAB_GUARD_SHAFT_YAW,
-					LAB_GUARD_BRIDGE_YAW);
+	/** Phase 27: the length of the lab guard's round of looks (ticks). */
+	static int labWatchCycle() {
+		int cycle = 0;
+
+		for (float[] look : LAB_WATCH) {
+			cycle += (int) look[1] + LAB_TURN_TICKS;
 		}
 
-		guard.yaw = yaw;
-		guard.headYaw = yaw + 9.0F * Mth.sin((s.time() + guard.id) / 21.0F);
+		return cycle;
+	}
+
+	/** Phase 27: where the lab's guard looks at that time of his round (each look held, smooth turns between). */
+	static float labWatchYaw(long time) {
+		long t = Math.floorMod(time, (long) labWatchCycle());
+
+		for (int i = 0; i < LAB_WATCH.length; i++) {
+			float[] look = LAB_WATCH[i];
+			float[] next = LAB_WATCH[(i + 1) % LAB_WATCH.length];
+
+			if (t < look[1]) {
+				return look[0];
+			}
+
+			t -= (long) look[1];
+
+			if (t < LAB_TURN_TICKS) {
+				return Mth.rotLerp(smooth(t / (float) LAB_TURN_TICKS), look[0], next[0]);
+			}
+
+			t -= LAB_TURN_TICKS;
+		}
+
+		return LAB_WATCH[0][0];
+	}
+
+	/** For the tests: the time of the guard's round when he holds that look (index into {@link #LAB_WATCH}), from that time on. */
+	static long labWatchAt(long now, int look, int guardId) {
+		long offset = 0L;
+
+		for (int i = 0; i < look; i++) {
+			offset += (long) LAB_WATCH[i][1] + LAB_TURN_TICKS;
+		}
+
+		long cycle = labWatchCycle();
+		long t = Math.floorMod(now + guardId * 29L, cycle);
+		// The first tick of that look a few ticks in (the turn into it done).
+		long wanted = offset + 4L;
+		return now + Math.floorMod(wanted - t, cycle);
 	}
 
 	/**
@@ -2831,12 +3149,25 @@ public final class Chapter1 implements Chapter {
 		guard.blind = true;
 		guard.speed = 0.0F;
 		guard.way = List.of();
-		// The player right behind him, facing him.
+		// The player right behind him, facing him. Phase 27: unless something stands there (the
+		// lab guard's back towards the console): then on the side they came from, or where they are.
+		Vec3 corner0 = Vec3.atLowerCornerOf(s.destroyer);
 		Vec3 back = guard.position().subtract(guard.look().scale(0.9));
+
+		if (!room(player, back.add(corner0))) {
+			Vec3 side = distance < 1.0E-3 ? null : guard.position().add(to.normalize().scale(0.9));
+			back = side != null && room(player, side.add(corner0)) ? side : me;
+		}
+
 		Story.place(s, D, back, guard.yaw);
 		Vec3 world = guard.position().add(Vec3.atLowerCornerOf(s.destroyer));
 		Story.cue(s, Story.CUE_CINEMA, "takedown", "", TAKEDOWN_FILM, List.of(world));
 		s.dirty = true;
+	}
+
+	/** Phase 27: whether the player fits standing at that place (world space). */
+	private static boolean room(ServerPlayer player, Vec3 at) {
+		return player.level().noCollision(player, player.getDimensions(net.minecraft.world.entity.Pose.STANDING).makeBoundingBox(at).deflate(0.02));
 	}
 
 	private static void takedownTick(StorySession s, ServerPlayer player, ServerLevel level, Figure guard) {
@@ -3180,14 +3511,40 @@ public final class Chapter1 implements Chapter {
 				return null;
 			}
 			case "m1.distract" -> {
-				// Over the guard while he stands at the hatch.
+				// Over the guard while he stands at the hatch. (Phase 27: once in the crawl way, Kestrel's hideout.)
+				if (inCrawlWay(s)) {
+					return HIDEOUT_MOUTH;
+				}
+
 				Figure guard = s.figure("maint");
 				return guard != null ? new Mission.Target(D, guard.position().add(0.0, 2.3, 0.0)) : step.target();
+			}
+			case "m1.hatch" -> {
+				// Phase 27: the hatch until one is in the crawl way, then the way on to Kestrel's
+				// hideout (the marker stayed at the hatch behind the player, in the shaft).
+				return inCrawlWay(s) ? HIDEOUT_MOUTH : step.target();
 			}
 			case "m2.drop" -> {
 				// The way to the hangar: through the crawl way to flight control; there, the containers.
 				Vec3 me = s.local(D);
 				return me.z > -33.0 && me.x < 37.0 ? step.target() : at(D, 24.0, H + 1.4, -63.5);
+			}
+			case "m2.return" -> {
+				// Phase 27: the way back: to flight control's door, there to the crawl way's hatch,
+				// in the crawl way on to the hideout (the marker pointed at Kestrel through the walls);
+				// in the hideout, Kestrel herself.
+				if (inCrawlWay(s) && !s.inside(D, HIDDEN)) {
+					return HIDEOUT_MOUTH;
+				}
+
+				Vec3 me = s.local(D);
+
+				if (me.x < DestroyerInterior.HANGAR_X0 && me.z < -34.5 && me.z > -59.5) {
+					return at(D, 10.5, H + 0.6, -35.6);
+				}
+
+				return me.x >= DestroyerInterior.HANGAR_X0 && me.z < DestroyerInterior.HANGAR_Z1 ? at(D, DestroyerInterior.HANGAR_X0 + 0.5, H + 1.4, -38.5)
+						: step.target();
 			}
 			case "m5.cell1" -> {
 				return s.has("cell1.open") ? at(D, 27.0, H + 1.0, 0.0) : step.target();
@@ -3204,6 +3561,19 @@ public final class Chapter1 implements Chapter {
 				return step.target();
 			}
 		}
+	}
+
+	/** Phase 27: the opening from the crawl way into Kestrel's hideout (where the marker leads from the first crawl way on). */
+	static final Mission.Target HIDEOUT_MOUTH = at(D, DestroyerInterior.HIDDEN_MOUTH.getX() + 0.5, H + 0.5, DestroyerInterior.HIDDEN_MOUTH.getZ() + 0.5);
+
+	/** Phase 27: whether the player is in a crawl way of the Star Destroyer (or already in the hideout). */
+	static boolean inCrawlWay(StorySession s) {
+		if (!D.equals(s.here)) {
+			return false;
+		}
+
+		Vec3 me = s.local(D);
+		return inVent(me) || HIDDEN.contains(me.add(0.0, 0.5, 0.0));
 	}
 
 	@Override
@@ -3304,6 +3674,50 @@ public final class Chapter1 implements Chapter {
 		return step.checkpoint();
 	}
 
+	/**
+	 * Phase 27: a kept place counts if it is the step's safe place, the hideout's (where the
+	 * hideout makes checkpoints), the second cell's after the trap, or a place well inside a crawl
+	 * way. Anything else (a save from before Phase 27: in a hatch's opening, on the cot; or a safe
+	 * place that has since moved) is not used again.
+	 */
+	@Override
+	public boolean trusts(StorySession s, Mission.Step step, String ship, Vec3 at) {
+		Mission.Place own = this.place(s, step);
+
+		// A save from before keeps the airlock's old checkpoint, within the inner door's reach
+		// (moved only 0.7 blocks, so the tolerance below would still take it).
+		if (D.equals(ship) && "m1.droid".equals(step.id()) && at.distanceTo(AIRLOCK) < 0.05) {
+			return false;
+		}
+
+		if (own.ship().equals(ship) && own.at().distanceTo(at) < 1.0) {
+			return true;
+		}
+
+		if (!D.equals(ship)) {
+			return false;
+		}
+
+		if (at.distanceTo(HIDEOUT) < 0.6 && s.mission >= 1 && !NO_SAFE_CHECKPOINT.contains(step.id())) {
+			return true;
+		}
+
+		if (at.distanceTo(CELL_2) < 1.0 && s.has("m5.trapped")) {
+			return true;
+		}
+
+		Vec3 crawl = NO_SAFE_CHECKPOINT.contains(step.id()) ? null : crawlAnchor(at);
+		return crawl != null && crawl.distanceTo(at) < 0.05;
+	}
+
+	/** Phase 27: the steps that begin in a staged chase or fight (no time for bearings there). */
+	@Override
+	public boolean scriptedRespawn(StorySession s, Mission.Step step) {
+		return SCRIPTED_RESPAWN.contains(step.id());
+	}
+
+	static final java.util.Set<String> SCRIPTED_RESPAWN = java.util.Set.of("m5.escape", "m6.escape1", "m6.escape2", "m6.duel", "m6.falcon");
+
 	@Override
 	public Mission.Place place(StorySession s, Mission.Step step) {
 		switch (step.id()) {
@@ -3322,9 +3736,9 @@ public final class Chapter1 implements Chapter {
 				}
 			}
 			case "m5.r2" -> {
-				// Out of the cell (a file of Phase 19): in the corridor, behind the guard.
+				// Out of the cell (a file of Phase 19): in the block, behind the pillar (Phase 27).
 				if (!s.has("hatch.f")) {
-					return new Mission.Place(D, DETENTION_SAFE, 0.0F);
+					return new Mission.Place(D, DETENTION_SAFE, 180.0F);
 				}
 			}
 			default -> {
@@ -3428,7 +3842,8 @@ public final class Chapter1 implements Chapter {
 
 	@Override
 	public List<Vec3> entries(StorySession s, String ship) {
-		return D.equals(ship) ? ENTRIES : List.of();
+		// Phase 27: not out of the lift behind the barrier (it is locked down; nobody comes that way).
+		return D.equals(ship) ? bridgeClosed(s) ? ENTRIES.subList(1, ENTRIES.size()) : ENTRIES : List.of();
 	}
 
 	/** Phase 20: from the copy (the reactor's safety shutdown) until the saber is taken. */

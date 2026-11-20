@@ -35,13 +35,13 @@ Die JAR `sabercraft-0.1.0.jar` gibt es unter **[Releases](https://github.com/Phi
 
 1. Fabric Loader **0.19.5 oder neuer** für Minecraft **26.2** mit dem [Fabric Installer](https://fabricmc.net/use/installer/) installieren.
 2. [Fabric API](https://modrinth.com/mod/fabric-api) **0.161.0+26.2** und die SaberCraft-JAR in den Ordner `.minecraft/mods/` legen.
-3. Minecraft mit dem Fabric-Profil starten, ein Schwert in die Hand nehmen, **V** drücken und **Zum Lichtschwert machen** anklicken.
+3. Minecraft mit dem Fabric-Profil starten, ein Schwert in die Hand nehmen, **I** drücken und **Zum Lichtschwert machen** anklicken.
 
 ## Steuerung
 
 | Taste | Aktion |
 | --- | --- |
-| **V** | SaberCraft-Menü |
+| **I** | SaberCraft-Menü (früher V; eine noch auf V liegende Menütaste wird einmalig auf I verlegt) |
 | **R** (halten) | Abwehrhaltung, direkt nach dem Hochnehmen Parade |
 | **Z** | Drehangriff / Klingenwirbel |
 | **B** | Machtstoß |

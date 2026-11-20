@@ -56,6 +56,8 @@ public final class StoryClient {
 	static final byte CUE_DUEL = 11;
 	/** Phase 26: a short effect somewhere (who: its name; value: how long, ticks; points: where). */
 	static final byte CUE_EFFECT = 12;
+	/** Phase 27: the player has to act at once: dialogs, menus and the inventory close. */
+	static final byte CUE_INTERRUPT = 13;
 
 	/** Phase 26: the effects running (name: start in client ticks, length, where). */
 	private record Effect(long start, int ticks, List<Vec3> points) {
@@ -290,6 +292,12 @@ static final int CHECKPOINT_TICKS = 60;
 		state = payload;
 		received++;
 
+		// Phase 27: when this client came into the story (a start, a load, a continue): what is
+		// there then was there already (the Falcon waiting does not rise into view again).
+		if (!was && payload.active()) {
+			enteredMillis = net.minecraft.util.Util.getMillis();
+		}
+
 		// Phase 24: the section changed, or the alarm is over: the shouts still waiting are old news.
 		if (before != null && payload.active() && (!before.objective().equals(payload.objective()) || before.alarm() > 0 && payload.alarm() == 0)) {
 			dropBefore(clientTicks, true);
@@ -408,6 +416,7 @@ static final int CHECKPOINT_TICKS = 60;
 				dropBefore(clientTicks, true);
 			}
 			case CUE_CINEMA -> StoryCinema.start(client, payload.who(), payload.value(), payload.points());
+			case CUE_INTERRUPT -> interrupt(client);
 			case CUE_EFFECT -> {
 				EFFECTS.put(payload.who(), new Effect(clientTicks, Math.max(1, payload.value()), List.copyOf(payload.points())));
 				effectsSeen++;
@@ -419,6 +428,35 @@ static final int CHECKPOINT_TICKS = 60;
 			default -> {
 			}
 		}
+	}
+
+	/**
+	 * Phase 27: seen, the alarm, hit or caught: whatever screen of the game's own is open closes (a
+	 * dialog, the mod's menu, the inventory), so the player can act at once. The pause menu, the
+	 * chat and a film are left alone.
+	 */
+	static void interrupt(Minecraft client) {
+		interrupts++;
+		net.minecraft.client.gui.screens.Screen screen = client.gui.screen();
+
+		if (screen instanceof DialogScreen || screen instanceof com.phiro.sabercraft.client.menu.SaberMenuScreen) {
+			dialog = null;
+			client.gui.setScreen(null);
+		} else if (screen instanceof net.minecraft.client.gui.screens.inventory.AbstractContainerScreen<?> && client.player != null) {
+			client.player.closeContainer();
+		}
+	}
+
+	private static int interrupts;
+
+	/** For the tests: how often the story told this client to close its screens. */
+	public static int interruptsForTest() {
+		return interrupts;
+	}
+
+	/** Phase 27: the dialog the server has open (null: none), for a film that hid its screen. */
+	static @Nullable StoryDialogPayload openDialog() {
+		return dialog;
 	}
 
 	/**
@@ -894,7 +932,9 @@ static final int CHECKPOINT_TICKS = 60;
 		// Out, on, out, a stutter, on.
 		float wave = Mth.sin(age * 2.3F) * Mth.sin(age * 0.9F + 1.0F);
 		float fall = 1.0F - age / flickerTicks;
-		return Mth.clamp(wave * 0.75F * fall + (age < 2.0F ? 0.35F : 0.0F), 0.0F, 0.7F);
+		// Phase 27: shallower dips with the brighter story setting.
+		float lift = com.phiro.sabercraft.client.ImmersionConfig.get().storyLift();
+		return Mth.clamp(wave * 0.75F * fall + (age < 2.0F ? 0.35F : 0.0F), 0.0F, 0.7F) * (1.0F - lift * 0.7F);
 	}
 
 	static float reactorPulse(float partial) {
@@ -1072,6 +1112,13 @@ static final int CHECKPOINT_TICKS = 60;
 	// --- What the rest of the client asks --------------------------------------------------------
 
 	/** Whether this player is playing the story now. */
+	/** Phase 27: when this client came into the story (milliseconds of {@link net.minecraft.util.Util#getMillis}). */
+	private static long enteredMillis = -100_000L;
+
+	public static long enteredMillis() {
+		return enteredMillis;
+	}
+
 	public static boolean active() {
 		return state != null && state.active();
 	}
@@ -1131,10 +1178,13 @@ static final int CHECKPOINT_TICKS = 60;
 			light[6] = 0.5F;
 		}
 
+		// Phase 27: the setting that brightens the story's darkening (less dark, the colours kept).
+		float lift = com.phiro.sabercraft.client.ImmersionConfig.get().storyLift();
+
 		if (alarm >= 2) {
 			float speed = alarm >= 3 ? 1.1F : 0.45F;
 			float pulse = 0.5F + 0.5F * Mth.sin(seconds * speed * Mth.TWO_PI);
-			float depth = alarm >= 3 ? 0.55F : 0.3F;
+			float depth = (alarm >= 3 ? 0.55F : 0.3F) * (1.0F - lift * 0.6F);
 			light[1] *= 1.0F - depth * pulse * 0.6F;
 			light[2] *= 1.0F - depth * pulse * 0.7F;
 			light[4] *= 1.0F - depth * pulse;
@@ -1142,7 +1192,35 @@ static final int CHECKPOINT_TICKS = 60;
 			light[3] = Math.min(1.25F, light[3] * (1.0F + 0.25F * pulse));
 		}
 
+		if (lift > 0.0F) {
+			// The surfaces' colours a little towards white (the warm, red tint stays), their
+			// brightness and the lamps' further.
+			for (int i : new int[] {0, 1, 2}) {
+				light[i] += (1.0F - light[i]) * lift * 0.5F;
+			}
+
+			for (int i : new int[] {4, 5}) {
+				light[i] += (1.0F - light[i]) * lift * 0.6F;
+			}
+
+			light[6] += (1.0F - light[6]) * lift;
+		}
+
 		return light;
+	}
+
+	/** Phase 27: the story's difficulty as the server keeps it (0 easy, 1 normal, 2 hard). */
+	public static int difficulty() {
+		return has("difficulty.easy") ? 0 : has("difficulty.hard") ? 2 : 1;
+	}
+
+	/** Phase 27: how many stun bolts catch the player at this difficulty (as the server's StoryDifficulty). */
+	static int stunMax() {
+		return switch (difficulty()) {
+			case 0 -> 4;
+			case 2 -> 2;
+			default -> 3;
+		};
 	}
 
 	/** Whether a flag (what is known, done, decided) is set. */

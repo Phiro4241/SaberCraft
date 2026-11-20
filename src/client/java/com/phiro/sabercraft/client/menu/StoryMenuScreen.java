@@ -35,6 +35,10 @@ public class StoryMenuScreen extends SaberMenuScreen {
 
 	private boolean asked;
 	private boolean journal;
+	/** Phase 27: the page to choose the difficulty before the story's first start. */
+	private boolean choosing;
+	/** Phase 27: a difficulty picked here and not yet sent (sent when the page closes or the story starts); -1 none. */
+	private int pickedDifficulty = -1;
 	private boolean confirmRestart;
 	private int chosen = -1;
 	private int scroll;
@@ -71,10 +75,36 @@ public class StoryMenuScreen extends SaberMenuScreen {
 			return;
 		}
 
+		if (this.choosing) {
+			// Phase 27: before the first start: the three difficulties, each with what it means.
+			for (int i = 0; i < 3; i++) {
+				int level = i;
+				Button pick = this.addRenderableWidget(Button.builder(Component.translatable("sabercraft.story.difficulty." + DIFFICULTIES.get(i)), b -> {
+					this.pickedDifficulty = level;
+					this.choosing = false;
+					this.act(StoryActionPayload.CONTINUE, 0);
+				}).bounds(this.left + 10, this.row(1) + i * 44, 96, 20).build());
+				pick.setTooltip(Tooltip.create(Component.translatable("sabercraft.story.difficulty." + DIFFICULTIES.get(i) + ".description")));
+			}
+
+			this.addRenderableWidget(Button.builder(Component.translatable("sabercraft.menu.story.back"), b -> {
+				this.choosing = false;
+				this.rebuildWidgets();
+			}).bounds(this.left + PANEL_WIDTH / 2 - 50, this.top + PANEL_HEIGHT - 28, 100, 20).build());
+			return;
+		}
+
 		boolean active = state != null && state.active();
 		boolean saved = state != null && (state.saved() || active);
 
 		Button go = this.button(0, 2, Component.translatable(saved ? "sabercraft.menu.story.continue" : "sabercraft.menu.story.start"), () -> {
+			if (!saved) {
+				// Phase 27: a new story: first the difficulty.
+				this.choosing = true;
+				this.rebuildWidgets();
+				return true;
+			}
+
 			this.act(StoryActionPayload.CONTINUE, 0);
 			return true;
 		});
@@ -117,25 +147,41 @@ public class StoryMenuScreen extends SaberMenuScreen {
 				.create(this.column(0), this.row(3), COLUMN_WIDTH, 20, Component.translatable("sabercraft.menu.story.mission"), (button, v) -> this.chosen = v));
 		mission.active = server && unlocked > 0;
 		Button play = this.button(1, 3, Component.translatable("sabercraft.menu.story.play"), () -> {
+			if (!saved) {
+				// Phase 27: a new story (only the first mission can be chosen then): first the difficulty.
+				this.choosing = true;
+				this.rebuildWidgets();
+				return true;
+			}
+
 			this.act(StoryActionPayload.MISSION, this.chosen);
 			return true;
 		});
 		play.active = server && (saved || this.chosen == 0);
 		play.setTooltip(Tooltip.create(Component.translatable("sabercraft.menu.story.play.description")));
 
-		Button book = this.button(0, 4, Component.translatable("sabercraft.menu.story.journal"), () -> {
+		// Phase 27: the journal and leaving share a column (half as wide), the difficulty beside them.
+		int half = (COLUMN_WIDTH - 4) / 2;
+		Button book = this.addRenderableWidget(Button.builder(Component.translatable("sabercraft.menu.story.journal"), b -> {
 			this.journal = true;
 			this.scroll = 0;
 			this.rebuildWidgets();
-			return true;
-		});
+		}).bounds(this.column(0), this.row(4), half, 20).build());
 		book.active = state != null && !state.journal().isEmpty();
-		Button leave = this.button(1, 4, Component.translatable("sabercraft.menu.story.leave"), () -> {
-			this.act(StoryActionPayload.LEAVE, 0);
-			return true;
-		});
+		Button leave = this.addRenderableWidget(Button.builder(Component.translatable("sabercraft.menu.story.leave_short"), b -> this.act(StoryActionPayload.LEAVE, 0))
+				.bounds(this.column(0) + half + 4, this.row(4), COLUMN_WIDTH - half - 4, 20).build());
 		leave.active = active;
 		leave.setTooltip(Tooltip.create(Component.translatable("sabercraft.menu.story.leave.description")));
+
+		int difficulty = this.pickedDifficulty >= 0 ? this.pickedDifficulty : StoryClient.difficulty();
+		CycleButton<Integer> level = this.addRenderableWidget(CycleButton.<Integer>builder(
+				i -> Component.translatable("sabercraft.story.difficulty." + DIFFICULTIES.get(i)), difficulty)
+				.withValues(List.of(0, 1, 2))
+				.withTooltip(v -> Tooltip.create(Component.translatable("sabercraft.story.difficulty." + DIFFICULTIES.get(v) + ".description")
+						.append("\n\n").append(Component.translatable(active ? "sabercraft.option.story_difficulty.running" : "sabercraft.option.story_difficulty.description"))))
+				.create(this.column(1), this.row(4), COLUMN_WIDTH, 20, Component.translatable("sabercraft.option.story_difficulty"),
+						(button, v) -> this.pickedDifficulty = v));
+		level.active = server;
 
 		ImmersionConfig config = ImmersionConfig.get();
 		this.cycle(0, 5, "sabercraft.option.language", SaberLanguage.CHOICES, SaberLanguage.setting(),
@@ -152,10 +198,16 @@ public class StoryMenuScreen extends SaberMenuScreen {
 			config.storyMarker = v;
 			ImmersionConfig.save();
 		});
+		// Phase 27: brightens the story's darkening (emergency lights, alarm, failing lights).
+		this.cycle(1, 6, "sabercraft.option.story_brightness", List.of(0, 1, 2), Mth.clamp(config.storyBrightness, 0, 2),
+				v -> Component.translatable("sabercraft.menu.story.brightness." + v), v -> {
+					config.storyBrightness = v;
+					ImmersionConfig.save();
+				});
 
 		if (!config.shipInteriorDetail) {
 			// The story's people and things are part of the detailed rooms.
-			this.button(1, 6, Component.translatable("sabercraft.menu.story.detail_on"), () -> {
+			this.button(1, 1, Component.translatable("sabercraft.menu.story.detail_on"), () -> {
 				config.shipInteriorDetail = true;
 				ImmersionConfig.save();
 				this.rebuildWidgets();
@@ -166,10 +218,48 @@ public class StoryMenuScreen extends SaberMenuScreen {
 		this.closeButton();
 	}
 
+	/** Phase 27: the difficulties, as the server's StoryDifficulty (0 easy, 1 normal, 2 hard). */
+	static final List<String> DIFFICULTIES = List.of("easy", "normal", "hard");
+
 	/** Sends a choice and closes the menu (the server answers with a message if it cannot). */
 	private void act(byte action, int value) {
+		// (Leaving: first leave, so the calm progress is kept as by leaving alone; the difficulty
+		// then goes into the save without setting the story back to its checkpoint.)
+		if (action != StoryActionPayload.LEAVE) {
+			this.sendDifficulty();
+		}
+
 		StoryClient.send(action, "", value);
+
+		if (action == StoryActionPayload.LEAVE) {
+			this.sendDifficulty();
+		}
+
 		this.onClose();
+	}
+
+	/**
+	 * Phase 27: a difficulty picked on this page goes to the server once: when the story starts
+	 * from here or the page closes (so going through the choices in a running mission sets it
+	 * back to the checkpoint only once).
+	 */
+	private void sendDifficulty() {
+		if (this.pickedDifficulty >= 0) {
+			int picked = this.pickedDifficulty;
+			this.pickedDifficulty = -1;
+
+			StoryStatePayload state = StoryClient.state();
+
+			if (state == null || picked != StoryClient.difficulty() || !state.saved()) {
+				StoryClient.send(StoryActionPayload.DIFFICULTY, "", picked);
+			}
+		}
+	}
+
+	@Override
+	public void removed() {
+		this.sendDifficulty();
+		super.removed();
 	}
 
 	/** The last mission one may choose (as the server reckons it). */
@@ -189,7 +279,7 @@ public class StoryMenuScreen extends SaberMenuScreen {
 		}
 
 		return state.active() + "/" + state.saved() + "/" + state.mission() + "/" + state.completed() + "/" + state.finished() + "/" + state.objective() + "/"
-				+ state.journal().size() + "/" + state.captures();
+				+ state.journal().size() + "/" + state.captures() + "/" + StoryClient.difficulty();
 	}
 
 	/** The state came: built again if it shows something else now. */
@@ -215,6 +305,11 @@ public class StoryMenuScreen extends SaberMenuScreen {
 
 		if (this.journal) {
 			this.extractJournal(graphics, state);
+			return;
+		}
+
+		if (this.choosing) {
+			this.extractChoice(graphics);
 			return;
 		}
 
@@ -257,7 +352,8 @@ public class StoryMenuScreen extends SaberMenuScreen {
 		}
 
 		// The two rows above the buttons hold it; what does not fit is cut.
-		int bottom = this.row(2) - 3;
+		// (Phase 27: with the rooms' details off, their button stands in the second row.)
+		int bottom = (ImmersionConfig.get().shipInteriorDetail ? this.row(2) : this.row(1)) - 3;
 
 		for (int i = 0; i < lines.size(); i++) {
 			for (FormattedCharSequence part : this.font.split(lines.get(i), width)) {
@@ -271,6 +367,20 @@ public class StoryMenuScreen extends SaberMenuScreen {
 
 			y += 2;
 		}
+	}
+
+	/** Phase 27: the difficulty page: a line on top, beside each choice what it means. */
+	private void extractChoice(GuiGraphicsExtractor graphics) {
+		int x = this.left + 10;
+		graphics.text(this.font, Component.translatable("sabercraft.menu.story.choose_difficulty"), x, this.row(0) + 4, 0xFFE8C878);
+
+		for (int i = 0; i < 3; i++) {
+			int y = this.row(1) + i * 44;
+			graphics.textWithWordWrap(this.font, Component.translatable("sabercraft.story.difficulty." + DIFFICULTIES.get(i) + ".description"), x + 104, y,
+					PANEL_WIDTH - 124, i == 1 ? TEXT : GREY);
+		}
+
+		graphics.textWithWordWrap(this.font, Component.translatable("sabercraft.menu.story.difficulty_later"), x, this.row(1) + 3 * 44 - 4, PANEL_WIDTH - 20, GREY);
 	}
 
 	private void extractJournal(GuiGraphicsExtractor graphics, StoryStatePayload state) {

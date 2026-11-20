@@ -484,6 +484,13 @@ public final class DestroyerInterior extends InteriorPlan {
 	public static final AABB SERVICE_ROOM = new AABB(47, REACTOR_BOTTOM, 6, 51, REACTOR_BOTTOM + 3, 10);
 	/** Phase 25: the crawl way out of the chamber (one block high, north). */
 	public static final AABB SERVICE_VENT = new AABB(48, REACTOR_BOTTOM, 2, 49, REACTOR_BOTTOM + 1, 5);
+	/**
+	 * Phase 27: a short crawl way from the hangar's west wall (its hatch north of the crate stack
+	 * there) west into the way from flight control: the way back from the hangar without passing
+	 * through flight control.
+	 */
+	public static final AABB HANGAR_VENT = new AABB(11, HANGAR + 1, -29, 17, HANGAR + 2, -28);
+	public static final BlockPos HANGAR_HATCH = new BlockPos(HANGAR_X0, HANGAR + 1, -29);
 	public static final BlockPos SERVICE_HATCH = new BlockPos(48, REACTOR_BOTTOM, 5);
 	/** Phase 25: the emergency release by the door (outside, in the passage) and the panel that bolts it (inside). */
 	public static final AABB SERVICE_RELEASE = new AABB(47.55, REACTOR_BOTTOM + 0.7, 12.4, 48.05, REACTOR_BOTTOM + 1.8, 13.6);
@@ -737,7 +744,8 @@ public final class DestroyerInterior extends InteriorPlan {
 		// open shaft far down, platforms and narrow bridges instead of the floor and the catwalk.
 		// 11 (Phase 25): the maintenance walkway, door, chamber and crawl way out of the reactor.
 		// 12 (Phase 26): the security desk half a block north (clear of a corridor frame's post).
-		return 12;
+		// 13 (Phase 27): a second hatch into the crawl way, low in the hangar's west wall.
+		return 13;
 	}
 
 	@Override
@@ -880,6 +888,7 @@ public final class DestroyerInterior extends InteriorPlan {
 				new Room("vent", VENTS.get(3)),
 				new Room("hidden_room", HIDDEN),
 				new Room("vent", VENTS.get(4)),
+				new Room("vent", HANGAR_VENT),
 				// Phase 19: the story's rooms.
 				new Room("maintenance", MAINTENANCE),
 				new Room("airlock", AIRLOCK),
@@ -944,7 +953,9 @@ public final class DestroyerInterior extends InteriorPlan {
 			// Phase 19: Kestrel's way from the hidden room east to the detention block.
 			new AABB(24, HANGAR + 1, -4, 25, HANGAR + 2, 7),
 			// Phase 25: out of the reactor's maintenance chamber.
-			SERVICE_VENT);
+			SERVICE_VENT,
+			// Phase 27: from the hangar's west wall into the way from flight control.
+			HANGAR_VENT);
 
 	/** Phase 18: the hidden room off the crawl way (inside, walls included: x 13..23, z -8..-1). */
 	public static final AABB HIDDEN = new AABB(14, HANGAR + 1, -7, 23, HANGAR + 4, -1);
@@ -960,7 +971,9 @@ public final class DestroyerInterior extends InteriorPlan {
 			new Hatch(HIDEOUT_HATCH, net.minecraft.core.Direction.WEST),
 			new Hatch(DETENTION_HATCH, net.minecraft.core.Direction.EAST),
 			// Phase 25: from the reactor's maintenance chamber into the ventilation.
-			new Hatch(SERVICE_HATCH, net.minecraft.core.Direction.SOUTH));
+			new Hatch(SERVICE_HATCH, net.minecraft.core.Direction.SOUTH),
+			// Phase 27: from the hangar (low in its west wall, north of the crates) into the crawl way.
+			new Hatch(HANGAR_HATCH, net.minecraft.core.Direction.EAST));
 
 	/** The hidden room's opening (no hatch: from inside, nobody needs to hide it). */
 	public static final BlockPos HIDDEN_MOUTH = new BlockPos(18, HANGAR + 1, -8);
@@ -1016,6 +1029,8 @@ public final class DestroyerInterior extends InteriorPlan {
 		b.box(9, HANGAR, -35, 11, HANGAR + 2, -9, DARK);
 		// Phase 19: Kestrel's way to the detention block.
 		b.box(23, HANGAR, -5, 25, HANGAR + 2, 7, DARK);
+		// Phase 27: the side way from the hangar's west wall.
+		b.box((int) HANGAR_VENT.minX, HANGAR, (int) HANGAR_VENT.minZ - 1, HANGAR_X0 - 1, HANGAR + 2, (int) HANGAR_VENT.maxZ, DARK);
 		// Under the walkway: the way's upper row closed.
 		b.box(WALK_X0, PIT + 2, 84, WALK_X1, PIT + 2, 84, BLACK);
 		// The hidden room: a store room nobody remembers, three blocks high.
@@ -1046,6 +1061,7 @@ public final class DestroyerInterior extends InteriorPlan {
 
 		b.light(22, HANGAR + 1, -10, 6);
 		b.light(10, HANGAR + 1, -22, 6);
+		b.light(14, HANGAR + 1, -29, 5);
 		b.light(CX, PIT + 1, 84, 5);
 		// Phase 19: the hidden room is a refuge now: a warmer light, and the desk lamp's glow.
 		b.light(16, HANGAR + 3, -4, 12);

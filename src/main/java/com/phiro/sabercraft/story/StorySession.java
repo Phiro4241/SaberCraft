@@ -76,6 +76,15 @@ public final class StorySession {
 	/** After a capture: a few seconds before anyone can see the player again. */
 	public int grace;
 	/**
+	 * Phase 27: back at a checkpoint, the player gets their bearings: while they stay near where
+	 * they were put (and do nothing there), nobody sees them, for at most {@link #SHIELD} ticks.
+	 * Not kept: only for this restore.
+	 */
+	public int shield;
+	public @Nullable Vec3 shieldAt;
+	/** Phase 27: when (the player's ticks) the barrier before the bridge's lift last told why it stands there. */
+	int bridgeHint = -100_000;
+	/**
 	 * Phase 21: in a chase, when anyone hunting the player last saw them (game time) and where
 	 * (plot space): they tell each other over the comlink, so the others come there too.
 	 */
@@ -99,6 +108,8 @@ public final class StorySession {
 
 	/** A step to complete as soon as the open dialog is closed (said in a dialog, done after it), or null. */
 	public @Nullable String pending;
+	/** Phase 27: where the marker pointed when the state was last sent (world space), or null. */
+	@Nullable Vec3 markerSent;
 
 	/** What the client should be told again: the state, the dialog. */
 	public boolean dirty = true;
@@ -189,6 +200,9 @@ public final class StorySession {
 
 	/** Ticks nobody sees the player after being put back at a checkpoint. */
 	static final int GRACE = 100;
+	/** Phase 27: how long the bearings last at most (ticks), and how far one may move meanwhile (blocks). */
+	static final int SHIELD = 400;
+	static final double SHIELD_REACH = 3.0;
 
 	/**
 	 * Starts the current step. Going on ({@code restore} false): the people stay where they are,
@@ -226,10 +240,18 @@ public final class StorySession {
 		this.cornerer = null;
 		this.stuns = 0;
 		this.focusTicks = 0;
+		// Phase 27: a dialog still open ends here for the player too (it was dropped silently, and
+		// the player's screen stayed open with nobody answering it).
+		boolean talking = this.dialog != null;
+		this.release();
 		this.dialog = null;
 		this.line = null;
 		this.partner = null;
 		this.pending = null;
+
+		if (talking) {
+			Story.sendDialog(this);
+		}
 		this.scanned = List.of();
 		this.dropped = null;
 		this.lastStroke = -1000L;
@@ -255,8 +277,12 @@ public final class StorySession {
 
 		if (restore) {
 			this.restores++;
-			Story.placeAtCheckpoint(this, step);
+			// Phase 27: the hatches shut first, then the player is put there (the other way round,
+			// a place in a hatch's opening became a wall around them, and the game pushed them out
+			// into the corridor beyond, in front of its patrol).
 			Story.resetShip(this);
+			Story.placeAtCheckpoint(this, step);
+			Story.clearRespawn(this);
 		}
 
 		this.chapter.begin(this, step, restore);
@@ -268,6 +294,10 @@ public final class StorySession {
 
 		if (restore) {
 			this.grace = Math.max(this.grace, GRACE);
+			// Phase 27: time to get one's bearings where one was put (not in a staged chase or fight).
+			boolean shielded = !this.chapter.scriptedRespawn(this, step);
+			this.shield = shielded ? SHIELD : 0;
+			this.shieldAt = shielded ? this.local(this.here) : null;
 			this.chapter.droids(this);
 			this.saved = this.state();
 		} else if (this.chapter.checkpoint(this, step)) {
@@ -483,6 +513,9 @@ public final class StorySession {
 				kept.saber = figure.saber;
 				kept.sight = figure.sight;
 				kept.ship = figure.ship;
+				// Phase 27: how far they hear, and whether they are a sentry, may change with the step too.
+				kept.hearing = figure.hearing;
+				kept.sentry = figure.sentry;
 				this.figures.add(kept);
 			} else {
 				this.figures.add(this.numbered(figure, time));
@@ -520,6 +553,9 @@ public final class StorySession {
 		figure.sight = template.sight;
 		// Phase 24: a guard at his post holds it; one already overpowered lies where he fell.
 		figure.post = template.post;
+		// Phase 27: how far they hear, and whether they are a sentry (the lab's guard).
+		figure.hearing = template.hearing;
+		figure.sentry = template.sentry;
 		figure.snapToRoutine(time);
 
 		if (template.mode == Figure.DOWN) {
@@ -606,6 +642,9 @@ public final class StorySession {
 		Dialog.Node line = d != null && this.line != null ? d.node(this.line) : null;
 
 		if (d == null || line == null) {
+			// Phase 27: no dialog open here (it ended meanwhile): the player's screen closes too,
+			// instead of waiting for an answer that never comes.
+			Story.sendDialog(this);
 			return;
 		}
 
@@ -617,6 +656,9 @@ public final class StorySession {
 		}
 
 		if (index < 0 || index >= shown.size()) {
+			// Phase 27: an answer that is not there (the line changed meanwhile): the line again,
+			// so the player's screen does not wait for nothing.
+			Story.sendDialog(this);
 			return;
 		}
 
@@ -629,6 +671,33 @@ public final class StorySession {
 		if (this.dialog == d) {
 			this.show(answer.next());
 		}
+	}
+
+	/**
+	 * Phase 27: the player has to act at once (seen, the alarm goes up, hit, caught, a film
+	 * begins): an open dialog ends (as if the player had walked off), and the client closes any
+	 * interaction screen still open, so the controls are free. Returns whether a dialog was open.
+	 */
+	public boolean interrupt(boolean screens) {
+		boolean open = this.dialog != null;
+
+		if (open) {
+			interrupts++;
+			this.show("");
+		}
+
+		if (screens) {
+			Story.cue(this, Story.CUE_INTERRUPT, "", "", 0);
+		}
+
+		return open;
+	}
+
+	private static int interrupts;
+
+	/** For the tests: how many dialogs were broken off by the story since the game started. */
+	public static int interruptsForTest() {
+		return interrupts;
 	}
 
 	/** A line over the comlink while playing (a subtitle; nothing stops). */
@@ -726,8 +795,13 @@ public final class StorySession {
 
 	/** Raises the alarm (red lights, everyone looks harder and longer). */
 	public void raiseAlarm(int ticks) {
+		// Phase 27: searches last longer on Hard, shorter on Easy.
+		ticks = this.difficulty().ticks(ticks, this.difficulty().search);
+
 		if (this.alarm <= 0) {
 			Story.cue(this, Story.CUE_SOUND, "", "story.alarm", 0);
+			// Phase 27: the alarm goes up: no dialog or menu keeps the player standing there.
+			this.interrupt(true);
 		}
 
 		this.alarm = Math.max(this.alarm, ticks);
@@ -736,6 +810,11 @@ public final class StorySession {
 
 	public boolean alarmed() {
 		return this.alarm > 0 || this.alert;
+	}
+
+	/** Phase 27: the story's difficulty for this player (kept in the save). */
+	public StoryDifficulty difficulty() {
+		return StoryDifficulty.of(this.progress.difficulty);
 	}
 
 	/** Whether the step changed since the session began it (a script finished it). */

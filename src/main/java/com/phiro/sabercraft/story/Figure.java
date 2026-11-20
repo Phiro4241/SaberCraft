@@ -122,6 +122,22 @@ public final class Figure {
 	public long strafeUntil;
 	/** Phase 21: how often a droid's noise drew them already (each time they believe it less). */
 	public int distracted;
+	/**
+	 * Phase 27: when a noise last drew them (game time of the story): after a minute they believe
+	 * a noise again (before, a lure used once on the way in was spent for the whole mission).
+	 */
+	public long distractedAt;
+	/** Phase 27: how far they hear a droid's noise (blocks; some listen further). */
+	public double hearing = Stealth.HEAR;
+	/** Phase 27: where they stood when a noise drew them (they search past it, away from there), or null. */
+	public @Nullable Vec3 luredFrom;
+	/**
+	 * Phase 27: a sentry (the lab's guard): seeing the player close by, he raises his rifle and
+	 * fires before he rushes in to seize them.
+	 */
+	public boolean sentry;
+	/** Phase 27: when they last fired at the player (game time of the story). */
+	public long firedAt = -1000L;
 	/** Phase 21: a noise they heard and will go to see once they have listened ({@link #LOOK}), or null. */
 	public @Nullable Vec3 lure;
 	/** Phase 21: their saber is lit (a scene: the blade is seen before the fight begins). */
@@ -209,6 +225,13 @@ public final class Figure {
 	public int throwHit;
 	/** Phase 26: her thrust carries her in fast (a lunge from a few steps away). */
 	public boolean lunge;
+	/**
+	 * Phase 27: the boss by the story's difficulty (set each tick of the duel): how fast she
+	 * attacks (shorter pauses and wind-ups above 1), how long her openings last, how hard her blows are.
+	 */
+	public float tempo = 1.0F;
+	public float openness = 1.0F;
+	public float power = 1.0F;
 	/** Phase 23: quick hits in a row (several light hits throw one off balance too). */
 	public int strokes;
 	public long strokeAt = -1000L;
@@ -369,6 +392,7 @@ public final class Figure {
 		this.windup = 0;
 		this.burst = 0;
 		this.lure = null;
+		this.luredFrom = null;
 		this.react = 0;
 		this.reactTicks = 0;
 		this.pushX = 0.0;

@@ -127,6 +127,9 @@ final class Chapter1Dialogs {
 				.say("start", "funke").does(s -> {
 					s.set("item.stick");
 					Chapter1.done(s, "m2.drop");
+					// Phase 27: the second way back, where one can find it: Kestrel on the comm once
+					// the container is shut (Chapter1.tick, step m2.return).
+					s.set("tmp.side_hatch");
 				})
 				.build());
 

@@ -771,15 +771,18 @@ public class Phase26GameTest implements FabricClientGameTest {
 		check(y < DestroyerInterior.DECK - 4, "the lift takes the player up to the bridge in the finale (y " + y + ")");
 		check(this.on(s -> Story.liftsRefusedForTest()) == refused + 1, "the lift to the bridge is not refused once in the finale");
 		this.context.takeScreenshot("phase26_lift_locked");
-		// An earlier mission: the lift goes up as before.
+		// Phase 27: an earlier mission: sealed off as well (the whole story keeps off the bridge),
+		// behind the barrier before the lift's bay (Phase27GameTest walks into it).
 		this.enter(3, "m4.brief");
 		this.unseen();
-		check(!this.on(s -> StoryTesting.bridgeClosed(this.session(s))), "the bridge is sealed off in mission 4");
+		check(this.on(s -> StoryTesting.bridgeClosed(this.session(s))), "the bridge is open in mission 4 (Phase 27: sealed through the whole story)");
+		int before = this.on(s -> Story.liftsRefusedForTest());
 		this.put(new Vec3(x + 0.5, H, DestroyerInterior.LIFT_Z0 - 3.0), 0.0F, 0.0F);
 		this.put(new Vec3(x + 0.5, H, DestroyerInterior.LIFT_Z0 + 1.5), 0.0F, 0.0F);
 		this.context.waitTicks(30);
 		double up = this.on(s -> this.session(s).local(Story.DESTROYER).y);
-		check(up >= DestroyerInterior.DECK, "the lift does not go up to the bridge in mission 4 any more (y " + up + ")");
+		check(up < DestroyerInterior.DECK - 4, "the lift takes the player up to the bridge in mission 4 (y " + up + ")");
+		check(this.on(s -> Story.liftsRefusedForTest()) == before + 1, "the lift to the bridge is not refused once in mission 4");
 	}
 
 	// --- 8: the finale's troopers shoot more often, never two bolts at once ------------------------------------------
@@ -845,12 +848,17 @@ public class Phase26GameTest implements FabricClientGameTest {
 		this.context.waitTicks(10);
 		check(this.context.computeOnClient(client -> HangarFalcon.drawnForTest()) == before, "the Falcon is drawn under the hangar before the finale");
 
-		// The escape: from its first moment (still in the reactor, far from the hangar) it is drawn.
+		// Phase 27: not in the escape any more (her TIE flew through it, and it came too early): only
+		// once she has flown off and her film is over (see Phase27GameTest for the duel's end).
 		this.enter(5, "m6.escape1");
 		this.unseen();
 		this.server.runCommand("effect give @a minecraft:resistance 100000 4 true");
 		this.skipFilms(40);
-		check(this.on(s -> StoryTesting.falconWaits(this.session(s))), "the Falcon does not wait in the escape");
+		check(!this.on(s -> StoryTesting.falconWaits(this.session(s))), "the Falcon waits in the escape already (Phase 27: only after the boss's flight)");
+		this.enter(5, "m6.falcon");
+		this.unseen();
+		this.skipFilms(40);
+		check(this.on(s -> StoryTesting.falconWaits(this.session(s))), "the Falcon does not wait after the duel");
 
 		for (int i = 0; i < 20 && !this.context.computeOnClient(client -> StoryClient.has(HangarFalcon.WAITING)); i++) {
 			this.context.waitTick();
@@ -860,7 +868,8 @@ public class Phase26GameTest implements FabricClientGameTest {
 		this.context.waitTicks(10);
 		check(this.context.computeOnClient(client -> HangarFalcon.drawnForTest()) > drawn, "the Falcon is not drawn before one comes to the hangar (it would pop up)");
 		this.put(new Vec3(40.5, H, -33.5), 180.0F, 55.0F);
-		this.context.waitTicks(10);
+		// Phase 27: it rises from below first (a few seconds), then hovers in its place.
+		this.context.waitTicks(100);
 		this.context.takeScreenshot("phase26_falcon_under_field");
 		this.put(new Vec3(36.0, H, -32.0), 200.0F, 35.0F);
 		this.context.waitTicks(6);

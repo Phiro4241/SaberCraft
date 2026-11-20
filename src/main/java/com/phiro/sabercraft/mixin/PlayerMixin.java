@@ -19,6 +19,8 @@ abstract class PlayerMixin {
 	@Inject(method = "updatePlayerPose", at = @At("HEAD"), cancellable = true)
 	private void sabercraft$crawlIntoVent(CallbackInfo info) {
 		Player player = (Player) (Object) this;
+		// Phase 27: a little faster on all fours in a crawl way (the server sets it, the client gets it).
+		Vents.crawlSpeed(player);
 
 		if (Vents.crawl(player)) {
 			player.setPose(Pose.SWIMMING);

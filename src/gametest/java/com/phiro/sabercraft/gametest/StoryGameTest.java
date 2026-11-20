@@ -152,6 +152,15 @@ public class StoryGameTest implements FabricClientGameTest {
 		if (!context.tryClickScreenButton("sabercraft.menu.story.start")) {
 			this.problem("the story menu has no start button to click");
 			context.runOnClient(client -> StoryClient.send(StoryActionPayload.CONTINUE, "", 0));
+		} else {
+			// Phase 27: a new story asks for the difficulty first; choosing it starts the story.
+			context.waitTicks(5);
+			context.takeScreenshot("story_menu_difficulty");
+
+			if (!context.tryClickScreenButton("sabercraft.story.difficulty.normal")) {
+				this.problem("a new story does not ask for the difficulty");
+				context.runOnClient(client -> StoryClient.send(StoryActionPayload.CONTINUE, "", 0));
+			}
 		}
 
 		context.waitTicks(40);

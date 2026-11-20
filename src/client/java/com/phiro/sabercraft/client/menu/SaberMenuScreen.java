@@ -58,6 +58,8 @@ public abstract class SaberMenuScreen extends Screen {
 	/** When this page was opened; a resize builds it again but does not fade it in again. */
 	private final long opened = Util.getMillis();
 	private boolean swept;
+	private int keyLineX;
+	private int keyLineY;
 
 	protected SaberMenuScreen(Component title) {
 		super(title);
@@ -91,6 +93,10 @@ public abstract class SaberMenuScreen extends Screen {
 			// Phase 19: eleven areas, a little closer together.
 			y += 21;
 		}
+
+		// Phase 27: under the areas, the key that opens this menu (as bound now).
+		this.keyLineX = tabsLeft;
+		this.keyLineY = y + 4;
 
 		this.initPanel();
 
@@ -173,6 +179,12 @@ public abstract class SaberMenuScreen extends Screen {
 		graphics.outline(this.left, this.top, PANEL_WIDTH, PANEL_HEIGHT, 0xFF4A4A55);
 		graphics.centeredText(this.font, this.title, this.left + PANEL_WIDTH / 2, this.top + 8, 0xFFFFFFFF);
 		super.extractRenderState(graphics, mouseX, mouseY, a);
+
+		if (this.keyLineY + 9 < this.height) {
+			graphics.text(this.font, Component.translatable("sabercraft.menu.key_line", com.phiro.sabercraft.client.Hints.keyName(com.phiro.sabercraft.client.SaberCraftClient.CUSTOMIZE_KEY)),
+					this.keyLineX + 2, this.keyLineY, 0xFF9A9AA8);
+		}
+
 		this.extractPanel(graphics, mouseX, mouseY, a);
 		this.extractTransition(graphics);
 	}

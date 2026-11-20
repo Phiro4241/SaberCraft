@@ -189,7 +189,8 @@ public class Phase21GameTest implements FabricClientGameTest {
 	private void noise() {
 		String key = this.on(s -> {
 			for (Figure figure : this.session(s).figures) {
-				if (figure.observer && Story.DESTROYER.equals(figure.ship) && figure.mode == Figure.ROUTINE && Math.abs(figure.y - H) < 1.0) {
+				// (Phase 27: someone standing: one on a seat only looks over, he does not get up.)
+				if (figure.observer && Story.DESTROYER.equals(figure.ship) && figure.mode == Figure.ROUTINE && Math.abs(figure.y - H) < 1.0 && !figure.seated()) {
 					return figure.key;
 				}
 			}
@@ -218,8 +219,8 @@ public class Phase21GameTest implements FabricClientGameTest {
 		}
 
 		check(heard[0][0] >= 1 && heard[0][3] == Figure.LOOK, "the nearest who hears M-31 does not go to see (mode " + heard[0][3] + ")");
-		check(heard[1][4] == 2 && heard[1][3] == Figure.LOOK && heard[1][0] == 0 || heard[1][0] > 0 && heard[1][3] != Figure.LOOK,
-				"the second time " + key + " goes to see again");
+		// (Phase 27: only he believes it less; one who only looked over the first time may go now.)
+		check(heard[1][4] == 2 && heard[1][3] == Figure.LOOK, "the second time " + key + " goes to see again");
 		check(heard[2][2] >= 1 && heard[2][3] == Figure.ROUTINE, "the third time " + key + " still reacts to M-31");
 		this.server.runOnServer(s -> this.session(s).figure(key).snapToRoutine(this.session(s).time()));
 

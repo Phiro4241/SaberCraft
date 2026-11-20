@@ -71,6 +71,11 @@ public final class StoryProgress {
 	public List<String> ownDroids = new ArrayList<>();
 	/** Whether the player had a stash file written (their inventory before the story). */
 	public boolean stashed;
+	/**
+	 * Phase 27: the story's difficulty ({@code easy}, {@code normal}, {@code hard}; see
+	 * {@link StoryDifficulty}). A save from before Phase 27 has none: normal.
+	 */
+	public String difficulty = StoryDifficulty.NORMAL.id;
 
 	/** Whether a flag is set. */
 	public boolean has(String flag) {

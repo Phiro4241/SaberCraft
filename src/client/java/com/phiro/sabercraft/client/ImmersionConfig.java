@@ -208,12 +208,52 @@ public final class ImmersionConfig {
 	 */
 	@SerializedName("title_screen")
 	public boolean titleScreen = true;
+	/**
+	 * Phase 27: brightens the story's own darkening (the emergency lights, the alarm's pulsing,
+	 * the lights failing as the ship shudders): 0 as made (the default), 1 brighter, 2 bright. The
+	 * colours stay (red stays red), only less dark.
+	 */
+	@SerializedName("story_brightness")
+	public int storyBrightness = 0;
+	/**
+	 * Phase 27: the hints shown once (the menu key at the first start, how to use a crawl way),
+	 * by name; and whether the menu key was moved off V (Simple Voice Chat's key) once.
+	 */
+	@SerializedName("hints_shown")
+	public java.util.List<String> hintsShown = new java.util.ArrayList<>();
+	@SerializedName("menu_key_moved")
+	public boolean menuKeyMoved = false;
 
 	public static final String CAMERA_COCKPIT = "cockpit";
 	public static final String CAMERA_CHASE = "chase";
 	public static final String CAMERA_KEEP = "keep";
 	public static final String MODE_SABERCRAFT = "sabercraft";
 	public static final String MODE_STARWARS = "starwars";
+
+	/** Phase 27: how far the story's darkening is lifted (0 none .. 1 none of it left). */
+	public float storyLift() {
+		return switch (Mth.clamp(this.storyBrightness, 0, 2)) {
+			case 1 -> 0.4F;
+			case 2 -> 0.7F;
+			default -> 0.0F;
+		};
+	}
+
+	/** Phase 27: whether a hint shown once was shown already. */
+	public boolean shown(String hint) {
+		return this.hintsShown != null && this.hintsShown.contains(hint);
+	}
+
+	/** Phase 27: marks a hint as shown (and saves). Returns whether it was new. */
+	public static boolean markShown(String hint) {
+		if (current.shown(hint)) {
+			return false;
+		}
+
+		current.hintsShown.add(hint);
+		save();
+		return true;
+	}
 
 	public boolean starWarsMode() {
 		return MODE_STARWARS.equals(this.musicMode);
@@ -245,6 +285,10 @@ public final class ImmersionConfig {
 			this.language = "auto";
 		}
 		this.storyTextSpeed = Mth.clamp(this.storyTextSpeed, 0, 2);
+		this.storyBrightness = Mth.clamp(this.storyBrightness, 0, 2);
+		if (this.hintsShown == null) {
+			this.hintsShown = new java.util.ArrayList<>();
+		}
 		if (this.planet == null) {
 			this.planet = "";
 		}

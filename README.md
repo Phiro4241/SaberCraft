@@ -36,7 +36,7 @@
 
 ## About
 
-Choose a sword as your lightsaber (press **V** with a sword in hand and click **Make lightsaber**), and the hilt comes up, the blade shoots out with an ignition sound and starts to hum. Put it away and it retracts first. The goal of SaberCraft is the most cinematic lightsaber you can have in Minecraft: layered glow (white core, colored bloom, soft halo), hilts that ignite differently, swing sounds that follow your movement, and fights with parries, counters and sparks where the blades meet.
+Choose a sword as your lightsaber (press **I** with a sword in hand and click **Make lightsaber**), and the hilt comes up, the blade shoots out with an ignition sound and starts to hum. Put it away and it retracts first. The goal of SaberCraft is the most cinematic lightsaber you can have in Minecraft: layered glow (white core, colored bloom, soft halo), hilts that ignite differently, swing sounds that follow your movement, and fights with parries, counters and sparks where the blades meet.
 
 What makes it different:
 
@@ -93,7 +93,7 @@ Status labels: ✅ **finished** (built and covered by automated tests) · 🧪 *
 
 ### 📖 Story mode 🧪
 
-- **Chapter 1, "Nachtschatten" ("Nightshade")**: six missions as the rebel spy *Funke* ("Spark") aboard the Star Destroyer *Tenebris*, from the Falcon's briefing to a lightsaber duel in the hangar. Start it in the menu (**V**, first tab **Story**). Original story and dialogs, in **German and English**.
+- **Chapter 1, "Nachtschatten" ("Nightshade")**: six missions as the rebel spy *Funke* ("Spark") aboard the Star Destroyer *Tenebris*, from the Falcon's briefing to a lightsaber duel in the hangar. Start it in the menu (**I**, first tab **Story**). Original story and dialogs, in **German and English**.
 - **The arrival** (Phase 20): out of hyperspace, a short film of the Falcon sneaking under the Tenebris and docking (skip with Space).
 - **Stealth**: the crew notices you in four stages (calm, suspicious, alerted, detected), shown by a small eye on screen. Darkness, lamps, cover, sneaking and crawling matter. Seen, troopers chase you round corners, others run to a wall comm to raise the alarm, and reinforcements come through the doors (Phase 20). Caught means back to the last checkpoint with everything as it was there, never a dead end.
 - **Troopers that fight** (Phase 21): in a chase they fire stun bolts from a distance (three hits and you are caught), each with a role, never through a comrade; out of sight they search where they last saw you. When the search is called off the crew stays more wary and extra patrols stay in the corridors.
@@ -102,6 +102,8 @@ Status labels: ✅ **finished** (built and covered by automated tests) · 🧪 *
 - **Droids to recruit**: the mouse droid M-31 (noises, small hatches, a force field) and the astromech R2-V7 (opens locks, scans the room). They keep their own places behind you (Phase 21); M-31 drives to the spot you look at and rattles there, only those who hear it react, and the same guard falls for it only so often.
 - **The duel against the Schattenklinge** (Phase 21): a scene in the hangar before it, then a fight of blows you can see coming: block the last blow of a combo and he staggers, hammering into his guard gets you a riposte, two more phases with a leap and a Force push. In the story the **Focus** (key **G**) replaces the Force powers that have nothing to act on there.
 - **Saved at every checkpoint**: leave the story at any time (your own things, place and droids come back), continue later, or play a reached mission again. The end gives a lightsaber to keep.
+- **Three difficulties** (Phase 27): Leicht, Normal, Schwer, chosen before the story begins and changeable in the story menu at any time. They change how many enemies there are, how far and how fast they notice you, how quickly they move, search and shoot, how many stun bolts catch you (4, 3 or 2) and how the boss fights. Each player keeps their own.
+- **Crawl ways you can recognise** (Phase 27): usable hatches have a yellow and black frame, a handle and a small lamp; one right-click opens a hatch and you simply walk in. A **Story-Helligkeit** setting brightens the story's dark scenes if you like.
 - Its own **language setting** (Auto, German, English) for all SaberCraft texts, independent of Minecraft's.
 
 ### 🌌 Skies and planets ✅
@@ -133,7 +135,7 @@ All screenshots are taken by the automated client game tests (software rendering
 | | |
 | :---: | :---: |
 | ![Six blade colors at night](docs/images/phase5/aufstellung_nacht.png) | ![Saber menu with hilts, colors and fighting styles](docs/images/phase9/menue_schwert.png) |
-| **Six blade colors** | **Saber menu (V)** |
+| **Six blade colors** | **Saber menu (I)** |
 | ![Two blades clash](docs/media/screenshots/saber-clash.png) | ![Blade trails, sparks and Force abilities](docs/images/phase6/effekte_faehigkeiten.png) |
 | **Clash at the contact point** | **Abilities, trails and sparks** |
 | ![Droid companions](docs/media/screenshots/droids.png) | ![Droid menu](docs/media/screenshots/droid-menu.png) |
@@ -176,7 +178,7 @@ No other mods are required. [Iris](https://modrinth.com/mod/iris) and [Sodium](h
    - Linux: `~/.minecraft/mods`
 3. Put `sabercraft-<version>.jar` into the same `mods` folder (not the `-sources.jar`). Remove older SaberCraft JARs.
 4. Start the **Fabric** profile in the launcher.
-5. Try it: take any sword into your hand, press **V** for the SaberCraft menu, click **Make lightsaber** and watch it ignite.
+5. Try it: take any sword into your hand, press **I** for the SaberCraft menu, click **Make lightsaber** and watch it ignite.
 
 ### Client, server or both?
 
@@ -198,7 +200,7 @@ All keys are in **Options → Controls → Key Binds → SaberCraft** and can be
 
 | Default key | Action |
 | --- | --- |
-| **V** | Open the SaberCraft menu (story, saber, blasters, droids, ships, combat, character, sky, music, graphics) |
+| **I** | Open the SaberCraft menu (story, saber, blasters, droids, ships, combat, character, sky, music, graphics) |
 | Left mouse button | Attack; the move depends on the fighting style (a stab while sprinting) |
 | **R** (hold) | Defensive stance; right after raising it, a parry |
 | **Z** | Spin attack; blade whirl with the double blade |
@@ -250,7 +252,7 @@ All keys are in **Options → Controls → Key Binds → SaberCraft** and can be
 
 ## Configuration and your own content
 
-Almost everything can be set in the in-game menu (**V**). The menu writes JSON files to `config/sabercraft/` in your Minecraft folder; a file always lists every setting with its current value, and a broken file is reported in the log and left untouched.
+Almost everything can be set in the in-game menu (**I**; before Phase 27 it was **V**, which Simple Voice Chat uses too: a menu key still on V moves to I once). The menu writes JSON files to `config/sabercraft/` in your Minecraft folder; a file always lists every setting with its current value, and a broken file is reported in the log and left untouched.
 
 | File / folder | Side | What it holds |
 | --- | --- | --- |

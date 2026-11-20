@@ -232,7 +232,8 @@ public final class SaberCraftCommands {
 		}
 
 		return switch (ItemConversion.toSaber(stack, colorId, hiltId)) {
-			case DONE -> ok(context, "sabercraft.command.converted", "%s is now a lightsaber. Change hilt, color and style with V.", stack.getHoverName());
+			case DONE -> ok(context, "sabercraft.command.converted", "%s is now a lightsaber. Change hilt, color and style in the SaberCraft menu (%s).", stack.getHoverName(),
+					Component.keybind("key.sabercraft.customize"));
 			case CHANGED -> ok(context, "sabercraft.command.changed", "The lightsaber got a new hilt or color.");
 			case ALREADY -> fail(context, "sabercraft.command.already_saber", "This already is a lightsaber. Give a color (and hilt) to change it, or use /sabercraft revert.");
 			case WRONG_ITEM -> fail(context, "sabercraft.command.not_a_sword", "Hold a sword in your main hand: wooden, stone, copper, iron, golden, diamond or netherite.");

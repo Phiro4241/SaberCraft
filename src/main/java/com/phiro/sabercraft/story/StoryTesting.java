@@ -48,12 +48,32 @@ public final class StoryTesting {
 	/** Nobody sees the player for that long (a test walking the story through), or again at once (0). */
 	public static void unseen(StorySession s, int ticks) {
 		s.grace = ticks;
+		// Phase 27: also no bearings after a checkpoint (the test decides).
+		s.shield = 0;
+	}
+
+	/** Phase 27: the bearings after a checkpoint left (ticks; 0 once over). */
+	public static int shield(StorySession s) {
+		return s.shield;
+	}
+
+	/** Phase 27: the place kept with the checkpoint set to that (as a save from before kept it). */
+	public static void keptPlace(StorySession s, String ship, Vec3 at, float yaw) {
+		s.progress.placeShip = ship;
+		s.progress.placeX = at.x;
+		s.progress.placeY = at.y;
+		s.progress.placeZ = at.z;
+		s.progress.placeYaw = yaw;
+	}
+
+	/** Phase 27: a safe checkpoint now, if the chapter makes one where the player is. */
+	public static void safeCheckpointNow(StorySession s) {
+		Chapter1.safeCheckpointForTest(s);
 	}
 
 	/** Where the marker points now (world space), or null. */
 	public static @Nullable Vec3 marker(StorySession s) {
-		Mission.Target goal = s.chapter instanceof Chapter1 c1 ? c1.target(s) : s.step().target();
-		return goal == null ? null : goal.at().add(Vec3.atLowerCornerOf(s.origin(goal.ship())));
+		return Story.marker(s);
 	}
 
 	/** A thing to use by its id (world space centre), or null when it is not there now. */
@@ -375,8 +395,14 @@ public final class StoryTesting {
 		return Finale.fociForTest();
 	}
 
+	/** What a light stroke takes of her on Normal (Phase 27: she is stronger). */
 	public static float hit() {
-		return Finale.HIT;
+		return Finale.HIT / Finale.STRENGTH;
+	}
+
+	/** Phase 27: what a light stroke takes of her at that difficulty. */
+	public static float hit(StoryDifficulty difficulty) {
+		return Finale.HIT / (Finale.STRENGTH * difficulty.bossHealth);
 	}
 
 	public static float phaseTwo() {
@@ -775,6 +801,83 @@ public final class StoryTesting {
 		return Chapter1.LAB_GUARD_DOWN;
 	}
 
+	/** Phase 27: the figures made again for the step as it is now (as at a checkpoint). */
+	public static void refigure(StorySession s) {
+		s.rebuildFigures();
+	}
+
+	/** Phase 27: the difficulty kept in the player's story file. */
+	public static String fileDifficulty(net.minecraft.server.MinecraftServer server, java.util.UUID player) {
+		return StoryStore.load(server, player).difficulty;
+	}
+
+	/** Phase 27: places of the story (plot space): the hideout's opening from the crawl way, the checkpoint with the stick, the safe places by the cells. */
+	public static Vec3 hideoutMouth() {
+		return Chapter1.HIDEOUT_MOUTH.at();
+	}
+
+	public static Vec3 crateSafe() {
+		return Chapter1.CRATE_SAFE;
+	}
+
+	public static Vec3 consoleSafe() {
+		return Chapter1.CONSOLE_SAFE;
+	}
+
+	/** Phase 27: whether a place (plot space) is in one of the Star Destroyer's crawl ways; where a checkpoint there would be kept (null: none). */
+	public static boolean inVent(Vec3 at) {
+		return Chapter1.inVent(at);
+	}
+
+	public static @Nullable Vec3 crawlAnchor(Vec3 at) {
+		return Chapter1.crawlAnchor(at);
+	}
+
+	/** Phase 27: how many saved places were not trusted on a restore (the player put at the step's own place instead). */
+	public static int untrusted() {
+		return Story.untrustedForTest();
+	}
+
+	/** Phase 27: the lab guard's looks: how many, the yaw of one, and ticks until he holds that one next. */
+	public static int labLooks() {
+		return Chapter1.LAB_WATCH.length;
+	}
+
+	public static float labLookYaw(int look) {
+		return Chapter1.LAB_WATCH[look][0];
+	}
+
+	public static int labLookIn(StorySession s, int look) {
+		Figure guard = s.figure("lab_guard");
+		long now = s.time();
+		return (int) (Chapter1.labWatchAt(now, look, guard == null ? 0 : guard.id) - now);
+	}
+
+	/** Phase 27: how fast that figure's suspicion fills if it looked that way now (its look put back after). */
+	public static float seesLooking(StorySession s, Figure figure, float yaw) {
+		float yaw0 = figure.yaw;
+		float head0 = figure.headYaw;
+		figure.yaw = yaw;
+		figure.headYaw = yaw;
+		float rate = sees(s, figure);
+		figure.yaw = yaw0;
+		figure.headYaw = head0;
+		return rate;
+	}
+
+	/** Phase 27: how far that figure hears M-31, whether it is a sentry, how often a noise drew it (and when). */
+	public static double hearing(Figure figure) {
+		return figure.hearing;
+	}
+
+	public static boolean sentry(Figure figure) {
+		return figure.sentry;
+	}
+
+	public static void distractedLongAgo(Figure figure) {
+		figure.distractedAt -= Stealth.DISTRACT_FORGET + 20;
+	}
+
 	/** Phase 26: whether that guard can be overpowered now (from close behind). */
 	public static boolean takedownOpen(StorySession s, Figure guard) {
 		return Chapter1.takedownOpen(s, guard);
@@ -821,7 +924,7 @@ public final class StoryTesting {
 
 	/** Phase 26: a stroke takes her just below her last quarter (she turns fierce). */
 	public static void lastStrength(StorySession s, Figure figure, net.minecraft.server.level.ServerPlayer player) {
-		figure.health = Finale.FIERCE + Finale.HIT - 0.005F;
+		figure.health = Finale.FIERCE + hit(s.difficulty()) - 0.005F;
 		s.lastStroke = s.time();
 		Finale.bossHitForTest(s, figure, player);
 	}

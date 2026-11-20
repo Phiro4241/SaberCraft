@@ -30,6 +30,8 @@ public record StoryActionPayload(byte action, String text, int value) implements
 	public static final byte SKIP = 9;
 	/** Phase 21: the Focus key (the duel's slowed time). */
 	public static final byte FOCUS = 10;
+	/** Phase 27: the story's difficulty chosen in the menu (value: 0 easy, 1 normal, 2 hard). */
+	public static final byte DIFFICULTY = 11;
 public static final CustomPacketPayload.Type<StoryActionPayload> TYPE = new CustomPacketPayload.Type<>(SaberCraft.id("story_action"));
 	public static final StreamCodec<FriendlyByteBuf, StoryActionPayload> CODEC = CustomPacketPayload.codec(StoryActionPayload::write, StoryActionPayload::new);
 

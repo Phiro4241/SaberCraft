@@ -101,6 +101,15 @@ public class ShipEntity extends Pig {
 	private int crashCooldown;
 	/** Phase 13: ticks before the next soft-landing sound. */
 	private int landCooldown;
+	/**
+	 * Phase 27: how far the ship really moved in its last tick (its speed coming in). An impact is
+	 * measured with it: the speed it had when it hit, not only the bit of the last step that did
+	 * not fit any more (which was anything between nothing and the speed, so a hard landing often
+	 * cost half a heart).
+	 */
+	private Vec3 lastMoved = Vec3.ZERO;
+	/** Phase 27: only for tests: the motion the ship is given instead of the pilot's (null: none). */
+	private @Nullable Vec3 testMotion;
 	/** Phase 13: flight energy in ticks of full throttle, -1 until the first tick sets it. */
 	private float energy = -1.0F;
 	private boolean depleted;
@@ -401,6 +410,10 @@ public class ShipEntity extends Pig {
 			motion = new Vec3(motion.x, 0.0, motion.z);
 		}
 
+		if (this.testMotion != null) {
+			motion = this.testMotion;
+		}
+
 		if (!this.level().getWorldBorder().isWithinBounds(this.getBoundingBox().move(motion))) {
 			motion = Vec3.ZERO;
 			this.speed = 0.0;
@@ -414,19 +427,22 @@ public class ShipEntity extends Pig {
 		// Never fall damage: neither for the ship nor (through it) for the pilot.
 		this.resetFallDistance();
 
-		// Phase 13: how hard it hit something: the speed it lost against a wall, a ceiling or the
-		// ground. Gentle touch-downs are free, hard ones cost hull.
+		// Phase 13: how hard it hit something. Gentle touch-downs are free, hard ones cost hull.
+		// Phase 27: the speed it came in with against what stopped it (see impactSpeed).
 		double impact = 0.0;
 		boolean landing = false;
 
 		if (this.horizontalCollision) {
-			impact = Math.max(impact, motion.horizontal().subtract(moved.horizontal()).length());
+			impact = Math.max(impact, impactSpeed(motion, moved, this.lastMoved, false));
 		}
 
 		if (this.verticalCollision) {
-			impact = Math.max(impact, Math.abs(motion.y - moved.y));
+			double vertical = impactSpeed(motion, moved, this.lastMoved, true);
 			landing = motion.y < 0.0;
+			impact = Math.max(impact, vertical);
 		}
+
+		this.lastMoved = moved;
 
 		if (impact > 0.0) {
 			this.impact(impact, landing, wasOnGround, pilot);
@@ -445,6 +461,32 @@ public class ShipEntity extends Pig {
 		if (pilot != null && this.speed >= full * 0.95) {
 			SaberAdvancements.award(pilot, SaberAdvancements.FIRST_FLIGHT);
 		}
+	}
+
+	/** Phase 27: a sideways hit counts with this share of the speed into the wall (a ship glances off). */
+	static final double SIDE_IMPACT = 0.85;
+
+	/**
+	 * Phase 27: how fast the ship hit what stopped it (blocks per tick): along each blocked axis,
+	 * the speed it was flying with against it, but at most as fast as it really moved that way
+	 * the tick before (a ship resting on the ground, pushed down by the pilot or settling, or
+	 * skimming along a wall, hits nothing: it was not moving into it). Sideways the speed into the
+	 * wall counts, not along it, so glancing touches are mild and a straight hit is hard.
+	 */
+	static double impactSpeed(Vec3 motion, Vec3 moved, Vec3 before, boolean vertical) {
+		if (vertical) {
+			if (Math.abs(motion.y - moved.y) < 1.0E-4) {
+				return 0.0;
+			}
+
+			// Coming in: as fast as it fell (or rose) the tick before, at most as fast as now.
+			double coming = Math.signum(before.y) == Math.signum(motion.y) ? Math.abs(before.y) : 0.0;
+			return Math.min(Math.abs(motion.y), coming + 0.02);
+		}
+
+		double x = Math.abs(motion.x - moved.x) > 1.0E-4 ? Math.min(Math.abs(motion.x), (Math.signum(before.x) == Math.signum(motion.x) ? Math.abs(before.x) : 0.0) + 0.02) : 0.0;
+		double z = Math.abs(motion.z - moved.z) > 1.0E-4 ? Math.min(Math.abs(motion.z), (Math.signum(before.z) == Math.signum(motion.z) ? Math.abs(before.z) : 0.0) + 0.02) : 0.0;
+		return Math.sqrt(x * x + z * z) * SIDE_IMPACT;
 	}
 
 	/**
@@ -507,10 +549,12 @@ public class ShipEntity extends Pig {
 		// 0 just above the safe speed, 1 at a wreck.
 		float share = (float) Mth.clamp((impact - handling.safeImpact()) / (handling.wreckImpact() - handling.safeImpact()), 0.0, 1.0);
 		float multiplier = AbilityConfig.get().shipCrashDamage;
+		// Phase 27: a little steeper than before (a hard landing is felt; see impactSpeed for what
+		// counts as the speed).
 		float damage = multiplier <= 0.0F ? 0.0F
 				: share >= 1.0F ? this.getMaxHealth() * 2.0F
-				: (float) (this.getMaxHealth() * Math.pow(share, 1.3) * 0.9) * multiplier;
-		boolean hard = share < 0.35F;
+				: (float) (this.getMaxHealth() * Math.pow(share, CRASH_CURVE)) * multiplier;
+		boolean hard = share < (landing ? 0.5F : 0.35F);
 		double y = this.getY() + this.ship.height() * 0.3;
 		double spread = this.ship.width() * 0.35;
 
@@ -689,6 +733,15 @@ public class ShipEntity extends Pig {
 	/** Only for tests: sets the energy, in ticks of flight at full throttle. */
 	public void setEnergyForTest(float energy) {
 		this.energy = energy;
+	}
+
+	/** Phase 27: how the hull damage grows from the safe speed (0) to a wreck (1). */
+	static final double CRASH_CURVE = 1.2;
+
+	/** Phase 27: only for tests: the ship flies with this motion (null: as the pilot steers again). */
+	public void forceMotionForTest(@Nullable Vec3 motion) {
+		this.testMotion = motion;
+		this.lastMoved = motion != null ? motion : Vec3.ZERO;
 	}
 
 	/** Only for tests: as if the ship hit something at {@code impact} blocks per tick. */

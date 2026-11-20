@@ -43,6 +43,7 @@ abstract class MinecraftMixin {
 		// clicks on).
 		if (com.phiro.sabercraft.client.interior.InteriorClient.heldAfterHatch(client)
 				|| com.phiro.sabercraft.client.story.StoryInput.use(client)
+				|| com.phiro.sabercraft.client.interior.InteriorClient.hatchIntent(client)
 				|| com.phiro.sabercraft.client.interior.InteriorClient.hatch(client)
 				|| com.phiro.sabercraft.client.interior.InteriorClient.talk(client)) {
 			// Phase 26: as vanilla does for every use: the key, held, repeats only every 4 ticks

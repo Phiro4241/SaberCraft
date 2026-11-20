@@ -124,7 +124,7 @@ final class StoryHud implements HudElement {
 		// Phase 22: after the chapter no mission is shown any more (the last one's goal stood there),
 		// only that chapter 1 is complete, quietly, and how to play it again.
 		if (StoryClient.has("chapter.done")) {
-			List<FormattedCharSequence> done = font.split(Component.translatable("sabercraft.story.hud.chapter_done_hint"), PANEL_WIDTH - 12);
+			List<FormattedCharSequence> done = font.split(Component.translatable("sabercraft.story.hud.chapter_done_hint", com.phiro.sabercraft.client.SaberCraftClient.CUSTOMIZE_KEY.getTranslatedKeyMessage()), PANEL_WIDTH - 12);
 			int h = 8 + 20 + done.size() * 10;
 			graphics.fill(x - 4, y - 4, x + PANEL_WIDTH, y + h - 2, 0x58000000);
 			graphics.fill(x - 4, y - 4, x - 2, y + h - 2, 0xC070D890);
@@ -482,12 +482,14 @@ final class StoryHud implements HudElement {
 		}
 
 		if (StoryClient.stuns() > 0 && StoryClient.stunAge() < 200) {
-			// The stun hits: three marks under the crosshair (the third means caught).
+			// The stun hits: three marks under the crosshair (the third means caught). Phase 27:
+			// as many as the difficulty allows (four on Easy, two on Hard).
 			int cx = width / 2;
 			int cy = height / 2 + 14;
+			int marks = StoryClient.stunMax();
 
-			for (int i = 0; i < 3; i++) {
-				int sx = cx - 14 + i * 10;
+			for (int i = 0; i < marks; i++) {
+				int sx = cx - (marks * 10 - 3) / 2 + i * 10;
 				graphics.fill(sx, cy, sx + 7, cy + 3, i < StoryClient.stuns() ? 0xE05A9CFF : 0x60FFFFFF);
 			}
 		}
@@ -795,7 +797,7 @@ final class StoryHud implements HudElement {
 		graphics.pose().popMatrix();
 		int y = height / 3 + 30;
 
-		for (FormattedCharSequence line : font.split(Component.translatable("sabercraft.story.end"), 300)) {
+		for (FormattedCharSequence line : font.split(Component.translatable("sabercraft.story.end", com.phiro.sabercraft.client.SaberCraftClient.CUSTOMIZE_KEY.getTranslatedKeyMessage()), 300)) {
 			graphics.text(font, line, width / 2 - font.width(line) / 2, y, alpha << 24 | 0xC8C0B0);
 			y += 11;
 		}
