@@ -425,6 +425,31 @@ public class Phase29GameTest implements FabricClientGameTest {
 		this.fightDoor(wrong, "a player in the doorway", wall, new Vec3(1.5, 0.0, 10.9), new Vec3(1.5, 0.0, 11.4), new Vec3(1.5, 0.0, 11.9), true);
 		this.fightDoor(wrong, "a player put right before it", wall, new Vec3(1.5, 0.0, 11.6), null, null, false);
 		check(wrong.isEmpty(), "in a story fight doors decide wrongly: " + wrong);
+		// A door never shuts on one of the story's people still in its opening (through, their way on
+		// beyond it); a shut one does not open for one passing that near without going through.
+		List<String> held = new ArrayList<>();
+		List<Vec3> beyond = List.of(new Vec3(1.5, 0.0, 7.0));
+		List<Vec3> along = List.of(new Vec3(6.0, 0.0, 11.25));
+
+		if (!InteriorSystems.wantedForTest(wall, false, new Vec3(1.5, 0.0, 9.75), new Vec3(1.5, 0.0, 10.1), null, beyond, true, false)) {
+			held.add("an open door shuts on one of the story's people still in it (0.75 past its plane)");
+		}
+
+		if (InteriorSystems.wantedForTest(wall, false, new Vec3(1.5, 0.0, 11.25), new Vec3(0.5, 0.0, 11.25), null, along, false, false)) {
+			held.add("a shut door opens for one of the story's people walking past 0.75 from it");
+		}
+
+		// Right after it shut: a player walking up to it (two looks in a row) opens it without being
+		// stopped short; one stepping once towards it from afar does not.
+		if (!InteriorSystems.wantedForTest(wall, true, new Vec3(1.5, 0.0, 11.9), new Vec3(1.5, 0.0, 12.4), new Vec3(1.5, 0.0, 12.9), List.of(), false, false, true)) {
+			held.add("right after it shut a door does not open for a player walking up to it");
+		}
+
+		if (InteriorSystems.wantedForTest(wall, true, new Vec3(1.5, 0.0, 12.0), new Vec3(1.5, 0.0, 12.4), new Vec3(1.5, 0.0, 12.4), List.of(), false, false, true)) {
+			held.add("right after it shut a door opens again for a player stepping once towards it");
+		}
+
+		check(held.isEmpty(), "doors decide wrongly: " + held);
 
 		if (!this.duel()) {
 			return;
@@ -726,8 +751,14 @@ public class Phase29GameTest implements FabricClientGameTest {
 		double shortest = Double.MAX_VALUE;
 		FilmCamera.Frame last = null;
 		String firstWrong = null;
+		// Where the camera trailed its fitted place most (it never leaps: it follows, or holds).
+		double maxLag = 0.0;
+		FilmCamera.Frame lagging = null;
+		int trailing = 0;
 
-		for (FilmCamera.Frame frame : frames) {
+		for (int index = 0; index < frames.size(); index++) {
+			FilmCamera.Frame frame = frames.get(index);
+
 			if (frame.inside() || frame.blocked() || frame.inBody()) {
 				if (firstWrong == null) {
 					firstWrong = String.format(Locale.ROOT, "%s at %.1f: camera %s about %s%s%s%s", frame.key(), frame.t(), frame.camera(), frame.about(), frame.inside() ? " inside" : "",
@@ -744,6 +775,12 @@ public class Phase29GameTest implements FabricClientGameTest {
 			}
 
 			shortest = Math.min(shortest, frame.reach());
+			trailing += frame.lag() > 0.05 ? 1 : 0;
+
+			if (frame.lag() > maxLag) {
+				maxLag = frame.lag();
+				lagging = frame;
+			}
 
 			if (last != null && last.key().equals(frame.key())) {
 				double moved = last.camera().distanceTo(frame.camera());
@@ -753,6 +790,15 @@ public class Phase29GameTest implements FabricClientGameTest {
 					if (jumps == 0) {
 						SaberCraft.LOGGER.warn("PHASE29 CAMERA {}: a jump of {} in {} ticks in shot {} at {}", name, String.format(Locale.ROOT, "%.2f", moved),
 								String.format(Locale.ROOT, "%.2f", dt), frame.key(), String.format(Locale.ROOT, "%.1f", frame.t()));
+
+						// The frames round it (to see what moved: the point, or the camera round it).
+						for (int k = Math.max(0, index - 4); k < Math.min(frames.size(), index + 3); k++) {
+							FilmCamera.Frame f = frames.get(k);
+							SaberCraft.LOGGER.warn("PHASE29 CAMERA {}:   {} t {} camera ({}, {}, {}) about ({}, {}, {}) reach {} [{}] lag {}", name, f.key(),
+									String.format(Locale.ROOT, "%.2f", f.t()), String.format(Locale.ROOT, "%.2f", f.camera().x), String.format(Locale.ROOT, "%.2f", f.camera().y),
+									String.format(Locale.ROOT, "%.2f", f.camera().z), String.format(Locale.ROOT, "%.2f", f.about().x), String.format(Locale.ROOT, "%.2f", f.about().y),
+									String.format(Locale.ROOT, "%.2f", f.about().z), String.format(Locale.ROOT, "%.2f", f.reach()), f.note(), String.format(Locale.ROOT, "%.2f", f.lag()));
+						}
 					}
 
 					jumps++;
@@ -770,6 +816,11 @@ public class Phase29GameTest implements FabricClientGameTest {
 
 		if (firstWrong != null) {
 			SaberCraft.LOGGER.warn("PHASE29 CAMERA {}: first wrong frame: {}", name, firstWrong);
+		}
+
+		if (lagging != null) {
+			SaberCraft.LOGGER.info("PHASE29 CAMERA {}: trailed its fitted place in {} frames, most {} in shot {} at {} [{}]", name, trailing,
+					String.format(Locale.ROOT, "%.2f", maxLag), lagging.key(), String.format(Locale.ROOT, "%.1f", lagging.t()), lagging.note());
 		}
 
 		check(frames.size() >= Math.min(20, shots.ticks() / 2), "the camera of " + name + " is not fitted into the rooms (" + frames.size() + " frames)");
@@ -1036,7 +1087,10 @@ public class Phase29GameTest implements FabricClientGameTest {
 		check("open".equals(opened), "after a perfect parry she is not open (" + opened + ")");
 		check(this.on(s -> SaberAbilities.strictForTest(this.me(s)))[0] == 0, "a perfect parry counts as one more blow in a row");
 		this.context.getInput().releaseKey(SaberAbilityClient.GUARD_KEY);
-		// Raised again at once (down and up): no perfect parry.
+		// Raised again at once (down and up): no perfect parry. With the guard key it cannot even be
+		// raised again so soon (its pause after lowering, as in free play); the block with the use key
+		// has no such pause, so there her own rule counts (a guard raised again within RAISE_LOCK
+		// ticks parries nothing perfectly).
 		this.fresh(2.3);
 		this.context.getInput().holdKey(SaberAbilityClient.GUARD_KEY);
 		this.context.waitTicks(16);
@@ -1044,14 +1098,78 @@ public class Phase29GameTest implements FabricClientGameTest {
 		this.context.waitTicks(3);
 		counts = this.on(s -> this.counts(this.session(s)));
 		this.server.runOnServer(s -> {
-			this.before(s, 2.3);
+			this.faced(s, 2.3);
 			StoryTesting.blow(this.her(s), 1, 6);
 		});
 		this.context.getInput().holdKey(SaberAbilityClient.GUARD_KEY);
-		this.context.waitTicks(10);
+		this.context.waitTicks(3);
+		boolean upAgain = this.on(s -> SaberAbilities.isGuarding(this.me(s)));
+		this.context.waitTicks(7);
 		after = this.on(s -> this.counts(this.session(s)));
+		SaberCraft.LOGGER.info("PHASE29 GUARD: guard key lowered and pressed again at once as her blow came: up again {}; {} -> {} (blocked, perfect, shaking, broken, hurt)",
+				upAgain, java.util.Arrays.toString(counts), java.util.Arrays.toString(after));
 		check(after[1] == counts[1], "a guard raised again at once (down and up) still parries perfectly");
+		check(!upAgain || after[0] + after[2] > counts[0] + counts[2], "a guard raised again at once neither waits for its pause nor takes her blow");
 		this.context.getInput().releaseKey(SaberAbilityClient.GUARD_KEY);
+		boolean usable = this.on(s -> this.me(s).getMainHandItem().getUseDuration(this.me(s)) > 0);
+
+		if (usable) {
+			for (boolean again : new boolean[] {false, true}) {
+				this.fresh(2.3);
+				this.context.waitTicks(24);
+
+				if (again) {
+					this.server.runOnServer(s -> this.me(s).startUsingItem(net.minecraft.world.InteractionHand.MAIN_HAND));
+					this.context.waitTicks(12);
+					this.server.runOnServer(s -> this.me(s).stopUsingItem());
+					this.context.waitTicks(3);
+				}
+
+				int[] was = this.on(s -> this.counts(this.session(s)));
+				this.server.runOnServer(s -> {
+					this.faced(s, 2.3);
+					StoryTesting.blow(this.her(s), 1, 6);
+					this.me(s).startUsingItem(net.minecraft.world.InteractionHand.MAIN_HAND);
+				});
+				this.context.waitTicks(10);
+				int[] now = this.on(s -> this.counts(this.session(s)));
+				this.server.runOnServer(s -> this.me(s).stopUsingItem());
+				SaberCraft.LOGGER.info("PHASE29 GUARD: block with the use key raised {}: {} -> {}", again ? "again at once" : "just in time", java.util.Arrays.toString(was),
+						java.util.Arrays.toString(now));
+
+				if (again) {
+					check(now[1] == was[1] && now[0] > was[0], "a block with the use key raised again at once parries perfectly (or does not hold)");
+				} else {
+					check(now[1] == was[1] + 1, "a block with the use key raised just in time does not parry perfectly");
+				}
+			}
+		} else {
+			SaberCraft.LOGGER.info("PHASE29 GUARD: the saber has no block on the use key here (only the guard key)");
+		}
+
+		// Timed parries keep paying: two in a row (the guard down a while between, nothing reset): both perfect, both open her up.
+		// (Within one combo of hers the guard key cannot be raised again in time: its cooldown after lowering, as in free play.)
+		this.fresh(2.3);
+		this.context.waitTicks(24);
+		int[] start = this.on(s -> this.counts(this.session(s)));
+		List<String> opens = new ArrayList<>();
+
+		for (int k = 0; k < 2; k++) {
+			this.server.runOnServer(s -> {
+				this.faced(s, 2.3);
+				StoryTesting.blow(this.her(s), 1, 6);
+			});
+			this.context.getInput().holdKey(SaberAbilityClient.GUARD_KEY);
+			this.context.waitTicks(10);
+			opens.add(this.on(s -> StoryTesting.action(this.her(s))));
+			this.context.getInput().releaseKey(SaberAbilityClient.GUARD_KEY);
+			this.context.waitTicks(40);
+		}
+
+		int[] end = this.on(s -> this.counts(this.session(s)));
+		SaberCraft.LOGGER.info("PHASE29 GUARD: two timed parries 40 ticks apart: {} -> {}, she after each: {}", java.util.Arrays.toString(start), java.util.Arrays.toString(end), opens);
+		check(end[1] == start[1] + 2, "a second timed parry later in the fight is not perfect any more (" + java.util.Arrays.toString(start) + " -> " + java.util.Arrays.toString(end) + ")");
+		check(opens.stream().allMatch("open"::equals), "after a timed parry she is not open each time (" + opens + ")");
 		this.server.runOnServer(s -> {
 			StoryTesting.freshGuard(this.me(s));
 			SaberAbilities.setStaminaForTests(this.me(s), max);
@@ -1066,6 +1184,8 @@ public class Phase29GameTest implements FabricClientGameTest {
 			this.calm(s, 40.5, -30.0, 180.0F);
 			this.before(s, distance);
 			StoryTesting.freshGuard(this.me(s));
+			// (A guard the boss broke stays down a moment by the duel's own timer, too: forgotten for the next try.)
+			this.session(s).timers.remove("guard_broken");
 			SaberAbilities.setStaminaForTests(this.me(s), AbilityConfig.get().staminaMax);
 		});
 		this.context.waitTicks(4);
@@ -1137,22 +1257,25 @@ public class Phase29GameTest implements FabricClientGameTest {
 		check("open".equals(this.on(s -> StoryTesting.action(this.her(s)))) || "recoil".equals(this.on(s -> StoryTesting.action(this.her(s)))),
 				"after her slam she is neither open nor stepping back");
 
-		// A step aside out of its arc once its way is set: missed, and she is open (her blade in the floor).
+		// A step aside, walking (no sprint, no dash), begun a moment after its warning: she follows
+		// until its way is set, then it misses, and she is open (her blade in the floor).
 		this.fresh(2.6);
 		int[] c0 = this.on(s -> StoryTesting.boss29());
 		this.server.runOnServer(s -> StoryTesting.slam(this.session(s), this.her(s)));
-		this.untilWindup(7);
-		this.server.runOnServer(s -> {
-			Figure f = this.her(s);
-			Vec3 look = f.look();
-			Vec3 side = new Vec3(-look.z, 0.0, look.x);
-			Vec3 to = f.position().add(side.scale(2.4)).add(look.scale(-0.3));
-			this.teleport(s, this.session(s), to, yaw(to, f.position()));
-		});
-		this.context.waitTicks(12);
+		this.context.waitTicks(5);
+		this.context.getInput().holdKey(options -> options.keyLeft);
+
+		for (int i = 0; i < 40 && this.on(s -> StoryTesting.boss29())[7] + this.on(s -> StoryTesting.boss29())[8] == c0[7] + c0[8]; i++) {
+			this.context.waitTick();
+		}
+
+		this.context.getInput().releaseKey(options -> options.keyLeft);
 		int[] c1 = this.on(s -> StoryTesting.boss29());
-		check(c1[7] == c0[7] + 1, "a step aside out of her slam's arc does not escape it");
+		check(c1[7] == c0[7] + 1 && c1[8] == c0[8], "walking aside after her slam's warning does not escape it (missed " + (c1[7] - c0[7]) + ", hit " + (c1[8] - c0[8]) + ")");
 		check("open".equals(this.on(s -> StoryTesting.action(this.her(s)))), "after her missed slam she is not open");
+
+		// Standing still on the same spot it does hit (the step aside is what saved the player).
+		// (Measured above: standing before her it hit.)
 
 		// A jump over the shock wave.
 		this.fresh(2.6);
@@ -1219,6 +1342,87 @@ public class Phase29GameTest implements FabricClientGameTest {
 		}
 
 		check(low[0] != low[1], "her staff is thrown the same way twice running (low " + low[0] + ", " + low[1] + ")");
+
+		// The low throw: standing it hits the legs; jumped over at the right moment it passes under,
+		// and comes back high over the player's head (not into their legs from behind).
+		for (boolean jump : new boolean[] {false, true}) {
+			int hits = this.on(s -> this.session(s).counters.getOrDefault("throw_hit", 0));
+			double[] floor = new double[1];
+			this.server.runOnServer(s -> {
+				this.calm(s, this.her(s).x, this.her(s).z, this.her(s).headYaw);
+				this.before(s, 6.0);
+				floor[0] = this.me(s).getY();
+				StoryTesting.throwNow(this.session(s), this.her(s));
+				this.her(s).throwLow = true;
+			});
+			boolean jumped = false;
+			int heldAt = -100;
+			// How high the player's feet and the staff were while it passed them (lowest feet, staff on its way out and back).
+			double lowestFeet = Double.MAX_VALUE;
+			double[] staff = {Double.MAX_VALUE, Double.MAX_VALUE};
+
+			for (int i = 0; i < 80; i++) {
+				this.context.waitTick();
+
+				if (i == heldAt + 3) {
+					this.context.getInput().releaseKey(options -> options.keyJump);
+				}
+
+				if (jump && !jumped) {
+					// Jumped 4 or 5 ticks before it reaches the legs: high in the jump as it passes.
+					int[] in = this.on(s -> StoryTesting.staffArrives(this.her(s), this.me(s).position(), 0.9));
+
+					if (in != null && in[1] == 1 && in[0] >= 4 && in[0] <= 5 && this.context.computeOnClient(client -> client.player.onGround())) {
+						this.context.getInput().holdKey(options -> options.keyJump);
+						heldAt = i;
+						jumped = true;
+					}
+				}
+
+				double[] passing = this.on(s -> {
+					Figure f = this.her(s);
+					Vec3 at = StoryTesting.staffAt(f);
+					Vec3 me = this.me(s).position();
+
+					if (at == null || Math.hypot(at.x - me.x, at.z - me.z) > 0.9) {
+						return null;
+					}
+
+					return new double[] {me.y - floor[0], at.y - floor[0], StoryTesting.staffLeg(f)};
+				});
+
+				if (passing != null) {
+					int leg = (int) passing[2] - 1;
+
+					if (leg == 0) {
+						lowestFeet = Math.min(lowestFeet, passing[0]);
+					}
+
+					if (leg >= 0 && leg < 2) {
+						staff[leg] = Math.min(staff[leg], passing[1]);
+					}
+				}
+
+				if (!this.on(s -> StoryTesting.staffOut(this.her(s))) && i > 30) {
+					break;
+				}
+			}
+
+			this.context.getInput().releaseKey(options -> options.keyJump);
+			int hit = this.on(s -> this.session(s).counters.getOrDefault("throw_hit", 0)) - hits;
+			SaberCraft.LOGGER.info("PHASE29 THROW: low, {}: hit {} times; passing the player its lowest {} out, {} back above their feet' place; their feet at least {} up as it passed on its way out",
+					jump ? "jumped over" : "standing", hit, staff[0] == Double.MAX_VALUE ? "-" : String.format(Locale.ROOT, "%.2f", staff[0]),
+					staff[1] == Double.MAX_VALUE ? "-" : String.format(Locale.ROOT, "%.2f", staff[1]),
+					lowestFeet == Double.MAX_VALUE ? "-" : String.format(Locale.ROOT, "%.2f", lowestFeet));
+			if (jump) {
+				check(jumped, "(the test) no moment to jump over her low throw");
+				check(hit == 0, "jumped over at the right moment, her low throw still hits");
+				check(staff[1] != Double.MAX_VALUE, "(the test) her low throw did not come back past the player");
+				check(staff[1] == Double.MAX_VALUE || staff[1] > 2.4, "her low throw comes back low past the player (into them from behind)");
+			} else {
+				check(hit == 1, "her low throw does not hit one standing still once (" + hit + " times)");
+			}
+		}
 	}
 
 	/** Waits until her slam's wind-up has that many ticks left (its way set). */
@@ -1493,7 +1697,8 @@ public class Phase29GameTest implements FabricClientGameTest {
 	// --- 3 (3): the duel's films: before it, her defeat by the wall -----------------------------------------
 
 	private void defeatCamera() {
-		this.enter(5, "m6.duel");
+		// (The duel's film plays once a story: earlier parts saw it; the test goes back to before that.)
+		this.enter(5, "m6.duel", "seen.duel_film");
 		this.flags("saber.taken", "droid.m31", "droid.r2v7");
 		this.server.runOnServer(s -> Story.updateDroids(this.session(s)));
 		this.server.runCommand("effect give @a minecraft:resistance 100000 4 true");
@@ -1510,7 +1715,7 @@ public class Phase29GameTest implements FabricClientGameTest {
 			}
 		} else {
 			this.audit(false);
-			SaberCraft.LOGGER.info("PHASE29: the duel's film did not play here ({})", film);
+			this.problem("the duel's film does not begin (" + film + ")");
 		}
 
 		this.skipFilms(300);
@@ -1589,6 +1794,19 @@ public class Phase29GameTest implements FabricClientGameTest {
 		f.yaw = yaw;
 		f.headYaw = yaw;
 		f.speed = 0.0F;
+	}
+
+	/** On guard, quiet, the player that far before her (as they stood), she facing them and they her. */
+	private void faced(MinecraftServer s, double distance) {
+		Figure f = this.her(s);
+		StoryTesting.guard(f, 4000);
+		f.react = 0;
+		f.reactTicks = 0;
+		f.speed = 0.0F;
+		this.before(s, distance);
+		float yaw = com.phiro.sabercraft.interior.Crew.yaw(f.position(), this.session(s).local(Story.DESTROYER));
+		f.yaw = yaw;
+		f.headYaw = yaw;
 	}
 
 	/** Puts the player that far behind her (where she looks away from), facing her. */

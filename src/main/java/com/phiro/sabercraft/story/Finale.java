@@ -341,9 +341,11 @@ final class Finale {
 	 * (a longer opening).
 	 */
 	static final int SLAM_WIND = 24;
-	static final int SLAM_LOCK = 8;
+	// (Locked 12 ticks before it falls, 40 degrees to each side: a real step aside, walking, gets out
+	// of its way in time; at first 8 ticks and 55 degrees, which only a dash or a jump escaped.)
+	static final int SLAM_LOCK = 12;
 	static final double SLAM_REACH = 3.9;
-	static final float SLAM_ARC = 55.0F;
+	static final float SLAM_ARC = 40.0F;
 	static final float SLAM_DAMAGE = 6.0F;
 	static final float STRAIN_SLAM = 0.42F;
 	static final int SLAM_EVERY = 200;
@@ -354,7 +356,9 @@ final class Finale {
 	/** Phase 29: a guard held this long (ticks) when she chooses: she goes for what breaks it (the push, the slam). */
 	static final int TURTLE = 20;
 	/** Phase 29: a guard raised again this soon after it came down parries nothing perfectly (no parrying by mashing the key). */
-	static final int RAISE_LOCK = 12;
+	// (6, not 12: the guard lowered after a blow and raised in time for her next blow of the same
+	// combo still parries it perfectly; only raising it again at once, mashing, does not.)
+	static final int RAISE_LOCK = 6;
 	/**
 	 * Phase 29: the scene at half her strength never starts with the player in the air (Phiro: frozen
 	 * in mid-air): she steps back and waits for them to land (nothing hurts meanwhile), at most this
@@ -2114,8 +2118,9 @@ final class Finale {
 
 			// Let go.
 			Vec3 look = f.look();
-			Vec3 start = f.position().add(corner).add(0.0, f.throwLow ? 0.95 : 1.45, 0.0).add(look.scale(0.35)).add(new Vec3(-look.z, 0.0, look.x).scale(-0.3));
-			Vec3 target = player.position().add(0.0, f.throwLow ? 0.35 : 1.0, 0.0);
+			// (Phase 29: thrown low from low down, skimming at shin height: a jump clears it.)
+			Vec3 start = f.position().add(corner).add(0.0, f.throwLow ? 0.6 : 1.45, 0.0).add(look.scale(0.35)).add(new Vec3(-look.z, 0.0, look.x).scale(-0.3));
+			Vec3 target = player.position().add(0.0, f.throwLow ? 0.25 : 1.0, 0.0);
 			Vec3 dir = target.subtract(start).normalize();
 			// (Phase 29: a low throw skims on level past the player, not down into the floor.)
 			Vec3 flatDir = new Vec3(dir.x, 0.0, dir.z).lengthSqr() < 1.0E-4 ? dir : new Vec3(dir.x, 0.0, dir.z).normalize();
@@ -2156,9 +2161,19 @@ final class Finale {
 		}
 
 		int leg = t <= f.throwOut ? 1 : 2;
-		net.minecraft.world.phys.AABB body = player.getBoundingBox().inflate(THROW_HIT - 0.3);
+		// (Phase 29: the low throw reaches round the player as the high one, but hardly below their
+		// feet: in the air over it one is not hit. The high one is gone under with a dash.)
+		net.minecraft.world.phys.AABB box = player.getBoundingBox();
+		double round = THROW_HIT - 0.3;
+		net.minecraft.world.phys.AABB body = f.throwLow
+				? new net.minecraft.world.phys.AABB(box.minX - round, box.minY - 0.05, box.minZ - round, box.maxX + round, box.maxY + round, box.maxZ + round)
+				: box.inflate(round);
 
-		if ((f.throwHit & leg) == 0 && (body.contains(now) || body.clip(was, now).isPresent())) {
+		// (Phase 29: the low throw hits at most once: struck on its way out, one is not struck again
+		// from behind as it is pulled back up over one's head.)
+		boolean spent = f.throwLow ? f.throwHit != 0 : (f.throwHit & leg) != 0;
+
+		if (!spent && (body.contains(now) || body.clip(was, now).isPresent())) {
 			f.throwHit |= leg;
 			throwMeets(s, f, player, level, corner, now);
 		}
@@ -2491,9 +2506,9 @@ final class Finale {
 		Story.cue(s, Story.CUE_DUEL, "slam", "", f.id, java.util.List.of(impact));
 		Vec3 flat = new Vec3(me.x - f.x, 0.0, me.z - f.z);
 		double distance = flat.length();
-		boolean inArc = distance <= SLAM_REACH
-				&& (distance < 0.8 || Math.toDegrees(Math.acos(Mth.clamp(flat.scale(1.0 / distance).dot(dir), -1.0, 1.0))) <= SLAM_ARC)
-				&& Math.abs(me.y - f.y) < 1.5;
+		// (Right at her the wave catches one before her or at her side, not one pressed against her back.)
+		double off = distance < 1.0E-3 ? 0.0 : Math.toDegrees(Math.acos(Mth.clamp(flat.scale(1.0 / distance).dot(dir), -1.0, 1.0)));
+		boolean inArc = distance <= SLAM_REACH && (off <= SLAM_ARC || distance < 0.8 && off <= 90.0) && Math.abs(me.y - f.y) < 1.5;
 		boolean jumped = !player.onGround() && me.y - f.y > 0.45;
 		boolean evading = SaberAbilities.evading(player);
 

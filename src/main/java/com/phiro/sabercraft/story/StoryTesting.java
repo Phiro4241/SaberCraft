@@ -1198,6 +1198,47 @@ public final class StoryTesting {
 		StoryStore.save(server, player, progress);
 	}
 
+	/**
+	 * Phase 29: in how many ticks her flying staff next comes within {@code near} blocks (sideways)
+	 * of that place (world space), by its own path, and on which way (1 out, 2 back); null when it
+	 * does not any more (or is not out).
+	 */
+	public static int @Nullable [] staffArrives(Figure f, Vec3 at, double near) {
+		if (f.throwFrom == null || f.throwFar == null || f.throwHand == null) {
+			return null;
+		}
+
+		boolean wasNear = Math.hypot(StaffThrow.at(f.throwFrom, f.throwFar, f.throwHand, f.throwOut, f.throwBack, f.throwAge).x - at.x,
+				StaffThrow.at(f.throwFrom, f.throwFar, f.throwHand, f.throwOut, f.throwBack, f.throwAge).z - at.z) < near;
+
+		for (int t = f.throwAge + 1; t <= f.throwOut + f.throwBack; t++) {
+			Vec3 p = StaffThrow.at(f.throwFrom, f.throwFar, f.throwHand, f.throwOut, f.throwBack, t);
+			boolean isNear = Math.hypot(p.x - at.x, p.z - at.z) < near;
+
+			if (isNear && !wasNear) {
+				return new int[] {t - f.throwAge, t <= f.throwOut ? 1 : 2};
+			}
+
+			wasNear = isNear;
+		}
+
+		return null;
+	}
+
+	/** Phase 29: where her flying staff is now (world space, as its flight), or null when it is not out. */
+	public static @Nullable Vec3 staffAt(Figure f) {
+		if (f.throwFrom == null || f.throwFar == null || f.throwHand == null) {
+			return null;
+		}
+
+		return StaffThrow.at(f.throwFrom, f.throwFar, f.throwHand, f.throwOut, f.throwBack, f.throwAge);
+	}
+
+	/** Phase 29: on which way her flying staff is (1 out, 2 back; 0 when it is not out). */
+	public static int staffLeg(Figure f) {
+		return f.throwFrom == null ? 0 : f.throwAge <= f.throwOut ? 1 : 2;
+	}
+
 	/** Phase 29: the detention block guard's flag once he is down. */
 	public static String detGuardDown() {
 		return Chapter1.GUARD_DOWN;

@@ -59,6 +59,12 @@ public final class InteriorSystems {
 	 * (a patrol along a corridor) no longer opens it; walking towards it does.
 	 */
 	static final double DOOR_NEAR_FIGURE = 0.6;
+	/**
+	 * Phase 29: an open door stays open while one of the story's people is still in its opening
+	 * (their body in the door's cell: half a block either side of its plane and half their width):
+	 * it never shuts on someone in it (their way beyond it no longer leads through it).
+	 */
+	static final double DOOR_IN_FIGURE = 0.85;
 	/** Phase 26: blocks someone must come nearer to the door's plane in two ticks to count as coming towards it. */
 	static final double DOOR_APPROACH = 0.025;
 	/** Phase 26: ticks a door stays open at least once it opened (no snapping shut on someone's back, no flapping). */
@@ -250,7 +256,7 @@ public final class InteriorSystems {
 			if (!mover.player()) {
 				// Phase 29: the story's people: in the doorway, or on their way through it.
 				if (box.contains(mover.at().add(0.0, 0.5, 0.0))
-						&& Math.abs((door.alongX() ? mover.at().x : mover.at().z) - plane) <= DOOR_NEAR_FIGURE) {
+						&& Math.abs((door.alongX() ? mover.at().x : mover.at().z) - plane) <= (isOpen ? DOOR_IN_FIGURE : DOOR_NEAR_FIGURE)) {
 					return true;
 				}
 
@@ -272,7 +278,7 @@ public final class InteriorSystems {
 				return true;
 			}
 
-			if (resting || fight && distance > DOOR_REACH_FIGHT) {
+			if (fight && distance > DOOR_REACH_FIGHT) {
 				continue;
 			}
 
@@ -280,7 +286,7 @@ public final class InteriorSystems {
 
 			if (was == null || was.distanceTo(mover.at()) > 1.5) {
 				// Just came (a player stepping out of a lift, put there): as if walking up to it.
-				if (!fight) {
+				if (!fight && !resting) {
 					return true;
 				}
 
@@ -290,8 +296,10 @@ public final class InteriorSystems {
 			double before = Math.abs((door.alongX() ? was.x : was.z) - plane);
 			double closer = before - distance;
 
-			if (fight && !isOpen) {
-				// Phase 29: in a fight only one who keeps coming (two looks in a row).
+			if ((fight || resting) && !isOpen) {
+				// Phase 29: in a fight, and right after the door shut, only one who keeps coming
+				// (two looks in a row) opens it: one stepping about beside it does not, one walking
+				// up to it does (not stopped short at the shut door).
 				Vec3 older = mover.older();
 
 				if (older == null || older.distanceTo(was) > 1.5 || Math.abs((door.alongX() ? older.x : older.z) - plane) - before <= DOOR_APPROACH) {
@@ -380,6 +388,12 @@ public final class InteriorSystems {
 	public static boolean wantedForTest(Door door, boolean player, Vec3 at, @Nullable Vec3 was, @Nullable Vec3 older, List<Vec3> intent, boolean isOpen,
 			boolean fight) {
 		return wanted(BlockPos.ZERO, door, List.of(new Mover(player, at, was, older, intent)), isOpen, fight, false);
+	}
+
+	/** Phase 29, for tests: as above, the door just shut ({@code resting}) or not. */
+	public static boolean wantedForTest(Door door, boolean player, Vec3 at, @Nullable Vec3 was, @Nullable Vec3 older, List<Vec3> intent, boolean isOpen,
+			boolean fight, boolean resting) {
+		return wanted(BlockPos.ZERO, door, List.of(new Mover(player, at, was, older, intent)), isOpen, fight, resting);
 	}
 
 	/** Phase 26, for tests: the doors of a plot looked at now (as every second tick). */

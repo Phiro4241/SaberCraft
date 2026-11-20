@@ -36,7 +36,15 @@ import com.phiro.sabercraft.client.interior.MeshRays;
  * that point (the people move while it runs): it is pulled in at once in front of a surface (never
  * first into it and then out), and glides back out smoothly when there is room again; it keeps a
  * little way from every surface round it, out of the people's bodies and out of the player's head.
- * If even so it would have to come right up to the point, the shot is placed anew (a cut).</li>
+ * If even so it would have to come right up to the point, the shot is placed anew: the camera
+ * glides round the point to its new place.</li>
+ * <li><b>Never a jump within a shot</b>: from one frame to the next the camera moves at most
+ * {@link #SPEED} blocks a tick. Where the fitted place leaps further (the people moved suddenly, a
+ * wall came between, the point it is about had to move out of something), the camera follows it
+ * that fast, but only through places that are themselves clear (in nothing, in nobody, nothing
+ * between it and the point); where even that is not clear it holds its last place (still clear)
+ * and turns to look; only where its last place is no longer clear either does it take the fitted
+ * place at once (never a frame inside a wall or a person).</li>
  * </ol>
  *
  * <p>Walls are the blocks one collides with (the ship's barriers, closed doors) and the drawn rooms
@@ -57,7 +65,9 @@ public final class FilmCamera {
 	private static final double[] TURNS = {0.0, 25.0, -25.0, 50.0, -50.0, 80.0, -80.0, 115.0, -115.0, 150.0, -150.0, 180.0};
 	private static final double[] RAISES = {0.0, 0.7};
 	/** Moments of a shot looked at when choosing its place. */
-	private static final int SAMPLES = 6;
+	private static final int SAMPLES = 10;
+	/** How fast the camera may move at most within a shot (blocks a tick; at least a quarter tick's way a frame). */
+	static final double SPEED = 0.8;
 
 	/** A film's planned camera at a moment (ticks). */
 	@FunctionalInterface
@@ -68,6 +78,13 @@ public final class FilmCamera {
 	private static String shotKey = "";
 	private static double turn;
 	private static double raise;
+	/** A glide from one place round the point to another within a shot: from that turn and raise, since then, for so long (ticks). */
+	private static double blendTurn;
+	private static double blendRaise;
+	private static float blendAt;
+	private static float blendTicks;
+	/** How fast the camera glides round the point to a new place within a shot (blocks a tick, about). */
+	static final double GLIDE = 0.55;
 	/** How far out from the point the camera is now (eased out, at once in); negative: new shot. */
 	private static double arm = -1.0;
 	private static long frameNanos;
@@ -80,6 +97,36 @@ public final class FilmCamera {
 	private static int replaced;
 	private static int pushed;
 	private static int rescued;
+	private static int glides;
+	private static int followed;
+	private static int held;
+	private static int cut;
+	/** The camera last shown (its shot, the film's time), for its way to the next frame. */
+	private static @Nullable Vec3 lastShown;
+	private static String lastShownKey = "";
+	private static float lastShownAt;
+	/** What happened to the frame last fitted (for the tests' record). */
+	private static String note = "";
+
+	/** The shot's turn round its point now (gliding to a new one, or the one chosen). */
+	private static double turnAt(float t) {
+		float u = glideShare(t);
+		return u >= 1.0F ? turn : blendTurn + Mth.wrapDegrees(turn - blendTurn) * u;
+	}
+
+	private static double raiseAt(float t) {
+		float u = glideShare(t);
+		return u >= 1.0F ? raise : blendRaise + (raise - blendRaise) * u;
+	}
+
+	private static float glideShare(float t) {
+		if (blendTicks <= 0.0F) {
+			return 1.0F;
+		}
+
+		float u = Mth.clamp((t - blendAt) / blendTicks, 0.0F, 1.0F);
+		return u * u * (3.0F - 2.0F * u);
+	}
 
 	private FilmCamera() {
 	}
@@ -87,6 +134,9 @@ public final class FilmCamera {
 	/** A film ended or a new one begins: nothing kept from the last shot. */
 	static void reset() {
 		shotKey = "";
+		lastShown = null;
+		lastShownKey = "";
+		blendTicks = 0.0F;
 		arm = -1.0;
 		placedAt = -1000.0F;
 	}
@@ -109,46 +159,121 @@ public final class FilmCamera {
 
 		if (level == null || eye != null && raw.position().distanceToSqr(eye) < 1.0E-4) {
 			// (In the player's eyes: where the film goes back into the game.)
+			lastShown = null;
 			return raw;
 		}
 
 		frames++;
-		Vec3 pivot = freePivot(level, about, raw.position());
+		note = "";
+		Vec3 pivot = freePivot(level, about, raw.position(), bodies, eye);
+
+		if (pivot.distanceToSqr(about) > 1.0E-6) {
+			note += "pivot ";
+		}
 
 		if (!key.equals(shotKey)) {
+			note += "new ";
 			shotKey = key;
 			choose(level, t, from, to, plan, pivot, bodies, eye);
 			arm = -1.0;
+			blendTicks = 0.0F;
+			// (A new place chosen late in the last shot does not hold back a new one in this.)
+			placedAt = -1000.0F;
 		}
 
-		Placed placed = place(level, transform(raw, pivot, turn, raise), pivot, bodies, eye);
+		Placed placed = place(level, transform(raw, pivot, turnAt(t), raiseAt(t)), pivot, bodies, eye);
 
 		if (!placed.ok() && t - placedAt > 10.0F) {
-			// It would have to come right up to the point (or into someone): another place for the rest of the shot.
+			// It would have to come right up to the point (or into someone): another place for the rest
+			// of the shot. Not a jump there: the camera glides round the point to it (kept in the room
+			// all the way, as every frame), quickly but smoothly.
+			double oldTurn = turnAt(t);
+			double oldRaise = raiseAt(t);
 			placedAt = t;
 			replaced++;
+			note += "replace ";
 			choose(level, t, t, to, plan, pivot, bodies, eye);
-			arm = -1.0;
-			placed = place(level, transform(raw, pivot, turn, raise), pivot, bodies, eye);
+
+			if (Math.abs(Mth.wrapDegrees(turn - oldTurn)) > 1.0E-3 || Math.abs(raise - oldRaise) > 1.0E-3) {
+				Vec3 c = placed.shot().position();
+				double radius = Math.max(1.0, Math.hypot(c.x - pivot.x, c.z - pivot.z));
+				double way = Math.toRadians(Math.abs(Mth.wrapDegrees(turn - oldTurn))) * radius + Math.abs(raise - oldRaise);
+				blendTurn = oldTurn;
+				blendRaise = oldRaise;
+				blendAt = t;
+				blendTicks = (float) Mth.clamp(way / GLIDE, 8.0, 40.0);
+				glides++;
+			}
+
+			placed = place(level, transform(raw, pivot, turnAt(t), raiseAt(t)), pivot, bodies, eye);
 		}
+
+		Vec3 fitted = placed.shot().position();
+		Vec3 c = fitted;
+		ArrivalFilm.Shot shown = placed.shot();
+
+		if (lastShown != null && key.equals(lastShownKey)) {
+			// Never a jump within a shot: at most that fast, through clear places only.
+			double step = SPEED * Math.max(0.25, t - lastShownAt);
+			double gap = fitted.distanceTo(lastShown);
+
+			if (gap > step) {
+				Vec3 next = lastShown.add(fitted.subtract(lastShown).scale(step / gap));
+
+				if (clear(level, next, pivot, bodies, eye)) {
+					c = next;
+					followed++;
+					note += "follow ";
+				} else if (clear(level, lastShown, pivot, bodies, eye)) {
+					c = lastShown;
+					held++;
+					note += "hold ";
+				} else {
+					cut++;
+					note += "cut ";
+				}
+
+				if (c != fitted) {
+					Vec3 look = placed.target().subtract(c);
+					shown = look.lengthSqr() < 0.04 ? new ArrivalFilm.Shot(c, placed.shot().yaw(), placed.shot().pitch()) : DuelFilm.look(c, placed.target());
+				}
+			}
+		}
+
+		lastShown = c;
+		lastShownKey = key;
+		lastShownAt = t;
 
 		if (auditing && AUDIT.size() < 8000) {
-			Vec3 c = placed.shot().position();
 			double reach = c.distanceTo(pivot);
 			AUDIT.add(new Frame(key, t, c, pivot, inside(level, c), free(level, pivot, c) < reach - 0.05, inBody(c, bodies, eye), eye == null ? -1.0 : c.distanceTo(eye),
-					reach));
+					reach, note.trim(), c.distanceTo(fitted)));
 		}
 
-		return placed.shot();
+		return shown;
+	}
+
+	/** Whether the camera may be at that place: in nothing solid, in nobody, nothing solid between it and the point the shot is about. */
+	private static boolean clear(ClientLevel level, Vec3 p, Vec3 pivot, List<AABB> bodies, @Nullable Vec3 eye) {
+		if (inside(level, p) || inBody(p, bodies, eye)) {
+			return false;
+		}
+
+		double reach = p.distanceTo(pivot);
+		return reach < 1.0E-3 || free(level, pivot, p) >= reach - 0.05;
 	}
 
 	/**
 	 * For the tests: one frame of a film's camera as fitted: its shot, the film's time, where the
 	 * camera was, the point the shot is about, whether the camera was inside something solid,
 	 * whether something solid stood between it and that point, whether it was in a person (or the
-	 * player's head), how far it was from the player's eyes (-1 without them), and from the point.
+	 * player's head), how far it was from the player's eyes (-1 without them), and from the point;
+	 * what happened to it (its point moved out of something, a new shot, placed anew, the camera
+	 * following its fitted place, holding, a cut; in {@link #place} pulled in, pushed off a surface or
+	 * out of someone, taken back out of something), and how far it was from its fitted place.
 	 */
-	public record Frame(String key, float t, Vec3 camera, Vec3 about, boolean inside, boolean blocked, boolean inBody, double fromEyes, double reach) {
+	public record Frame(String key, float t, Vec3 camera, Vec3 about, boolean inside, boolean blocked, boolean inBody, double fromEyes, double reach, String note,
+			double lag) {
 	}
 
 	private static final List<Frame> AUDIT = new java.util.ArrayList<>();
@@ -165,7 +290,7 @@ public final class FilmCamera {
 		return List.copyOf(AUDIT);
 	}
 
-	private record Placed(ArrivalFilm.Shot shot, boolean ok) {
+	private record Placed(ArrivalFilm.Shot shot, boolean ok, Vec3 target) {
 	}
 
 	/** Chooses the shot's place (its turn round the point and its height) for the rest of it. */
@@ -245,7 +370,7 @@ public final class FilmCamera {
 		double length = d.length();
 
 		if (length < 1.0E-3) {
-			return new Placed(planned, false);
+			return new Placed(planned, false, cam.add(Vec3.directionFromRotation(planned.pitch(), planned.yaw())));
 		}
 
 		// Where the planned camera looks (it keeps looking there wherever it is moved to).
@@ -259,6 +384,10 @@ public final class FilmCamera {
 
 		if (arm < 0.0 || allowed < arm) {
 			// In at once: never into the wall first.
+			if (arm >= 0.0 && arm - allowed > 0.3) {
+				note += "in ";
+			}
+
 			arm = allowed;
 		} else {
 			// Out again smoothly.
@@ -272,8 +401,33 @@ public final class FilmCamera {
 		}
 
 		Vec3 at = pivot.add(dir.scale(use));
+		Vec3 before = at;
 		at = pushOut(level, at);
-		at = outOfBodies(at, bodies, eye);
+
+		if (at.distanceToSqr(before) > 1.0E-6) {
+			note += "push ";
+		}
+
+		// (Out of one person can be into another standing close: until it is out of all, a few times.)
+		for (int i = 0; i < 3 && inBody(at, bodies, eye); i++) {
+			at = outOfBodies(at, bodies, eye);
+			note += i == 0 ? "body " : "";
+		}
+
+		// The pushes off surfaces and people moved it without looking: still nothing between it and the point?
+		double reach = at.distanceTo(pivot);
+
+		if (reach > 1.0E-3) {
+			double clear = free(level, pivot, at);
+
+			if (clear < reach - 0.05) {
+				at = pivot.add(at.subtract(pivot).scale(Math.max(0.0, clear - MARGIN) / reach));
+				arm = Math.min(arm, at.distanceTo(pivot));
+				rescued++;
+				note += "rescue ";
+			}
+		}
+
 		boolean ok = at.distanceTo(pivot) >= Math.min(MIN_ARM, length * 0.95) && !inBody(at, bodies, eye) && !inside(level, at);
 
 		if (inside(level, at) || inBody(at, bodies, eye)) {
@@ -283,10 +437,11 @@ public final class FilmCamera {
 			at = backToFree(level, at, pivot, bodies, eye);
 			arm = Math.min(arm, at.distanceTo(pivot));
 			rescued++;
+			note += "back ";
 		}
 		Vec3 look = target.subtract(at);
 		ArrivalFilm.Shot shot = look.lengthSqr() < 0.04 ? new ArrivalFilm.Shot(at, planned.yaw(), planned.pitch()) : DuelFilm.look(at, target);
-		return new Placed(shot, ok);
+		return new Placed(shot, ok, target);
 	}
 
 	/** A shot turned round a point (degrees, about the upright through it) and raised (blocks): camera and what it looks at alike. */
@@ -430,35 +585,100 @@ public final class FilmCamera {
 		return eye != null && point.distanceTo(eye) < EYE_CLEAR - 0.1;
 	}
 
-	/** The point a shot is about moved out of anything solid (towards the camera, else up). */
-	private static Vec3 freePivot(ClientLevel level, Vec3 wanted, Vec3 toward) {
+	/**
+	 * The point a shot is about moved out of anything solid: towards the camera (at most three
+	 * blocks), else up, as before; where people stand near it (a shot about them) only to a place
+	 * they can be seen from (never through the wall into the room beyond). Failing that, towards
+	 * the nearest of them (the room's side of the wall), never into anyone.
+	 */
+	private static Vec3 freePivot(ClientLevel level, Vec3 wanted, Vec3 toward, List<AABB> bodies, @Nullable Vec3 eye) {
 		if (!inside(level, wanted)) {
 			return wanted;
 		}
 
+		List<Vec3> anchors = new java.util.ArrayList<>();
+
+		for (AABB body : bodies) {
+			Vec3 chest = new Vec3(body.getCenter().x, body.minY + body.getYsize() * 0.7, body.getCenter().z);
+
+			if (chest.distanceTo(wanted) < 6.0) {
+				anchors.add(chest);
+			}
+		}
+
+		anchors.sort(java.util.Comparator.comparingDouble(a -> a.distanceToSqr(wanted)));
 		Vec3 d = toward.subtract(wanted);
 		double length = d.length();
+		List<Vec3> tries = new java.util.ArrayList<>();
 
 		for (double k = 0.25; k <= Math.min(3.0, length); k += 0.25) {
-			Vec3 p = wanted.add(d.scale(k / length));
+			tries.add(wanted.add(d.scale(k / length)));
+		}
 
-			if (!inside(level, p)) {
+		for (double up = 0.3; up <= 1.5; up += 0.3) {
+			tries.add(wanted.add(0.0, up, 0.0));
+		}
+
+		for (Vec3 p : tries) {
+			if (!inside(level, p) && !nearBody(p, bodies, eye) && (anchors.isEmpty() || seesAny(level, p, anchors))) {
 				return p;
 			}
 		}
 
-		for (double up = 0.3; up <= 1.5; up += 0.3) {
-			if (!inside(level, wanted.add(0.0, up, 0.0))) {
-				return wanted.add(0.0, up, 0.0);
+		for (Vec3 anchor : anchors) {
+			Vec3 to = anchor.subtract(wanted);
+			double far = to.length();
+
+			for (double k = 0.2; k < far; k += 0.2) {
+				Vec3 p = wanted.add(to.scale(k / far));
+
+				if (nearBody(p, bodies, eye)) {
+					break;
+				}
+
+				if (!inside(level, p)) {
+					return p;
+				}
+			}
+		}
+
+		for (Vec3 p : tries) {
+			if (!inside(level, p) && !nearBody(p, bodies, eye)) {
+				return p;
 			}
 		}
 
 		return wanted;
 	}
 
-	/** For the tests: frames fitted, shots placed (and of them turned or raised), frames pulled in, shots placed anew, pushes off a surface, frames taken back out of something. */
+	/** Whether a point is in or right at someone (their body with room round it, the player's head). */
+	private static boolean nearBody(Vec3 point, List<AABB> bodies, @Nullable Vec3 eye) {
+		for (AABB body : bodies) {
+			if (body.inflate(BODY).contains(point)) {
+				return true;
+			}
+		}
+
+		return eye != null && point.distanceTo(eye) < EYE_CLEAR;
+	}
+
+	private static boolean seesAny(ClientLevel level, Vec3 p, List<Vec3> anchors) {
+		for (Vec3 anchor : anchors) {
+			if (free(level, p, anchor) >= p.distanceTo(anchor) - 0.05) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	/**
+	 * For the tests: frames fitted, shots placed (and of them turned or raised), frames pulled in,
+	 * shots placed anew, pushes off a surface, frames taken back out of something, glides round the
+	 * point to a new place; frames the camera followed its fitted place, held its last, cut to it.
+	 */
 	public static int[] countsForTest() {
-		return new int[] {frames, choices, turnedShots, clampedFrames, replaced, pushed, rescued};
+		return new int[] {frames, choices, turnedShots, clampedFrames, replaced, pushed, rescued, glides, followed, held, cut};
 	}
 
 	/** For the tests: the turn (degrees) and raise (blocks) of the shot now. */

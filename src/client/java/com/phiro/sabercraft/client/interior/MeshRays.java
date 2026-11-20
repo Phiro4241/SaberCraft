@@ -235,12 +235,17 @@ public final class MeshRays {
 		return false;
 	}
 
-	/** The nearest surface of either facing along the segment (share of the way), its quad in {@code found[0]}. */
+	/**
+	 * The nearest surface of either facing along the segment (share of the way), its quad in
+	 * {@code found[0]}. Of two quads in the same place (a two-sided surface: drawn once each way)
+	 * the one facing back along the segment counts: from neither side is one behind such a surface.
+	 */
 	private double nearest(Vec3 a, Vec3 b, int[] found) {
 		double dx = b.x - a.x;
 		double dy = b.y - a.y;
 		double dz = b.z - a.z;
 		double best = 1.0;
+		boolean bestFacesBack = false;
 		int minX = cell(Math.min(a.x, b.x));
 		int maxX = cell(Math.max(a.x, b.x));
 		int minY = cell(Math.min(a.y, b.y));
@@ -270,7 +275,19 @@ public final class MeshRays {
 						this.stamps[index] = this.stamp;
 						double t = this.hit(index, a.x, a.y, a.z, dx, dy, dz, true);
 
-						if (t >= 0.0 && t < best) {
+						if (t < 0.0) {
+							continue;
+						}
+
+						int q = index * STRIDE;
+						boolean facesBack = this.quads[q + 12] * dx + this.quads[q + 13] * dy + this.quads[q + 14] * dz < 0.0;
+						double same = 1.0E-4 / Math.max(1.0E-6, Math.sqrt(dx * dx + dy * dy + dz * dz));
+
+						if (t < best - same || Math.abs(t - best) <= same && facesBack && !bestFacesBack) {
+							best = t;
+							found[0] = index;
+							bestFacesBack = facesBack;
+						} else if (Math.abs(t - best) <= same && facesBack == bestFacesBack && t < best) {
 							best = t;
 							found[0] = index;
 						}
