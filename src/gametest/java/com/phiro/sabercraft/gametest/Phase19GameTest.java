@@ -116,9 +116,24 @@ public class Phase19GameTest implements FabricClientGameTest {
 
 			// One stands on the lift (walking on could lead across it and off again).
 			context.getInput().releaseKey(options -> options.keyUp);
-			context.waitTicks(40);
-			Vec3 at = server.computeOnServer(s -> local(s, self, sd));
 			Vec3 want = lift.arrival();
+			// (Phase 28: the reactor's lift goes only after standing still on it a while, and not
+			// again right after a ride: waited for here.)
+			int wait = lift.slow() ? 40 + lift.ticks() + lift.cooldown() : 40;
+
+			for (int w = 0; w < wait; w++) {
+				context.waitTick();
+
+				if (lift.slow() && server.computeOnServer(s -> {
+					Vec3 now = local(s, self, sd);
+					return Math.abs(now.y - want.y) < 0.6 && Math.hypot(now.x - want.x, now.z - want.z) < 1.5;
+				})) {
+					context.waitTicks(10);
+					break;
+				}
+			}
+
+			Vec3 at = server.computeOnServer(s -> local(s, self, sd));
 			String where = String.format(Locale.ROOT, "%.2f %.2f %.2f", at.x, at.y, at.z);
 			if (!on) {
 				// What stops one: the collision boxes round the player, where the client thinks it is.

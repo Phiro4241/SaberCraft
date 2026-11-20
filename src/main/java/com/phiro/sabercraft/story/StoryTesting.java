@@ -932,4 +932,162 @@ public final class StoryTesting {
 	public static float fierce() {
 		return Finale.FIERCE;
 	}
+
+	// --- Phase 28 ------------------------------------------------------------------------------------
+
+	/** Phase 28: the side way's cover and the toolbox placed as the story has them now (else every second). */
+	public static void ventCover(StorySession s) {
+		Chapter1.ventCover(s);
+	}
+
+	/** Phase 28: screwdrivers taken, close-ups begun, covers opened. */
+	public static int[] cover() {
+		return Chapter1.coverForTest();
+	}
+
+	/** Phase 28: as the client does when the four screws are out. */
+	public static boolean unscrewed(StorySession s, net.minecraft.server.level.ServerPlayer player) {
+		return Chapter1.coverUnscrewed(s, player);
+	}
+
+	public static net.minecraft.core.BlockPos coverCell() {
+		return Chapter1.VENT_COVER;
+	}
+
+	public static net.minecraft.core.BlockPos toolboxCell() {
+		return Chapter1.TOOLBOX;
+	}
+
+	public static String coverOpen() {
+		return Chapter1.COVER_OPEN;
+	}
+
+	public static String driver() {
+		return Chapter1.DRIVER;
+	}
+
+	/** Phase 28: the flags the last checkpoint keeps (a capture goes back to them). */
+	public static java.util.List<String> keptNow(StorySession s) {
+		return java.util.List.copyOf(s.progress.flags);
+	}
+
+	/** Phase 28: the catwalk technician's key, post, hearing; when his round holds that look. */
+	public static String catwalkKey() {
+		return Chapter1.catwalkKey();
+	}
+
+	public static Vec3 catwalkPost() {
+		return Chapter1.CATWALK_POST;
+	}
+
+	public static long catwalkWatchAt(long now, int look, int id) {
+		return Chapter1.catwalkWatchAt(now, look, id);
+	}
+
+	public static float catwalkYaw(int look) {
+		return Chapter1.CATWALK_WATCH[look][0];
+	}
+
+	public static int lureWays() {
+		return Stealth.lureWaysForTest();
+	}
+
+	/** Phase 28: the ring set going, stopped; guards strained, broken (since the game started). */
+	public static int[] ringAndGuard() {
+		return Finale.ringAndGuardForTest();
+	}
+
+	/** Phase 28: her throws in this fight; whether her ring keeps turning. */
+	public static int thrown(Figure figure) {
+		return figure.thrown;
+	}
+
+	public static boolean ringOn(Figure figure) {
+		return figure.ringOn;
+	}
+
+	public static int throwsMax() {
+		return Finale.THROWS_MAX;
+	}
+
+	/** Phase 28: whether her throw is due now, and what she does (for the test's log). */
+	public static String throwState(StorySession s, Figure f) {
+		return "due " + Finale.throwDue(s, f, Finale.phase(f)) + ", " + action(f) + " cd " + f.cooldown + ", throw " + s.timers.getOrDefault("throw", -1) + " push "
+				+ s.timers.getOrDefault("push", -1) + " leap " + s.timers.getOrDefault("leap", -1) + " rush " + s.timers.getOrDefault("rush", -1) + " back "
+				+ s.timers.getOrDefault("throw_back", -1) + ", dialog " + (s.dialog == null ? "-" : s.dialog.id) + " film " + s.has("tmp.film") + " scene " + s.has(Finale.BOSS_SCENE)
+				+ " fighting " + s.fighting + " react " + f.react + "/" + f.reactTicks + " health " + f.health + " at " + String.format(java.util.Locale.ROOT, "%.1f %.1f %.1f", f.x, f.y, f.z);
+	}
+
+	/** Phase 28: whether she sees the player from where she stands (as her guard tests it), and where the player is. */
+	public static String sight(StorySession s, Figure f, net.minecraft.server.level.ServerPlayer player) {
+		Vec3 corner = Vec3.atLowerCornerOf(s.origin(f.ship));
+		Vec3 me = player.position().subtract(corner);
+		return "sees " + Stealth.clear((net.minecraft.server.level.ServerLevel) player.level(), corner.add(f.eye()), player.getEyePosition()) + ", player at "
+				+ String.format(java.util.Locale.ROOT, "%.1f %.1f %.1f", me.x, me.y, me.z);
+	}
+
+	/**
+	 * Phase 28: a spot that far from her (plot space) with a straight, walkable line from her to it,
+	 * the first of eight ways round starting toward that point; her own spot if there is none.
+	 */
+	public static Vec3 openSpot(StorySession s, Figure f, double distance, Vec3 toward) {
+		net.minecraft.server.level.ServerLevel level = Chapter1.interiors(s);
+		Vec3 corner = Vec3.atLowerCornerOf(s.origin(f.ship));
+		double start = Math.atan2(toward.z - f.z, toward.x - f.x);
+
+		for (int i = 0; i < 8 && level != null; i++) {
+			double a = start + (i % 2 == 0 ? 1 : -1) * ((i + 1) / 2) * Math.PI / 4.0;
+			Vec3 to = new Vec3(f.x + Math.cos(a) * distance, f.y, f.z + Math.sin(a) * distance);
+
+			if (Paths.straight(level, corner, f.position(), to, 1.8)) {
+				return to;
+			}
+		}
+
+		return f.position();
+	}
+
+	/** Phase 28: whether a guard she broke is still down. */
+	public static boolean guardBroken(StorySession s) {
+		return s.timer("guard_broken");
+	}
+
+	/** Phase 28: where the droids wait during the duel (M-31, R2-V7), and whether they wait now. */
+	public static Vec3 duelWait(com.phiro.sabercraft.droid.DroidType type) {
+		return Chapter1.duelWait(type);
+	}
+
+	public static boolean droidsWait(StorySession s) {
+		return Chapter1.droidsWait(s);
+	}
+
+	/** Phase 28: the droids of the story now (who comes along). */
+	public static java.util.List<com.phiro.sabercraft.droid.DroidType> storyDroids(StorySession s) {
+		return Story.storyDroids(s);
+	}
+
+	/**
+	 * Phase 28: how many of her first phase's blows a guard with that much stamina holds at that
+	 * difficulty before it breaks (as her blows strain it); the stamina is full again after.
+	 */
+	public static int blocksHeld(net.minecraft.server.level.ServerPlayer player, StoryDifficulty difficulty, float stamina) {
+		com.phiro.sabercraft.ability.SaberAbilities.setStaminaForTests(player, stamina);
+		int held = 50;
+
+		for (int n = 0; n < 50; n++) {
+			if (com.phiro.sabercraft.ability.SaberAbilities.strainGuard(player, Finale.STRAIN_BLOW * difficulty.bossStrain, Finale.UNSTABLE,
+					difficulty.guardBreak) == com.phiro.sabercraft.ability.SaberAbilities.GUARD_BROKEN) {
+				held = n;
+				break;
+			}
+		}
+
+		com.phiro.sabercraft.ability.SaberAbilities.setStaminaForTests(player, com.phiro.sabercraft.ability.AbilityConfig.get().staminaMax);
+		return held;
+	}
+
+	/** Phase 28: the objective's key for the step now (the text of the refusing branch, else the step's own). */
+	public static String objective(StorySession s) {
+		return Chapter1.objective(s, s.step());
+	}
 }

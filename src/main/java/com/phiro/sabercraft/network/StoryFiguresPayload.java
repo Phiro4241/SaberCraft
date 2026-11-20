@@ -29,6 +29,8 @@ public record StoryFiguresPayload(BlockPos origin, long time, List<Fig> figures)
 	public static final int ARMED = 64;
 	/** Phase 23: a saber fighter whose saber was struck from the hand (none to draw). */
 	public static final int UNARMED = 128;
+	/** Phase 28: her Inquisitor's ring keeps turning (a state that lasts, not one move's spin). */
+	public static final int RING_SPIN = 256;
 
 	/**
 	 * One person: their number, kind and pose (as {@code Crew}), name ({@code speaker}), where and
@@ -51,7 +53,7 @@ public record StoryFiguresPayload(BlockPos origin, long time, List<Fig> figures)
 
 		static Fig read(FriendlyByteBuf buf) {
 			return new Fig(buf.readVarInt(), buf.readUtf(32), buf.readUtf(16), buf.readUtf(32), buf.readFloat(), buf.readFloat(), buf.readFloat(),
-					buf.readFloat(), buf.readFloat(), buf.readFloat(), buf.readByte(), buf.readUnsignedByte(), buf.readUnsignedByte(), buf.readUnsignedByte(),
+					buf.readFloat(), buf.readFloat(), buf.readFloat(), buf.readByte(), buf.readUnsignedByte(), buf.readVarInt(), buf.readUnsignedByte(),
 					buf.readUnsignedByte(), buf.readVarInt());
 		}
 
@@ -68,7 +70,8 @@ public record StoryFiguresPayload(BlockPos origin, long time, List<Fig> figures)
 			buf.writeFloat(this.speed);
 			buf.writeByte(this.stage);
 			buf.writeByte(this.suspicion);
-			buf.writeByte(this.flags);
+			// (Phase 28: more than eight flags: a VarInt.)
+			buf.writeVarInt(this.flags);
 			buf.writeByte(this.health);
 			buf.writeByte(this.windup);
 			buf.writeVarInt(this.react);

@@ -1448,6 +1448,12 @@ public final class Story {
 				}
 			}
 			case StoryActionPayload.DIFFICULTY -> difficulty(player, session, payload.value());
+			case StoryActionPayload.COVER -> {
+				if (session != null && session.chapter instanceof Chapter1) {
+					Chapter1.coverUnscrewed(session, player);
+					session.afterTick();
+				}
+			}
 			case StoryActionPayload.FOCUS -> {
 				if (session != null) {
 					String hint = Finale.focus(session);
@@ -1711,7 +1717,8 @@ public final class Story {
 			}
 
 			// Phase 22: after the chapter no objective is left: the client shows that it is over.
-			objective = session.has(Chapter1.CHAPTER_DONE) ? "sabercraft.story.obj.chapter_done" : step.objective();
+			objective = session.has(Chapter1.CHAPTER_DONE) ? "sabercraft.story.obj.chapter_done"
+					: session.chapter instanceof Chapter1 ? Chapter1.objective(session, step) : step.objective();
 
 			for (Mission.Optional opt : mission.optional()) {
 				if (opt.shown().test(session) || session.has(opt.flag())) {
@@ -1764,7 +1771,7 @@ public final class Story {
 			int flags = (f.lamp ? StoryFiguresPayload.LAMP : 0) | (f.saber ? StoryFiguresPayload.SABER : 0) | (f.hostile ? StoryFiguresPayload.HOSTILE : 0)
 					| (f.talks && session.chapter.talksNow(session, f) ? StoryFiguresPayload.TALKS : 0) | (f.observer ? StoryFiguresPayload.OBSERVER : 0) | (f.lit ? StoryFiguresPayload.LIT : 0)
 					| (Combat.pistol(f) && f.observer && (f.mode == Figure.CHASE || f.mode == Figure.FIGHT) && f.react != Figure.COMLINK ? StoryFiguresPayload.ARMED : 0)
-					| (Finale.disarmed(f) ? StoryFiguresPayload.UNARMED : 0);
+					| (Finale.disarmed(f) ? StoryFiguresPayload.UNARMED : 0) | (f.ringOn && f.saber && f.lit ? StoryFiguresPayload.RING_SPIN : 0);
 			list.add(new StoryFiguresPayload.Fig(f.id, f.kind(), f.pose(), f.speaker, (float) f.x, (float) f.y, (float) f.z, f.yaw, f.headYaw, f.speed, f.stage,
 					Math.round(f.suspicion * 255.0F), flags, Math.round(Math.max(0.0F, f.health) * 255.0F), Finale.shown(f), f.reactShown()));
 		}

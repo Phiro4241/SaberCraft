@@ -89,6 +89,14 @@ public final class ShipInteriors {
 	/** Standing this many ticks on an exit or lift uses it. */
 	static final int EXIT_TICKS = 15;
 	static final int LIFT_TICKS = 10;
+	/** Phase 28: moving more than this (blocks a tick) on a slow lift is not standing still. */
+	static final double SLOW_LIFT_MOVE = 0.06;
+	/** Phase 28, for the tests: rides on any lift since the game started. */
+	private static int liftRides;
+
+	public static int liftRidesForTest() {
+		return liftRides;
+	}
 	/** Sneaking this many checks (half seconds) below a Star Destroyer's hangar lifts you in. */
 	static final int TRACTOR_CHECKS = 3;
 
@@ -140,6 +148,10 @@ public final class ShipInteriors {
 		int zoneTicks;
 		/** Exits and lifts only work once the player stepped off the one they arrived on. */
 		boolean armed;
+		/** Phase 28: no lift takes the player before this game time (after a ride on a slow lift). */
+		long liftReady;
+		/** Phase 28: where the player stood the tick before (to tell standing still on a slow lift). */
+		@Nullable Vec3 lastLocal;
 		@Nullable String room;
 		/** Phase 23: where the player last stood on firm ground (plot space): one caught in a shaft is set back there. */
 		@Nullable Vec3 safe;
@@ -791,11 +803,37 @@ public final class ShipInteriors {
 			}
 		}
 
+		// Phase 28: on a slow lift (the reactor's) only standing still counts, and not while it rests after a ride.
+		Vec3 last = aboard.lastLocal;
+		aboard.lastLocal = local;
+		long now = player.level().getGameTime();
+
+		if (exit == null && lift != null && lift.slow()) {
+			double moved = last == null ? 0.0 : Math.hypot(local.x - last.x, local.z - last.z);
+
+			if (now < aboard.liftReady) {
+				aboard.zoneTicks = 0;
+				return;
+			}
+
+			if (moved > SLOW_LIFT_MOVE) {
+				aboard.zoneTicks = Math.max(0, aboard.zoneTicks - 2);
+				return;
+			}
+		}
+
 		if (exit == null && lift == null) {
 			aboard.armed = true;
 			aboard.zoneTicks = 0;
 		} else if (aboard.armed && !player.isSpectator()) {
 			aboard.zoneTicks++;
+
+			if (exit == null && lift != null && lift.slow() && aboard.zoneTicks == 1) {
+				// Phase 28: the lift wakes (a soft hum and a word): it goes if one stays.
+				player.connection.send(new ClientboundSoundPacket(sound("ship.lift"), SoundSource.NEUTRAL, player.getX(), player.getY(), player.getZ(), 0.25F,
+						0.6F, player.getRandom().nextLong()));
+				player.sendOverlayMessage(Component.translatable("sabercraft.interior.lift_hold"));
+			}
 
 			if (exit != null && aboard.zoneTicks >= EXIT_TICKS) {
 				// Phase 19: the story's ships lead where the story goes (the Falcon's ramp into the
@@ -810,7 +848,7 @@ public final class ShipInteriors {
 				return;
 			}
 
-			if (lift != null && aboard.zoneTicks >= LIFT_TICKS) {
+			if (lift != null && aboard.zoneTicks >= (lift.slow() ? lift.ticks() : LIFT_TICKS)) {
 				aboard.armed = false;
 				aboard.zoneTicks = 0;
 
@@ -823,6 +861,9 @@ public final class ShipInteriors {
 				teleport(player, (ServerLevel) player.level(), aboard.world(lift.arrival()), lift.yaw());
 				player.connection.send(new ClientboundSoundPacket(sound("ship.lift"), SoundSource.NEUTRAL, player.getX(), player.getY(), player.getZ(), 0.6F,
 						1.0F, player.getRandom().nextLong()));
+				aboard.liftReady = now + lift.cooldown();
+				aboard.lastLocal = null;
+				liftRides++;
 				return;
 			}
 		}

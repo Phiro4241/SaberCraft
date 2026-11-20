@@ -410,8 +410,9 @@ public final class StoryCinema {
 	public static @Nullable String music() {
 		return switch (film != null ? film : "") {
 			case "duel", "boss_mid" -> "music.story_duel";
-			// Phase 25: her flight: won, but not over (the piece goes on to the Falcon).
-			case "duel_end" -> "music.story_triumph";
+			// Phase 25: her flight: won, but not over. Phase 28 (Phiro): still tense and dark (the tense
+			// bed of before the duel); the triumph only once the Falcon has escaped.
+			case "duel_end" -> "music.story_tension";
 			case "escape" -> "music.story_finale";
 			case "takedown", "hale_in", "service", "saber" -> null;
 			default -> "music.flight_imperial";

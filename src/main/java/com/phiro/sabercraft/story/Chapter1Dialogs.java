@@ -105,7 +105,7 @@ final class Chapter1Dialogs {
 
 		add(Dialog.of("terminal")
 				.say("start", "terminal")
-				.ask("map", "map").ask("diary", "diary").ask("drop", "drop").ask("hale", "hale", null, s -> s.has("choice.refuse_hale") && s.in("m5"))
+				.ask("map", "map").ask("diary", "diary").ask("drop", "drop").ask("hale", "hale", null, s -> !s.has("trust.hale") && s.in("m5"))
 				.ask("off", Dialog.END)
 				.say("map", "terminal").does(s -> s.note("terminal_map")).then("back")
 				.say("diary", "terminal").does(s -> s.note("terminal_diary")).then("back")
@@ -119,8 +119,13 @@ final class Chapter1Dialogs {
 					s.set("know.hale_trap");
 				}).then("back")
 				.say("back", "terminal")
-				.ask("map", "map").ask("diary", "diary").ask("drop", "drop").ask("hale", "hale", null, s -> s.has("choice.refuse_hale") && s.in("m5"))
+				.ask("map", "map").ask("diary", "diary").ask("drop", "drop").ask("hale", "hale", null, s -> !s.has("trust.hale") && s.in("m5"))
 				.ask("off", Dialog.END)
+				.build());
+
+		// Phase 28: the technicians' toolbox by the containers: a screwdriver (for the side way's cover).
+		add(Dialog.of("m2_toolbox")
+				.say("start", "funke").does(Chapter1::takeDriver)
 				.build());
 
 		add(Dialog.of("m2_container")

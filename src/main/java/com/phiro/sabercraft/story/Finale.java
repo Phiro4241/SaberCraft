@@ -200,6 +200,37 @@ final class Finale {
 	static final float THROW_DAMAGE = 3.0F;
 	static final double THROW_HIT = 0.85;
 	static final double THROW_PAST = 2.5;
+	/**
+	 * Phase 28: the throw is a moment of the fight, not her habit: once or twice a fight (in the
+	 * second phase). When it is due she backs off while circling to throw from there
+	 * ({@code THROW_BACK_TO}), and throws from a little nearer too if the player follows her
+	 * ({@code THROW_NEAR}); in her last quarter the second one comes soon ({@code THROW_FIERCE}).
+	 */
+	static final int THROWS_MAX = 2;
+	static final double THROW_BACK_TO = 5.2;
+	static final double THROW_NEAR = 3.3;
+	static final int THROW_FIERCE = 90;
+	/**
+	 * Phase 28: her ring, once set going in the second phase, keeps turning at least this long; then
+	 * it may stop at a calm moment (circling on guard), not in her last quarter.
+	 */
+	static final int RING_MIN = 400;
+	/**
+	 * Phase 28: the strain of her blows on the player's guard (shares of the most stamina, see
+	 * {@link SaberAbilities#strainGuard}): a blow of the first phase, of the second, the spin, the
+	 * ring's rush, the thrown staff, a perfect parry. A single block always holds; a guard kept up
+	 * through combo after combo (no stamina comes back while it is up) shakes ({@code UNSTABLE}: less
+	 * than that share left) and breaks. By the difficulty ({@link StoryDifficulty#bossStrain}).
+	 */
+	static final float STRAIN_BLOW = 0.14F;
+	static final float STRAIN_BLOW_2 = 0.17F;
+	static final float STRAIN_SPIN = 0.24F;
+	static final float STRAIN_RUSH = 0.26F;
+	static final float STRAIN_THROW = 0.12F;
+	static final float STRAIN_PERFECT = 0.04F;
+	static final float UNSTABLE = 0.35F;
+	/** Phase 28: a blow that breaks the guard still comes through, weakened. */
+	static final float BREAK_DAMAGE = 0.6F;
 	/** For the tests: an opening as long as the first phase's. */
 	static final int OPEN = 30;
 	static final double BLOW_REACH = 3.2;
@@ -730,6 +761,12 @@ final class Finale {
 			level.sendParticles(ParticleTypes.ELECTRIC_SPARK, ring.x, ring.y, ring.z, 24, 0.3, 0.3, 0.3, 0.4);
 			Story.cue(s, Story.CUE_DUEL, "fierce", "", f.id);
 			s.timer("rush", Math.min(s.timers.getOrDefault("rush", 0), 60));
+			// Phase 28: her ring turns from now on, and her second throw (if any is left) comes soon.
+			ringGoes(s, f);
+
+			if (f.thrown < THROWS_MAX) {
+				s.timer("throw", Math.min(s.timers.getOrDefault("throw", 0), THROW_FIERCE));
+			}
 		}
 
 		if (flying) {
@@ -835,6 +872,11 @@ final class Finale {
 		shadow.pattern = -1;
 		shadow.react = 0;
 		shadow.reactTicks = 0;
+		// Phase 28: a new fight: no throws yet, the ring still.
+		shadow.thrown = 0;
+		shadow.ringOn = false;
+		s.timers.remove("throw_back");
+		s.timers.remove("guard_broken");
 		act(shadow, GUARD, 0, 0);
 		s.fighting = true;
 		s.focus = 1.0F;
@@ -867,6 +909,11 @@ final class Finale {
 		f.openness = difficulty.bossOpening;
 		f.power = difficulty.bossDamage;
 		double distance = Math.hypot(me.x - f.x, me.z - f.z);
+
+		// Phase 28: a block held with the use key gets no stamina back while it is up (as the guard).
+		if (SaberAbilities.guardTicks(player) < 0 && player.isUsingItem() && SaberVariant.canHold(player.getUseItem())) {
+			SaberAbilities.holdStamina(player);
+		}
 
 		switch (f.action) {
 			case LOCK -> {
@@ -979,10 +1026,24 @@ final class Finale {
 		RandomSource random = player.getRandom();
 		boolean clear = Stealth.clear(level, corner.add(f.eye()), player.getEyePosition());
 
+		// Phase 28: her throw is due (once or twice a fight): she keeps off to throw from there.
+		boolean throwDue = throwDue(s, f, phase);
+
 		if (f.cooldown > 0) {
 			f.cooldown--;
+			ringRests(s, f);
 
-			if (distance > 3.0) {
+			if (throwDue && distance < THROW_BACK_TO - 0.3) {
+				Vec3 away = f.position().add(f.position().subtract(me).normalize().scale(1.5));
+
+				if (!Stealth.step(f, away, Stealth.WALK * 1.6, level, corner)) {
+					Vec3 to = f.position().subtract(me).normalize();
+
+					if (!Stealth.step(f, f.position().add(new Vec3(-to.z, 0.0, to.x).scale(f.strafe)), Stealth.WALK * 1.1, level, corner)) {
+						f.strafe = -f.strafe;
+					}
+				}
+			} else if (distance > (throwDue ? THROW_TO - 1.5 : 3.0)) {
 				Stealth.step(f, me, Stealth.WALK * (phase >= 2 ? 1.6 : 1.3), level, corner);
 			} else if (distance < 1.6) {
 				Stealth.step(f, f.position().add(f.position().subtract(me).normalize()), Stealth.WALK, level, corner);
@@ -999,6 +1060,22 @@ final class Finale {
 			return;
 		}
 
+		// Phase 28: the throw first, when it is due (else push and leap took every chance of it).
+		if (throwDue && clear && distance > THROW_NEAR && distance < THROW_TO) {
+			throwStarts(s, f, level, corner);
+			return;
+		}
+
+		if (throwDue && distance <= THROW_NEAR && !s.timers.containsKey("throw_back")) {
+			// Too close to throw: she backs off a moment first (once; then she fights on and throws later).
+			s.timer("throw_back", 40);
+		}
+
+		if (throwDue && s.timer("throw_back")) {
+			f.cooldown = 3;
+			return;
+		}
+
 		if (!s.timer("push") && distance > 2.5 && distance < 8.0 && clear && (phase >= 2 || f.health <= RING_FROM)) {
 			act(f, PUSH, HAND, HAND_TICKS);
 			f.windup = HAND_TICKS;
@@ -1012,14 +1089,6 @@ final class Finale {
 			f.windup = CROUCH_TICKS;
 			f.lure = null;
 			s.timer("leap", scaled(f, LEAP_EVERY));
-			return;
-		}
-
-		// Phase 25: from a distance she throws her staff (not too soon after her leap or push).
-		// (Phase 26: nor right after the ring's rush.)
-		if (phase >= 2 && !s.timer("throw") && distance > THROW_FROM && distance < THROW_TO && clear && since(s, f, "leap", LEAP_EVERY, 60)
-				&& since(s, f, "push", PUSH_EVERY, 40) && since(s, f, "rush", RUSH_EVERY_FIERCE, 50)) {
-			throwStarts(s, f, level, corner);
 			return;
 		}
 
@@ -1055,8 +1124,56 @@ final class Finale {
 			f.pattern = pick;
 			f.combo = patterns[pick].length;
 			blowStarts(f, patterns[pick][0], scaled(f, WINDUPS[phase]), level, s);
-		} else if (!Stealth.step(f, me, 3.8, level, corner)) {
+		} else if (!(clear && Stealth.step(f, me, 3.8, level, corner)) && !Stealth.go(f, me, 3.8, level, corner, s.time())) {
+			// Phase 28: out of her sight (round a corner, through a door) she comes the way round, as
+			// the troopers do, instead of standing at the wall between for the rest of the fight.
 			f.speed = 0.0F;
+		}
+	}
+
+	/**
+	 * Phase 25: from a distance she throws her staff (not too soon after her leap or push; Phase 26:
+	 * nor right after the ring's rush). Phase 28: once or twice a fight ({@link #THROWS_MAX}), and it
+	 * comes when it is due (she makes the distance for it), no longer only when the player happens
+	 * to stand far enough off while her push and leap are both waiting. (The rush's gap is measured
+	 * against the time its timer was really set to, as the other gaps.)
+	 */
+	static boolean throwDue(StorySession s, Figure f, int phase) {
+		return phase >= 2 && f.thrown < THROWS_MAX && !s.timer("throw") && since(s, f, "leap", LEAP_EVERY, 60) && since(s, f, "push", PUSH_EVERY, 40)
+				&& since(s, f, "rush", fierce(f) ? RUSH_EVERY_FIERCE : RUSH_EVERY, 50);
+	}
+
+	/**
+	 * Phase 28: her ring is set going (a ring move of the second phase: the spin, the rush, the
+	 * throw; her last quarter): it keeps turning from now on, at least {@link #RING_MIN} ticks after
+	 * the last such move.
+	 */
+	private static void ringGoes(StorySession s, Figure f) {
+		if (phase(f) < 2 || !f.lit) {
+			return;
+		}
+
+		if (!f.ringOn) {
+			f.ringOn = true;
+			ringStarted++;
+		}
+
+		s.timer("ring_min", RING_MIN);
+	}
+
+	/** Phase 28: a calm moment (circling on guard, not in her last quarter, long after a ring move): the ring may stop. */
+	private static void ringRests(StorySession s, Figure f) {
+		if (f.ringOn && !fierce(f) && !s.timer("ring_min") && f.react == 0) {
+			f.ringOn = false;
+			ringStopped++;
+		}
+	}
+
+	/** Phase 28: the ring stops at once (the blade lock, her defeat, a new fight). */
+	private static void ringStops(Figure f) {
+		if (f.ringOn) {
+			f.ringOn = false;
+			ringStopped++;
 		}
 	}
 
@@ -1111,6 +1228,7 @@ final class Finale {
 		if (kind == SPIN) {
 			ticks = Math.max(ticks, SPIN_WINDUP);
 			spins++;
+			ringGoes(s, f);
 		}
 
 		act(f, WINDUP, kind, ticks);
@@ -1157,16 +1275,30 @@ final class Finale {
 		Vec3 toHim = new Vec3(f.x - me.x, 0.0, f.z - me.z).normalize();
 		Vec3 look = player.getLookAngle();
 		boolean facing = new Vec3(look.x, 0.0, look.z).normalize().dot(toHim) > 0.35;
-		long guardTicks = guardTicks(player);
+		long guardTicks = guardTicks(s, player);
 
 		if (guardTicks >= 0 && facing) {
-			boolean perfect = guardTicks <= PERFECT;
-			level.sendParticles(ParticleTypes.ELECTRIC_SPARK, at.x, at.y, at.z, perfect ? 28 : 16, 0.1, 0.1, 0.1, 0.45);
+			// Phase 28: a guard already shaking parries nothing perfectly any more; each blow costs stamina.
+			boolean perfect = guardTicks <= PERFECT && !shaky(player);
+			int held = strain(s, f, player, perfect ? STRAIN_PERFECT : f.attack == SPIN ? STRAIN_SPIN : phase >= 2 ? STRAIN_BLOW_2 : STRAIN_BLOW, at, level);
+
+			if (held == SaberAbilities.GUARD_BROKEN) {
+				// Kept up through blow after blow: the guard breaks, the blow comes through (weaker).
+				breaksThrough(s, f, player, me, level, corner, BLOWS[phase] * BREAK_DAMAGE);
+				f.combo = 0;
+				f.burst = 0;
+				// (She steps back and gathers herself: a broken guard is a setback, not the end.)
+				act(f, RECOIL, 0, 10 + pause(f, phase) / 2);
+				return;
+			}
+
+			boolean strained = held == SaberAbilities.GUARD_STRAINED;
+			level.sendParticles(ParticleTypes.ELECTRIC_SPARK, at.x, at.y, at.z, perfect ? 28 : strained ? 22 : 16, 0.1, 0.1, 0.1, 0.45);
 			level.playSound(null, at.x, at.y, at.z, ShipInteriors.sound(perfect ? "story.clash_big" : "saber.clash"), SoundSource.HOSTILE, 1.1F,
-					perfect ? 1.1F : 0.85F + random.nextFloat() * 0.15F);
+					perfect ? 1.1F : strained ? 0.68F + random.nextFloat() * 0.08F : 0.85F + random.nextFloat() * 0.15F);
 			s.counters.merge(perfect ? "perfect" : "blocked", 1, Integer::sum);
-			s.focus = Math.min(1.0F, s.focus + (perfect ? 0.5F : FOCUS_BLOCK));
-			Story.cue(s, Story.CUE_DUEL, perfect ? "perfect" : "blocked", "", f.id, java.util.List.of(at));
+			s.focus = Math.min(1.0F, s.focus + (perfect ? 0.5F : strained ? FOCUS_BLOCK * 0.5F : FOCUS_BLOCK));
+			Story.cue(s, Story.CUE_DUEL, perfect ? "perfect" : strained ? "strained" : "blocked", "", f.id, java.util.List.of(at));
 			f.burst = 0;
 
 			if (perfect) {
@@ -1179,10 +1311,12 @@ final class Finale {
 				f.hits = 0;
 				f.parried = 0;
 			} else if (f.combo > 0) {
-				if (phase >= 2) {
-					// The second phase presses: each blocked blow drives the player back a little.
+				if (phase >= 2 || strained) {
+					// The second phase presses: each blocked blow drives the player back a little
+					// (Phase 28: a shaking guard further, in either phase).
 					Vec3 back = new Vec3(me.x - f.x, 0.0, me.z - f.z).normalize();
-					player.push(back.x * 0.3, 0.0, back.z * 0.3);
+					double by = strained ? 0.45 : 0.3;
+					player.push(back.x * by, 0.0, back.z * by);
 					player.hurtMarked = true;
 				}
 
@@ -1209,6 +1343,65 @@ final class Finale {
 		f.combo = 0;
 		f.burst = 0;
 		act(f, RECOIL, 0, 10);
+	}
+
+	/**
+	 * Phase 28: the player's guard against her: how long it has been up (ticks), or -1 when it is
+	 * not, and -1 too while a guard she broke is still down (also one raised with the use key).
+	 */
+	static long guardTicks(StorySession s, ServerPlayer player) {
+		return s.timer("guard_broken") ? -1L : guardTicks(player);
+	}
+
+	/** Phase 28: whether the player's guard shakes already (little stamina left): no perfect parry then. */
+	static boolean shaky(ServerPlayer player) {
+		com.phiro.sabercraft.ability.AbilityConfig config = com.phiro.sabercraft.ability.AbilityConfig.get();
+		return config.staminaEnabled && SaberAbilities.stamina(player) < UNSTABLE * config.staminaMax;
+	}
+
+	/**
+	 * Phase 28: one of her blows (a share of the most stamina, see the constants) taken on the
+	 * player's guard: it costs stamina by the difficulty; a guard shaking or broken is felt and
+	 * heard, and said once a fight. Returns what {@link SaberAbilities#strainGuard} did.
+	 */
+	private static int strain(StorySession s, Figure f, ServerPlayer player, float share, Vec3 at, ServerLevel level) {
+		StoryDifficulty difficulty = s.difficulty();
+		int held = SaberAbilities.strainGuard(player, share * difficulty.bossStrain, UNSTABLE, difficulty.guardBreak);
+
+		if (held == SaberAbilities.GUARD_BROKEN) {
+			guardBreaks++;
+			s.counters.merge("guard_broken", 1, Integer::sum);
+			s.timer("guard_broken", difficulty.guardBreak);
+			level.playSound(null, at.x, at.y, at.z, ShipInteriors.sound("story.clash_big"), SoundSource.HOSTILE, 1.25F, 0.62F);
+			level.sendParticles(ParticleTypes.ELECTRIC_SPARK, at.x, at.y, at.z, 34, 0.15, 0.15, 0.15, 0.55);
+			Story.cue(s, Story.CUE_DUEL, "guard_break", "", f.id, java.util.List.of(at));
+
+			if (!s.has("tmp.hint_guard_break")) {
+				s.set("tmp.hint_guard_break");
+				s.hint("sabercraft.story.hint.guard_broken");
+			}
+		} else if (held == SaberAbilities.GUARD_STRAINED) {
+			strains++;
+			s.counters.merge("guard_strained", 1, Integer::sum);
+
+			if (!s.has("tmp.hint_guard_strain")) {
+				s.set("tmp.hint_guard_strain");
+				s.hint("sabercraft.story.hint.guard_strained");
+			}
+		}
+
+		return held;
+	}
+
+	/** Phase 28: a blow (or the thrown staff, the rush) breaks through the guard: it hurts, weaker, and throws the player back. */
+	private static void breaksThrough(StorySession s, Figure f, ServerPlayer player, Vec3 me, ServerLevel level, Vec3 corner, float damage) {
+		s.counters.merge("duel_hurt", 1, Integer::sum);
+		player.hurtServer(level, level.damageSources().generic(), damage * f.power);
+		Vec3 push = new Vec3(me.x - f.x, 0.0, me.z - f.z);
+		push = push.lengthSqr() < 1.0E-4 ? f.look().scale(0.7) : push.normalize().scale(0.7);
+		player.push(push.x, 0.2, push.z);
+		player.hurtMarked = true;
+		Story.cue(s, Story.CUE_DUEL, "hurt", "", Math.round(damage * f.power), java.util.List.of(f.position().add(corner)));
 	}
 
 	/** Phase 23: how long the player's guard has been up (ticks), or -1 when it is not. */
@@ -1255,6 +1448,9 @@ final class Finale {
 	 * sound, the staff spinning in her hand, a word the first time).
 	 */
 	private static void throwStarts(StorySession s, Figure f, ServerLevel level, Vec3 corner) {
+		f.thrown++;
+		s.timers.remove("throw_back");
+		ringGoes(s, f);
 		act(f, THROW, 0, THROW_WIND);
 		f.windup = THROW_WIND;
 		f.throwFrom = null;
@@ -1263,6 +1459,7 @@ final class Finale {
 		f.react(Figure.THROW_WIND, THROW_WIND);
 		s.timer("throw", scaled(f, THROW_EVERY));
 		throwsStarted++;
+		s.counters.merge("throws", 1, Integer::sum);
 		Vec3 at = f.position().add(corner).add(0.0, 1.4, 0.0);
 		level.playSound(null, at.x, at.y, at.z, ShipInteriors.sound("saber.swing"), SoundSource.HOSTILE, 0.9F, 0.6F);
 		// Phase 26: the ring spins up as she draws it back (heard and seen: the warning, no words).
@@ -1358,13 +1555,23 @@ final class Finale {
 		Vec3 to = at.subtract(player.getEyePosition());
 		boolean facing = to.lengthSqr() < 1.0E-4 || new Vec3(look.x, 0.0, look.z).normalize().dot(new Vec3(to.x, 0.0, to.z).normalize()) > 0.2;
 
-		if (guardTicks(player) >= 0 && facing) {
+		if (guardTicks(s, player) >= 0 && facing) {
+			// Phase 28: the staff's weight on the guard costs stamina too.
+			int held = strain(s, f, player, STRAIN_THROW, at, level);
+
+			if (held == SaberAbilities.GUARD_BROKEN) {
+				Vec3 me = player.position().subtract(corner);
+				breaksThrough(s, f, player, me, level, corner, THROW_DAMAGE * BREAK_DAMAGE);
+				return;
+			}
+
+			boolean strained = held == SaberAbilities.GUARD_STRAINED;
 			throwBlocks++;
 			s.counters.merge("throw_blocked", 1, Integer::sum);
-			s.focus = Math.min(1.0F, s.focus + FOCUS_BLOCK);
+			s.focus = Math.min(1.0F, s.focus + (strained ? FOCUS_BLOCK * 0.5F : FOCUS_BLOCK));
 			level.sendParticles(ParticleTypes.ELECTRIC_SPARK, at.x, at.y, at.z, 20, 0.12, 0.12, 0.12, 0.45);
-			level.playSound(null, at.x, at.y, at.z, ShipInteriors.sound("saber.clash"), SoundSource.HOSTILE, 1.1F, 1.05F);
-			Story.cue(s, Story.CUE_DUEL, "blocked", "", f.id, java.util.List.of(at));
+			level.playSound(null, at.x, at.y, at.z, ShipInteriors.sound("saber.clash"), SoundSource.HOSTILE, 1.1F, strained ? 0.75F : 1.05F);
+			Story.cue(s, Story.CUE_DUEL, strained ? "strained" : "blocked", "", f.id, java.util.List.of(at));
 			return;
 		}
 
@@ -1384,6 +1591,7 @@ final class Finale {
 
 	/** The ring spins up round the grip (its whirr rising, the blades blurring into a disc): the warning. */
 	private static void rushStarts(StorySession s, Figure f, ServerLevel level, Vec3 corner) {
+		ringGoes(s, f);
 		act(f, RUSH, 0, RUSH_TICKS);
 		f.windup = RUSH_WIND;
 		f.react(Figure.RING, RUSH_WIND + RUSH_TICKS);
@@ -1445,10 +1653,20 @@ final class Finale {
 
 		Vec3 look = player.getLookAngle();
 		boolean facing = new Vec3(look.x, 0.0, look.z).normalize().dot(back.scale(-1.0)) > 0.35;
-		long guard = guardTicks(player);
+		long guard = guardTicks(s, player);
 
 		if (guard >= 0 && facing) {
-			boolean perfect = guard <= PERFECT;
+			// Phase 28: the whirling disc driven into the guard costs the most stamina.
+			boolean perfect = guard <= PERFECT && !shaky(player);
+			int held = strain(s, f, player, perfect ? STRAIN_PERFECT : STRAIN_RUSH, at, level);
+
+			if (held == SaberAbilities.GUARD_BROKEN) {
+				rushHits++;
+				breaksThrough(s, f, player, me, level, corner, BLOWS[2] * BREAK_DAMAGE);
+				rushEnds(f, level, corner, -RUSH_OPENING);
+				return;
+			}
+
 			rushBlocks++;
 			level.sendParticles(ParticleTypes.ELECTRIC_SPARK, at.x, at.y, at.z, perfect ? 34 : 22, 0.15, 0.15, 0.15, 0.5);
 			level.playSound(null, at.x, at.y, at.z, ShipInteriors.sound("story.clash_big"), SoundSource.HOSTILE, 1.1F, perfect ? 1.15F : 0.9F);
@@ -1512,6 +1730,11 @@ final class Finale {
 	}
 
 	private static int rushes;
+	/** Phase 28: the ring set going and stopped; guards strained and broken. */
+	private static int ringStarted;
+	private static int ringStopped;
+	private static int strains;
+	private static int guardBreaks;
 	private static int rushBlocks;
 	private static int rushHits;
 	private static int lunges;
@@ -1534,7 +1757,7 @@ final class Finale {
 	private static void push(StorySession s, Figure f, ServerPlayer player, ServerLevel level, Vec3 corner) {
 		Vec3 me = player.position().subtract(corner);
 		Vec3 away = new Vec3(me.x - f.x, 0.0, me.z - f.z).normalize();
-		boolean guard = guardTicks(player) >= 0;
+		boolean guard = guardTicks(s, player) >= 0;
 		double strength = guard ? 0.5 : 1.4;
 		player.push(away.x * strength, guard ? 0.1 : 0.35, away.z * strength);
 		player.hurtMarked = true;
@@ -1560,6 +1783,7 @@ final class Finale {
 	 */
 	private static void lockStarts(StorySession s, Figure f, ServerPlayer player, Vec3 me, ServerLevel level, Vec3 corner) {
 		f.health = PHASE_TWO;
+		ringStops(f);
 		f.combo = 0;
 		f.hits = 0;
 		f.parried = 0;
@@ -1906,6 +2130,7 @@ final class Finale {
 	 */
 	private static void disarm(StorySession s, Figure f, ServerPlayer player, Vec3 me, ServerLevel level, Vec3 corner) {
 		act(f, ESCAPE, STAGGER, 0);
+		ringStops(f);
 		f.disarmed = true;
 		f.lit = false;
 		f.hostile = false;
@@ -2087,6 +2312,11 @@ final class Finale {
 	/** Phase 25, for the tests: throws begun, hits, blocked, dodged; spins begun. */
 	static int[] throwsForTest() {
 		return new int[] {throwsStarted, throwHits, throwBlocks, throwDodges, spins};
+	}
+
+	/** Phase 28, for the tests: the ring set going, stopped; guards strained, broken. */
+	static int[] ringAndGuardForTest() {
+		return new int[] {ringStarted, ringStopped, strains, guardBreaks};
 	}
 
 	static int strokesForTest() {

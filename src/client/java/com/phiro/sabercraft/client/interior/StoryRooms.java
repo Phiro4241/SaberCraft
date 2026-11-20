@@ -656,6 +656,117 @@ final class StoryRooms {
 		b.twoSided(false).layer(Layer.SOLID).worldLight().white().anim(0);
 	}
 
+	/**
+	 * Phase 28: the side way's cover in its cell (x 11..12 of the crawl way): from the hangar's
+	 * side (east) a grille plate in a frame with a screw in each corner and a fan turning slowly
+	 * behind it; from the crawl way from flight control (west) only the plain back of the fan's
+	 * housing. Off, the plate lies flat in the next cell east (it tips over onto it as it comes off:
+	 * {@code off} 0..1, or -1), the fan and its housing gone with it (the way is open).
+	 */
+	static void ventCover(MeshBuilder b, float seconds, boolean shut, float off) {
+		BlockPos cell = com.phiro.sabercraft.story.Chapter1.VENT_COVER;
+		float x = cell.getX();
+		float y = cell.getY();
+		float z = cell.getZ();
+		b.layer(Layer.SOLID).worldLight().white().anim(0).twoSided(false);
+
+		if (shut) {
+			// The housing's back (west), the fan in the middle, the frame and the grille (east).
+			b.tile(InteriorAtlas.IMP_HULL_DARK, 1.0F);
+			b.box(x + 0.02F, y + 0.02F, z + 0.02F, x + 0.08F, y + 0.98F, z + 0.98F);
+			b.tile(InteriorAtlas.IMP_METAL, 1.0F);
+			b.box(x + 0.08F, y + 0.4F, z + 0.4F, x + 0.2F, y + 0.6F, z + 0.6F);
+			b.push().translate(x + 0.45F, y + 0.5F, z + 0.5F).rotateX(seconds * 40.0F % 360.0F);
+
+			for (int k = 0; k < 4; k++) {
+				b.push().rotateX(k * 90.0F);
+				b.box(-0.03F, -0.05F, 0.04F, 0.03F, 0.05F, 0.4F);
+				b.pop();
+			}
+
+			b.pop();
+			b.box(x + 0.4F, y + 0.44F, z + 0.44F, x + 0.5F, y + 0.56F, z + 0.56F);
+			coverPlate(b);
+			return;
+		}
+
+		// Off: tipping over east onto the floor of the next cell (its foot at the cell's east edge).
+		float tip = off < 0.0F ? 1.0F : off;
+		tip = tip * tip * (3.0F - 2.0F * tip);
+		b.push().translate(x + 1.0F, y + 0.02F, z).rotateZ(-90.0F * tip).translate(-(x + 1.0F), -y, -z);
+		coverPlate(b);
+		b.pop();
+	}
+
+	/** Phase 28: the cover's plate, standing in its cell's east face: frame, grille, four screws. */
+	private static void coverPlate(MeshBuilder b) {
+		BlockPos cell = com.phiro.sabercraft.story.Chapter1.VENT_COVER;
+		float x = cell.getX() + 0.9F;
+		float y = cell.getY();
+		float z = cell.getZ();
+		b.tile(InteriorAtlas.IMP_METAL, 1.0F);
+		b.box(x, y, z + 0.02F, x + 0.08F, y + 0.08F, z + 0.98F);
+		b.box(x, y + 0.92F, z + 0.02F, x + 0.08F, y + 1.0F, z + 0.98F);
+		b.box(x, y + 0.08F, z + 0.02F, x + 0.08F, y + 0.92F, z + 0.1F);
+		b.box(x, y + 0.08F, z + 0.9F, x + 0.08F, y + 0.92F, z + 0.98F);
+		b.fit(InteriorAtlas.IMP_WALL_VENT);
+		b.box(x + 0.02F, y + 0.08F, z + 0.1F, x + 0.05F, y + 0.92F, z + 0.9F, MeshBuilder.EAST | MeshBuilder.WEST);
+		// A yellow and black band at its top: maintenance access.
+		b.tile(InteriorAtlas.IMP_HAZARD, 0.5F);
+		b.box(x + 0.08F, y + 0.82F, z + 0.12F, x + 0.085F, y + 0.9F, z + 0.88F, MeshBuilder.EAST);
+		b.tile(InteriorAtlas.IMP_METAL_LIGHT, 1.0F);
+
+		for (float[] screw : new float[][] {{0.12F, 0.12F}, {0.12F, 0.88F}, {0.88F, 0.12F}, {0.88F, 0.88F}}) {
+			b.box(x + 0.08F, y + screw[0] - 0.035F, z + screw[1] - 0.035F, x + 0.11F, y + screw[0] + 0.035F, z + screw[1] + 0.035F,
+					MeshBuilder.ALL & ~MeshBuilder.WEST);
+		}
+	}
+
+	/**
+	 * Phase 28: the technicians' toolbox by the containers: a red metal box with a handle on its
+	 * lid; with the screwdriver still in it, its handle shows at the lid's edge; taken, the lid
+	 * stands open (the box is empty but for a spanner).
+	 */
+	static void toolbox(MeshBuilder b, boolean taken) {
+		BlockPos cell = com.phiro.sabercraft.story.Chapter1.TOOLBOX;
+		float x = cell.getX();
+		float y = cell.getY();
+		float z = cell.getZ();
+		b.layer(Layer.SOLID).worldLight().white().anim(0).twoSided(false);
+		// A low pallet under it, the box on it.
+		b.tile(InteriorAtlas.IMP_CRATE, 1.0F);
+		b.box(x + 0.08F, y, z + 0.12F, x + 0.92F, y + 0.1F, z + 0.88F);
+		b.colour(0xFFB83A28).tile(InteriorAtlas.IMP_METAL, 1.0F);
+		b.box(x + 0.15F, y + 0.1F, z + 0.25F, x + 0.85F, y + 0.48F, z + 0.75F);
+		b.white();
+		b.tile(InteriorAtlas.IMP_BLACK, 1.0F);
+		b.box(x + 0.18F, y + 0.47F, z + 0.28F, x + 0.82F, y + 0.481F, z + 0.72F, MeshBuilder.UP);
+
+		if (taken) {
+			// The lid open, swung back on its hinge (north edge); a spanner left inside.
+			b.push().translate(x + 0.5F, y + 0.48F, z + 0.25F).rotateX(-105.0F);
+			b.colour(0xFFB83A28).tile(InteriorAtlas.IMP_METAL, 1.0F);
+			b.box(-0.35F, 0.0F, 0.0F, 0.35F, 0.05F, 0.5F);
+			b.white().pop();
+			b.tile(InteriorAtlas.IMP_METAL_LIGHT, 1.0F);
+			b.box(x + 0.3F, y + 0.48F, z + 0.46F, x + 0.7F, y + 0.5F, z + 0.52F);
+			return;
+		}
+
+		b.colour(0xFFC84A34).tile(InteriorAtlas.IMP_METAL, 1.0F);
+		b.box(x + 0.14F, y + 0.48F, z + 0.24F, x + 0.86F, y + 0.53F, z + 0.76F);
+		b.white().tile(InteriorAtlas.IMP_METAL_LIGHT, 1.0F);
+		// The lid's handle.
+		b.box(x + 0.35F, y + 0.53F, z + 0.47F, x + 0.38F, y + 0.6F, z + 0.53F);
+		b.box(x + 0.62F, y + 0.53F, z + 0.47F, x + 0.65F, y + 0.6F, z + 0.53F);
+		b.box(x + 0.35F, y + 0.6F, z + 0.47F, x + 0.65F, y + 0.63F, z + 0.53F);
+		// The screwdriver's red and black handle and its shaft, sticking out at the lid's edge.
+		b.colour(0xFFD8B020).tile(InteriorAtlas.IMP_METAL, 1.0F);
+		b.box(x + 0.62F, y + 0.53F, z + 0.27F, x + 0.82F, y + 0.57F, z + 0.31F);
+		b.white().tile(InteriorAtlas.IMP_METAL_LIGHT, 1.0F);
+		b.box(x + 0.82F, y + 0.54F, z + 0.284F, x + 0.95F, y + 0.556F, z + 0.296F);
+	}
+
 	/** Phase 26: a repeatable noise 0..1 from two numbers. */
 	private static float hash(int a, int b) {
 		int h = a * 0x27D4EB2D ^ b * 0x165667B1;
@@ -703,6 +814,18 @@ final class StoryRooms {
 		if (story && plot.level().getBlockState(o.offset(com.phiro.sabercraft.story.Chapter1.BRIDGE_BARRIER_X0, (int) H,
 				com.phiro.sabercraft.story.Chapter1.BRIDGE_BARRIER_Z)).is(Blocks.BARRIER)) {
 			bridgeBarrier(b, seconds);
+		}
+
+		// Phase 28: Mission 2's side way: its cover (shut while its cell stands; off, it lies in the
+		// crawl way, tipping over as it comes off) and the technicians' toolbox by the containers.
+		if (story) {
+			BlockPos coverCell = com.phiro.sabercraft.story.Chapter1.VENT_COVER;
+			boolean shut = plot.level().getBlockState(o.offset(coverCell)).is(Blocks.BARRIER);
+			ventCover(b, seconds, shut, StoryClient.effect("cover_off", 0.0F));
+
+			if (plot.level().getBlockState(o.offset(com.phiro.sabercraft.story.Chapter1.TOOLBOX)).is(Blocks.BARRIER)) {
+				toolbox(b, StoryClient.has(com.phiro.sabercraft.story.Chapter1.DRIVER));
+			}
 		}
 
 		// The coolant valve's wheel: turned (and a warning lamp) once the story turned it.

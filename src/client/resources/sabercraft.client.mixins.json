@@ -25,7 +25,8 @@
     "SkyRendererMixin",
     "SoundBufferLibraryMixin",
     "SoundEngineMixin",
-    "TitleScreenMixin"
+    "TitleScreenMixin",
+    "ToastManagerMixin"
   ],
   "injectors": {
     "defaultRequire": 1

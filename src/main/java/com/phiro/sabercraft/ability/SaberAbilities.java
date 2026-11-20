@@ -1007,6 +1007,66 @@ public final class SaberAbilities {
 	}
 
 	/**
+	 * Phase 28: no stamina comes back for now (the story's boss duel: a block held with the use key
+	 * counts as the guard, which gets none back while it is up).
+	 */
+	public static void holdStamina(ServerPlayer player) {
+		State state = STATES.get(player.getUUID());
+
+		if (state != null && AbilityConfig.get().staminaEnabled) {
+			state.staminaUsedAt = player.level().getGameTime();
+		}
+	}
+
+	/** Phase 28: what {@link #strainGuard} did to the guard. */
+	public static final int GUARD_HELD = 0;
+	public static final int GUARD_STRAINED = 1;
+	public static final int GUARD_BROKEN = 2;
+
+	/**
+	 * Phase 28: the story's boss duel. Her blows hurt by the story's own rules, so the damage code
+	 * above never sees them, and a guard held up took any number of them for free. Now a blow of
+	 * hers taken on the guard costs stamina as any block does ({@code share} of the most stamina;
+	 * none comes back while the guard stays up). Returns {@link #GUARD_HELD}, {@link #GUARD_STRAINED}
+	 * (held, but less than {@code unstable} of the stamina is left: the guard shakes) or
+	 * {@link #GUARD_BROKEN} (not enough stamina for it: the stance breaks as it does in
+	 * {@link #blockedDamage}, {@code cooldown} ticks before it can be raised again, slowed a moment).
+	 * With stamina turned off in the settings it always holds.
+	 */
+	public static int strainGuard(ServerPlayer player, float share, float unstable, int cooldown) {
+		AbilityConfig config = AbilityConfig.get();
+
+		if (!config.staminaEnabled) {
+			return GUARD_HELD;
+		}
+
+		State state = STATES.computeIfAbsent(player.getUUID(), id -> new State());
+		long now = player.level().getGameTime();
+		float cost = share * config.staminaMax;
+
+		if (state.stamina < cost) {
+			state.stamina = 0.0F;
+			state.staminaUsedAt = now;
+
+			if (state.guarding()) {
+				stopGuard(player, state, now, cooldown);
+			} else {
+				startCooldown(player, state, SaberAbility.GUARD, now, cooldown);
+			}
+
+			player.stopUsingItem();
+			player.addEffect(new MobEffectInstance(MobEffects.SLOWNESS, 30, 1, false, false, true));
+			broadcast(player, new AbilityEventPayload(player.getId(), SaberAbility.GUARD, AbilityEventPayload.Event.GUARD_BREAK));
+			sendStamina(player, state);
+			return GUARD_BROKEN;
+		}
+
+		spend(state, config, cost, now);
+		sendStamina(player, state);
+		return state.stamina < unstable * config.staminaMax ? GUARD_STRAINED : GUARD_HELD;
+	}
+
+	/**
 	 * Phase 26: a scene of the story begins (the boss's blade lock): the guard comes down, a dash
 	 * or a spin still going ends, without a cooldown (afterwards everything is ready as before).
 	 */

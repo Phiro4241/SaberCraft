@@ -226,20 +226,36 @@ final class StoryModels {
 	 * blades across again (the nearest half turn). The flare: when blades meet, in the lock, and
 	 * once as the last quarter of her strength begins.
 	 */
+	/** Phase 28: how fast the ring turns while it keeps turning (a share of its fastest). */
+	static final float RING_CRUISE = 0.55F;
+
+	/** Phase 28, for the tests: how fast that figure's ring turns now (radians a second; 0 when unknown). */
+	public static float ringSpeedForTest(int id) {
+		float[] state = SABERS.get(id);
+		return state == null ? 0.0F : state[10];
+	}
+
 	private static void ring(float[] state, StoryFiguresPayload.Fig fig, boolean inquisitor, boolean both, int kind, float progress, float spin, int react,
 			float reactP, float dt) {
 		float goal = 0.0F;
+		// Phase 28: the server says the ring keeps turning (a state that lasts through her moves,
+		// no longer spun up and down with each): it turns steadily, faster for a ring move.
+		boolean turning = (fig.flags() & StoryFiguresPayload.RING_SPIN) != 0;
 
 		if (inquisitor && both) {
-			if (kind == CrewModels.SPIN) {
-				goal = InquisitorSaber.SPIN_FAST * Math.max(0.35F, Math.min(1.0F, progress * 1.4F));
-			} else if (react == CrewModels.RING) {
-				goal = InquisitorSaber.SPIN_FAST * (reactP < CrewModels.RING_WIND ? 0.25F + 0.75F * reactP / CrewModels.RING_WIND : 1.0F);
-			} else if (react == CrewModels.THROW_WIND) {
-				goal = InquisitorSaber.SPIN_FAST * 0.85F * Mth.clamp(reactP * 1.3F, 0.0F, 1.0F);
+			if (turning) {
+				goal = InquisitorSaber.SPIN_FAST * RING_CRUISE;
 			}
 
-			if (react == CrewModels.PARRY && (int) state[12] != CrewModels.PARRY) {
+			if (kind == CrewModels.SPIN) {
+				goal = Math.max(goal, InquisitorSaber.SPIN_FAST * Math.max(0.35F, Math.min(1.0F, progress * 1.4F)));
+			} else if (react == CrewModels.RING) {
+				goal = Math.max(goal, InquisitorSaber.SPIN_FAST * (reactP < CrewModels.RING_WIND ? 0.25F + 0.75F * reactP / CrewModels.RING_WIND : 1.0F));
+			} else if (react == CrewModels.THROW_WIND) {
+				goal = Math.max(goal, InquisitorSaber.SPIN_FAST * 0.85F * Mth.clamp(reactP * 1.3F, 0.0F, 1.0F));
+			}
+
+			if (!turning && react == CrewModels.PARRY && (int) state[12] != CrewModels.PARRY) {
 				// A stroke turned aside: the ring twitches round on its hub.
 				state[10] += 9.0F;
 			}

@@ -988,11 +988,80 @@ public final class Stealth {
 			Double y = Paths.stand(level, corner, x, lure.y, z, height);
 
 			if (y != null && Math.abs(y - lure.y) < 1.1 && free(level, corner, x, y, z, height)) {
-				return new Vec3(x, y, z);
+				Vec3 spot = new Vec3(x, y, z);
+
+				// Phase 28: a spot right by them (the straight line crossed open space, as the
+				// reactor's shaft, and found floor only at their feet) is no spot: the way round.
+				if (horizontal(spot, figure.position()) >= 1.6) {
+					return spot;
+				}
+
+				break;
 			}
 		}
 
-		return figure.position();
+		Vec3 around = lureWay(figure, lure, level, corner, height);
+		return around != null ? around : figure.position();
+	}
+
+	/**
+	 * Phase 28: where one drawn by a noise across open space goes: along the walkable way to it
+	 * (the walkways round the reactor's shaft), a step short of its end, if that end comes near
+	 * the noise; else null.
+	 */
+	private static @Nullable Vec3 lureWay(Figure figure, Vec3 lure, ServerLevel level, Vec3 corner, double height) {
+		Paths.Way way = Paths.way(level, corner, figure.position(), lure, height);
+		List<Vec3> points = way.points();
+
+		if (points.isEmpty() || horizontal(points.get(points.size() - 1), lure) > 2.5) {
+			return null;
+		}
+
+		// (Not a long way round, through doors and other rooms: a noise from there is let be.)
+		double walk = horizontal(figure.position(), points.get(0));
+
+		for (int i = 1; i < points.size(); i++) {
+			walk += horizontal(points.get(i - 1), points.get(i));
+		}
+
+		if (walk > horizontal(figure.position(), lure) * 2.0 + 3.0) {
+			return null;
+		}
+
+		// A step short of the end, along the way.
+		double left = 1.2;
+		Vec3 spot = points.get(points.size() - 1);
+
+		for (int i = points.size() - 1; i > 0 && left > 0.0; i--) {
+			Vec3 a = points.get(i);
+			Vec3 b = points.get(i - 1);
+			double step = horizontal(a, b);
+
+			if (step >= left) {
+				spot = a.add(b.subtract(a).scale(left / Math.max(1.0E-4, step)));
+				left = 0.0;
+			} else {
+				left -= step;
+				spot = b;
+			}
+		}
+
+		Double y = Paths.stand(level, corner, spot.x, spot.y, spot.z, height);
+
+		if (y == null || !free(level, corner, spot.x, y, spot.z, height) || horizontal(spot, figure.position()) < 1.6) {
+			spot = points.get(points.size() - 1);
+			y = Paths.stand(level, corner, spot.x, spot.y, spot.z, height);
+		}
+
+		lureWays++;
+		return y == null ? null : new Vec3(spot.x, y, spot.z);
+	}
+
+	/** Phase 28, for the tests: lures that took someone the way round (over the walkways). */
+	private static int lureWays;
+
+	static int lureWaysForTest() {
+		return lureWays;
 	}
 
 	private static @Nullable Vec3 searchPoint(Figure figure, Vec3 around, ServerLevel level, Vec3 corner, long time) {

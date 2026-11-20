@@ -790,8 +790,12 @@ public final class DestroyerInterior extends InteriorPlan {
 				// Phase 23: out of the bay into the lobby, facing the corridor.
 				new Lift(new AABB(CX - 2, DECK + 1, COMMAND_BACK - 2, CX + 3, DECK + 4, COMMAND_BACK), new Vec3(CX + 0.5, HANGAR + 1, LIFT_Z0 - 2.5), 180.0F),
 				// Phase 18: the reactor's maintenance lift, from the catwalk down to the shaft floor and back.
-				new Lift(REACTOR_LIFT.move(0, HANGAR + 1 - REACTOR_BOTTOM, 0), new Vec3(REACTOR_LIFT.minX - 1.2, REACTOR_BOTTOM, REACTOR_LIFT.getCenter().z), 0.0F),
-				new Lift(REACTOR_LIFT, new Vec3(REACTOR_LIFT.minX - 1.2, HANGAR + 1, REACTOR_LIFT.getCenter().z), 180.0F));
+				// Phase 28: the reactor's maintenance lift goes only for one standing still on it a
+				// moment, and not again at once (in a fight it took one up and down by chance).
+				new Lift(REACTOR_LIFT.move(0, HANGAR + 1 - REACTOR_BOTTOM, 0), new Vec3(REACTOR_LIFT.minX - 1.2, REACTOR_BOTTOM, REACTOR_LIFT.getCenter().z), 0.0F,
+						REACTOR_LIFT_TICKS, REACTOR_LIFT_COOLDOWN),
+				new Lift(REACTOR_LIFT, new Vec3(REACTOR_LIFT.minX - 1.2, HANGAR + 1, REACTOR_LIFT.getCenter().z), 180.0F, REACTOR_LIFT_TICKS,
+						REACTOR_LIFT_COOLDOWN));
 	}
 
 	/**
@@ -800,6 +804,9 @@ public final class DestroyerInterior extends InteriorPlan {
 	 * to just under the working level (drawn only: nobody gets near them). Angles from east,
 	 * clockwise seen from above.
 	 */
+	/** Phase 28: standing still this long on the reactor's lift takes one, and not again for this long. */
+	public static final int REACTOR_LIFT_TICKS = 30;
+	public static final int REACTOR_LIFT_COOLDOWN = 80;
 	public static final AABB REACTOR_LIFT = new AABB(30, REACTOR_BOTTOM, 24, 32, REACTOR_BOTTOM + 2, 26);
 	public static final double CONVERTER_R = 9.0;
 	public static final double CONVERTER_SIZE = 1.3;

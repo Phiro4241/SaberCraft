@@ -20,16 +20,16 @@ public enum StoryDifficulty {
 	 * caught, help comes later and fewer; the boss has less strength, attacks less often and leaves
 	 * longer openings.
 	 */
-	EASY("easy", 0.8, 0.65, 0.9, 0.7, 1.35, 1.35, 1.35, 4, 1, 3, -1, 0.8F, 0.8F, 1.4F, 0.75F),
+	EASY("easy", 0.8, 0.65, 0.9, 0.7, 1.35, 1.35, 1.35, 4, 1, 3, -1, 0.8F, 0.8F, 1.4F, 0.75F, 0.75F, 30),
 	/** Normal: as the story was made. */
-	NORMAL("normal", 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 3, 2, 4, 0, 1.0F, 1.0F, 1.0F, 1.0F),
+	NORMAL("normal", 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 3, 2, 4, 0, 1.0F, 1.0F, 1.0F, 1.0F, 1.0F, 40),
 	/**
 	 * Hard: more enemies (extra patrols and fighters), longer sight, quicker to notice, faster on
 	 * their feet, longer searches, quicker and more accurate shots, caught after two stun bolts,
 	 * help sooner and more of it; the boss has more strength, attacks faster and more often, and
 	 * her openings are shorter.
 	 */
-	HARD("hard", 1.2, 1.4, 1.12, 1.35, 0.75, 0.75, 0.75, 2, 3, 6, 1, 1.3F, 1.25F, 0.7F, 1.3F);
+	HARD("hard", 1.2, 1.4, 1.12, 1.35, 0.75, 0.75, 0.75, 2, 3, 6, 1, 1.3F, 1.25F, 0.7F, 1.3F, 1.3F, 55);
 
 	/** The name in the save and the menu ({@code sabercraft.story.difficulty.<id>}). */
 	public final String id;
@@ -57,9 +57,15 @@ public enum StoryDifficulty {
 	public final float bossTempo;
 	public final float bossOpening;
 	public final float bossDamage;
+	/**
+	 * Phase 28: how much stamina her blows take from the player's guard (times the normal), and how
+	 * long a broken guard stays down (ticks).
+	 */
+	public final float bossStrain;
+	public final int guardBreak;
 
 	StoryDifficulty(String id, double sight, double notice, double speed, double search, double aim, double cooldown, double spread, int stunHits,
-			int reinforce, int reinforceMax, int enemies, float bossHealth, float bossTempo, float bossOpening, float bossDamage) {
+			int reinforce, int reinforceMax, int enemies, float bossHealth, float bossTempo, float bossOpening, float bossDamage, float bossStrain, int guardBreak) {
 		this.id = id;
 		this.sight = sight;
 		this.notice = notice;
@@ -76,6 +82,8 @@ public enum StoryDifficulty {
 		this.bossTempo = bossTempo;
 		this.bossOpening = bossOpening;
 		this.bossDamage = bossDamage;
+		this.bossStrain = bossStrain;
+		this.guardBreak = guardBreak;
 	}
 
 	/** The difficulty of that name (an unknown or missing one, as in a save from before Phase 27: normal). */

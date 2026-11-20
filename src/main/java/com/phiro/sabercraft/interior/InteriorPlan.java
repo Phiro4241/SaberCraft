@@ -31,7 +31,20 @@ public abstract class InteriorPlan {
 	}
 
 	/** A turbolift: standing in {@code area} a moment takes you to {@code arrival}, looking to {@code yaw}. */
-	public record Lift(AABB area, Vec3 arrival, float yaw) {
+	public record Lift(AABB area, Vec3 arrival, float yaw, int ticks, int cooldown) {
+		/** A lift as before Phase 28: half a second on it, no wait afterwards. */
+		public Lift(AABB area, Vec3 arrival, float yaw) {
+			this(area, arrival, yaw, 0, 0);
+		}
+
+		/**
+		 * Phase 28: a slow lift (the reactor's maintenance lift, used in fights): one must stand
+		 * still on it for {@code ticks} (walking over it or being knocked about does not count), and
+		 * after a ride no lift takes one again for {@code cooldown} ticks.
+		 */
+		public boolean slow() {
+			return this.ticks > 0;
+		}
 	}
 
 	/**
