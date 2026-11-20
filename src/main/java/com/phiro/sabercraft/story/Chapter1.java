@@ -114,6 +114,36 @@ public final class Chapter1 implements Chapter {
 	static final double FLIGHT_BEAT_SPEED = 0.6;
 	/** Phase 27: how far the flight control officer hears M-31 (from the door, a lure reaches him). */
 	static final double FLIGHT_HEARING = 10.0;
+	/**
+	 * Phase 28: the technician on the reactor's catwalk (the deck level, by the bridge to the lift)
+	 * in the last mission. He stood at his console facing the bridge, the only way to the lift, and
+	 * heard a lure only from on the bridge (and then went a step and stood again). Now he works a
+	 * round at his post: at the console (facing the bridge), then turned to the readings on the
+	 * shaft wall behind him (his back to the bridge: one gets by), and back ({@code CATWALK_WATCH}:
+	 * yaws and ticks held); he hears further, and a lure takes him off his post a while (over the
+	 * walkways, see {@code Stealth.lureSpot}). A patrol of his own would only block the one bridge.
+	 */
+	static final Vec3 CATWALK_POST = new Vec3(DestroyerInterior.CATWALK_DESK.getX() + 0.5, H, DestroyerInterior.CATWALK_DESK.getZ() - 0.95);
+	static final float[][] CATWALK_WATCH = {{0.0F, 170.0F}, {172.0F, 140.0F}};
+	static final int CATWALK_TURN = 22;
+	static final double CATWALK_HEARING = 10.5;
+	/** Phase 28: the gallery's landing and its way in: where the player first sees him (a hint, once). */
+	static final AABB CATWALK_SEEN = new AABB(43.5, H - 0.5, 9.5, 50.5, H + 2.0, 17.9);
+	/**
+	 * Phase 28: Mission 2's side way (Phase 27's crawl way from the hangar's west wall) is shut at
+	 * its west end, where it meets the crawl way from flight control, by a cover screwed on from
+	 * the hangar's side: on the way in one finds it shut (screwed tight from the other side). In a
+	 * toolbox by the containers lies a technician's screwdriver; with it the cover comes off from
+	 * the hangar's side (four screws), and stays off. Both are kept at once (a capture, death, the
+	 * next mission keep them); neither is needed: the way through flight control stays open, and
+	 * the toolbox is there in every mission until the screwdriver is taken.
+	 */
+	public static final BlockPos VENT_COVER = new BlockPos(11, H, -29);
+	public static final BlockPos TOOLBOX = new BlockPos(29, H, -64);
+	public static final String COVER_OPEN = "vent.cover_open";
+	public static final String DRIVER = "item.driver";
+	/** Phase 28: from how far (the eye to the cover's face) the screws can be reached. */
+	static final double COVER_REACH = 2.6;
 	/** Phase 20: safe places: the maintenance room's corner by the crates (behind the guard at Kestrel's hatch), the armory once its master is gone, the crawl way at the detention block's hatch. */
 	static final Vec3 MAINT_SAFE = new Vec3(3.5, H, -5.5);
 	static final Vec3 ARMORY_SAFE = new Vec3(50.5, H, -7.5);
@@ -569,6 +599,11 @@ public final class Chapter1 implements Chapter {
 			if (flight) {
 				figure.hearing = FLIGHT_HEARING;
 			}
+
+			// Phase 28: the catwalk's technician in the last mission listens further (a lure from the gallery reaches him).
+			if (m == 5 && reactor && !bottom && Crew.TECH.equals(c.kind())) {
+				figure.hearing = CATWALK_HEARING;
+			}
 			// After the download the lights are low: the troops carry lamps.
 			figure.lamp = m == 4 && Crew.TROOPER.equals(c.kind());
 			list.add(figure);
@@ -987,6 +1022,15 @@ public final class Chapter1 implements Chapter {
 		// Kestrel's terminal in the hidden room (from Mission 2 on).
 		if (m >= 1) {
 			list.add(point("terminal", 17.0, H + 0.8, -1.7, 19.0, H + 1.5, -1.0, false));
+
+			// Phase 28: the side way's cover (while shut) and the toolbox (while the screwdriver is in it).
+			if (!s.has(COVER_OPEN)) {
+				list.add(point("vent_cover", VENT_COVER.getX(), H, VENT_COVER.getZ(), VENT_COVER.getX() + 1.0, H + 1.0, VENT_COVER.getZ() + 1.0, false));
+			}
+
+			if (!s.has(DRIVER)) {
+				list.add(point("toolbox", TOOLBOX.getX() + 0.1, H, TOOLBOX.getZ() + 0.15, TOOLBOX.getX() + 0.9, H + 0.75, TOOLBOX.getZ() + 0.85, false));
+			}
 		}
 
 		return list;
@@ -1036,6 +1080,8 @@ public final class Chapter1 implements Chapter {
 			case "saber" -> s.talk("m6_saber", null);
 			case "service_release" -> Scenes.release(s);
 			case "service_lock" -> Scenes.bolt(s);
+			case "toolbox" -> unwatched(s, "m2_toolbox");
+			case "vent_cover" -> coverUsed(s);
 			default -> {
 			}
 		}
@@ -1545,6 +1591,11 @@ public final class Chapter1 implements Chapter {
 			case "m6.escape1", "m6.escape2", "m6.falcon" -> {
 				s.fighting = true;
 				Finale.arm(s);
+
+				// Phase 28: after the duel the droids come along again (they waited behind the door).
+				if (id.equals("m6.falcon")) {
+					droidsBack(s);
+				}
 				// Phase 23: who still hunted the player from before (a chase in the reactor, a
 				// search) fights now too, at once.
 				Finale.engageAll(s);
@@ -1592,6 +1643,10 @@ public final class Chapter1 implements Chapter {
 					shadow.target = null;
 					shadow.lit = false;
 				}
+
+				// Phase 28: the droids wait in the corridor behind the hangar's door while the two
+				// fight (one followed the player round the arena and through the films' shots).
+				droidsAside(s);
 			}
 			case "m6.epilogue" -> {
 				if (s.has(CHAPTER_DONE)) {
@@ -1875,16 +1930,19 @@ public final class Chapter1 implements Chapter {
 			case "m5.escape" -> "music.story_alarm";
 			// Phase 24: the run through the failing ship has its own piece.
 			case "m6.escape1", "m6.escape2" -> "music.story_escape";
-			// Phase 25: the duel won, the ship still breaking apart: triumphant, but tense, to the Falcon.
-			case "m6.falcon" -> "music.story_triumph";
-			// The duel's music when the blades are lit (Phase 25: after it, as to the Falcon). Phase 26:
-			// while she speaks a quiet, tense bed (the client keeps it low) instead of silence: the
-			// escape's piece crossfades into it and it into the duel's, nothing drops away or cuts in.
-			case "m6.duel" -> s.has("tmp.duel_end") || s.has("gone.shadow") ? "music.story_triumph"
+			// Phase 28 (Phiro): the duel won, but still aboard an enemy Star Destroyer that is breaking
+			// apart: the run to the Falcon keeps the escape's driving piece (no triumph yet).
+			case "m6.falcon" -> "music.story_escape";
+			// The duel's music when the blades are lit. Phase 26: while she speaks a quiet, tense bed
+			// (the client keeps it low) instead of silence: the escape's piece crossfades into it and
+			// it into the duel's, nothing drops away or cuts in. Phase 28: after her defeat and during
+			// her flight the tense bed again (it was the triumphant piece).
+			case "m6.duel" -> s.has("tmp.duel_end") || s.has("gone.shadow") ? "music.story_tension"
 					: s.has("tmp.duel") || s.has("tmp.film") ? "music.story_duel" : "music.story_tension";
 			// Phase 25: aboard, but not away yet: tense until the jump (the escape film has its own
-			// piece), calm only once the Falcon is in hyperspace.
-			case "m6.jump" -> s.has("tmp.jumping") ? "music.story_hideout" : "music.story_launch";
+			// piece, rising into D major as the Falcon jumps). Phase 28: only once the Falcon is
+			// really away, in hyperspace, the triumphant piece; the epilogue in the lounge is calm.
+			case "m6.jump" -> s.has("tmp.jumping") ? "music.story_triumph" : "music.story_launch";
 			default -> D.equals(s.here) && s.inside(D, HIDDEN) ? "music.story_hideout" : "music.story_stealth";
 		};
 
@@ -1905,12 +1963,18 @@ public final class Chapter1 implements Chapter {
 			return;
 		}
 
+		// Phase 28: the side way's cover and the toolbox in the player's own ship (as kept).
+		if (s.stepTicks % 20 == 5) {
+			ventCover(s);
+		}
+
 		// Phase 24: the detention block's guard keeps watch (and can be overpowered). Phase 26: so
 		// does the lab's guard.
 		if (s.mission == 4) {
 			guardTick(s, player, level);
 		} else if (s.mission == 5) {
 			labGuardTick(s, player, level);
+			catwalkTick(s, player);
 		}
 
 		// Phase 24: from the moment the saber is taken the reactor fails, worse and worse.
@@ -2018,7 +2082,9 @@ public final class Chapter1 implements Chapter {
 				// Phase 27: the stick taken and the container shut: Kestrel names the second way back.
 				if (s.has("tmp.side_hatch") && s.dialog == null) {
 					s.unset("tmp.side_hatch");
-					s.radio("kestrel", "sabercraft.story.radio.m2_side_hatch");
+					// Phase 28: the side way's cover: open already, the screwdriver taken, or neither.
+					s.radio("kestrel", s.has(COVER_OPEN) ? "sabercraft.story.radio.m2_side_hatch_open"
+							: s.has(DRIVER) ? "sabercraft.story.radio.m2_side_hatch_tool" : "sabercraft.story.radio.m2_side_hatch");
 				}
 			}
 			case "m1.distract" -> {
@@ -2073,6 +2139,17 @@ public final class Chapter1 implements Chapter {
 				copy(s);
 			}
 			case "m5.route" -> {
+				// Phase 28: M-31 through the grille (sent by a click on the hatch): a click, it is open.
+				if (s.has("tmp.m31_unbolt") && !s.timer("m31_unbolt")) {
+					s.unset("tmp.m31_unbolt");
+
+					if (!s.has("hatch.f")) {
+						s.set("hatch.f");
+						s.hint("sabercraft.story.hint.hatch_free");
+						Story.cue(s, Story.CUE_SOUND, "", "story.latch", 0);
+					}
+				}
+
 				// Phase 24: Hale's trap (or the crawl way's end) only once nobody is after the player.
 				if (!s.pursued() && (s.inside(D, DestroyerInterior.DETENTION)
 						|| !s.has("trust.hale") && s.inside(D, new AABB(24.0, H - 0.5, 3.0, 25.0, H + 2.0, 7.0)))) {
@@ -2634,6 +2711,11 @@ public final class Chapter1 implements Chapter {
 		Figure shadow = s.figure("shadow");
 		Vec3 me = s.local(D);
 
+		// Phase 28: a droid called back by the player in the middle of the duel goes back to its place.
+		if (s.stepTicks % 40 == 7 && droidsWait(s)) {
+			droidsAside(s);
+		}
+
 		if (s.has("tmp.duel_end")) {
 			int left = s.timers.getOrDefault("film", 0);
 			int t = DUEL_END_FILM - left;
@@ -2702,8 +2784,11 @@ public final class Chapter1 implements Chapter {
 
 				// His last words are in the film; Dax calls when it is over (seen with the HUD again).
 				s.radio("dax", "sabercraft.story.radio.dax_arrives");
-				// (Phase 25: triumphant but tense: the ship is still breaking apart.)
-				Story.cue(s, Story.CUE_MUSIC, "", "music.story_triumph", 0);
+				// Phase 28: her saber went with her scene (it lay on the floor until the film ended;
+				// it was never forgotten on the client and lay there again after a restart).
+				Story.cue(s, Story.CUE_DUEL, "saber_gone", "", 0);
+				// (Phase 28: no triumph here any more: the next step, the run to the Falcon, asks for
+				// the escape's piece; the triumph comes once the Falcon has jumped.)
 
 				s.complete();
 			}
@@ -3059,22 +3144,32 @@ public final class Chapter1 implements Chapter {
 
 	/** Phase 27: the length of the lab guard's round of looks (ticks). */
 	static int labWatchCycle() {
+		return watchCycle(LAB_WATCH, LAB_TURN_TICKS);
+	}
+
+	/** Phase 27: where the lab's guard looks at that time of his round (each look held, smooth turns between). */
+	static float labWatchYaw(long time) {
+		return watchYaw(LAB_WATCH, LAB_TURN_TICKS, time);
+	}
+
+	/** Phase 28 (from Phase 27's lab guard): the length of a round of looks (ticks). */
+	static int watchCycle(float[][] watch, int turn) {
 		int cycle = 0;
 
-		for (float[] look : LAB_WATCH) {
-			cycle += (int) look[1] + LAB_TURN_TICKS;
+		for (float[] look : watch) {
+			cycle += (int) look[1] + turn;
 		}
 
 		return cycle;
 	}
 
-	/** Phase 27: where the lab's guard looks at that time of his round (each look held, smooth turns between). */
-	static float labWatchYaw(long time) {
-		long t = Math.floorMod(time, (long) labWatchCycle());
+	/** Phase 28 (from Phase 27's lab guard): where one looks at that time of a round (each look held, smooth turns between). */
+	static float watchYaw(float[][] watch, int turn, long time) {
+		long t = Math.floorMod(time, (long) watchCycle(watch, turn));
 
-		for (int i = 0; i < LAB_WATCH.length; i++) {
-			float[] look = LAB_WATCH[i];
-			float[] next = LAB_WATCH[(i + 1) % LAB_WATCH.length];
+		for (int i = 0; i < watch.length; i++) {
+			float[] look = watch[i];
+			float[] next = watch[(i + 1) % watch.length];
 
 			if (t < look[1]) {
 				return look[0];
@@ -3082,14 +3177,63 @@ public final class Chapter1 implements Chapter {
 
 			t -= (long) look[1];
 
-			if (t < LAB_TURN_TICKS) {
-				return Mth.rotLerp(smooth(t / (float) LAB_TURN_TICKS), look[0], next[0]);
+			if (t < turn) {
+				return Mth.rotLerp(smooth(t / (float) turn), look[0], next[0]);
 			}
 
-			t -= LAB_TURN_TICKS;
+			t -= turn;
 		}
 
-		return LAB_WATCH[0][0];
+		return watch[0][0];
+	}
+
+	/** Phase 28: the key of the catwalk's technician (the reactor's crew member on the deck level at the console by the bridge). */
+	static String catwalkKey() {
+		for (int i = 0; i < DestroyerInterior.CREW.size(); i++) {
+			Crew c = DestroyerInterior.CREW.get(i);
+
+			if ("reactor".equals(c.role()) && Crew.TECH.equals(c.kind()) && c.y() >= H - 1 && c.y() < 100.0) {
+				return "crew:" + i;
+			}
+		}
+
+		return "crew:none";
+	}
+
+	/**
+	 * Phase 28: the catwalk's technician works his round at his post (see {@link #CATWALK_WATCH});
+	 * once lured off (or searching, or after the player) he is left to the stealth rules, and when
+	 * he is back at his post he takes up his round again. The first time the player comes onto
+	 * the gallery's landing while he is at work, a hint says how to get past him.
+	 */
+	private static void catwalkTick(StorySession s, ServerPlayer player) {
+		Figure tech = s.figure(catwalkKey());
+
+		if (tech == null || tech.mode != Figure.ROUTINE || tech.hostile || s.partner == tech || tech.position().distanceTo(CATWALK_POST) > 0.6) {
+			return;
+		}
+
+		float yaw = watchYaw(CATWALK_WATCH, CATWALK_TURN, s.time() + tech.id * 31L);
+		tech.yaw = yaw;
+		tech.headYaw = yaw + 10.0F * Mth.sin((s.time() + tech.id) / 23.0F);
+
+		if (!s.has("tmp.hint_catwalk") && !s.has("saber.taken") && CATWALK_SEEN.contains(s.local(D)) && s.alarm == 0) {
+			s.set("tmp.hint_catwalk");
+			s.hint("sabercraft.story.hint.catwalk_tech");
+		}
+	}
+
+	/** Phase 28, for the tests: the time of the technician's round when he holds that look (index into {@link #CATWALK_WATCH}). */
+	static long catwalkWatchAt(long now, int look, int techId) {
+		long offset = 0L;
+
+		for (int i = 0; i < look; i++) {
+			offset += (long) CATWALK_WATCH[i][1] + CATWALK_TURN;
+		}
+
+		long cycle = watchCycle(CATWALK_WATCH, CATWALK_TURN);
+		long t = Math.floorMod(now + techId * 31L, cycle);
+		return now + Math.floorMod(offset + 4L - t, cycle);
 	}
 
 	/** For the tests: the time of the guard's round when he holds that look (index into {@link #LAB_WATCH}), from that time on. */
@@ -3466,6 +3610,132 @@ public final class Chapter1 implements Chapter {
 		}
 	}
 
+	// --- Phase 28: the side way's cover --------------------------------------------------------------
+
+	/**
+	 * Phase 28: the cover (a barrier in its cell while shut) and the toolbox (a barrier always: the
+	 * box stays, open and empty once the screwdriver is taken) in the player's own ship, as kept.
+	 * Never shut onto someone in the cover's cell.
+	 */
+	static void ventCover(StorySession s) {
+		ServerLevel level = interiors(s);
+
+		if (level == null) {
+			return;
+		}
+
+		BlockPos cover = s.destroyer.offset(VENT_COVER);
+		boolean shut = !s.has(COVER_OPEN);
+		boolean barrier = level.getBlockState(cover).is(Blocks.BARRIER);
+
+		if (shut && level.getBlockState(cover).isAir() && level.getEntitiesOfClass(net.minecraft.world.entity.LivingEntity.class, new AABB(cover)).isEmpty()) {
+			level.setBlock(cover, Blocks.BARRIER.defaultBlockState(), 3);
+		} else if (!shut && barrier) {
+			level.setBlock(cover, Blocks.AIR.defaultBlockState(), 3);
+		}
+
+		BlockPos box = s.destroyer.offset(TOOLBOX);
+
+		if (level.getBlockState(box).isAir() && level.getEntitiesOfClass(net.minecraft.world.entity.LivingEntity.class, new AABB(box)).isEmpty()) {
+			level.setBlock(box, Blocks.BARRIER.defaultBlockState(), 3);
+		}
+	}
+
+	/** Phase 28: a flag kept at once (with the last checkpoint too): a capture or death does not take it back. */
+	static void keepNow(StorySession s, String flag) {
+		s.set(flag);
+
+		if (!s.progress.flags.contains(flag)) {
+			s.progress.flags.add(flag);
+		}
+
+		s.dirty = true;
+	}
+
+	/** Phase 28: the screwdriver taken from the toolbox (the dialog's end). */
+	static void takeDriver(StorySession s) {
+		keepNow(s, DRIVER);
+
+		if (!s.journal.contains("driver")) {
+			s.journal.add("driver");
+			keepJournal(s, "driver");
+		}
+
+		Story.cue(s, Story.CUE_SOUND, "", "story.latch", 0);
+		drivers++;
+	}
+
+	/** Phase 28: a journal entry kept at once (as the flag it belongs to). */
+	private static void keepJournal(StorySession s, String entry) {
+		if (!s.progress.journal.contains(entry)) {
+			s.progress.journal.add(entry);
+		}
+	}
+
+	/**
+	 * Phase 28: the cover used. From the crawl way from flight control (its back): screwed tight
+	 * from the other side (no more). From the hangar's side without the screwdriver: the four
+	 * screws want a tool. With it: the close-up of the cover opens on the client (the four screws,
+	 * {@link #coverUnscrewed} when done).
+	 */
+	static void coverUsed(StorySession s) {
+		Vec3 me = s.local(D);
+
+		if (s.has(COVER_OPEN)) {
+			return;
+		}
+
+		if (me.x < VENT_COVER.getX() + 0.5) {
+			s.hint("sabercraft.story.hint.cover_locked");
+			Story.cue(s, Story.CUE_SOUND, "", "story.latch", 0);
+			return;
+		}
+
+		if (!s.has(DRIVER)) {
+			s.hint("sabercraft.story.hint.cover_tool");
+			return;
+		}
+
+		coverStarts++;
+		Story.cue(s, Story.CUE_EFFECT, "cover", "", 200,
+				List.of(Vec3.atLowerCornerOf(s.origin(D)).add(VENT_COVER.getX() + 1.0, H + 0.5, VENT_COVER.getZ() + 0.5)));
+	}
+
+	/**
+	 * Phase 28: the client says the four screws are out. Checked again here: the cover still shut,
+	 * the screwdriver kept, the player in the side way on the hangar's side, close to it. Then the
+	 * cover comes off (and stays off, kept at once).
+	 */
+	public static boolean coverUnscrewed(StorySession s, ServerPlayer player) {
+		if (s.has(COVER_OPEN) || !s.has(DRIVER) || !D.equals(s.here)) {
+			return false;
+		}
+
+		Vec3 me = s.local(D);
+		Vec3 face = new Vec3(VENT_COVER.getX() + 1.0, H + 0.5, VENT_COVER.getZ() + 0.5);
+
+		if (me.x < VENT_COVER.getX() + 0.9 || me.distanceTo(face) > COVER_REACH + 0.6 || Math.abs(me.z - face.z) > 1.2) {
+			return false;
+		}
+
+		keepNow(s, COVER_OPEN);
+		ventCover(s);
+		Story.cue(s, Story.CUE_SOUND, "", "story.latch", 0);
+		Story.cue(s, Story.CUE_EFFECT, "cover_off", "", 30, List.of(Vec3.atLowerCornerOf(s.origin(D)).add(face)));
+		s.hint("sabercraft.story.hint.cover_open");
+		coversOpened++;
+		return true;
+	}
+
+	private static int drivers;
+	private static int coverStarts;
+	private static int coversOpened;
+
+	/** Phase 28, for the tests: screwdrivers taken, close-ups begun, covers opened. */
+	public static int[] coverForTest() {
+		return new int[] {drivers, coverStarts, coversOpened};
+	}
+
 	/** Sends a figure along a way once (then it holds there). */
 	static void walk(Figure figure, Vec3... way) {
 		figure.way = List.of(way);
@@ -3505,6 +3775,14 @@ public final class Chapter1 implements Chapter {
 					return at(D, DestroyerInterior.CX - 3.5, H + 1.0, DestroyerInterior.DETENTION_DOOR_Z0 + 1.0);
 				}
 
+				// Phase 28: in Kestrel's crawl way (the hatch unbolted), on to its end at the detention
+				// block (the marker pointed back at the hatch behind the player).
+				if (s.has("hatch.f") && inKestrelWay(s)) {
+					return KESTREL_WAY_END;
+				}
+
+				// Phase 28: the hatch is the way once the intercept is read: one click on it and M-31
+				// unbolts it from the other side (hatchClosed); the objective says so.
 				return s.has("know.hale_trap") || s.has("hatch.f") ? at(D, 22.6, H + 0.5, -3.5) : at(D, 18.0, H + 1.1, -1.4);
 			}
 			case "m5.cell" -> {
@@ -3533,11 +3811,18 @@ public final class Chapter1 implements Chapter {
 				// Phase 27: the way back: to flight control's door, there to the crawl way's hatch,
 				// in the crawl way on to the hideout (the marker pointed at Kestrel through the walls);
 				// in the hideout, Kestrel herself.
+				Vec3 me = s.local(D);
+
+				// Phase 28: in the side way while its cover is shut: to the cover with the
+				// screwdriver, else back out of the hatch (it leads nowhere then).
+				if (!s.has(COVER_OPEN) && DestroyerInterior.HANGAR_VENT.inflate(0.0, 0.5, 0.3).contains(me) && me.x >= VENT_COVER.getX() + 0.5) {
+					return s.has(DRIVER) ? at(D, VENT_COVER.getX() + 1.0, H + 0.5, VENT_COVER.getZ() + 0.5)
+							: at(D, DestroyerInterior.HANGAR_HATCH.getX() + 1.0, H + 0.5, DestroyerInterior.HANGAR_HATCH.getZ() + 0.5);
+				}
+
 				if (inCrawlWay(s) && !s.inside(D, HIDDEN)) {
 					return HIDEOUT_MOUTH;
 				}
-
-				Vec3 me = s.local(D);
 
 				if (me.x < DestroyerInterior.HANGAR_X0 && me.z < -34.5 && me.z > -59.5) {
 					return at(D, 10.5, H + 0.6, -35.6);
@@ -3565,6 +3850,28 @@ public final class Chapter1 implements Chapter {
 
 	/** Phase 27: the opening from the crawl way into Kestrel's hideout (where the marker leads from the first crawl way on). */
 	static final Mission.Target HIDEOUT_MOUTH = at(D, DestroyerInterior.HIDDEN_MOUTH.getX() + 0.5, H + 0.5, DestroyerInterior.HIDDEN_MOUTH.getZ() + 0.5);
+
+	/** Phase 28: Kestrel's way from the hideout to the detention block (plot space), and its end there. */
+	static final AABB KESTREL_WAY = new AABB(23.5, H - 0.5, -4.6, 25.6, H + 1.6, 7.2);
+	static final Mission.Target KESTREL_WAY_END = at(D, DestroyerInterior.DETENTION_HATCH.getX() + 0.5, H + 0.5, DestroyerInterior.DETENTION_HATCH.getZ() + 0.5);
+
+	static boolean inKestrelWay(StorySession s) {
+		return D.equals(s.here) && KESTREL_WAY.contains(s.local(D).add(0.0, 0.3, 0.0));
+	}
+
+	/**
+	 * Phase 28: the objective shown for a step, where the step's own does not say enough: without
+	 * Hale's trust, once the intercept is read, the way into the detention block is Kestrel's hatch
+	 * in the hideout, which M-31 unbolts (Phiro found the main door shut and the marker on a hatch
+	 * that would not open, with nothing telling him either was meant so).
+	 */
+	public static String objective(StorySession s, Mission.Step step) {
+		if (step.id().equals("m5.route") && !s.has("trust.hale") && (s.has("know.hale_trap") || s.has("hatch.f"))) {
+			return s.has("hatch.f") ? "sabercraft.story.obj.m5.route_crawl" : "sabercraft.story.obj.m5.route_hatch";
+		}
+
+		return step.objective();
+	}
 
 	/** Phase 27: whether the player is in a crawl way of the Star Destroyer (or already in the hideout). */
 	static boolean inCrawlWay(StorySession s) {
@@ -3598,6 +3905,12 @@ public final class Chapter1 implements Chapter {
 			// The detention block: open only for the one Hale expects (Phase 20: and for Hale and
 			// his trooper leaving after the trap).
 			boolean shut = !(s.has("trust.hale") && s.at("m5.route")) && !(s.at("m5.cell") && (s.has("tmp.leave.hale") || s.has("tmp.leave.trap1")));
+
+			if (shut && s.at("m5.route") && !s.has("trust.hale")) {
+				// Phase 28: without Hale's trust this door is his trap (the intercept says so): it
+				// stays shut, and the player at it is told where the way is (it said nothing).
+				refusedDoor(s, new Vec3(x, y, z + 1.0), "sabercraft.story.hint.detention_main");
+			}
 
 			if (!shut && s.at("m5.route") && s.pursued()) {
 				// Phase 24: not with troopers on one's heels: Hale's trap (and the room it needs) is
@@ -3635,9 +3948,14 @@ public final class Chapter1 implements Chapter {
 
 	/** Phase 24: the player at a door the chase keeps shut is told why (now and then, not every tick). */
 	private static void refusedDoor(StorySession s, Vec3 door) {
+		refusedDoor(s, door, Story.HUNTED);
+	}
+
+	/** Phase 28: as above, with the reason given. */
+	private static void refusedDoor(StorySession s, Vec3 door, String why) {
 		if (D.equals(s.here) && s.local(D).distanceTo(door) < 3.2 && !s.timer("door_hint")) {
-			s.timer("door_hint", 60);
-			s.hint(Story.HUNTED);
+			s.timer("door_hint", Story.HUNTED.equals(why) ? 60 : 160);
+			s.hint(why);
 		}
 	}
 
@@ -3659,8 +3977,34 @@ public final class Chapter1 implements Chapter {
 			}
 		}
 
+		// Phase 28: Kestrel's hatch, bolted on the far side, while one looks for a way into the
+		// detention block without Hale: a click sends M-31 through its grille to unbolt it (only the
+		// droid key did, and nothing said so); without him near, the player is told to fetch him.
+		if (D.equals(ship) && DestroyerInterior.HIDEOUT_HATCH.equals(new BlockPos(x, y, z)) && s.at("m5.route") && !s.has("trust.hale") && !s.has("hatch.f")) {
+			if (s.has("tmp.m31_unbolt")) {
+				return "sabercraft.story.hint.hatch_m31_busy";
+			}
+
+			ServerPlayer player = s.player();
+			com.phiro.sabercraft.droid.DroidEntity mouse = player != null && s.has("droid.m31")
+					? com.phiro.sabercraft.droid.Droids.droid(player, com.phiro.sabercraft.droid.DroidType.MOUSE) : null;
+
+			if (mouse != null && mouse.level() == player.level() && mouse.distanceTo(player) < M31_UNBOLT_REACH) {
+				s.set("tmp.m31_unbolt");
+				s.timer("m31_unbolt", M31_UNBOLT_TICKS);
+				mouse.playVoice("ability", 1.0F);
+				return "sabercraft.story.hint.hatch_m31_go";
+			}
+
+			return "sabercraft.story.hint.hatch_m31";
+		}
+
 		return Chapter.super.hatchClosed(s, ship, x, y, z);
 	}
+
+	/** Phase 28: how near M-31 must be to go through the hatch's grille, and how long he takes. */
+	static final double M31_UNBOLT_REACH = 14.0;
+	static final int M31_UNBOLT_TICKS = 34;
 
 	// --- Checkpoints (Phase 20) --------------------------------------------------------------------
 
@@ -3780,6 +4124,67 @@ public final class Chapter1 implements Chapter {
 
 		if (s.at("m5.cell") && s.has("m5.trapped") && !s.has("cell2.open")) {
 			mouseOutside(s);
+		}
+
+		// Phase 28: back at the duel's checkpoint the droids wait behind the hangar's door again.
+		if (droidsWait(s)) {
+			droidsAside(s);
+		}
+	}
+
+	/**
+	 * Phase 28 (Phiro): during the duel the droids neither follow the player round the arena nor
+	 * stand in the films' shots: they wait in the corridor behind the hangar's door, one by each
+	 * wall, facing the hangar (plot space), and come along again once she has fled.
+	 */
+	static final Vec3 DUEL_WAIT_M31 = new Vec3(37.75, H, -12.6);
+	static final Vec3 DUEL_WAIT_R2 = new Vec3(42.3, H, -12.9);
+
+	static boolean droidsWait(StorySession s) {
+		return s.at("m6.duel") && !s.has("gone.shadow");
+	}
+
+	/** Phase 28: where that droid waits during the duel (plot space). */
+	public static Vec3 duelWait(com.phiro.sabercraft.droid.DroidType type) {
+		return type == com.phiro.sabercraft.droid.DroidType.MOUSE ? DUEL_WAIT_M31 : DUEL_WAIT_R2;
+	}
+
+	/** Phase 28: puts the story's droids at their places behind the hangar's door, staying there. */
+	static void droidsAside(StorySession s) {
+		ServerPlayer player = s.player();
+
+		if (player == null) {
+			return;
+		}
+
+		Vec3 corner = Vec3.atLowerCornerOf(s.destroyer);
+
+		for (com.phiro.sabercraft.droid.DroidType type : Story.storyDroids(s)) {
+			Vec3 at = duelWait(type).add(corner);
+			com.phiro.sabercraft.droid.DroidEntity droid = com.phiro.sabercraft.droid.Droids.droid(player, type);
+
+			if (droid != null && droid.isStaying() && droid.level() == player.level() && droid.position().distanceTo(at) < 1.0) {
+				continue;
+			}
+
+			com.phiro.sabercraft.droid.Droids.place(player, type, at, 180.0F, true);
+		}
+	}
+
+	/** Phase 28: the droids follow the player again after the duel. */
+	static void droidsBack(StorySession s) {
+		ServerPlayer player = s.player();
+
+		if (player == null) {
+			return;
+		}
+
+		for (com.phiro.sabercraft.droid.DroidType type : Story.storyDroids(s)) {
+			com.phiro.sabercraft.droid.DroidEntity droid = com.phiro.sabercraft.droid.Droids.droid(player, type);
+
+			if (droid != null && droid.isStaying()) {
+				droid.setStaying(false);
+			}
 		}
 	}
 

@@ -686,8 +686,10 @@ public class Phase25GameTest implements FabricClientGameTest {
 	private void music() {
 		check(this.context.computeOnClient(client -> client.getSoundManager().getSoundEvent(SaberCraft.id("music.story_triumph")) != null
 				&& client.getSoundManager().getSoundEvent(SaberCraft.id("music.story_launch")) != null), "the finale's new pieces are not in sounds.json");
+		// (Phase 28: back to the Falcon after the duel is still the escape, tense; the triumph comes
+		// only with the jump itself, Phase28GameTest.)
 		this.enter(5, "m6.falcon");
-		this.music("music.story_triumph", "back to the Falcon after the duel");
+		this.music("music.story_escape", "back to the Falcon after the duel");
 		this.enter(5, "m6.jump");
 		this.music("music.story_launch", "aboard the Falcon before the jump");
 	}

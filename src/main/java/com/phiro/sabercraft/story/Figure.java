@@ -225,6 +225,14 @@ public final class Figure {
 	public int throwHit;
 	/** Phase 26: her thrust carries her in fast (a lunge from a few steps away). */
 	public boolean lunge;
+	/** Phase 28: how often she threw her staff in this fight (at most {@code Finale.THROWS_MAX}). */
+	public int thrown;
+	/**
+	 * Phase 28: her Inquisitor's ring keeps turning (sent to the client): it is set going by her
+	 * first ring move in the second phase and stays on for a long while (in her last quarter for
+	 * good); it stops only at a clear moment (her guard while circling, the scene, the end).
+	 */
+	public boolean ringOn;
 	/**
 	 * Phase 27: the boss by the story's difficulty (set each tick of the duel): how fast she
 	 * attacks (shorter pauses and wind-ups above 1), how long her openings last, how hard her blows are.

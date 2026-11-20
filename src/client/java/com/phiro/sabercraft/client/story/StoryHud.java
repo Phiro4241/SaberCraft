@@ -31,7 +31,7 @@ import com.phiro.sabercraft.network.StoryStatePayload;
  * hints over the hotbar, a download's progress, the mission's title, a droid's scan (people seen
  * through walls), a fade to black (a capture), and the chapter's end.
  */
-final class StoryHud implements HudElement {
+public final class StoryHud implements HudElement {
 	static final int PANEL_WIDTH = 168;
 	static final int TEXT = 0xFFE8EEF6;
 	static final int DIM = 0xFF9AA6B4;
@@ -200,8 +200,32 @@ final class StoryHud implements HudElement {
 	}
 
 	/** How wide the objectives' panel is now (0 when none is shown), so nothing is drawn under it. */
-	private static int objectivesWidth(StoryStatePayload state) {
+	static int objectivesWidth(StoryStatePayload state) {
 		return state == null || !state.active() || state.objective().isEmpty() ? 0 : PANEL_WIDTH + 10;
+	}
+
+	/**
+	 * Phase 28: where the objectives' panel ends at the bottom (GUI y), 0 when none is shown: the
+	 * same height as {@link #objectives} draws it.
+	 */
+	static int objectivesBottom(Font font, StoryStatePayload state) {
+		if (objectivesWidth(state) == 0) {
+			return 0;
+		}
+
+		if (StoryClient.has("chapter.done")) {
+			int done = font.split(Component.translatable("sabercraft.story.hud.chapter_done_hint", com.phiro.sabercraft.client.SaberCraftClient.CUSTOMIZE_KEY.getTranslatedKeyMessage()), PANEL_WIDTH - 12).size();
+			return 6 + 8 + 20 + done * 10 - 2;
+		}
+
+		int lines = 1 + font.split(Component.translatable(state.objective()), PANEL_WIDTH - 12).size();
+
+		for (StoryStatePayload.Objective opt : state.optional()) {
+			lines += font.split(Component.translatable(opt.key()), PANEL_WIDTH - 22).size();
+		}
+
+		int h = 8 + lines * 10 + (state.optional().isEmpty() ? 0 : 3) + (state.disguise() > 0 ? 11 : 0) + (state.alarm() > 0 || StoryClient.wary() ? 11 : 0);
+		return 6 + h - 2;
 	}
 
 	// --- The marker towards the objective ------------------------------------------------------------
@@ -580,12 +604,36 @@ final class StoryHud implements HudElement {
 		}
 
 		Component text = Component.translatable("sabercraft.story.hud.checkpoint");
+		int[] box = checkpointBox(font, text, width, radioBottom(font, width), radioRight(width), StoryClient.objectivesLeftEdge(width), StoryClient.topRightReserved());
+		int x = box[0] + 14;
+		int y = box[1] + 3;
+		graphics.fill(box[0], box[1], box[2], box[3], (alpha / 2) << 24);
+		diamond(graphics, x - 8, y + 3, 3, alpha << 24 | 0x80D8A0);
+		graphics.text(font, text, x, y, alpha << 24 | 0xD8F0E0);
+	}
+
+	/**
+	 * Phase 28: where the "Checkpoint saved" box goes (x0, y0, x1, y1): at the top in the middle, and
+	 * below the comlink line's box (top left) and the mission panel (top right) where it would touch
+	 * one of them (the comlink line drew over it on narrow screens).
+	 */
+	public static int[] checkpointBox(Font font, Component text, int width, int radioBottom, int radioRight, int panelLeft, int panelBottom) {
 		int w = font.width(text);
 		int x = width / 2 - w / 2;
 		int y = 22;
-		graphics.fill(x - 14, y - 3, x + w + 5, y + 10, (alpha / 2) << 24);
-		diamond(graphics, x - 8, y + 3, 3, alpha << 24 | 0x80D8A0);
-		graphics.text(font, text, x, y, alpha << 24 | 0xD8F0E0);
+		boolean underRadio = radioBottom > 0 && x - 14 < radioRight;
+		boolean underPanel = x + w + 5 > panelLeft - 2;
+
+		if (underRadio || underPanel) {
+			y = Math.max(underRadio ? radioBottom : 0, underPanel ? panelBottom : 0) + 6;
+		}
+
+		return new int[] {x - 14, y - 3, x + w + 5, y + 10};
+	}
+
+	/** Phase 28: the right edge of the comlink line's box (when one is shown). */
+	public static int radioRight(int width) {
+		return 8 + 32 + 10 + Mth.clamp(width - objectivesWidth(StoryClient.state()) - 8 - 32 - 18, 100, 220);
 	}
 
 	// --- What the crosshair is on ------------------------------------------------------------------
@@ -615,10 +663,10 @@ final class StoryHud implements HudElement {
 	// --- Lines and hints -----------------------------------------------------------------------------
 
 	/** Phase 21: the bottom edge of the comlink line's box at the top left, or 0 when none is shown. */
-	private static int radioBottom(Font font, int width) {
+	static int radioBottom(Font font, int width) {
 		StoryClient.Line line = StoryClient.radio();
 
-		if (line == null) {
+		if (line == null || Minecraft.getInstance().gui.screen() instanceof CoverScreen) {
 			return 0;
 		}
 
@@ -637,7 +685,8 @@ final class StoryHud implements HudElement {
 	private static void radio(GuiGraphicsExtractor graphics, Font font) {
 		StoryClient.Line line = StoryClient.radio();
 
-		if (line == null) {
+		// Phase 28: not over the cover's screws (the line waits till that screen is closed).
+		if (line == null || Minecraft.getInstance().gui.screen() instanceof CoverScreen) {
 			return;
 		}
 
@@ -742,6 +791,13 @@ final class StoryHud implements HudElement {
 		Component small = Component.translatable("sabercraft.story.hud.chapter_mission", state != null ? state.mission() + 1 : 1);
 		Component big = Component.translatable(key);
 		int y = height / 4;
+		int half = Math.max(font.width(small), font.width(big) * 2) / 2 + 4;
+
+		// Phase 28: on a narrow screen it reached under the mission panel at the top right: below it then.
+		if (width / 2 + half > StoryClient.objectivesLeftEdge(width)) {
+			y = Math.max(y, StoryClient.topRightReserved() + 2);
+		}
+
 		graphics.text(font, small, width / 2 - font.width(small) / 2, y, alpha << 24 | 0xC8B070);
 		graphics.pose().pushMatrix();
 		graphics.pose().translate(width / 2.0F, y + 14);

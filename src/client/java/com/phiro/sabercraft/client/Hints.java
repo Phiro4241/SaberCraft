@@ -6,7 +6,6 @@ import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.components.toasts.SystemToast;
 import net.minecraft.network.chat.Component;
 
 /**
@@ -27,8 +26,6 @@ public final class Hints {
 	private static final int VENT_REMIND = 100;
 	/** Ticks between reminders. */
 	private static final int VENT_REMIND_EVERY = 3600;
-	/** Ten seconds: long enough to read while the world comes in. */
-	private static final SystemToast.SystemToastId TOAST = new SystemToast.SystemToastId(10000L);
 	/** How long after joining (ticks) the hint comes, once the world is there. */
 	private static final int AFTER_JOIN = 60;
 	/** The key the menu had before Phase 27. */
@@ -50,7 +47,11 @@ public final class Hints {
 	public static void init() {
 		ClientTickEvents.END_CLIENT_TICK.register(Hints::tick);
 		ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> inWorld = 0);
-		ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> inWorld = -1);
+		ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> {
+			inWorld = -1;
+			HintCard.clear();
+		});
+		HintCard.init();
 	}
 
 	private static void tick(Minecraft client) {
@@ -165,9 +166,13 @@ public final class Hints {
 		return Component.literal("[").append(key.getTranslatedKeyMessage()).append("]");
 	}
 
+	/**
+	 * Phase 28: on SaberCraft's own card at the left ({@link HintCard}), no longer one of
+	 * Minecraft's toasts at the top right (it covered the story's mission panel there).
+	 */
 	private static void toast(Minecraft client, Component message) {
 		toasts++;
-		SystemToast.addOrUpdate(client.gui.toastManager(), TOAST, Component.translatable("sabercraft.hint.title"), message);
+		HintCard.show(Component.translatable("sabercraft.hint.title"), message);
 	}
 
 	/** For the tests: toasts shown, and whether the key was moved off V at this start. */

@@ -240,9 +240,53 @@ static final int CHECKPOINT_TICKS = 60;
 		StoryCinema.init();
 		ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> reset());
 		HudElementRegistry.addLast(SaberCraft.id("story"), new StoryHud());
+		// Phase 28: Minecraft's status effects (top right) under the mission panel while it shows.
+		HudElementRegistry.replaceElement(net.fabricmc.fabric.api.client.rendering.v1.hud.VanillaHudElements.MOB_EFFECTS, vanilla -> (graphics, delta) -> {
+			int below = topRightReserved();
+
+			if (below <= 0) {
+				vanilla.extractRenderState(graphics, delta);
+				return;
+			}
+
+			graphics.pose().pushMatrix();
+			graphics.pose().translate(0.0F, below);
+			vanilla.extractRenderState(graphics, delta);
+			graphics.pose().popMatrix();
+		});
 		// Phase 22: no hunger, experience or armour in the story; a condition bar for the hearts.
 		StoryVitals.init();
 		ClientTickEvents.END_CLIENT_TICK.register(StoryVitals::tick);
+	}
+
+	/**
+	 * Phase 28: where the story's mission panel at the top right begins (its left edge, GUI x), or
+	 * {@code width} when none is shown: hints and toasts keep left of it.
+	 */
+	public static int objectivesLeftEdge(int width) {
+		return width - StoryHud.objectivesWidth(shownState());
+	}
+
+	/** Phase 28: where the comlink line's box at the top left ends now (GUI y), 0 when none shows. */
+	public static int radioBottom(int width) {
+		return shownState() == null ? 0 : StoryHud.radioBottom(Minecraft.getInstance().font, width);
+	}
+
+	/**
+	 * Phase 28: how far down Minecraft's own things at the top right (its toasts: achievements,
+	 * recipes, tutorials; the status effects) move while the story's mission panel stands there,
+	 * so they show below it instead of over it: the panel's bottom and a small gap, 0 without one.
+	 */
+	public static int topRightReserved() {
+		StoryStatePayload shown = shownState();
+		int bottom = shown == null ? 0 : StoryHud.objectivesBottom(Minecraft.getInstance().font, shown);
+		return bottom <= 0 ? 0 : bottom + 4;
+	}
+
+	/** The story's state while its HUD is shown (in a story, no film), else null. */
+	private static @Nullable StoryStatePayload shownState() {
+		Minecraft client = Minecraft.getInstance();
+		return state == null || !state.active() || client.player == null || client.level == null || StoryCinema.active() ? null : state;
 	}
 
 	static void reset() {
@@ -278,10 +322,21 @@ static final int CHECKPOINT_TICKS = 60;
 		creakAge = 1000;
 		flashAge = 1000;
 		hurtFromAge = 1000;
+		clearDuelProps();
+		EFFECTS.clear();
+	}
+
+	/**
+	 * Phase 28: her saber lying on the floor after the duel and her thrown staff are drawn from
+	 * what the duel's cues told this client; they were forgotten only on leaving the server, so
+	 * after a restart, "play mission", a capture or the end of her scene the old saber still lay
+	 * there in the same plot. Now forgotten whenever the story starts or ends, at every return to
+	 * a checkpoint (the fade) and when her scene is over ("saber_gone").
+	 */
+	static void clearDuelProps() {
 		hiltFrom = null;
 		hiltTo = null;
 		throwFrom = null;
-		EFFECTS.clear();
 	}
 
 	// --- Receiving ---------------------------------------------------------------------------------
@@ -296,6 +351,7 @@ static final int CHECKPOINT_TICKS = 60;
 		// there then was there already (the Falcon waiting does not rise into view again).
 		if (!was && payload.active()) {
 			enteredMillis = net.minecraft.util.Util.getMillis();
+			clearDuelProps();
 		}
 
 		// Phase 24: the section changed, or the alarm is over: the shouts still waiting are old news.
@@ -308,6 +364,7 @@ static final int CHECKPOINT_TICKS = 60;
 			current = null;
 			STRIDES.clear();
 			music = null;
+			clearDuelProps();
 
 			if (was) {
 				RADIO.clear();
@@ -391,6 +448,8 @@ static final int CHECKPOINT_TICKS = 60;
 				StoryCinema.sceneOver(client);
 				// Phase 26: and whatever effect ran (a field stuttering).
 				EFFECTS.clear();
+				// Phase 28: and her saber on the floor, her staff in flight (back at a checkpoint).
+				clearDuelProps();
 			}
 			case CUE_SOUND -> sound(client, payload.text(), 0.9F, 1.0F, figure(payload.value()));
 			case CUE_MUSIC -> music = payload.text().isEmpty() ? null : payload.text();
@@ -403,6 +462,9 @@ static final int CHECKPOINT_TICKS = 60;
 			case CUE_TITLE -> {
 				title = payload.text();
 				titleAge = 0;
+				// Phase 28: a mission begins (a start, a restart, a mission played again): nothing
+				// of an earlier duel is left lying in the ship.
+				clearDuelProps();
 			}
 			case CUE_NOISE -> {
 				noise = List.copyOf(payload.points());
@@ -420,6 +482,11 @@ static final int CHECKPOINT_TICKS = 60;
 			case CUE_EFFECT -> {
 				EFFECTS.put(payload.who(), new Effect(clientTicks, Math.max(1, payload.value()), List.copyOf(payload.points())));
 				effectsSeen++;
+
+				// Phase 28: the side way's cover, with the screwdriver: its close-up (the four screws).
+				if ("cover".equals(payload.who())) {
+					CoverScreen.open(client);
+				}
 			}
 			case CUE_END -> {
 				ended = true;
@@ -439,7 +506,7 @@ static final int CHECKPOINT_TICKS = 60;
 		interrupts++;
 		net.minecraft.client.gui.screens.Screen screen = client.gui.screen();
 
-		if (screen instanceof DialogScreen || screen instanceof com.phiro.sabercraft.client.menu.SaberMenuScreen) {
+		if (screen instanceof DialogScreen || screen instanceof CoverScreen || screen instanceof com.phiro.sabercraft.client.menu.SaberMenuScreen) {
 			dialog = null;
 			client.gui.setScreen(null);
 		} else if (screen instanceof net.minecraft.client.gui.screens.inventory.AbstractContainerScreen<?> && client.player != null) {
@@ -601,6 +668,8 @@ static final int CHECKPOINT_TICKS = 60;
 				flash(0x00FFF4E8, 0);
 			}
 			case "dodged" -> zoom(-0.03F, 8);
+			// Phase 28: her scene is over (her film ended or was skipped): her saber is gone with her.
+			case "saber_gone" -> clearDuelProps();
 			case "disarm" -> {
 				shake(1.8F, 12);
 				zoom(0.07F, 16);
@@ -626,6 +695,21 @@ static final int CHECKPOINT_TICKS = 60;
 			case "blocked" -> {
 				blockAge = 0;
 				shake(0.5F, 5);
+			}
+			case "strained" -> {
+				// Phase 28: blocked, but the guard shakes (little stamina left): a harder jolt, a warm flash.
+				blockAge = 0;
+				strains++;
+				shake(0.9F, 7);
+				flash(0x00FFB48C, 0);
+			}
+			case "guard_break" -> {
+				// Phase 28: the guard broken (kept up too long): the blade knocked aside, the view jolts hard.
+				blockAge = 0;
+				guardBreaks++;
+				shake(1.6F, 11);
+				zoom(0.045F, 10);
+				flash(0x00FF7A5A, 0);
 			}
 			case "phase" -> duelPhase = value;
 			case "throw" -> {
@@ -748,6 +832,13 @@ static final int CHECKPOINT_TICKS = 60;
 			scale -= zoomKick * left * left;
 		}
 
+		// Phase 28: the side way's cover close up: the view comes in on it.
+		float close = CoverScreen.closeness(partial);
+
+		if (close > 0.0F) {
+			scale -= 0.18F * close * close * (3.0F - 2.0F * close);
+		}
+
 		if (lockAge < lockTicks + 10) {
 			float in = Math.min(1.0F, (lockAge + partial) / 8.0F);
 			float out = lockAge < lockTicks ? 1.0F : Math.max(0.0F, 1.0F - (lockAge - lockTicks + partial) / 10.0F);
@@ -788,7 +879,8 @@ static final int CHECKPOINT_TICKS = 60;
 		Vec3 to = hiltTo;
 		StoryFiguresPayload now = current;
 
-		if (from == null || to == null || now == null || !now.origin().equals(origin)) {
+		// Phase 28: only in a running story (never left over in a plot after it).
+		if (from == null || to == null || now == null || !now.origin().equals(origin) || !active()) {
 			return null;
 		}
 
@@ -871,6 +963,29 @@ static final int CHECKPOINT_TICKS = 60;
 
 	static int focusMeter() {
 		return focusMeter;
+	}
+
+	/** Phase 28: guards seen shaking and broken in the duel (tests). */
+	private static int strains;
+	private static int guardBreaks;
+
+	public static int[] guardStrainsForTest() {
+		return new int[] {strains, guardBreaks};
+	}
+
+	/** Phase 28: whether a mission's title card shows now (the hint cards wait until it is gone). */
+	public static boolean titleShowing() {
+		return title != null && shownState() != null;
+	}
+
+	/** Phase 28, for the tests: the story's hint over the hotbar now (its key), or null. */
+	public static @Nullable String hintForTest() {
+		return hint;
+	}
+
+	/** Phase 28: how long the comlink line now shown has been up (-1 without one), and how many wait. */
+	public static int[] radioAgeForTest() {
+		return new int[] {radioNow == null ? -1 : radioAge, RADIO.size()};
 	}
 
 	static boolean focusOn() {
@@ -1056,7 +1171,11 @@ static final int CHECKPOINT_TICKS = 60;
 		RADIO.removeIf(line -> line.heard() && clientTicks - line.at() > HEARD_STALE);
 		linesDropped += waiting - RADIO.size();
 
-		if (radioNow != null) {
+		// Phase 28: while the cover's screws are turned (that screen fills the middle and its top), a
+		// comlink line waits: one shown goes on afterwards, a new one comes after it.
+		boolean holdRadio = Minecraft.getInstance().gui.screen() instanceof CoverScreen;
+
+		if (radioNow != null && !holdRadio) {
 			radioAge++;
 			// Phase 24: an overheard shout makes room soon for what waits (the story's lines first).
 			boolean others = !RADIO.isEmpty();
@@ -1067,7 +1186,7 @@ static final int CHECKPOINT_TICKS = 60;
 			}
 		}
 
-		if (radioNow == null && !RADIO.isEmpty()) {
+		if (radioNow == null && !RADIO.isEmpty() && !holdRadio) {
 			radioNow = RADIO.poll();
 			radioAge = 0;
 		}

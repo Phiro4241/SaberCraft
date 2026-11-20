@@ -517,7 +517,10 @@ public class Phase27GameTest implements FabricClientGameTest {
 		check(worst < 0.3F, "right after coming back by the containers someone grows suspicious (" + worst + ")");
 		this.unseen();
 
-		// The second way: the hatch low in the hangar's west wall.
+		// The second way: the hatch low in the hangar's west wall. (Phase 28: its cover off, as in
+		// Phase 27; the cover, the screwdriver and the screws are Phase28GameTest's.)
+		this.flags(StoryTesting.coverOpen());
+		this.server.runOnServer(s -> StoryTesting.ventCover(this.session(s)));
 		BlockPos hatch = DestroyerInterior.HANGAR_HATCH;
 		check(this.on(s -> this.level(s).getBlockState(this.world(s, hatch)).is(Blocks.BARRIER)), "the hangar's hatch is not there (shut)");
 

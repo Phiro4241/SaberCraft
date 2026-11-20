@@ -1179,6 +1179,11 @@ public final class MeshAudit {
 		return found;
 	}
 
+	/** Phase 28, for the tests: how fast the client turns that figure's saber ring now (0 when still). */
+	public static float ringSpeed(int id) {
+		return StoryModels.ringSpeedForTest(id);
+	}
+
 	/** Phase 26: what Kestrel is drawn as in the story's plot with that corner now (a trooper: in the second armour). */
 	public static String kestrelLook(net.minecraft.core.BlockPos origin) {
 		return StoryModels.kestrelForTest(origin);
