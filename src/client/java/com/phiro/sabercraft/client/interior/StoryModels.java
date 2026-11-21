@@ -72,6 +72,7 @@ final class StoryModels {
 			}
 
 			bladeLight(b, plot, pose);
+			spinCircle(b, pose, t);
 
 			marks(b, pose, cameraYaw, t);
 		}
@@ -249,7 +250,10 @@ final class StoryModels {
 			}
 
 			if (kind == CrewModels.SPIN) {
-				goal = Math.max(goal, InquisitorSaber.SPIN_FAST * Math.max(0.35F, Math.min(1.0F, progress * 1.4F)));
+				// (Phase 30: at full speed by the end of the spin's first part, when its circle goes
+				// live and hits: before, it got there only towards the end of the spin, its one blow.)
+				float rise = (float) StoryFiguresPayload.SPIN_RISE_TICKS / (StoryFiguresPayload.SPIN_RISE_TICKS + StoryFiguresPayload.SPIN_LIVE_TICKS);
+				goal = Math.max(goal, InquisitorSaber.SPIN_FAST * Math.max(0.35F, Math.min(1.0F, progress / rise)));
 			} else if (react == CrewModels.RING) {
 				goal = Math.max(goal, InquisitorSaber.SPIN_FAST * (reactP < CrewModels.RING_WIND ? 0.25F + 0.75F * reactP / CrewModels.RING_WIND : 1.0F));
 			} else if (react == CrewModels.THROW_WIND) {
@@ -311,8 +315,9 @@ final class StoryModels {
 	}
 
 	/**
-	 * Phase 26: the light her lit blades throw on the floor round her: red, brighter and wider while
-	 * the ring spins (as the mod's sabers light what is near them).
+	 * Phase 26: the light her lit blades throw on the floor round her: red, brighter while the ring
+	 * spins (Phase 30: no longer wider, see {@link #SPIN_GLOW}) (as the mod's sabers light what is
+	 * near them).
 	 */
 	private static void bladeLight(MeshBuilder b, InteriorVisuals.PlotView plot, StoryClient.Pose pose) {
 		StoryFiguresPayload.Fig fig = pose.fig();
@@ -333,7 +338,77 @@ final class StoryModels {
 		float z = (float) pose.z() + Mth.cos(yaw) * 0.45F;
 		float k = 0.55F + 0.2F * both + 0.25F * blur + 0.3F * flare;
 		int colour = Mesh.scale(0xFF7A140C, Mth.clamp(k, 0.0F, 1.3F), false);
-		StoryRooms.floorLight(b, plot, x, (float) pose.y() + 0.9F, z, 0.5F, 3.2F + 0.9F * both + 1.0F * blur, colour, 0);
+		// (Phase 30: no longer wider while the ring spins: up to 5.1 blocks of red light round her read
+		// as a danger circle in which nothing happened. Her spin's real circle is drawn by spinCircle.)
+		StoryRooms.floorLight(b, plot, x, (float) pose.y() + 0.9F, z, 0.5F, SPIN_GLOW, colour, 0);
+	}
+
+	/**
+	 * Phase 30: how far the light of her blades reaches on the floor: always as far as with one blade
+	 * and the ring still (3.2, as before Phase 30), never further with both blades or the ring
+	 * whirling (it was 3.2 + 0.9 + 1.0 before). It fades to nothing there (from a light 0.9 above the
+	 * floor and 0.45 before her: about 3.1 blocks over the floor, so no further from her than her
+	 * spin's circle, {@link StoryFiguresPayload#SPIN_RADIUS}, and faint long before), so it is not
+	 * taken for it.
+	 */
+	static final float SPIN_GLOW = 3.2F;
+
+	/**
+	 * Phase 30: her spin's danger circle, while the server says its blades whirl round her: a bright
+	 * red rim exactly {@link StoryFiguresPayload#SPIN_RADIUS} round her on the floor (where the
+	 * server hits), a faint red over the floor inside it, and a sweep of light going round with the
+	 * blades. Only then: before it (the ring spinning up) and after it nothing lies on the floor.
+	 */
+	private static void spinCircle(MeshBuilder b, StoryClient.Pose pose, float t) {
+		StoryFiguresPayload.Fig fig = pose.fig();
+
+		if ((fig.flags() & StoryFiguresPayload.SPIN_LIVE) == 0 || "down".equals(fig.pose())) {
+			return;
+		}
+
+		spinCircles++;
+		float x = (float) pose.x();
+		float z = (float) pose.z();
+		float y = (float) pose.y() + 0.035F;
+		float r = (float) StoryFiguresPayload.SPIN_RADIUS;
+		float pulse = 0.75F + 0.25F * Mth.sin(t * 18.0F);
+		b.twoSided(true).anim(0);
+		// The floor inside: a faint red, a little stronger towards the rim.
+		b.layer(Layer.HOLO).fullBright().fit(InteriorAtlas.WHITE);
+		b.colourAlpha(0x22000000 | 0xFF2418);
+		b.ring(x, y, z, 0.0F, r * 0.6F, 48, true);
+		b.colourAlpha(0x38000000 | 0xFF2418);
+		b.ring(x, y + 0.002F, z, r * 0.6F, r - 0.14F, 48, true);
+		// The rim: bright, pulsing; a thin dark line just outside it, so that its edge reads on any floor.
+		b.layer(Layer.GLOW).fullBright().colour(Mesh.scale(0xFFFF3020, pulse, false)).fit(InteriorAtlas.WHITE);
+		b.ring(x, y + 0.004F, z, r - 0.14F, r, 64, true);
+		b.layer(Layer.HOLO).fullBright().colourAlpha(0x70000000 | 0x200404);
+		b.ring(x, y + 0.003F, z, r, r + 0.05F, 64, true);
+		// A sweep going round with the blades (two, as the ring has two).
+		b.layer(Layer.GLOW).fullBright().fit(InteriorAtlas.WHITE);
+		float turn = t * 14.0F;
+
+		for (int blade = 0; blade < 2; blade++) {
+			for (int i = 0; i < 6; i++) {
+				float a0 = turn + blade * Mth.PI - i * 0.09F;
+				float a1 = a0 - 0.09F;
+				float k = 1.0F - i / 6.0F;
+				b.colour(Mesh.scale(0xFFFF5030, 0.25F + 0.55F * k, false));
+				org.joml.Vector3f c = new org.joml.Vector3f(x, y + 0.005F, z);
+				org.joml.Vector3f p0 = new org.joml.Vector3f(x + Mth.cos(a0) * (r - 0.14F), y + 0.005F, z + Mth.sin(a0) * (r - 0.14F));
+				org.joml.Vector3f p1 = new org.joml.Vector3f(x + Mth.cos(a1) * (r - 0.14F), y + 0.005F, z + Mth.sin(a1) * (r - 0.14F));
+				b.polyFacing(List.of(c, p0, p1), new org.joml.Vector3f(0.0F, 1.0F, 0.0F));
+			}
+		}
+
+		b.twoSided(false).layer(Layer.SOLID).worldLight().white().anim(0);
+	}
+
+	private static int spinCircles;
+
+	/** Phase 30, for the tests: how many frames her spin's danger circle was drawn. */
+	public static int spinCirclesForTest() {
+		return spinCircles;
 	}
 
 	/**

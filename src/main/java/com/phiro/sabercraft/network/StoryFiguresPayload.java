@@ -31,6 +31,20 @@ public record StoryFiguresPayload(BlockPos origin, long time, List<Fig> figures)
 	public static final int UNARMED = 128;
 	/** Phase 28: her Inquisitor's ring keeps turning (a state that lasts, not one move's spin). */
 	public static final int RING_SPIN = 256;
+	/**
+	 * Phase 30: her spin's blades whirl round her now: the red circle on the floor, {@link #SPIN_RADIUS}
+	 * round her, in which the player is hit at once (the server hits by the same number, the player's
+	 * middle within it: no further than the circle drawn).
+	 */
+	public static final int SPIN_LIVE = 512;
+	public static final double SPIN_RADIUS = 3.5;
+	/**
+	 * Phase 30: her spin's two parts (ticks of her wind-up): the ring spinning up round the grip
+	 * (the warning), then its blades whirling round her (the circle live). The server times the spin
+	 * by them; the client spins the ring up to full speed within the first.
+	 */
+	public static final int SPIN_RISE_TICKS = 8;
+	public static final int SPIN_LIVE_TICKS = 16;
 
 	/**
 	 * One person: their number, kind and pose (as {@code Crew}), name ({@code speaker}), where and

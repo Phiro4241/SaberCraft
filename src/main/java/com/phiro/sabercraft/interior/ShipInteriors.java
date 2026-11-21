@@ -33,6 +33,7 @@ import net.fabricmc.fabric.api.event.player.UseBlockCallback;
 import net.fabricmc.fabric.api.event.player.UseItemCallback;
 import net.fabricmc.fabric.api.entity.event.v1.ServerPlayerEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
+import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.core.registries.Registries;
@@ -152,6 +153,8 @@ public final class ShipInteriors {
 		long liftReady;
 		/** Phase 28: where the player stood the tick before (to tell standing still on a slow lift). */
 		@Nullable Vec3 lastLocal;
+		/** Phase 30: the lift's ride is shown on the HUD now (so that its end is sent once). */
+		boolean liftShown;
 		@Nullable String room;
 		/** Phase 23: where the player last stood on firm ground (plot space): one caught in a shaft is set back there. */
 		@Nullable Vec3 safe;
@@ -813,11 +816,13 @@ public final class ShipInteriors {
 
 			if (now < aboard.liftReady) {
 				aboard.zoneTicks = 0;
+				liftShown(player, aboard, -1, lift, local);
 				return;
 			}
 
 			if (moved > SLOW_LIFT_MOVE) {
 				aboard.zoneTicks = Math.max(0, aboard.zoneTicks - 2);
+				liftShown(player, aboard, aboard.zoneTicks > 0 ? aboard.zoneTicks : -1, lift, local);
 				return;
 			}
 		}
@@ -825,14 +830,25 @@ public final class ShipInteriors {
 		if (exit == null && lift == null) {
 			aboard.armed = true;
 			aboard.zoneTicks = 0;
+			liftShown(player, aboard, -1, null, local);
 		} else if (aboard.armed && !player.isSpectator()) {
 			aboard.zoneTicks++;
 
 			if (exit == null && lift != null && lift.slow() && aboard.zoneTicks == 1) {
 				// Phase 28: the lift wakes (a soft hum and a word): it goes if one stays.
+				// (Phase 30: the word, the way it goes and how far along the ride is are on the HUD now.)
 				player.connection.send(new ClientboundSoundPacket(sound("ship.lift"), SoundSource.NEUTRAL, player.getX(), player.getY(), player.getZ(), 0.25F,
 						0.6F, player.getRandom().nextLong()));
-				player.sendOverlayMessage(Component.translatable("sabercraft.interior.lift_hold"));
+			}
+
+			if (exit == null && lift != null && lift.slow() && aboard.zoneTicks < lift.ticks()) {
+				liftShown(player, aboard, aboard.zoneTicks, lift, local);
+
+				if (aboard.zoneTicks % 10 == 5) {
+					// Phase 30: the lift hums on while it goes (rising and falling a little with the way).
+					player.connection.send(new ClientboundSoundPacket(sound("ship.lift"), SoundSource.NEUTRAL, player.getX(), player.getY(), player.getZ(), 0.16F,
+							lift.arrival().y < local.y ? 0.55F : 0.7F, player.getRandom().nextLong()));
+				}
 			}
 
 			if (exit != null && aboard.zoneTicks >= EXIT_TICKS) {
@@ -858,6 +874,12 @@ public final class ShipInteriors {
 					return;
 				}
 
+				if (lift.slow()) {
+					// Phase 30: the HUD shows the arrival a moment.
+					liftShown(player, aboard, lift.ticks(), lift, local);
+					aboard.liftShown = false;
+				}
+
 				teleport(player, (ServerLevel) player.level(), aboard.world(lift.arrival()), lift.yaw());
 				player.connection.send(new ClientboundSoundPacket(sound("ship.lift"), SoundSource.NEUTRAL, player.getX(), player.getY(), player.getZ(), 0.6F,
 						1.0F, player.getRandom().nextLong()));
@@ -878,6 +900,21 @@ public final class ShipInteriors {
 
 			aboard.room = id;
 		}
+	}
+
+	/**
+	 * Phase 30: tells the player's HUD how far along the slow lift's ride is ({@code ticks} of its
+	 * ticks; -1 none: sent once when it ends).
+	 */
+	private static void liftShown(ServerPlayer player, Aboard aboard, int ticks, InteriorPlan.@Nullable Lift lift, Vec3 local) {
+		if (ticks < 0 && !aboard.liftShown || !ServerPlayNetworking.canSend(player, com.phiro.sabercraft.network.LiftPayload.TYPE)) {
+			return;
+		}
+
+		aboard.liftShown = ticks >= 0;
+		int total = lift != null && lift.slow() ? lift.ticks() : 1;
+		boolean down = lift != null && lift.arrival().y < local.y;
+		ServerPlayNetworking.send(player, new com.phiro.sabercraft.network.LiftPayload(ticks, total, down));
 	}
 
 	/** The name of a room, for the overlay. */
