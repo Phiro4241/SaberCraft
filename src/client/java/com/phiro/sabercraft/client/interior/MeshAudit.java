@@ -1179,6 +1179,301 @@ public final class MeshAudit {
 		return found;
 	}
 
+	/**
+	 * Phase 30: her Inquisitor's saber with both blades (and as the second comes out) in every pose
+	 * of the duel, after it is kept clear, against her body exactly as drawn (not the margin the
+	 * clearing uses): the torso, the head (a cube, turned as she looks: -75 to 75 degrees, a
+	 * different turn pose by pose), the robe; a blade counts with its glowing edge (0.034 round its
+	 * core); her torso leaning, rolling and trembling as drawn for different figures and moments.
+	 * The poses in which any of it touches her. The first line counts them; the second how often a
+	 * hand falls more than 0.1 short of the grip as it is then held (the arm's reach ends): in the
+	 * first phase (one blade, the ring still), in the second with the ring still and spinning.
+	 */
+	public static List<String> ringInDrawnBody() {
+		List<String> found = new ArrayList<>();
+		TreeMap<String, Integer> kinds = new TreeMap<>();
+		float shoulder = CrewModels.BODY - 0.06F;
+		// The blows as the client shows them (a spin only with its own progress, a leap's crouch and
+		// a stagger's lean as they come with them); every reaction of the duel.
+		int[] attacks = {0, CrewModels.OVERHEAD, CrewModels.SWEEP, CrewModels.THRUST, CrewModels.CROUCH, CrewModels.STAGGER, CrewModels.SPIN};
+		int[] reacts = {0, CrewModels.FLINCH, CrewModels.HEAVY, CrewModels.STUMBLE, CrewModels.CLASH, CrewModels.PARRY, CrewModels.LOCK, CrewModels.SLAM,
+				CrewModels.THROW_WIND, CrewModels.RING};
+		float[] steps = {0.0F, 0.25F, 0.5F, 0.75F, 1.0F};
+		float[] spins = {0.0F, 0.125F, 0.25F, 0.375F, 0.5F, 0.625F, 0.75F, 0.875F};
+		float[] twins = {0.0F, 0.2F, 0.5F, 0.75F, 1.0F};
+		int poses = 0;
+		int touching = 0;
+		int[] reach = new int[6];
+
+		for (int attack : attacks) {
+			for (float raise : steps) {
+				for (float swing : steps) {
+					for (float hitLean : attack == 0 ? new float[] {0.0F, 0.5F, 1.0F} : new float[] {0.0F}) {
+						for (int react : reacts) {
+							for (float reactP : react == 0 ? new float[] {0.0F} : steps) {
+								for (float spin : attack == CrewModels.SPIN ? spins : new float[] {0.0F}) {
+									for (float twin : twins) {
+										for (int spinning = 0; spinning <= 1; spinning++) {
+											for (int i = 0; i < 12; i++) {
+												float angle = Mth.TWO_PI * i / 12.0F;
+												float crouch = attack == CrewModels.CROUCH ? raise : react == CrewModels.SLAM ? 0.7F * reactP : 0.0F;
+												float lean = attack == CrewModels.STAGGER ? raise : hitLean;
+												CrewModels.Gear gear = new CrewModels.Gear(false, 0xFFFF2020, true, raise, swing, false, true, attack, 0.0F, crouch, lean,
+														0.0F, spin, react, reactP, false, false, twin, true, angle, spinning, 0.0F);
+												float[] hilt = CrewModels.saberHold(shoulder, gear);
+												float[] staff = twin > 0.0F ? CrewModels.staffHold(shoulder, gear, hilt) : null;
+												InquisitorSaber.Hold held = CrewModels.ringHold(shoulder, gear,
+														staff != null ? InquisitorSaber.centred(staff) : InquisitorSaber.fromEmitter(hilt));
+												float second = Mth.clamp((twin - 0.35F) / 0.65F, 0.0F, 1.0F);
+												CrewModels.Lean bent = CrewModels.Lean.of(gear, HEAD_TURNS[poses % HEAD_TURNS.length], (poses % 11) * 0.29F, poses / 7 % 13);
+												InquisitorSaber.Hold clear = InquisitorSaber.clear(held, angle, second > 0.0F, spinning == 1, bent);
+												poses++;
+												boolean first = twin == 0.0F && spinning == 0;
+
+												int at = first ? 0 : twin == 1.0F ? 1 + spinning : -1;
+
+												if (at >= 0) {
+													reach[at * 2]++;
+													reach[at * 2 + 1] += handsOff(clear, gear, shoulder) > 0.1F ? 1 : 0;
+												}
+
+												String where = touches(clear, spinning == 1, angle, second, bent);
+
+												if (where != null) {
+													touching++;
+													kinds.merge("attack " + attack + " react " + react + " spinning " + spinning + ": " + where.replaceAll(" \\(.*", ""), 1,
+															Integer::sum);
+
+													if (found.size() < 40) {
+														found.add(String.format(java.util.Locale.ROOT,
+																"attack %d raise %.2f swing %.2f lean %.2f crouch %.2f react %d/%.2f spin %.3f twin %.2f angle %d spinning %d: %s", attack,
+																raise, swing, lean, crouch, react, reactP, spin, twin, i, spinning, where));
+													}
+												}
+											}
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+
+		for (Map.Entry<String, Integer> kind : kinds.entrySet()) {
+			found.add("kind " + kind.getKey() + " x" + kind.getValue());
+		}
+
+		found.add(0, poses + " poses, " + touching + " with the saber touching her body as drawn");
+		found.add(1, String.format(java.util.Locale.ROOT, "a hand more than 0.1 short of the grip: first phase %d of %d, second phase %d of %d with the ring still, %d of %d spinning",
+				reach[1], reach[0], reach[3], reach[2], reach[5], reach[4]));
+		return found;
+	}
+
+	/** Phase 30: the head turns the poses are looked at with, in turn (degrees). */
+	private static final float[] HEAD_TURNS = {0.0F, -75.0F, -40.0F, -15.0F, 15.0F, 40.0F, 75.0F};
+
+	/** Phase 30: how far her hands fall short of the grip (the farther of the two; the arm's reach as {@link CrewModels} draws it). */
+	private static float handsOff(InquisitorSaber.Hold h, CrewModels.Gear gear, float shoulder) {
+		float sx = CrewModels.HALF_W + CrewModels.LIMB * 0.9F;
+		float reach = CrewModels.UPPER + CrewModels.FORE - 0.002F;
+		float[] right = h.grip(InquisitorSaber.HAND);
+		float off = Math.max(0.0F, Mth.sqrt((right[0] + sx) * (right[0] + sx) + (right[1] - shoulder) * (right[1] - shoulder) + right[2] * right[2]) - reach);
+
+		if (gear.react() != CrewModels.THROW_WIND) {
+			float[] left = h.grip(InquisitorSaber.HAND_2);
+			off = Math.max(off, Mth.sqrt((left[0] - sx) * (left[0] - sx) + (left[1] - shoulder) * (left[1] - shoulder) + left[2] * left[2]) - reach);
+		}
+
+		return off;
+	}
+
+	/**
+	 * Phase 30: where the saber touches her body as drawn (null: nowhere): the grip, the ring all
+	 * round (its band, 0.022 to each side and 0.024 deep), the emitters and a blade at that angle
+	 * (while spinning: the whole disc, a blade every 5 degrees), points 0.03 apart.
+	 */
+	private static @org.jspecify.annotations.Nullable String touches(InquisitorSaber.Hold h, boolean spinning, float angle, float second, CrewModels.Lean lean) {
+		float[] c = h.c();
+		float[] a = h.a();
+
+		for (float t = -InquisitorSaber.GRIP_BACK; t <= InquisitorSaber.GRIP_FRONT; t += 0.02F) {
+			String part = drawnBody(c[0] + a[0] * t, c[1] + a[1] * t, c[2] + a[2] * t, InquisitorSaber.GRIP_R, lean);
+
+			if (part != null) {
+				return "grip " + part;
+			}
+		}
+
+		for (int k = 0; k < 36; k++) {
+			float[] r = h.blade(angle + Mth.TWO_PI * k / 36.0F);
+			float ring = InquisitorSaber.RING_R;
+			String part = drawnBody(c[0] + r[0] * ring, c[1] + r[1] * ring, c[2] + r[2] * ring, 0.033F, lean);
+
+			if (part != null) {
+				return "ring " + part;
+			}
+		}
+
+		// (Spinning: the first blade sweeps the whole disc, the second only the same again.)
+		int turns = spinning ? 72 : 1;
+
+		for (int k = 0; k < turns; k++) {
+			float[] b = h.blade(angle + Mth.TWO_PI * k / turns);
+
+			for (int side = 1; side >= (spinning ? 1 : -1); side -= 2) {
+				float length = side > 0 ? InquisitorSaber.BLADE : InquisitorSaber.BLADE * second;
+
+				for (float t = InquisitorSaber.RING_R - 0.02F; t <= InquisitorSaber.EMIT + length + 0.001F; t += 0.03F) {
+					String part = drawnBody(c[0] + b[0] * t * side, c[1] + b[1] * t * side, c[2] + b[2] * t * side, t > InquisitorSaber.EMIT ? 0.034F : 0.03F,
+							lean);
+
+					if (part != null) {
+						return (t > InquisitorSaber.EMIT ? "blade " : "ring ") + part;
+					}
+				}
+			}
+		}
+
+		return null;
+	}
+
+	/**
+	 * Phase 30: which part of her body as drawn a ball of that radius at that point (her torso's
+	 * space) touches, or null: the torso, the head (turned as {@code lean} says), and in her hips'
+	 * space (her torso leaning over them as it is) the robe and the legs under it.
+	 */
+	private static @org.jspecify.annotations.Nullable String drawnBody(float x, float y, float z, float r, CrewModels.Lean lean) {
+		if (Math.abs(x) < CrewModels.HALF_W + r && Math.abs(z) < CrewModels.HALF_D + r && y > -r && y < CrewModels.BODY + r) {
+			return "torso";
+		}
+
+		float h = CrewModels.HEAD / 2.0F;
+
+		if (y > CrewModels.BODY - r && y < CrewModels.BODY + CrewModels.HEAD + r) {
+			float hx = x * lean.hc() - z * lean.hs();
+			float hz = x * lean.hs() + z * lean.hc();
+
+			if (Math.abs(hx) < h + r && Math.abs(hz) < h + r) {
+				return String.format(java.util.Locale.ROOT, "head (turned %.0f)", Math.toDegrees(Math.atan2(lean.hs(), lean.hc())));
+			}
+		}
+
+		float x1 = x * lean.cr() - y * lean.sr();
+		float y1 = x * lean.sr() + y * lean.cr();
+		float hy = y1 * lean.ct() - z * lean.st();
+		float hz = y1 * lean.st() + z * lean.ct();
+
+		if (Math.abs(x1) < CrewModels.HALF_W + CrewModels.ROBE_SIDE + r && hy > CrewModels.ROBE_BOTTOM - r && hy < CrewModels.ROBE_TOP + r
+				&& hz > -CrewModels.HALF_D - CrewModels.ROBE_BACK - r && hz < CrewModels.HALF_D + CrewModels.ROBE_FRONT + r) {
+			return "robe";
+		}
+
+		// The legs under the robe (standing: inside its outline, down to the floor).
+		if (Math.abs(x1) < CrewModels.HALF_W + r && hy > -CrewModels.LEG - r && hy <= CrewModels.ROBE_BOTTOM && Math.abs(hz) < CrewModels.HALF_D + r) {
+			return "legs";
+		}
+
+		return null;
+	}
+
+	/**
+	 * Phase 30: the hull blocks' own faces showing in the reactor shaft in front of its round wall
+	 * (sides and undersides with nothing drawn over them: blackstone seen from the platforms),
+	 * from the working level up. "x,y,z dir block" per face; the first line counts them.
+	 */
+	public static List<String> bareInShaft() {
+		com.phiro.sabercraft.interior.InteriorPlan plan = com.phiro.sabercraft.interior.InteriorPlan.of("star_destroyer");
+		VirtualPlot plot = VirtualPlot.of(plan);
+		java.util.Set<String> drawn = new java.util.HashSet<>();
+		MeshBuilder builder = new MeshBuilder((layer, xyzuv, nx, ny, nz, colours, lightMode, fixedLight, anim, samples) -> {
+		});
+		Skin.apply(plot, plan, builder, (b, surface, p) -> {
+			int before = b.quads();
+			DestroyerRooms.skin(b, surface, p);
+
+			if (b.quads() > before) {
+				drawn.add((surface.x() + surface.toward().getStepX()) + "," + (surface.y() + surface.toward().getStepY()) + ","
+						+ (surface.z() + surface.toward().getStepZ()) + " " + surface.toward().getOpposite().getName());
+			}
+		});
+		List<String> out = new ArrayList<>();
+		int looked = 0;
+		int bare = 0;
+		float wall = (float) com.phiro.sabercraft.interior.DestroyerInterior.REACTOR_WALL - 0.02F;
+		double cx = com.phiro.sabercraft.interior.DestroyerInterior.REACTOR_X;
+		double cz = com.phiro.sabercraft.interior.DestroyerInterior.REACTOR_Z;
+		List<com.phiro.sabercraft.interior.InteriorPlan.Doorway> ways = plan.doorways();
+
+		for (it.unimi.dsi.fastutil.longs.Long2ObjectMap.Entry<BlockState> entry : plot.blocks.long2ObjectEntrySet()) {
+			long key = entry.getLongKey();
+			int x = net.minecraft.core.BlockPos.getX(key);
+			int y = net.minecraft.core.BlockPos.getY(key);
+			int z = net.minecraft.core.BlockPos.getZ(key);
+
+			if (!DestroyerRooms.SHELL.contains(entry.getValue().getBlock()) || plot.wall(x, y, z) || y < com.phiro.sabercraft.interior.DestroyerInterior.REACTOR_BOTTOM - 1
+					|| y >= com.phiro.sabercraft.interior.DestroyerInterior.REACTOR_TOP) {
+				continue;
+			}
+
+			for (net.minecraft.core.Direction dir : net.minecraft.core.Direction.values()) {
+				if (dir == net.minecraft.core.Direction.UP) {
+					continue;
+				}
+
+				int ox = x + dir.getStepX();
+				int oy = y + dir.getStepY();
+				int oz = z + dir.getStepZ();
+
+				if (!plot.open(ox, oy, oz) && !plot.wall(ox, oy, oz)) {
+					continue;
+				}
+
+				boolean lined = false;
+
+				for (com.phiro.sabercraft.interior.InteriorPlan.Doorway way : ways) {
+					lined |= way.contains(ox, oy, oz);
+				}
+
+				if (lined) {
+					continue;
+				}
+
+				// The face's edge (a side) or square (an underside) nearest the shaft's middle.
+				float x0 = dir == net.minecraft.core.Direction.EAST ? x + 1 : x;
+				float x1 = dir == net.minecraft.core.Direction.WEST ? x : x + 1;
+				float z0 = dir == net.minecraft.core.Direction.SOUTH ? z + 1 : z;
+				float z1 = dir == net.minecraft.core.Direction.NORTH ? z : z + 1;
+				double nx = Mth.clamp(cx, x0, x1) - cx;
+				double nz = Mth.clamp(cz, z0, z1) - cz;
+
+				if (nx * nx + nz * nz >= wall * wall) {
+					continue;
+				}
+
+				looked++;
+				String face = x + "," + y + "," + z + " " + dir.getName();
+
+				if (!drawn.contains(face)) {
+					bare++;
+
+					if (out.size() < 60) {
+						out.add(face + " " + entry.getValue().getBlock().getName().getString());
+					}
+				}
+			}
+		}
+
+		out.add(0, bare + " bare faces in the shaft (" + looked + " looked at)");
+		return out;
+	}
+
+	/** Phase 30, for the tests: how many frames her spin's danger circle was drawn. */
+	public static int spinCircles() {
+		return StoryModels.spinCirclesForTest();
+	}
+
 	/** Phase 28, for the tests: how fast the client turns that figure's saber ring now (0 when still). */
 	public static float ringSpeed(int id) {
 		return StoryModels.ringSpeedForTest(id);
@@ -1226,14 +1521,14 @@ public final class MeshAudit {
 											InquisitorSaber.Hold held = CrewModels.ringHold(shoulder, gear,
 													staff != null ? InquisitorSaber.centred(staff) : InquisitorSaber.fromEmitter(hilt));
 											boolean second = Mth.clamp((twin - 0.35F) / 0.65F, 0.0F, 1.0F) > 0.0F;
-											InquisitorSaber.Hold clear = InquisitorSaber.clear(held, angle, second, shoulder, spinning == 1);
+											CrewModels.Lean lean = CrewModels.Lean.of(gear, HEAD_TURNS[poses % HEAD_TURNS.length], (poses % 11) * 0.29F, poses / 7 % 13);
+											InquisitorSaber.Hold clear = InquisitorSaber.clear(held, angle, second, spinning == 1, lean);
 											poses++;
 											float dx = clear.c()[0] - held.c()[0];
 											float dz = clear.c()[2] - held.c()[2];
 											most = Math.max(most, Mth.sqrt(dx * dx + dz * dz));
 
-											if (spinning == 1 ? InquisitorSaber.discInBody(clear, second, shoulder)
-													: InquisitorSaber.inBody(clear, angle, second, shoulder)) {
+											if (spinning == 1 ? InquisitorSaber.discInBody(clear, second, lean) : InquisitorSaber.inBody(clear, angle, second, lean)) {
 												inBody++;
 
 												if (found.size() < 40) {

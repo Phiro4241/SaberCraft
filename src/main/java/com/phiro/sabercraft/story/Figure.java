@@ -264,6 +264,19 @@ public final class Figure {
 	public int behindTicks;
 	/** Phase 29: a blow that turns her round with it (she whirls towards one behind her while she winds it up). */
 	public boolean turnabout;
+	/**
+	 * Phase 30: her spin while its blades whirl round her (the red circle on the floor): when it last
+	 * reached the player or was dodged (once in a while, not every tick: her wind-up then, so counted
+	 * in her own ticks, which the Focus slows; -1 while neither), whether its blades have met them
+	 * (blocked or hurt: a later blow is a weaker repeat), whether it hurt them, whether they dodged
+	 * it with the dash (she is open after it), and whether they stood in the circle the tick before
+	 * (a dash begun there dodges; one rolled in from outside only passes through).
+	 */
+	public int spinHitWindup = -1;
+	public boolean spinReached;
+	public boolean spinHurt;
+	public boolean spinDodged;
+	public boolean spinInside;
 	/** Phase 29: her moves lately (newest first), so that she does not do the same thing over and over. */
 	public final int[] moves = new int[4];
 	/** Phase 29: her slam: the way it goes (locked a little before it falls, so a late step aside escapes it). */

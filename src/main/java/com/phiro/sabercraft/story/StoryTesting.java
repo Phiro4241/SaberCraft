@@ -779,6 +779,24 @@ public final class StoryTesting {
 		Finale.spinForTest(s, figure);
 	}
 
+	/** Phase 30: whether her spin's blades whirl round her now (the red circle hitting whoever is in it). */
+	public static boolean spinLive(Figure figure) {
+		return Finale.spinLive(figure);
+	}
+
+	/**
+	 * Phase 30: her spin's reach (the circle's radius: the player's middle within it is hit, as the
+	 * drawn circle shows), how long it spins up and how long it hits (ticks).
+	 */
+	public static double[] spinNumbers() {
+		return new double[] {Finale.SPIN_REACH, Finale.SPIN_RISE, Finale.SPIN_LIVE};
+	}
+
+	/** Phase 30: how long the maintenance door's release takes (ticks). */
+	public static int releaseTicks() {
+		return Scenes.RELEASE;
+	}
+
 	/** Phase 25: whether her staff is in flight now. */
 	public static boolean staffOut(Figure figure) {
 		return figure.action == Finale.THROW && figure.windup <= 0 && figure.throwFrom != null;

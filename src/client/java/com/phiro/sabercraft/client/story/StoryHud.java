@@ -19,6 +19,7 @@ import net.minecraft.util.Util;
 import net.minecraft.world.phys.Vec3;
 
 import com.phiro.sabercraft.client.ImmersionConfig;
+import com.phiro.sabercraft.mixin.client.HudAccessor;
 import com.phiro.sabercraft.network.StoryFiguresPayload;
 import com.phiro.sabercraft.network.StoryStatePayload;
 
@@ -791,19 +792,121 @@ public final class StoryHud implements HudElement {
 		}
 	}
 
+	/**
+	 * Phase 30: where a box centred on the screen, {@code boxHeight} tall, goes: the first of
+	 * {@code tops} (its top edge, GUI y; at least one) at which it is on the screen and clear of the
+	 * crosshair, of what the crosshair is on and the stun marks there (while either shows), of a
+	 * hint over the hotbar and everything under it (while one shows), of the line over the hotbar
+	 * (a room's name, a message; while it shows) and of a mission's title card (while one shows).
+	 * When none is clear, the first that is clear of all but the line over the hotbar (it goes after
+	 * 3 s), else of all but the title card (it fades after a few seconds; the hint and the prompt
+	 * stay), else the first of {@code tops}. The progress bar (a download, a hack, the maintenance
+	 * door's release) and the maintenance lift's panel go by it.
+	 */
+	public static int clearTop(Font font, int width, int height, int boxHeight, int... tops) {
+		return clearTop(font, width, height, boxHeight, 0, 0, tops);
+	}
+
+	/** Phase 30: {@link #clearTop}, also clear of the box from {@code avoidTop} to {@code avoidBottom} (GUI y; none when both are 0). */
+	private static int clearTop(Font font, int width, int height, int boxHeight, int avoidTop, int avoidBottom, int... tops) {
+		Minecraft client = Minecraft.getInstance();
+		boolean prompt = client.gui.screen() == null && StoryInput.target(client, 1.0F) != null || StoryClient.stuns() > 0 && StoryClient.stunAge() < 200;
+		int hint = hintTop(font, height);
+		boolean line = ((HudAccessor) client.gui.hud).sabercraft$overlayMessageTime() > 0;
+		// (Its words from 72 over the screen's bottom; 2 more with the text background Minecraft draws behind them only when set so.)
+		int lineTop = height - 72 - (client.options.getBackgroundColor(0.0F) != 0 ? 2 : 0);
+		String title = StoryClient.title();
+		int card = title != null ? titleTop(font, title, width, height) : 0;
+
+		// (First clear of everything; then of all but the line over the hotbar; then of all but the title card.)
+		for (int pass = 0; pass < 3; pass++) {
+			boolean byLine = pass != 1;
+			boolean byTitle = pass != 2;
+
+			for (int top : tops) {
+				int bottom = top + boxHeight;
+				boolean clear = top >= 0 && bottom <= height
+						// The crosshair.
+						&& (bottom <= height / 2 - 8 || top >= height / 2 + 8)
+						// What the crosshair is on ("Use: …", from 2 over its words to 10 under them) and the stun marks.
+						&& (!prompt || bottom <= height / 2 + 12 || top >= height / 2 + 24)
+						// A hint over the hotbar: its box (and a little room over it) and what is under it.
+						&& bottom <= hint - 2
+						// The line over the hotbar (Minecraft's: a room's name, a message).
+						&& (!byLine || !line || bottom <= lineTop)
+						// A mission's title card: its small line, its big words and the line under them.
+						&& (!byTitle || title == null || bottom <= card || top >= card + 37)
+						// Another box (the maintenance lift's panel).
+						&& (avoidTop == avoidBottom || bottom <= avoidTop || top >= avoidBottom);
+
+				if (clear) {
+					return top;
+				}
+			}
+		}
+
+		return tops[0];
+	}
+
+	/** Phase 30: the maintenance lift's panel as last drawn (GUI y), until the progress bar has kept clear of it once; both 0: none. */
+	private static int liftTop;
+	private static int liftBottom;
+	private static int progressFrames;
+
+	/** Phase 30: the maintenance lift's panel is drawn there this frame (GUI y): the progress bar keeps clear of it. */
+	public static void liftPanel(int top, int bottom) {
+		liftTop = top;
+		liftBottom = bottom;
+	}
+
+	/** Phase 30, for the tests: how many frames the progress bar was drawn (all, and while a mission's title card showed). */
+	public static int[] progressFramesForTest() {
+		return new int[] {progressFrames, progressUnderTitle};
+	}
+
+	private static int progressUnderTitle;
+
+	/** Phase 30: the top of the progress bar's box ({@link #PROGRESS_BOX} high, GUI y), clear of the maintenance lift's panel from {@code avoidTop} to {@code avoidBottom} (both 0: none). */
+	public static int progressTop(Font font, int width, int height, int avoidTop, int avoidBottom) {
+		// Phase 30: its box where it always was, under the crosshair, when nothing else is there;
+		// else above the crosshair; else right over the hint, while nothing shows under the
+		// crosshair (on a small screen with a title and a hint at once). See clearTop.
+		int box = PROGRESS_BOX;
+		// (Phase 30: clear of the maintenance lift's panel too, while it shows; else just under it.)
+		int[] tops = avoidBottom > avoidTop ? new int[] {height / 2 + 27, height / 2 - 10 - box, hintTop(font, height) - 2 - box, avoidBottom + 2}
+				: new int[] {height / 2 + 27, height / 2 - 10 - box, hintTop(font, height) - 2 - box};
+		return clearTop(font, width, height, box, avoidTop, avoidBottom, tops);
+	}
+
+	/** Phase 30: how high the progress bar's box is (its words and bar, 3 over them and 4 under). */
+	public static final int PROGRESS_BOX = 21;
+
 	private static void progress(GuiGraphicsExtractor graphics, Font font, int width, int height) {
 		String key = StoryClient.progressKey();
+		int avoidTop = liftTop;
+		int avoidBottom = liftBottom;
+		liftTop = 0;
+		liftBottom = 0;
 
-		// Phase 20: not under a mission's title card (the finished copy stood under Mission 5's title).
-		if (key == null || StoryClient.title() != null) {
+		// Phase 30: shown under a mission's title card too (the maintenance door's release, clicked
+		// within the 5.5 s of Mission 5's title, ran unseen under it). Phase 20 kept it away from the
+		// title only for the download's finished copy that stood under Mission 5's title: a bar from
+		// before is over now when a title comes (StoryClient).
+		if (key == null) {
 			return;
 		}
 
 		int value = Mth.clamp(StoryClient.progressValue(), 0, 100);
 		Component text = Component.translatable(key, value);
-		int w = 140;
+		int w = Math.max(140, font.width(text));
 		int x = width / 2 - w / 2;
-		int y = height / 2 + 30;
+		int y = progressTop(font, width, height, avoidTop, avoidBottom) + 3;
+		progressFrames++;
+
+		if (StoryClient.title() != null) {
+			progressUnderTitle++;
+		}
+
 		graphics.fill(x - 4, y - 3, x + w + 4, y + 18, 0x90000000);
 		graphics.text(font, text, width / 2 - font.width(text) / 2, y, 0xFFB8E0F0);
 		graphics.fill(x, y + 11, x + w, y + 14, 0xFF20303A);
@@ -830,14 +933,7 @@ public final class StoryHud implements HudElement {
 		StoryStatePayload state = StoryClient.state();
 		Component small = Component.translatable("sabercraft.story.hud.chapter_mission", state != null ? state.mission() + 1 : 1);
 		Component big = Component.translatable(key);
-		int y = height / 4;
-		int half = Math.max(font.width(small), font.width(big) * 2) / 2 + 4;
-
-		// Phase 28: on a narrow screen it reached under the mission panel at the top right: below it then.
-		if (width / 2 + half > StoryClient.objectivesLeftEdge(width)) {
-			y = Math.max(y, StoryClient.topRightReserved() + 2);
-		}
-
+		int y = titleTop(font, key, width, height);
 		graphics.text(font, small, width / 2 - font.width(small) / 2, y, alpha << 24 | 0xC8B070);
 		graphics.pose().pushMatrix();
 		graphics.pose().translate(width / 2.0F, y + 14);
@@ -846,6 +942,22 @@ public final class StoryHud implements HudElement {
 		graphics.pose().popMatrix();
 		int lw = Math.round(font.width(big) * fade);
 		graphics.fill(width / 2 - lw, y + 36, width / 2 + lw, y + 37, alpha / 2 << 24 | 0xE8C46A);
+	}
+
+	/** Phase 30: where a mission's title card begins (GUI y); it reaches 37 further down (see title). */
+	private static int titleTop(Font font, String key, int width, int height) {
+		StoryStatePayload state = StoryClient.state();
+		Component small = Component.translatable("sabercraft.story.hud.chapter_mission", state != null ? state.mission() + 1 : 1);
+		Component big = Component.translatable(key);
+		int y = height / 4;
+		int half = Math.max(font.width(small), font.width(big) * 2) / 2 + 4;
+
+		// Phase 28: on a narrow screen it reached under the mission panel at the top right: below it then.
+		if (width / 2 + half > StoryClient.objectivesLeftEdge(width)) {
+			y = Math.max(y, StoryClient.topRightReserved() + 2);
+		}
+
+		return y;
 	}
 
 	private static void fade(GuiGraphicsExtractor graphics, Font font, float partial, int width, int height) {

@@ -223,8 +223,20 @@ final class Scenes {
 
 	// --- The escape out of the reactor -------------------------------------------------------------
 
-	/** How long the emergency release takes (ticks beside it). */
-	static final int RELEASE = 40;
+	/**
+	 * How long the emergency release takes (ticks). Phase 30: it runs by itself once begun (one
+	 * right click on its panel): the player need not stay beside it, look at it, or click again.
+	 * (It took 40 ticks and stopped whenever one stepped more than 1.9 blocks away from it.)
+	 */
+	static final int RELEASE = 28;
+	/**
+	 * Phase 30: where the player not yet at the release is told where it is and that one click
+	 * starts it (plot space): on the walkway from its middle on, about 6 blocks from the door, and in
+	 * the passage up to the door (the walkway is x 48..50, z 14..20, the passage x 48..50, z 11..15).
+	 * A box over them, not a circle round the door: the east end of the north platform, across the
+	 * gap and behind the passage's wall, lay within 6 blocks of the door and used the hint up there.
+	 */
+	static final AABB RELEASE_TOLD = new AABB(47.5, R - 1.5, DestroyerInterior.SERVICE_DOOR_Z + 1.0, 50.5, R + 1.5, 17.5);
 	/** Where the troopers who reach the bolted door stand, and the places round it they search after. */
 	static final Vec3 DOOR_OUTSIDE = new Vec3(48.9, R, 16.2);
 	static final List<Vec3> SEARCH = List.of(new Vec3(50.6, R, 21.4), new Vec3(52.0, R, 26.8), new Vec3(49.2, R, 28.6), new Vec3(48.8, R, 17.6));
@@ -247,6 +259,7 @@ final class Scenes {
 	static void escapeBegin(StorySession s, boolean again) {
 		s.set("service.lit");
 		s.unset("tmp.release");
+		s.unset("tmp.release_told");
 
 		if (!again) {
 			s.radio("kestrel", "sabercraft.story.radio.m5_service");
@@ -267,23 +280,24 @@ final class Scenes {
 		}
 
 		if (s.has("tmp.release")) {
-			ServerPlayer player = s.player();
+			// Phase 30: once begun it runs by itself, wherever the player is.
+			int progress = s.counters.merge("release", 1, Integer::sum);
+
+			if (progress % 2 == 0) {
+				Story.cue(s, Story.CUE_HINT, "progress", "sabercraft.story.hint.service_release", progress * 100 / RELEASE);
+			}
+
+			if (progress >= RELEASE) {
+				released(s);
+			}
+		} else if (!s.has("service.open") && Story.DESTROYER.equals(s.here) && !s.has("tmp.release_told")) {
+			// Phase 30: on the walkway to the door and the release not begun: where it is and what to
+			// do (once a try; only there, not from the north platform across the gap).
 			Vec3 me = s.local(Story.DESTROYER);
-			boolean near = player != null && Story.DESTROYER.equals(s.here)
-					&& DestroyerInterior.SERVICE_RELEASE.getCenter().distanceTo(new Vec3(me.x, R + 1.2, me.z)) < 1.9;
 
-			if (near) {
-				int progress = s.counters.merge("release", 1, Integer::sum);
-
-				if (progress % 8 == 0) {
-					Story.cue(s, Story.CUE_HINT, "progress", "sabercraft.story.hint.service_release", progress * 100 / RELEASE);
-				}
-
-				if (progress >= RELEASE) {
-					released(s);
-				}
-			} else if (s.stepTicks % 40 == 0) {
-				s.hint("sabercraft.story.hint.service_release_paused");
+			if (RELEASE_TOLD.contains(me)) {
+				s.set("tmp.release_told");
+				s.hint("sabercraft.story.hint.service_click");
 			}
 		}
 
@@ -293,7 +307,7 @@ final class Scenes {
 		}
 	}
 
-	/** The emergency release is clicked: pulling it takes a few seconds beside it. */
+	/** The emergency release is clicked (or the shut door): Phase 30: it unlocks by itself in RELEASE ticks, wherever the player goes. */
 	static void release(StorySession s) {
 		if (s.has("service.open") || s.has("tmp.release")) {
 			return;
@@ -303,6 +317,8 @@ final class Scenes {
 		s.counters.put("release", 0);
 		Story.cue(s, Story.CUE_HINT, "progress", "sabercraft.story.hint.service_release", 0);
 		Story.cue(s, Story.CUE_SOUND, "", "story.hack", 0);
+		// Phase 30: it runs by itself now (the hint to click goes; the bar shows over it).
+		s.hint("sabercraft.story.hint.service_running");
 	}
 
 	/** The release is pulled: the door opens (for anyone near it, as doors do). */
@@ -318,6 +334,13 @@ final class Scenes {
 	/** The panel inside bolts the door (not with someone in the doorway). */
 	static void bolt(StorySession s) {
 		if (!s.has("service.open") || s.has("service.locked")) {
+			return;
+		}
+
+		// Phase 30: only from behind the door. Its panel can be reached through the open doorway, and
+		// bolted from outside the door shut the player out of the crawl way, their way out.
+		if (!Chapter1.behindServiceDoor(s)) {
+			s.hint("sabercraft.story.hint.service_bolt_inside");
 			return;
 		}
 

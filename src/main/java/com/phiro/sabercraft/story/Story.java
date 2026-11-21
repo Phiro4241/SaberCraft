@@ -1794,7 +1794,8 @@ public final class Story {
 			int flags = (f.lamp ? StoryFiguresPayload.LAMP : 0) | (f.saber ? StoryFiguresPayload.SABER : 0) | (f.hostile ? StoryFiguresPayload.HOSTILE : 0)
 					| (f.talks && session.chapter.talksNow(session, f) ? StoryFiguresPayload.TALKS : 0) | (f.observer ? StoryFiguresPayload.OBSERVER : 0) | (f.lit ? StoryFiguresPayload.LIT : 0)
 					| (Combat.pistol(f) && f.observer && (f.mode == Figure.CHASE || f.mode == Figure.FIGHT) && f.react != Figure.COMLINK ? StoryFiguresPayload.ARMED : 0)
-					| (Finale.disarmed(f) ? StoryFiguresPayload.UNARMED : 0) | (f.ringOn && f.saber && f.lit ? StoryFiguresPayload.RING_SPIN : 0);
+					| (Finale.disarmed(f) ? StoryFiguresPayload.UNARMED : 0) | (f.ringOn && f.saber && f.lit ? StoryFiguresPayload.RING_SPIN : 0)
+					| (Finale.spinLive(f) ? StoryFiguresPayload.SPIN_LIVE : 0);
 			list.add(new StoryFiguresPayload.Fig(f.id, f.kind(), f.pose(), f.speaker, (float) f.x, (float) f.y, (float) f.z, f.yaw, f.headYaw, f.speed, f.stage,
 					Math.round(f.suspicion * 255.0F), flags, Math.round(Math.max(0.0F, f.health) * 255.0F), Finale.shown(f), f.reactShown()));
 		}

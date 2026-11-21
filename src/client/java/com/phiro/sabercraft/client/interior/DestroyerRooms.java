@@ -29,7 +29,7 @@ final class DestroyerRooms {
 	}
 
 	/** The blocks of the plan's shell; anything else (storage, stairs, chains) shows as itself. */
-	private static final Set<Block> SHELL = Set.of(Blocks.CONCRETE.gray(), Blocks.POLISHED_DEEPSLATE, Blocks.POLISHED_BLACKSTONE,
+	static final Set<Block> SHELL = Set.of(Blocks.CONCRETE.gray(), Blocks.POLISHED_DEEPSLATE, Blocks.POLISHED_BLACKSTONE,
 			Blocks.POLISHED_BLACKSTONE_BRICKS, Blocks.CONCRETE.yellow(), Blocks.CONCRETE.white(), Blocks.CONCRETE.lightGray());
 
 	/** The radius of the reactor's smooth wall (inside the barrier ring at the catwalk's edge). */
@@ -95,7 +95,7 @@ final class DestroyerRooms {
 
 	// --- The panelling ---------------------------------------------------------------------------
 
-	private static void skin(MeshBuilder b, Surface s, VirtualPlot plot) {
+	static void skin(MeshBuilder b, Surface s, VirtualPlot plot) {
 		Block block = s.block().getBlock();
 
 		if (!SHELL.contains(block)) {
@@ -116,6 +116,16 @@ final class DestroyerRooms {
 
 		// The pedestal of the helm's lever is inside the helm console.
 		if (bx == CX && by == DECK + 1 && bz == WINDOW_Z + 2) {
+			return;
+		}
+
+		// Phase 30: a way's floor running out over the shaft in front of its round wall (the
+		// gallery's onto its landing): steel all round under the platform like the steelwork's. Its
+		// sides were left bare (taken for the round wall's), and from the working level below one
+		// saw blackstone under the metal platform at the reactor's entrance.
+		if (s.kind() != Kind.FLOOR && block == Blocks.POLISHED_BLACKSTONE_BRICKS && outInShaft(s)) {
+			b.layer(Layer.SOLID).worldLight().white().anim(0).twoSided(false).tile(InteriorAtlas.IMP_METAL, 1.0F);
+			Skin.face(b, s, Skin.EPS);
 			return;
 		}
 
@@ -161,6 +171,39 @@ final class DestroyerRooms {
 			Skin.face(b, s, Skin.EPS * 3);
 			b.noLight().layer(Layer.SOLID).worldLight().white().anim(0);
 		}
+	}
+
+	/**
+	 * Phase 30: whether a face (its side or underside) lies in the reactor shaft in front of its
+	 * round wall as drawn (at least partly: the rest is behind the wall), above the depth (from
+	 * the working level's floor blocks up).
+	 */
+	static boolean outInShaft(Surface s) {
+		// (From the working level's floor up; a floor block there is seen from below too.)
+		boolean underFloor = s.y() == REACTOR_BOTTOM - 2 && s.kind() == Kind.CEILING;
+
+		if (s.y() < REACTOR_BOTTOM - 1 && !underFloor || s.y() >= REACTOR_TOP) {
+			return false;
+		}
+
+		float x0 = s.x();
+		float z0 = s.z();
+		float x1 = s.x() + 1.0F;
+		float z1 = s.z() + 1.0F;
+
+		switch (s.toward()) {
+			case NORTH -> z1 = z0;
+			case SOUTH -> z0 = z1;
+			case WEST -> x1 = x0;
+			case EAST -> x0 = x1;
+			default -> {
+				// (An underside: the cell's square.)
+			}
+		}
+
+		double nx = Mth.clamp(REACTOR_X, x0, x1) - REACTOR_X;
+		double nz = Mth.clamp(REACTOR_Z, z0, z1) - REACTOR_Z;
+		return nx * nx + nz * nz < (REACTOR_WALL - 0.02) * (REACTOR_WALL - 0.02);
 	}
 
 	/** Phase 25: how far the reactor core's light reaches over the floors round it. */

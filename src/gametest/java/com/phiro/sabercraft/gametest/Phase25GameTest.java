@@ -621,6 +621,21 @@ public class Phase25GameTest implements FabricClientGameTest {
 			Vec3 away = new Vec3(me.x - her.x, 0.0, me.z - her.z);
 			away = away.lengthSqr() < 0.01 ? new Vec3(0.0, 0.0, 1.0) : away.normalize();
 			Vec3 to = her.add(away.scale(6.5));
+
+			// (Phase 30: her spin now hits at once and throws the player out of it, so where they
+			// stand before the throw varies: the spot is kept on the hangar's floor, off the force
+			// field (switched off in the fight: one fell through it) and off the walls.)
+			for (int turn = 1; turn < 16 && !throwSpot(to); turn++) {
+				double a = Math.toRadians(turn * 22.5);
+				Vec3 tried = new Vec3(away.x * Math.cos(a) - away.z * Math.sin(a), 0.0, away.x * Math.sin(a) + away.z * Math.cos(a));
+
+				if (throwSpot(her.add(tried.scale(6.5)))) {
+					away = tried;
+					to = her.add(tried.scale(6.5));
+				}
+			}
+
+			SaberCraft.LOGGER.info("PHASE25 THROW: her at {}, the player put at {}", her, to);
 			ServerPlayer player = this.me(s);
 			Vec3 world = to.add(Vec3.atLowerCornerOf(this.session(s).destroyer));
 			player.teleportTo(s.getLevel(ShipInteriors.DIMENSION), world.x, world.y, world.z, java.util.Set.of(),
@@ -661,6 +676,15 @@ public class Phase25GameTest implements FabricClientGameTest {
 		SaberCraft.LOGGER.info("PHASE25 THROW: begun {}, hits {}, blocked {}, dodged {}, spins {}", after[0], after[1], after[2], after[3], after[4]);
 		check(after[1] + after[2] + after[3] > counts[1] + counts[2] + counts[3], "the thrown staff did not reach the player standing in its way");
 		check(this.on(s -> this.session(s).timers.getOrDefault("throw", 0) > 0), "she can throw again at once");
+	}
+
+	/** Phase 30: whether a spot (plot space) lies on the hangar's floor, off its force field and away from its walls. */
+	private static boolean throwSpot(Vec3 at) {
+		boolean floor = at.x > DestroyerInterior.HANGAR_X0 + 3 && at.x < DestroyerInterior.HANGAR_X1 - 3 && at.z > DestroyerInterior.HANGAR_Z0 + 3
+				&& at.z < DestroyerInterior.HANGAR_Z1 - 3;
+		boolean field = at.x > DestroyerInterior.FIELD_X0 - 2 && at.x < DestroyerInterior.FIELD_X1 + 3 && at.z > DestroyerInterior.FIELD_Z0 - 2
+				&& at.z < DestroyerInterior.FIELD_Z1 + 3;
+		return floor && !field;
 	}
 
 	/** Turns the player to her. */

@@ -255,7 +255,7 @@ final class CrewModels {
 			}
 
 			b.white().fit(look.body(), 0.0F, 0.75F, 1.0F, 1.0F);
-			b.box(-HALF_W - 0.03F, hip - 0.42F, -HALF_D - 0.04F, HALF_W + 0.03F, hip + 0.02F, HALF_D + 0.05F, MeshBuilder.ALL & ~MeshBuilder.UP);
+			b.box(-HALF_W - ROBE_SIDE, hip + ROBE_BOTTOM, -HALF_D - ROBE_BACK, HALF_W + ROBE_SIDE, hip + ROBE_TOP, HALF_D + ROBE_FRONT, MeshBuilder.ALL & ~MeshBuilder.UP);
 		} else if (guard) {
 			b.colour(0xFFFFFFFF).fit(look.leg());
 			b.box(-HALF_W - 0.04F, 0.02F, -HALF_D - 0.05F, HALF_W + 0.04F, hip, HALF_D + 0.06F);
@@ -274,7 +274,7 @@ final class CrewModels {
 		float reactRoll = gear.down() ? 0.0F : reactRoll(gear, seed);
 
 		if (gear.lean() != 0.0F || gear.crouch() != 0.0F || gear.aim() != 0.0F || reactLean != 0.0F || reactRoll != 0.0F) {
-			b.rotateX(-gear.lean() * 16.0F + gear.crouch() * 22.0F + gear.aim() * 4.0F - reactLean);
+			b.rotateX(tilt(gear, reactLean));
 
 			if (reactRoll != 0.0F) {
 				b.rotateZ(reactRoll);
@@ -313,7 +313,10 @@ final class CrewModels {
 
 		if (gear.inquisitor() && !thrown && (staff != null || hilt != null)) {
 			ring = ringHold(shoulder, gear, staff != null ? InquisitorSaber.centred(staff) : InquisitorSaber.fromEmitter(hilt));
-			ring = InquisitorSaber.clear(ring, gear.ring(), second > 0.0F, shoulder, gear.blur() > 0.0F);
+			// (Phase 30: against her body as drawn: her torso leaning over her hips as it is, the robe
+			// and legs below it, her head turned as it is drawn below; eased in and out, see steady.)
+			float headYaw = Float.isNaN(headTurn) || gear.down() ? glance : headTurn;
+			ring = InquisitorSaber.steady(seed, t, ring, gear.ring(), second > 0.0F, gear.blur(), Lean.of(tilt(gear, reactLean), reactRoll, headYaw));
 		}
 
 		float fling = gear.down() ? 0.0F : reactFling(gear);
@@ -717,10 +720,25 @@ final class CrewModels {
 	 * Phase 26: where she holds her Inquisitor's saber beyond the blade's own hold: before the ring's
 	 * rush it comes up before her chest, the grip pointing at the player, so that the spinning ring
 	 * is a disc of blades between them; in a spin it is raised before her face the same way; drawn
-	 * back to throw, the grip points up over her shoulder (the ring spinning flat behind her head).
-	 * Elsewhere the blade's hold as it is (the ring's angle does the rest).
+	 * back to throw, the grip points up over her shoulder (the ring spinning flat behind her head;
+	 * Phase 30: above it). Phase 30: while the ring spins fast, its disc stands upright before her
+	 * (unless she holds it high). Elsewhere the blade's hold as it is (the ring's angle does the rest).
 	 */
 	static InquisitorSaber.Hold ringHold(float shoulder, Gear gear, InquisitorSaber.Hold hold) {
+		if (gear.blur() > 0.0F) {
+			// Phase 30: while the ring spins fast (its blades a disc round the grip) the grip comes
+			// level and a little up, so that the disc stands upright before her: tilted back with the
+			// grip, its upper half swept through her head (and to keep it out it had to be held so far
+			// off that her hands no longer reached the grip). Fully so from a quarter of the blur on;
+			// not with the grip held high (an overhead blow's wind-up: over her head the disc is clear
+			// of it as it is, and levelled there the grip went out of her hands).
+			float u = Mth.clamp(gear.blur() * 4.0F, 0.0F, 1.0F) * Mth.clamp((shoulder + DISC_HIGH - hold.c()[1]) / DISC_FADE, 0.0F, 1.0F);
+			float[] hc = hold.c();
+			float[] ha = hold.a();
+			hold = InquisitorSaber.of(new float[] {hc[0], hc[1] + DISC_RAISE * u, hc[2]}, norm(ha[0], ha[1] * Mth.lerp(u, 1.0F, DISC_UPRIGHT), ha[2]),
+					hold.d());
+		}
+
 		float k = 0.0F;
 		float[] c = null;
 		float[] a = null;
@@ -742,7 +760,9 @@ final class CrewModels {
 		} else if (gear.react() == THROW_WIND) {
 			float p = Mth.clamp(gear.reactP(), 0.0F, 1.0F);
 			k = Mth.clamp(p * 2.5F, 0.0F, 1.0F);
-			c = new float[] {-0.4F, shoulder + 0.28F, -0.06F};
+			// (Phase 30: over her head, not round it: at the head's height its spinning disc swept
+			// through her head. Raised 0.35; the hand still reaches the grip.)
+			c = new float[] {-0.4F, shoulder + 0.63F, -0.06F};
 			a = new float[] {-0.15F, 1.0F, 0.1F};
 			d = new float[] {0.0F, 0.0F, 1.0F};
 		}
@@ -761,6 +781,16 @@ final class CrewModels {
 				new float[] {Mth.lerp(e, ha[0], an[0]), Mth.lerp(e, ha[1], an[1]), Mth.lerp(e, ha[2], an[2])},
 				new float[] {Mth.lerp(e, hd[0], dn[0]), Mth.lerp(e, hd[1], dn[1]), Mth.lerp(e, hd[2], dn[2])});
 	}
+
+	/** Phase 30: the spinning disc stood upright: how much of the grip's upward tilt stays, and how far it is raised (blocks). */
+	static final float DISC_UPRIGHT = 0.2F;
+	static final float DISC_RAISE = 0.18F;
+	/**
+	 * Phase 30: up to how high over the shoulder the grip's middle is held for the disc to be stood
+	 * upright fully, and over how much more it fades out (blocks).
+	 */
+	static final float DISC_HIGH = 0.2F;
+	static final float DISC_FADE = 0.3F;
 
 	/**
 	 * Phase 25: moves the staff away from her, the way its middle lies from her (in front of her,
@@ -803,6 +833,82 @@ final class CrewModels {
 		float half = HALF_W + 0.06F;
 		float depth = HALF_D + 0.06F;
 		return Math.abs(x) < half && Math.abs(z) < depth && y > -LEG && y < shoulder + 0.06F + HEAD;
+	}
+
+	/**
+	 * Phase 30: whether that point (body space: her torso's) comes within {@code margin} of her body
+	 * as she is drawn: the torso; the head (a cube of {@link #HEAD}) turned as her look turns it now
+	 * ({@code lean}'s head turn; it was a box only as deep as the torso, and her head is deeper than
+	 * that); the robe over her legs and the legs under it, which stay as they are when her torso
+	 * leans over its hips ({@code lean}: thrown back by a hit, crouching): the point is turned into
+	 * their space first. For her Inquisitor's saber ({@link InquisitorSaber#clear}): Phiro saw its
+	 * blades in her head and her belly. (Her saber staff of Phase 25 keeps {@link #inBody}.)
+	 */
+	static boolean inDrawnBody(float x, float y, float z, Lean lean, float margin) {
+		float m = margin;
+
+		// (Its top too, at the shoulders: the head over it is no wider than the torso, and turned it
+		// no longer covers the torso's corners there.)
+		if (y >= -m && y < BODY + m && Math.abs(x) < HALF_W + m && Math.abs(z) < HALF_D + m) {
+			return true;
+		}
+
+		if (y >= BODY - m && y < BODY + HEAD + m) {
+			float hx = x * lean.hc() - z * lean.hs();
+			float hz = x * lean.hs() + z * lean.hc();
+			float h = HEAD * 0.5F + m;
+
+			if (Math.abs(hx) < h && Math.abs(hz) < h) {
+				return true;
+			}
+		}
+
+		// The robe (from just over the hips to the knees) and the legs: in the hips' space.
+		float x1 = x * lean.cr() - y * lean.sr();
+		float y1 = x * lean.sr() + y * lean.cr();
+		float hy = y1 * lean.ct() - z * lean.st();
+		float hz = y1 * lean.st() + z * lean.ct();
+		return hy > -LEG && hy < ROBE_TOP + m && Math.abs(x1) < HALF_W + ROBE_SIDE + m && hz > -(HALF_D + ROBE_BACK + m) && hz < HALF_D + ROBE_FRONT + m;
+	}
+
+	/** Phase 30: her robe as drawn round her hips (see {@link #figure}): its top over the hips, how far it stands out at the sides, behind and in front. */
+	static final float ROBE_TOP = 0.02F;
+	static final float ROBE_BOTTOM = -0.42F;
+	static final float ROBE_SIDE = 0.03F;
+	static final float ROBE_BACK = 0.04F;
+	static final float ROBE_FRONT = 0.05F;
+
+	/**
+	 * Phase 30: how her torso is turned over her hips as drawn ({@link #tilt} about x, then the
+	 * roll about z, degrees), and her head on her torso (its turn about y, degrees), as cosines and
+	 * sines: her robe and legs stay below the torso, her head turns with her look.
+	 */
+	record Lean(float ct, float st, float cr, float sr, float hc, float hs) {
+		static final Lean NONE = new Lean(1.0F, 0.0F, 1.0F, 0.0F, 1.0F, 0.0F);
+
+		static Lean of(float tilt, float roll, float head) {
+			float t = tilt * Mth.DEG_TO_RAD;
+			float r = roll * Mth.DEG_TO_RAD;
+			float h = head * Mth.DEG_TO_RAD;
+			return new Lean(Mth.cos(t), Mth.sin(t), Mth.cos(r), Mth.sin(r), Mth.cos(h), Mth.sin(h));
+		}
+
+		/**
+		 * As her torso is drawn in that gear for the figure {@code seed} at the moment {@code t}
+		 * (seconds): its lean over the hips and its roll aside (a heavy blow's roll one way or the
+		 * other, a stumble's sway, a lock's or slam's tremble), her head turned by {@code head}
+		 * degrees.
+		 */
+		static Lean of(Gear gear, float head, float t, int seed) {
+			float reactLean = gear.down() ? 0.0F : reactLean(gear, t, seed);
+			float reactRoll = gear.down() ? 0.0F : reactRoll(gear, seed);
+			return of(tilt(gear, reactLean), reactRoll, head);
+		}
+	}
+
+	/** Phase 30: how far her torso is turned over her hips about x (degrees, as drawn): leaning back, crouching, aiming, thrown back. */
+	static float tilt(Gear gear, float reactLean) {
+		return -gear.lean() * 16.0F + gear.crouch() * 22.0F + gear.aim() * 4.0F - reactLean;
 	}
 
 	/**

@@ -785,6 +785,8 @@ final class StoryRooms {
 		b.layer(Layer.SOLID).worldLight().white().anim(0).twoSided(false);
 		collapse(b, seconds, plot, story);
 		serviceLights(b, seconds, story);
+		// Phase 30: the reactor's lift on its way: light running along its posts.
+		LiftHud.lights(b, seconds, plot);
 
 		// The cells' force fields, while their barriers stand.
 		// Phase 26: the one M-31 works on stutters first (stripes drop out, the whole field blinks,

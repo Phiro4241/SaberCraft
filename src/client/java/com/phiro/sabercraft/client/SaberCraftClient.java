@@ -116,6 +116,8 @@ public class SaberCraftClient implements ClientModInitializer {
 		// Phase 15: the detailed starship interiors and hulls.
 		com.phiro.sabercraft.client.interior.InteriorScene.init();
 		com.phiro.sabercraft.client.interior.InteriorClient.init();
+		// Phase 30: the reactor's lift on its way, on the HUD and on the lift.
+		com.phiro.sabercraft.client.interior.LiftHud.init();
 		com.phiro.sabercraft.client.interior.CollisionDebug.init();
 		// Phase 19: the story mode (its HUD, dialogs, people and keys).
 		com.phiro.sabercraft.client.story.StoryClient.init();

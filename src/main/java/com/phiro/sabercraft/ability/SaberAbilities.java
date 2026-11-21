@@ -1193,6 +1193,16 @@ public final class SaberAbilities {
 		sendCooldown(player, state, ability, player.level().getGameTime());
 	}
 
+	/**
+	 * Only for tests (Phase 30): the player in a roll's evading moment from the next tick on, as the
+	 * server times a dodge (the player's own client moves them; here nothing does).
+	 */
+	public static void evadeForTests(ServerPlayer player) {
+		State state = STATES.computeIfAbsent(player.getUUID(), id -> new State());
+		state.maneuver = SaberManeuver.ROLL;
+		state.dashStart = player.level().getGameTime() - 1;
+	}
+
 	/** Only for tests: sets the stamina of a player. */
 	public static void setStaminaForTests(ServerPlayer player, float stamina) {
 		State state = STATES.computeIfAbsent(player.getUUID(), id -> new State());
