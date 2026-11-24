@@ -1212,6 +1212,25 @@ public final class SaberAbilities {
 	}
 
 	/**
+	 * Phase 31: the player as at the start of a fresh fight (the story's checkpoint, its boss duel
+	 * started again): no stricter guard, no guard, dash or spin running, the guard ready, full
+	 * stamina. Nothing of the fight lost before is carried into the next one.
+	 */
+	public static void freshForStory(ServerPlayer player) {
+		strictGuard(player, null);
+		interrupt(player);
+		State state = STATES.computeIfAbsent(player.getUUID(), id -> new State());
+		long now = player.level().getGameTime();
+		state.readyAt.remove(SaberAbility.GUARD);
+		sendCooldown(player, state, SaberAbility.GUARD, now);
+		state.stamina = AbilityConfig.get().staminaMax;
+		state.staminaUsedAt = Long.MIN_VALUE / 2;
+		state.counterUntil = -1;
+		state.counterUsed = false;
+		sendStamina(player, state);
+	}
+
+	/**
 	 * Phase 28: no stamina comes back for now (the story's boss duel: a block held with the use key
 	 * counts as the guard, which gets none back while it is up).
 	 */

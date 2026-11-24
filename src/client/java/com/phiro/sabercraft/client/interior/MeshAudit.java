@@ -1469,6 +1469,17 @@ public final class MeshAudit {
 		return out;
 	}
 
+	/** Phase 31: a duel begun again: the poses of the sabers drawn before are forgotten (not only for tests). */
+	public static void forgetDuel() {
+		StoryModels.forgetSabers();
+		InquisitorSaber.forget();
+	}
+
+	/** Phase 31, for the tests: how far that figure's staff shows its second blade (0 one blade .. 1 both). */
+	public static float twinProgress(int id) {
+		return StoryModels.twinForTest(id);
+	}
+
 	/** Phase 30, for the tests: how many frames her spin's danger circle was drawn. */
 	public static int spinCircles() {
 		return StoryModels.spinCirclesForTest();

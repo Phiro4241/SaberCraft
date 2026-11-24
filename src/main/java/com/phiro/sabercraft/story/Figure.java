@@ -298,6 +298,82 @@ public final class Figure {
 	public float aimHead;
 	public long aimAt = -1000L;
 
+	/**
+	 * Phase 31: everything of a fight back to how a new figure has it, so that a fight begun again
+	 * (after the player was caught in its second phase, or a long fight) is a fresh one: her
+	 * strength (and so the first phase), what she does and winds up, her thrown staff, her ring,
+	 * her spin, her slam, her moves lately, what she noticed of the player's guard, reactions and
+	 * knock-back. Who she is and where she stands are left alone. Every field a fight changes
+	 * belongs here (a new one too).
+	 */
+	public void resetFight() {
+		this.health = 1.0F;
+		this.lit = false;
+		this.disarmed = false;
+		this.cooldown = 0;
+		this.windup = 0;
+		this.timer = 0;
+		this.action = 0;
+		this.attack = 0;
+		this.combo = 0;
+		this.pattern = -1;
+		this.parried = 0;
+		this.hits = 0;
+		this.burst = 0;
+		this.react = 0;
+		this.reactTicks = 0;
+		this.reactLength = 0;
+		this.pushX = 0.0;
+		this.pushZ = 0.0;
+		this.drop = 0.0;
+		this.hurtAt = -1000L;
+		this.strokes = 0;
+		this.strokeAt = -1000L;
+		this.lockScene = false;
+		this.throwFrom = null;
+		this.throwFar = null;
+		this.throwHand = null;
+		this.throwOut = 0;
+		this.throwBack = 0;
+		this.throwAge = 0;
+		this.throwHit = 0;
+		this.throwLow = false;
+		this.flightHits = 0;
+		this.thrown = 0;
+		this.lunge = false;
+		this.ringOn = false;
+		this.tempo = 1.0F;
+		this.openness = 1.0F;
+		this.power = 1.0F;
+		this.rearHits = 0;
+		this.rearAt = -1000L;
+		this.behindTicks = 0;
+		this.turnabout = false;
+		this.spinHitWindup = -1;
+		this.spinReached = false;
+		this.spinHurt = false;
+		this.spinDodged = false;
+		this.spinInside = false;
+		java.util.Arrays.fill(this.moves, 0);
+		this.slamDir = null;
+		this.shove = false;
+		this.guardSeenUp = false;
+		this.guardDownAt = -1000L;
+		this.raiseSpam = false;
+		this.aimHead = this.headYaw;
+		this.aimAt = -1000L;
+		this.lure = null;
+		this.path = java.util.List.of();
+		this.pathIndex = 0;
+		this.pathAt = -1000L;
+		this.pathGoal = null;
+		this.pathReaches = true;
+		this.pathUsedAt = -1000L;
+		this.speed = 0.0F;
+		this.strafe = 1;
+		this.strafeUntil = 0L;
+	}
+
 	/** Phase 23: starts a reaction of that kind for that many ticks. */
 	public void react(int kind, int ticks) {
 		this.react = kind;

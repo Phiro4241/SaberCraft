@@ -1276,4 +1276,81 @@ public final class StoryTesting {
 	public static String objective(StorySession s) {
 		return Chapter1.objective(s, s.step());
 	}
+
+	// --- Phase 31: the boss fight begun again ---------------------------------------------------------
+
+	/**
+	 * Phase 31: everything left over of a fight, as a list of what is not as in a fresh one: her
+	 * (phase, strength, what she does, staff, ring, spin, slam, moves, reactions), the session's
+	 * flags and timers of a fight, the Focus, and the player (stricter guard, stamina, the guard's
+	 * cooldown, slowness). {@code started}: the fight was just begun (its own flag and the first
+	 * pauses are expected then). Empty: nothing is left over.
+	 */
+	public static List<String> fightLeftovers(StorySession s, net.minecraft.server.level.ServerPlayer player, boolean started) {
+		List<String> left = new java.util.ArrayList<>();
+		Figure f = s.figure("shadow");
+
+		if (f != null) {
+			check(left, f.health >= 1.0F, "health " + f.health);
+			check(left, Finale.phase(f) == 1, "phase " + Finale.phase(f));
+			check(left, !f.ringOn, "ring on");
+			check(left, f.thrown == 0, "thrown " + f.thrown);
+			check(left, f.throwFrom == null && f.throwAge == 0, "staff out");
+			check(left, !f.lunge && !f.lockScene && !f.disarmed, "lunge/lock/disarmed");
+			check(left, !Finale.spinLive(f) && f.spinHitWindup == -1 && !f.spinHurt && !f.spinReached && !f.spinDodged, "spin");
+			check(left, f.slamDir == null && !f.shove, "slam/shove");
+			check(left, java.util.Arrays.stream(f.moves).allMatch(m -> m == 0), "moves " + java.util.Arrays.toString(f.moves));
+			check(left, f.pattern == -1 && f.combo == 0 && f.hits == 0 && f.parried == 0 && f.burst == 0, "pattern/combo/hits");
+			check(left, f.react == 0 && f.reactTicks == 0 && f.pushX == 0.0 && f.pushZ == 0.0, "reaction " + f.react);
+			check(left, f.rearHits == 0 && f.behindTicks == 0 && f.flightHits == 0 && f.strokes == 0, "rear/flight/strokes");
+			check(left, started ? f.action == Finale.GUARD : f.action == Finale.GUARD && !f.lit, "action " + action(f) + (f.lit ? " lit" : ""));
+		}
+
+		for (String flag : List.of(Finale.BOSS_SCENE, Finale.BOSS_DONE, "tmp.boss_reveal", Finale.SCENE_PENDING, "tmp.boss_fierce", "tmp.hint_guard_break",
+				"tmp.hint_guard_strain")) {
+			check(left, !s.has(flag), flag);
+		}
+
+		check(left, started == s.has("tmp.duel"), "tmp.duel " + s.has("tmp.duel"));
+
+		for (String timer : List.of("rush", "throw", "slam", "lunge", "shove", "ring_min", "rear_answer", "guard_broken", "throw_back", "boss_mid",
+				"boss_pending", "stroke")) {
+			check(left, !s.timers.containsKey(timer), "timer " + timer);
+		}
+
+		if (!started) {
+			check(left, !s.timers.containsKey("push") && !s.timers.containsKey("leap"), "timer push/leap");
+		}
+
+		check(left, s.focus >= 1.0F && s.focusTicks == 0, "focus " + s.focus + "/" + s.focusTicks);
+		long[] strict = com.phiro.sabercraft.ability.SaberAbilities.strictForTest(player);
+		check(left, strict[0] == 0 && strict[1] == 0 && strict[2] == 0 && strict[3] == 0, "strict guard " + java.util.Arrays.toString(strict));
+		check(left, com.phiro.sabercraft.ability.SaberAbilities.stamina(player) >= com.phiro.sabercraft.ability.AbilityConfig.get().staminaMax - 0.5F,
+				"stamina " + com.phiro.sabercraft.ability.SaberAbilities.stamina(player));
+		check(left, !player.hasEffect(net.minecraft.world.effect.MobEffects.SLOWNESS), "slowness");
+		check(left, !s.captureDue, "capture still due");
+		return left;
+	}
+
+	private static void check(List<String> left, boolean fresh, String what) {
+		if (!fresh) {
+			left.add(what);
+		}
+	}
+
+	/** Phase 31: the next hit takes the player down (no resistance, one half heart). */
+	public static void lethal(net.minecraft.server.level.ServerPlayer player) {
+		player.removeEffect(net.minecraft.world.effect.MobEffects.RESISTANCE);
+		player.setHealth(1.0F);
+	}
+
+	/** Phase 31: the duel begins anew with the figure she is now (as her "threat" line does). */
+	public static void restartDuel(StorySession s) {
+		Finale.duelStarts(s);
+	}
+
+	/** Phase 31: how often a fight was reset since the game started. */
+	public static int fightResets() {
+		return Finale.resetsForTest();
+	}
 }

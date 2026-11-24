@@ -37,6 +37,12 @@ public record StoryFiguresPayload(BlockPos origin, long time, List<Fig> figures)
 	 * middle within it: no further than the circle drawn).
 	 */
 	public static final int SPIN_LIVE = 512;
+	/**
+	 * Phase 31: she is in the second phase of the duel by her strength (the server's word): her
+	 * staff's second blade may show. A fight begun again has her at full strength, so a client that
+	 * still remembered the second phase cannot draw it.
+	 */
+	public static final int TWIN = 1024;
 	public static final double SPIN_RADIUS = 3.5;
 	/**
 	 * Phase 30: her spin's two parts (ticks of her wind-up): the ring spinning up round the grip

@@ -76,6 +76,12 @@ public final class StorySession {
 	/** After a capture: a few seconds before anyone can see the player again. */
 	public int grace;
 	/**
+	 * Phase 31: the player was struck down (a lethal hit): they are caught at the start of the next
+	 * tick, not in the middle of the code that hit them (which then went on with the old fight
+	 * against the restored checkpoint: a knock-back after the teleport, the old fight's cues).
+	 */
+	boolean captureDue;
+	/**
 	 * Phase 27: back at a checkpoint, the player gets their bearings: while they stay near where
 	 * they were put (and do nothing there), nobody sees them, for at most {@link #SHIELD} ticks.
 	 * Not kept: only for this restore.
@@ -283,6 +289,10 @@ public final class StorySession {
 			Story.resetShip(this);
 			Story.placeAtCheckpoint(this, step);
 			Story.clearRespawn(this);
+			// Phase 31: nothing of a fight before is carried over (the boss in her first phase again,
+			// the player's stamina and guard afresh, the client back to one blade).
+			this.captureDue = false;
+			Finale.resetFight(this);
 		}
 
 		this.chapter.begin(this, step, restore);

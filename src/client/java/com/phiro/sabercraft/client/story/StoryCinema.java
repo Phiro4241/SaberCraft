@@ -187,6 +187,13 @@ public final class StoryCinema {
 		}
 	}
 
+	/** Phase 31: that film ends here if it is showing (not skipped: the server ended it already). */
+	static void stopIf(Minecraft client, String name) {
+		if (name.equals(film)) {
+			stop(client, false);
+		}
+	}
+
 	/** Phase 31: whether that screen is a film's (for the story's key gate). */
 	static boolean isFilmScreen(net.minecraft.client.gui.screens.@Nullable Screen screen) {
 		return screen instanceof FilmScreen;

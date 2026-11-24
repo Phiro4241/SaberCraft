@@ -154,7 +154,11 @@ public final class Story {
 					session.shield = 0;
 				}
 
-				capture(session, null);
+				// Phase 31: caught at the start of the next tick (see StorySession.captureDue).
+				if (session.grace <= 0) {
+					session.captureDue = true;
+				}
+
 				return false;
 			}
 
@@ -341,6 +345,8 @@ public final class Story {
 		if (session != null) {
 			// Phase 20: calm, how far one got is kept (in a chase the last checkpoint stays).
 			session.keepOnLeave();
+			// Phase 31: a fight left behind leaves nothing on the player or the client.
+			Finale.resetFight(session);
 		}
 
 		SESSIONS.remove(player.getUUID());
@@ -765,6 +771,12 @@ public final class Story {
 			if (player == null) {
 				SESSIONS.remove(session.player);
 				continue;
+			}
+
+			// Phase 31: struck down in the last tick: caught now, before anything else of this tick.
+			if (session.captureDue) {
+				session.captureDue = false;
+				capture(session, null);
 			}
 
 			// Where they are.
@@ -1795,7 +1807,7 @@ public final class Story {
 					| (f.talks && session.chapter.talksNow(session, f) ? StoryFiguresPayload.TALKS : 0) | (f.observer ? StoryFiguresPayload.OBSERVER : 0) | (f.lit ? StoryFiguresPayload.LIT : 0)
 					| (Combat.pistol(f) && f.observer && (f.mode == Figure.CHASE || f.mode == Figure.FIGHT) && f.react != Figure.COMLINK ? StoryFiguresPayload.ARMED : 0)
 					| (Finale.disarmed(f) ? StoryFiguresPayload.UNARMED : 0) | (f.ringOn && f.saber && f.lit ? StoryFiguresPayload.RING_SPIN : 0)
-					| (Finale.spinLive(f) ? StoryFiguresPayload.SPIN_LIVE : 0);
+					| (Finale.spinLive(f) ? StoryFiguresPayload.SPIN_LIVE : 0) | (f.saber && Finale.phase(f) >= 2 ? StoryFiguresPayload.TWIN : 0);
 			list.add(new StoryFiguresPayload.Fig(f.id, f.kind(), f.pose(), f.speaker, (float) f.x, (float) f.y, (float) f.z, f.yaw, f.headYaw, f.speed, f.stage,
 					Math.round(f.suspicion * 255.0F), flags, Math.round(Math.max(0.0F, f.health) * 255.0F), Finale.shown(f), f.reactShown()));
 		}
