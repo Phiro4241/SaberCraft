@@ -702,7 +702,8 @@ public class Phase26GameTest implements FabricClientGameTest {
 
 			if (guard != null) {
 				this.teleport(s, session, guard.position().subtract(guard.look().scale(1.0)), guard.yaw);
-				StoryTesting.takedown(session);
+				// (Phase 31: crouching, as one has to.)
+				StoryTesting.takedownCrouched(session);
 			}
 		});
 		check(this.on(s -> StoryTesting.takedowns()) == takedowns + 1, "the lab's guard cannot be overpowered from behind");

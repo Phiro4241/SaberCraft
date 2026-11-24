@@ -1202,15 +1202,6 @@
     ],
     "subtitle": "subtitles.sabercraft.ship.hyperspace_arrive"
   },
-  "ship.hyperspace_fail": {
-    "sounds": [
-      {
-        "name": "sabercraft:ship/hyperspace_fail",
-        "attenuation_distance": 32
-      }
-    ],
-    "subtitle": "subtitles.sabercraft.ship.hyperspace_fail"
-  },
   "ship.explode_big": {
     "sounds": [
       {

@@ -148,8 +148,9 @@ public abstract class InteriorPlan {
 	}
 
 	/**
-	 * Phase 16: something to use on a console: {@link #HYPERSPACE} (the hyperdrive lever, from a
-	 * cockpit seat), {@link #STATUS} (the ship's state), {@link #LIGHTS} (normal or dimmed lights).
+	 * Phase 16: something to use on a console: {@link #HYPERSPACE} (the hyperdrive lever; Phase 31:
+	 * part of the dashboard only, a click on it does nothing), {@link #STATUS} (the ship's state),
+	 * {@link #LIGHTS} (normal or dimmed lights).
 	 */
 	public record Console(BlockPos cell, String action) {
 		public static final String HYPERSPACE = "hyperspace";

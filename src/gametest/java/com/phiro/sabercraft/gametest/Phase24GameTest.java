@@ -621,7 +621,8 @@ public class Phase24GameTest implements FabricClientGameTest {
 			Figure guard = session.figure("det_guard");
 			Vec3 back = guard.position().subtract(guard.look().scale(1.5));
 			this.teleport(s, session, back, guard.yaw);
-			StoryTesting.takedown(session);
+			// (Phase 31: crouching, as one has to.)
+			StoryTesting.takedownCrouched(session);
 		});
 		check(this.on(s -> StoryTesting.takedowns()) > takedowns, "the guard cannot be overpowered from behind");
 		check("takedown".equals(this.film(10)), "the scene of the takedown does not play");

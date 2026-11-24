@@ -462,6 +462,9 @@ final class Finale {
 			return;
 		}
 
+		// Phase 31: a capture in this tick (a restart) ends it here: nothing of the old fight runs on.
+		int restores = s.restores;
+
 		focusTick(s);
 
 		// The Focus: the enemies move on every other tick only.
@@ -499,12 +502,16 @@ final class Finale {
 					trooper(s, figure, player, me, level, corner);
 				}
 
-				if (s.completing() || !s.fighting) {
+				if (s.restores != restores || s.completing() || !s.fighting) {
 					return;
 				}
 			}
 		} finally {
 			Stealth.crowd(java.util.List.of());
+		}
+
+		if (s.restores != restores) {
+			return;
 		}
 
 		bolts(s, player, level, corner);
@@ -1090,6 +1097,57 @@ final class Finale {
 
 	// --- The duel ----------------------------------------------------------------------------------
 
+	/** Phase 31: the session's flags of a fight under way (never saved; gone with a restart). */
+	private static final java.util.List<String> FIGHT_FLAGS = java.util.List.of("tmp.duel", BOSS_SCENE, BOSS_DONE, "tmp.boss_reveal", SCENE_PENDING,
+			"tmp.boss_fierce", "tmp.hint_guard_break", "tmp.hint_guard_strain");
+	/** Phase 31: the session's timers of a fight under way (her moves' pauses, the scene, the guard). */
+	private static final java.util.Set<String> FIGHT_TIMERS = java.util.Set.of("push", "leap", "rush", "throw", "slam", "lunge", "shove", "ring_min",
+			"rear_answer", "guard_broken", "throw_back", "boss_mid", "boss_pending", "stroke");
+
+	/**
+	 * Phase 31: the one reset of the boss fight. A fight begun again (the player caught in its
+	 * second phase, a long fight, a new difficulty, a restart from the menu, leaving the story) is
+	 * exactly a fresh one: her strength and so the first phase, nothing she was doing or winding
+	 * up, no staff in flight, no ring, no spin, her pauses from the start; the session's flags and
+	 * timers of the fight gone, the Focus full; the player with full stamina, the guard ready, no
+	 * stricter guard and no slowness left; and the client told (one blade, the first phase).
+	 */
+	static void resetFight(StorySession s) {
+		for (Figure f : s.figures) {
+			if (f.saber && (f.mode == Figure.FIGHT || f.action != GUARD || f.health < 1.0F || f.lit)) {
+				f.resetFight();
+			}
+		}
+
+		for (String flag : FIGHT_FLAGS) {
+			s.unset(flag);
+		}
+
+		s.timers.keySet().removeAll(FIGHT_TIMERS);
+		s.focus = 1.0F;
+		s.focusTicks = 0;
+		s.sceneAt = null;
+		s.lastStroke = -1000L;
+		ServerPlayer player = s.player();
+
+		if (player != null) {
+			SaberAbilities.freshForStory(player);
+			player.removeEffect(net.minecraft.world.effect.MobEffects.SLOWNESS);
+		}
+
+		Story.cue(s, Story.CUE_DUEL, "reset", "", 0);
+		Story.cue(s, Story.CUE_DUEL, "phase", "", 1);
+		Story.cue(s, Story.CUE_DUEL, "focus_off", "", 0);
+		resets++;
+	}
+
+	private static int resets;
+
+	/** For the tests: how often a fight was reset. */
+	static int resetsForTest() {
+		return resets;
+	}
+
 	/** The Schattenklinge lights her saber: the duel begins. */
 	static void duelStarts(StorySession s) {
 		Figure shadow = s.figure("shadow");
@@ -1098,43 +1156,14 @@ final class Finale {
 			return;
 		}
 
+		// Phase 31: always from a clean slate (also when the same figure fought before).
+		resetFight(s);
+		shadow.resetFight();
 		shadow.hostile = true;
 		shadow.saber = true;
 		shadow.lit = true;
-		shadow.disarmed = false;
 		shadow.mode = Figure.FIGHT;
 		shadow.cooldown = 30;
-		shadow.windup = 0;
-		shadow.timer = 0;
-		shadow.combo = 0;
-		shadow.parried = 0;
-		shadow.hits = 0;
-		shadow.burst = 0;
-		shadow.pattern = -1;
-		shadow.react = 0;
-		shadow.reactTicks = 0;
-		// Phase 28: a new fight: no throws yet, the ring still.
-		shadow.thrown = 0;
-		shadow.ringOn = false;
-		// Phase 29: nothing remembered of a fight before (a checkpoint's restart), the guard's rules afresh.
-		shadow.rearHits = 0;
-		shadow.rearAt = -1000L;
-		shadow.behindTicks = 0;
-		shadow.turnabout = false;
-		java.util.Arrays.fill(shadow.moves, 0);
-		shadow.slamDir = null;
-		shadow.shove = false;
-		shadow.flightHits = 0;
-		shadow.guardSeenUp = false;
-		shadow.raiseSpam = false;
-		s.unset(SCENE_PENDING);
-		s.timers.remove("boss_pending");
-
-		if (s.player() != null) {
-			SaberAbilities.strictGuard(s.player(), null);
-		}
-		s.timers.remove("throw_back");
-		s.timers.remove("guard_broken");
 		act(shadow, GUARD, 0, 0);
 		s.fighting = true;
 		s.focus = 1.0F;

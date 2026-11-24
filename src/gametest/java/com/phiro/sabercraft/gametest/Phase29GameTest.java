@@ -623,7 +623,8 @@ public class Phase29GameTest implements FabricClientGameTest {
 				}
 
 				this.teleport(s, this.session(s), back, yaw(back, guard.position()));
-				StoryTesting.takedown(this.session(s));
+				// (Phase 31: crouching, as one has to.)
+				StoryTesting.takedownCrouched(this.session(s));
 				return true;
 			});
 
@@ -654,7 +655,7 @@ public class Phase29GameTest implements FabricClientGameTest {
 		this.server.runOnServer(s -> this.teleport(s, this.session(s), new Vec3(41.6, R, 36.6), 0.0F));
 		this.context.waitTicks(1);
 		this.audit(true);
-		this.server.runOnServer(s -> StoryTesting.takedown(this.session(s)));
+		this.server.runOnServer(s -> StoryTesting.takedownCrouched(this.session(s)));
 
 		if (this.on(s -> StoryTesting.takedowns()) == takedowns) {
 			this.problem("the lab's guard cannot be overpowered from behind while he looks east");

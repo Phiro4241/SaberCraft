@@ -154,7 +154,11 @@ public final class Story {
 					session.shield = 0;
 				}
 
-				capture(session, null);
+				// Phase 31: caught at the start of the next tick (see StorySession.captureDue).
+				if (session.grace <= 0) {
+					session.captureDue = true;
+				}
+
 				return false;
 			}
 
@@ -268,6 +272,11 @@ public final class Story {
 
 		progress.mission = Math.max(0, Math.min(progress.mission, missions - 1));
 		resolveStep(chapter, progress);
+
+		// Phase 31: a file saved in the middle of the break-out from Hale's cell goes back into it.
+		if (chapter instanceof Chapter1 && Chapter1.prisonSave(progress)) {
+			SaberCraft.LOGGER.info("Story file of {} moved back into Hale's cell (break-out checkpoint of an older version)", player.getPlainTextName());
+		}
 		// Phase 22: a save that ended the chapter before Phase 22 (finished, still at the epilogue
 		// after it was spoken) knows it is over too.
 		if (start == Start.CONTINUE && progress.format < 3 && progress.finished && progress.mission == missions - 1 && chapter instanceof Chapter1
@@ -341,6 +350,8 @@ public final class Story {
 		if (session != null) {
 			// Phase 20: calm, how far one got is kept (in a chase the last checkpoint stays).
 			session.keepOnLeave();
+			// Phase 31: a fight left behind leaves nothing on the player or the client.
+			Finale.resetFight(session);
 		}
 
 		SESSIONS.remove(player.getUUID());
@@ -767,14 +778,20 @@ public final class Story {
 				continue;
 			}
 
+			// Phase 31: struck down in the last tick: caught now, before anything else of this tick.
+			if (session.captureDue) {
+				session.captureDue = false;
+				capture(session, null);
+			}
+
 			// Where they are.
 			BlockPos here = ShipInteriors.originAt(player.getX(), player.getZ());
 			session.here = player.level() == interiors && here != null ? here.equals(session.falcon) ? FALCON : here.equals(session.destroyer) ? DESTROYER : null
 					: null;
 
 			if (session.here == null && player.level() != interiors) {
-				// Out of the interiors some other way (a command): the story ends for now.
-				SESSIONS.remove(session.player);
+				// Out of the interiors some other way (a command): the story ends for now. (Phase 31:
+				// as leaving it does, with the session: how far one got kept, things given back.)
 				leave(player);
 				continue;
 			}
@@ -891,7 +908,8 @@ public final class Story {
 		if (session.mission + 1 < session.chapter.missions().size()) {
 			session.mission++;
 			session.stepIndex = 0;
-			session.flags.removeIf(flag -> flag.startsWith("tmp."));
+			// (Phase 31: and where those overpowered lay: that was the mission before.)
+			session.flags.removeIf(flag -> flag.startsWith("tmp.") || flag.startsWith(Chapter1.DOWN_PREFIX));
 			progress.missionStart.put(session.mission, List.copyOf(session.flags));
 			session.begin(false);
 			cue(session, CUE_TITLE, "", session.mission().title(), 0);
@@ -1408,13 +1426,36 @@ public final class Story {
 
 	// --- Network -----------------------------------------------------------------------------------
 
-	private static void action(ServerPlayer player, StoryActionPayload payload) {
+	static void action(ServerPlayer player, StoryActionPayload payload) {
 		StorySession session = SESSIONS.get(player.getUUID());
+
+		// Phase 31: struck down in the last tick and not caught yet (that waits for the next tick):
+		// caught now, before this input is handled. An input of the old fight (a stroke, the Focus,
+		// a key in a scene) then counts no more: it would play out against the fight just ended.
+		if (session != null && session.captureDue) {
+			switch (payload.action()) {
+				case StoryActionPayload.ANSWER, StoryActionPayload.USE, StoryActionPayload.TALK, StoryActionPayload.TAKEDOWN, StoryActionPayload.SKIP,
+						StoryActionPayload.STRIKE, StoryActionPayload.COVER, StoryActionPayload.FOCUS -> {
+					session.captureDue = false;
+					capture(session, null);
+					session.afterTick();
+					return;
+				}
+				case StoryActionPayload.LEAVE -> {
+					// Leaving right then: with the state of the checkpoint, not of the fight.
+					session.captureDue = false;
+					capture(session, null);
+				}
+				default -> {
+				}
+			}
+		}
 
 		switch (payload.action()) {
 			case StoryActionPayload.CONTINUE -> message(player, enter(player, Start.CONTINUE, 0));
 			case StoryActionPayload.RESTART -> {
 				if (session != null) {
+					keepWayBack(player, session);
 					SESSIONS.remove(player.getUUID());
 					keepDifficulty(player, session);
 				}
@@ -1423,6 +1464,7 @@ public final class Story {
 			}
 			case StoryActionPayload.MISSION -> {
 				if (session != null) {
+					keepWayBack(player, session);
 					SESSIONS.remove(player.getUUID());
 					keepDifficulty(player, session);
 				}
@@ -1455,6 +1497,12 @@ public final class Story {
 			case StoryActionPayload.TALK -> {
 				if (session != null) {
 					talk(session, player, payload.value());
+					session.afterTick();
+				}
+			}
+			case StoryActionPayload.TAKEDOWN -> {
+				if (session != null) {
+					takedown(session, player, payload.value());
 					session.afterTick();
 				}
 			}
@@ -1539,6 +1587,36 @@ public final class Story {
 		session.begin(true);
 		session.hint("sabercraft.story.difficulty.changed." + chosen.id);
 		sendState(session);
+	}
+
+	/**
+	 * Phase 31: before a new start from the running story (Restart, Play Mission): the way back
+	 * written into the file if it is not there yet. Entering keeps it (where one came from, the game
+	 * mode, one's own droids) only in memory until the first checkpoint; the new start reads the
+	 * file, and would otherwise take the story's ship, its mode and its droids for it. Nothing else
+	 * of the running story is written (the new start begins from the file as before).
+	 */
+	private static void keepWayBack(ServerPlayer player, StorySession session) {
+		MinecraftServer server = player.level().getServer();
+		StoryProgress file = StoryStore.load(server, player.getUUID());
+		StoryProgress now = session.progress;
+
+		if (file.active || !now.active) {
+			return;
+		}
+
+		file.active = true;
+		file.stashed = now.stashed;
+		file.returnDimension = now.returnDimension;
+		file.returnX = now.returnX;
+		file.returnY = now.returnY;
+		file.returnZ = now.returnZ;
+		file.returnYaw = now.returnYaw;
+		file.returnPitch = now.returnPitch;
+		file.returnMode = now.returnMode;
+		file.ownDroids = new ArrayList<>(now.ownDroids);
+		file.difficulty = now.difficulty;
+		StoryStore.save(server, player.getUUID(), file);
 	}
 
 	/**
@@ -1654,6 +1732,32 @@ public final class Story {
 		}
 
 		return false;
+	}
+
+	/**
+	 * Phase 31: the player tries to overpower someone (the use key on them while the prompt says
+	 * so), if they are there and within reach.
+	 */
+	public static boolean takedown(StorySession session, ServerPlayer player, int id) {
+		if (session.dialog != null) {
+			sendDialog(session);
+			return true;
+		}
+
+		Figure figure = session.figureById(id);
+
+		if (session.here == null || figure == null || !session.here.equals(figure.ship) || figure.mode == Figure.DOWN) {
+			return false;
+		}
+
+		AABB box = figure.box().move(Vec3.atLowerCornerOf(session.origin(figure.ship)));
+
+		if (box.distanceToSqr(player.getEyePosition()) > REACH * REACH) {
+			return false;
+		}
+
+		acted(session);
+		return session.chapter.takedown(session, figure);
 	}
 
 	static void sendState(StorySession session) {
@@ -1795,7 +1899,8 @@ public final class Story {
 					| (f.talks && session.chapter.talksNow(session, f) ? StoryFiguresPayload.TALKS : 0) | (f.observer ? StoryFiguresPayload.OBSERVER : 0) | (f.lit ? StoryFiguresPayload.LIT : 0)
 					| (Combat.pistol(f) && f.observer && (f.mode == Figure.CHASE || f.mode == Figure.FIGHT) && f.react != Figure.COMLINK ? StoryFiguresPayload.ARMED : 0)
 					| (Finale.disarmed(f) ? StoryFiguresPayload.UNARMED : 0) | (f.ringOn && f.saber && f.lit ? StoryFiguresPayload.RING_SPIN : 0)
-					| (Finale.spinLive(f) ? StoryFiguresPayload.SPIN_LIVE : 0);
+					| (Finale.spinLive(f) ? StoryFiguresPayload.SPIN_LIVE : 0) | (f.saber && Finale.phase(f) >= 2 ? StoryFiguresPayload.TWIN : 0)
+					| (session.chapter.takedownReady(session, f, me) ? StoryFiguresPayload.TAKEDOWN : 0);
 			list.add(new StoryFiguresPayload.Fig(f.id, f.kind(), f.pose(), f.speaker, (float) f.x, (float) f.y, (float) f.z, f.yaw, f.headYaw, f.speed, f.stage,
 					Math.round(f.suspicion * 255.0F), flags, Math.round(Math.max(0.0F, f.health) * 255.0F), Finale.shown(f), f.reactShown()));
 		}

@@ -112,13 +112,11 @@ Decided by the server (in single player by the integrated server). Players conne
 | `ship_repair_in_flight` | `false` | Phase 14: whether the hull also mends in flight. `false`: only landed, parked, unpiloted (or a Star Destroyer standing still). |
 | `ship_weapon_damage` | `saber 1`, `blaster 1`, `ship_laser 1`, `explosion 1`, `other 0.5` | Phase 14: multiplier of each kind of weapon against ship hulls (0..10). On top, each ship is tougher against hand weapons (Falcon 60 %, Star Destroyer 15 %) and heavy weapons (Falcon 85 %, Star Destroyer 50 %). |
 | `ship_max_hit_share` | `0.25` | Phase 14: no single hit takes more than this share of the full hull, so nothing is destroyed in one hit, 0.05..1. Hard crashes are not capped. |
-| `hyperspace_enabled` | `true` | Phase 14: the hyperspace jump (key X while flying). Since Phase 16 also the jump from the Falcon's cockpit seats (the same key or the hyperdrive lever). |
-| `hyperspace_distance` | `160` | Phase 14: how far a jump goes at most, blocks (32..1024); TIEs jump 85 %, the Star Destroyer 60 %. The jump stops short of anything in the way and never leaves loaded chunks or the world border. |
-| `hyperspace_cooldown_seconds` | `60` | Phase 14: seconds between two jumps of one player, 0..3600. Since Phase 16 a jump from the Falcon's cockpit uses the same cooldown (of the ship's owner). |
-| `hyperspace_energy_share` | `0.2` | Phase 14: share of a full energy charge one jump costs (only with `ship_energy`), 0..1. |
 | `ship_interiors` | `true` | Phase 14: the Millennium Falcon and the Star Destroyer can be walked through (dimension `sabercraft:ship_interiors`). |
 | `ship_interior_guests` | `true` | Phase 14: other players may come aboard too. `false`: only the owner. The helm only ever answers the owner. |
 | `config_version` | `14` | The version of the file, used to move changed defaults over once. Do not edit. |
+
+Phase 31: the hyperspace jump of ships in the open world is gone, and with it its settings (`hyperspace_enabled`, `hyperspace_distance`, `hyperspace_cooldown_seconds`, `hyperspace_energy_share`). An older file's entries are ignored and dropped the next time the file is written. The jump inside the Millennium Falcon in the story is not a setting and stays.
 
 ### `droid_balance`
 
@@ -213,7 +211,7 @@ Before Phase 13 the cooldowns were shorter (B1 5 s, Chopper 15 s, BB-8 20 s, pro
 | `language` | `"auto"` | Phase 19: the language of SaberCraft's own texts (story, dialogs, menus, hints): `auto` (the same as Minecraft), `de_de` (German) or `en_us` (English), independent of Minecraft's language. Minecraft's own texts stay as they are. Menu: **Story**. |
 | `story_marker` | `true` | Phase 19: the story's hints on screen: the marker over the next objective and the eye that fills when someone notices you. `false` for playing without help (the objective line stays). Menu: **Story**. |
 | `story_text_speed` | `1` | Phase 19: how fast the dialogs' texts appear: `0` at once, `1` normal, `2` slow. A key or click always shows the whole line. Menu: **Story**. |
-| `story_brightness` | `0` | Phase 27: brightens the story's own darkening (emergency lights, the alarm's pulsing, failing lights): `0` as made, `1` brighter, `2` bright. The colours stay, only less dark. Menu: **Story** ("Story-Helligkeit"). |
+| `story_brightness` | `0` | Phase 27: brightens the story's own darkening (emergency lights, the alarm's pulsing, failing lights): `0` as made, `1` brighter, `2` bright, `3` Maximal (Phase 31: also lifts the dark places of the story's ships, through the world's light and a curve on the rooms' dimming; full light, lamps, screens and the HUD stay as they are; a shader pack may ignore the world-light part). The colours stay, only less dark. Saved across restarts. Menu: **Story** ("Story-Helligkeit"). |
 | `hints_shown` | `[]` | Phase 27: the hints shown once (how to open the menu, how to get into a crawl way), by name. Remove a name to see that hint again. Only in this file. |
 | `menu_key_moved` | `false` | Phase 27: whether the menu key was moved once from the old default **V** to **I** (Simple Voice Chat uses V). Only a key still on V is moved, once. Only in this file. |
 | `title_screen` | `true` | Phase 24: SaberCraft's own title screen (its starfield, buttons, subtitle and sayings). `false`: Minecraft's own title screen, unchanged. Only in this file (no menu row). |

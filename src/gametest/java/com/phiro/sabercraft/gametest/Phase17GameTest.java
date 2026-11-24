@@ -210,15 +210,15 @@ public class Phase17GameTest implements FabricClientGameTest {
 		check(blocks, "a closed door collides");
 	}
 
-	/** The jump from the co-pilot's seat: hyperspace all round, nothing of the space outside at the edges. */
+	/** The story's jump, seen from the co-pilot's seat: hyperspace all round, nothing of the space outside at the edges. */
 	private static void hyperspace(ClientGameTestContext context, TestServerContext server, UUID self, BlockPos falcon) {
 		Phase16GameTest.tp(context, server, falcon, new Vec3(43.5, 7, 22.5), 180, 0);
 		Seat copilot = FalconInterior.SEATS.get(1);
 		server.runOnServer(s -> InteriorSystems.useForTest(me(s, self), falcon.offset(copilot.cell())));
 		context.waitTicks(10);
 		context.runOnClient(client -> client.player.setXRot(-8.0F));
-		server.runOnServer(s -> InteriorSystems.useForTest(me(s, self), falcon.offset(45, FalconInterior.FLOOR + 1, FalconInterior.COCKPIT_FRONT + 1)));
-		check(server.computeOnServer(s -> InteriorJump.running(falcon)), "the jump starts from the co-pilot's seat");
+		// Phase 31: only the story makes this jump (the lever starts nothing any more).
+		check(server.computeOnServer(s -> InteriorJump.story(s.getLevel(ShipInteriors.DIMENSION), falcon)), "the story's jump starts");
 		context.waitTicks(15);
 		context.takeScreenshot("phase17_hyperspace_charge");
 		// The pictures of hyperspace when the client is in it (the server may run behind and then

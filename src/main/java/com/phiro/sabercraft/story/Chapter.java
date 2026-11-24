@@ -63,6 +63,14 @@ public interface Chapter {
 		return new Mission.Place(step.ship(), step.spawn(), step.yaw());
 	}
 
+	/**
+	 * Phase 31: whether the last checkpoint must stay as it is now, even on leaving the game calmly
+	 * (a section that goes back to its start when one is caught: Hale's cell). By default no.
+	 */
+	default boolean holdsCheckpoint(StorySession session) {
+		return false;
+	}
+
 	/** Phase 20: whether the step makes a checkpoint as it begins (by default: as the step says). */
 	default boolean checkpoint(StorySession session, Mission.Step step) {
 		return step.checkpoint();
@@ -125,6 +133,19 @@ public interface Chapter {
 	 * for the player to get their bearings after being caught: only the short grace as before).
 	 */
 	default boolean scriptedRespawn(StorySession session, Mission.Step step) {
+		return false;
+	}
+
+	/**
+	 * Phase 31: whether that one could be overpowered from where the player stands now ({@code me},
+	 * plot space): the prompt under the crosshair shows then. By default nobody.
+	 */
+	default boolean takedownReady(StorySession session, Figure figure, net.minecraft.world.phys.Vec3 me) {
+		return false;
+	}
+
+	/** Phase 31: the player tries to overpower them; returns whether the scene began. By default nothing happens. */
+	default boolean takedown(StorySession session, Figure figure) {
 		return false;
 	}
 }

@@ -80,7 +80,10 @@ public final class StoryCinema {
 	/** When the title shows (ticks). */
 	private static final int TITLE_FROM = 128;
 	private static final int TITLE_TO = 214;
-	/** Skipping is possible after this long (a key still held from the dialog does not skip). */
+	/**
+	 * Skipping is possible after this long (against a double press; a key still held from the
+	 * dialog never skips: Phase 31's StoryKeys keeps held keys out of the film).
+	 */
 	private static final int SKIP_AFTER = 20;
 
 	private static @Nullable String film;
@@ -182,6 +185,18 @@ public final class StoryCinema {
 		if (film != null && SceneFilm.has(film)) {
 			stop(client, false);
 		}
+	}
+
+	/** Phase 31: that film ends here if it is showing (not skipped: the server ended it already). */
+	static void stopIf(Minecraft client, String name) {
+		if (name.equals(film)) {
+			stop(client, false);
+		}
+	}
+
+	/** Phase 31: whether that screen is a film's (for the story's key gate). */
+	static boolean isFilmScreen(net.minecraft.client.gui.screens.@Nullable Screen screen) {
+		return screen instanceof FilmScreen;
 	}
 
 	/** The film ends (played through, skipped, or the player left). */
@@ -577,7 +592,9 @@ public final class StoryCinema {
 
 		@Override
 		public boolean keyPressed(KeyEvent event) {
-			if (age >= SKIP_AFTER && (event.isSelection() || event.isEscape() || event.isConfirmation())) {
+			// Phase 31: only Space and Escape skip (not Enter, not the arrows, no other key); every
+			// other key does nothing here, and none reaches the game (see StoryKeys for held keys).
+			if (age >= SKIP_AFTER && StoryKeys.skipsFilm(event)) {
 				stop(Minecraft.getInstance(), true);
 			}
 
@@ -585,7 +602,23 @@ public final class StoryCinema {
 		}
 
 		@Override
+		public boolean keyReleased(KeyEvent event) {
+			return true;
+		}
+
+		// Phase 31: the mouse does nothing in a film (no click skips it, no wheel turns the hotbar).
+		@Override
 		public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+			return true;
+		}
+
+		@Override
+		public boolean mouseReleased(MouseButtonEvent event) {
+			return true;
+		}
+
+		@Override
+		public boolean mouseScrolled(double x, double y, double scrollX, double scrollY) {
 			return true;
 		}
 

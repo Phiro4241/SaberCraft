@@ -175,6 +175,31 @@ public final class Hints {
 		HintCard.show(Component.translatable("sabercraft.hint.title"), message);
 	}
 
+	private static int storyTips;
+	private static String lastTip = "";
+
+	/**
+	 * Phase 31: a tip of the story (the server says when: once per game, at a calm moment), on the
+	 * same card at the left, with its own title. The keys named are the player's own: crouching
+	 * ({@code %1$s}) and the use key ({@code %2$s}).
+	 */
+	public static void storyTip(Minecraft client, String key) {
+		toasts++;
+		storyTips++;
+		Component message = Component.translatable(key, keyName(client.options.keyShift), keyName(client.options.keyUse));
+		lastTip = message.getString();
+		HintCard.show(Component.translatable(key + ".title"), message);
+	}
+
+	/** Phase 31, for the tests: the story's tips shown, and the words of the last. */
+	public static int storyTipsForTest() {
+		return storyTips;
+	}
+
+	public static String lastTipForTest() {
+		return lastTip;
+	}
+
 	/** For the tests: toasts shown, and whether the key was moved off V at this start. */
 	public static int toastsForTest() {
 		return toasts;

@@ -76,6 +76,12 @@ public final class StorySession {
 	/** After a capture: a few seconds before anyone can see the player again. */
 	public int grace;
 	/**
+	 * Phase 31: the player was struck down (a lethal hit): they are caught at the start of the next
+	 * tick, not in the middle of the code that hit them (which then went on with the old fight
+	 * against the restored checkpoint: a knock-back after the teleport, the old fight's cues).
+	 */
+	boolean captureDue;
+	/**
 	 * Phase 27: back at a checkpoint, the player gets their bearings: while they stay near where
 	 * they were put (and do nothing there), nobody sees them, for at most {@link #SHIELD} ticks.
 	 * Not kept: only for this restore.
@@ -283,6 +289,10 @@ public final class StorySession {
 			Story.resetShip(this);
 			Story.placeAtCheckpoint(this, step);
 			Story.clearRespawn(this);
+			// Phase 31: nothing of a fight before is carried over (the boss in her first phase again,
+			// the player's stamina and guard afresh, the client back to one blade).
+			this.captureDue = false;
+			Finale.resetFight(this);
 		}
 
 		this.chapter.begin(this, step, restore);
@@ -363,22 +373,33 @@ public final class StorySession {
 	 * Phase 20: leaving the story while all is calm keeps how far one got (at the step's safe
 	 * place, as a checkpoint); during an alarm, a chase or a fight the last checkpoint stays (so
 	 * leaving is no way out of being caught).
+	 *
+	 * <p>Phase 31: either way the file is written: the last checkpoint with what is known for good
+	 * since (kept at once, such as the takedown learned while breaking out of Hale's cell).
 	 */
 	void keepOnLeave() {
-		if (this.progress.finished || this.alarm > 0 || this.fighting || this.completing()) {
+		if (this.calmToKeep() && this.unsaved()) {
+			Mission.Place place = this.chapter.place(this, this.step());
+			this.checkpoint(place.ship(), place.at(), place.yaw());
 			return;
+		}
+
+		Story.save(this);
+	}
+
+	private boolean calmToKeep() {
+		// Phase 31: (and not while breaking out of Hale's cell: its checkpoint is the cell's.)
+		if (this.progress.finished || this.alarm > 0 || this.fighting || this.completing() || this.chapter.holdsCheckpoint(this)) {
+			return false;
 		}
 
 		for (Figure figure : this.figures) {
 			if (figure.mode == Figure.CHASE || figure.stage >= Figure.ALERTED) {
-				return;
+				return false;
 			}
 		}
 
-		if (this.unsaved()) {
-			Mission.Place place = this.chapter.place(this, this.step());
-			this.checkpoint(place.ship(), place.at(), place.yaw());
-		}
+		return true;
 	}
 
 	// --- What is known -----------------------------------------------------------------------------

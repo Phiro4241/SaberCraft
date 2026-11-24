@@ -199,7 +199,9 @@ public class StoryMenuScreen extends SaberMenuScreen {
 			ImmersionConfig.save();
 		});
 		// Phase 27: brightens the story's darkening (emergency lights, alarm, failing lights).
-		this.cycle(1, 6, "sabercraft.option.story_brightness", List.of(0, 1, 2), Mth.clamp(config.storyBrightness, 0, 2),
+		// Phase 31: and "Maximal", which also lifts the dark places of the story's ships.
+		this.cycle(1, 6, "sabercraft.option.story_brightness", List.of(0, 1, 2, ImmersionConfig.STORY_BRIGHTNESS_MAX),
+				Mth.clamp(config.storyBrightness, 0, ImmersionConfig.STORY_BRIGHTNESS_MAX),
 				v -> Component.translatable("sabercraft.menu.story.brightness." + v), v -> {
 					config.storyBrightness = v;
 					ImmersionConfig.save();

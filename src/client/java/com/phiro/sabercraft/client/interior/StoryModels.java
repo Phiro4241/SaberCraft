@@ -36,6 +36,11 @@ final class StoryModels {
 
 	/** Per figure: how far its saber is raised, its follow-through, its wind-up last seen. */
 	private static final Map<Integer, float[]> SABERS = new HashMap<>();
+
+	/** Phase 31: a duel begun again: nothing of the sabers' poses before (the staff, the ring) is kept. */
+	static void forgetSabers() {
+		SABERS.clear();
+	}
 	private static long lastFrame;
 
 	private StoryModels() {
@@ -211,7 +216,9 @@ final class StoryModels {
 
 		// Phase 24: in the second phase of the duel her hilt is a staff: its second blade comes out (and goes with the first).
 		// (Phase 25: slower, to be seen: she takes the staff in both hands, then the second blade comes out.)
-		state[8] = approach(state[8], lit && skirt && StoryClient.twinBlade() ? 1.0F : 0.0F, dt * 1.6F);
+		// (Phase 31: and only while the server has her in the second phase: a fight begun again shows one blade.)
+		boolean twin = StoryClient.twinBlade() && (fig.flags() & StoryFiguresPayload.TWIN) != 0;
+		state[8] = approach(state[8], lit && skirt && twin ? 1.0F : 0.0F, dt * 1.6F);
 		ring(state, fig, lit && skirt, state[8] > 0.35F, kind, progress, spin, react, reactP, dt);
 		float blur = Mth.clamp((Math.abs(state[10]) - InquisitorSaber.BLUR_FROM) / (InquisitorSaber.SPIN_FAST - InquisitorSaber.BLUR_FROM), 0.0F, 1.0F);
 		return new CrewModels.Gear((fig.flags() & StoryFiguresPayload.LAMP) != 0, RED, lit, state[0], state[1], down, skirt, attack, 0.0F, state[5],
@@ -235,6 +242,12 @@ final class StoryModels {
 	public static float ringSpeedForTest(int id) {
 		float[] state = SABERS.get(id);
 		return state == null ? 0.0F : state[10];
+	}
+
+	/** Phase 31, for the tests: how far that figure's staff shows its second blade now. */
+	static float twinForTest(int id) {
+		float[] state = SABERS.get(id);
+		return state == null ? 0.0F : state[8];
 	}
 
 	private static void ring(float[] state, StoryFiguresPayload.Fig fig, boolean inquisitor, boolean both, int kind, float progress, float spin, int react,

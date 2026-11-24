@@ -30,16 +30,16 @@ import net.minecraft.world.phys.Vec3;
 import com.phiro.sabercraft.ability.AbilityConfig;
 import com.phiro.sabercraft.interior.InteriorPlan.Console;
 import com.phiro.sabercraft.interior.InteriorPlan.Door;
-import com.phiro.sabercraft.ship.Hyperspace;
 import com.phiro.sabercraft.ship.ShipEntity;
 import com.phiro.sabercraft.ship.ShipType;
 import com.phiro.sabercraft.ship.Starships;
 
 /**
  * Phase 16: what can be used aboard, besides the seats: sliding doors that open when someone
- * comes near and close behind them, the consoles that do something (the hyperdrive lever in the
- * Falcon's cockpit, the ship's state at the engineering station or the sensor table, the lights
- * at the engineering bank or the bridge officers' stations). All decided by the server, with
+ * comes near and close behind them, the consoles that do something (the ship's state at the
+ * engineering station or the sensor table, the lights at the engineering bank or the bridge
+ * officers' stations; Phase 31: the hyperdrive lever in the Falcon's cockpit only belongs to the
+ * dashboard now, the jump is the story's). All decided by the server, with
  * vanilla blocks only (a closed door is a row of barriers, dimmed lights are lower light
  * blocks), so every player sees and bumps into the same, with or without the mod.
  */
@@ -494,8 +494,13 @@ public final class InteriorSystems {
 			return;
 		}
 
+		if (Console.HYPERSPACE.equals(console.action())) {
+			// Phase 31: no hyperspace jump started by a player any more (the open world's is gone, and
+			// the story's Falcon jumps when the story says so). The click is taken, nothing happens.
+			return;
+		}
+
 		player.sendOverlayMessage(switch (console.action()) {
-			case Console.HYPERSPACE -> InteriorJump.request(player);
 			case Console.LIGHTS -> lights(player, (ServerLevel) player.level(), origin, plan);
 			default -> status(player, plan);
 		});
@@ -578,7 +583,7 @@ public final class InteriorSystems {
 
 	// --- The ship's state --------------------------------------------------------------------------
 
-	/** What the ship's systems report: hull, energy, hyperdrive (of the owner's ship, wherever it is). */
+	/** What the ship's systems report: hull, energy (of the owner's ship, wherever it is). */
 	static Component status(ServerPlayer player, InteriorPlan plan) {
 		UUID owner = ShipInteriors.ownerOf(player);
 		ShipEntity ship = owner != null ? Starships.shipOf(owner) : null;
@@ -594,9 +599,6 @@ public final class InteriorSystems {
 		float energy = ship.energy();
 		Component power = !config.shipEnergy || energy < 0.0F ? Component.translatableWithFallback("sabercraft.interior.status_full", "full")
 				: Component.literal(Math.round(100.0F * Mth.clamp(energy / Math.max(1, config.flightTicks(type)), 0.0F, 1.0F)) + " %");
-		int cooldown = owner != null ? Hyperspace.cooldownSeconds(owner, player.level().getGameTime()) : 0;
-		Component drive = cooldown > 0 ? Component.translatableWithFallback("sabercraft.interior.status_cooling", "cooling down (%s s)", cooldown)
-				: Component.translatableWithFallback("sabercraft.interior.status_ready", "ready");
-		return Component.translatableWithFallback("sabercraft.interior.status", "%s: hull %s %%, energy %s, hyperdrive %s", name, hull, power, drive);
+		return Component.translatableWithFallback("sabercraft.interior.status", "%s: hull %s %%, energy %s", name, hull, power);
 	}
 }

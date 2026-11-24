@@ -11,7 +11,7 @@ import net.minecraft.world.phys.Vec3;
 /**
  * Phase 14: what each starship has beyond its flight (see {@link ShipType}): where its cockpit is,
  * how its engines sound, how tough its hull is against which weapons, how its hull is shaped for
- * hits, whether it can jump to hyperspace, and whether it has an interior to walk around in.
+ * hits, and whether it has an interior to walk around in.
  *
  * <p>One entry per ship, all in one place, so a new ship only needs a line here (and its model,
  * sounds and, if it has one, an interior plan in {@code com.phiro.sabercraft.interior}).
@@ -30,24 +30,22 @@ import net.minecraft.world.phys.Vec3;
  * @param heavy       how much of the damage of ship cannons and explosions the hull takes
  * @param hullBoxes   the hull for hits, as boxes in ship space (blocks); the collision box of a big
  *                    ship is much smaller than its model, so bolts are checked against these too
- * @param hyperspace  whether it has a hyperdrive
- * @param jumpScale   how far it jumps compared to {@code hyperspace_distance}
  * @param interior    the interior plan ({@code falcon}, {@code star_destroyer}) or {@code null}
  */
 public record ShipFeatures(Vec3 cockpit, String frame, List<String> hideHull, String sound, float smallArms, float heavy, List<AABB> hullBoxes,
-		boolean hyperspace, float jumpScale, @Nullable String interior) {
+		@Nullable String interior) {
 	public static final ShipFeatures XWING = new ShipFeatures(new Vec3(0.0, 1.5, 0.3), "xwing", List.of(), "xwing", 1.0F, 1.0F,
-			List.of(new AABB(-0.6, 0.6, -2.0, 0.6, 1.7, 3.1)), true, 1.0F, null);
+			List.of(new AABB(-0.6, 0.6, -2.0, 0.6, 1.7, 3.1)), null);
 	public static final ShipFeatures TIE_FIGHTER = new ShipFeatures(new Vec3(0.0, 1.375, 0.66), "tie", List.of(), "tie_fighter", 1.0F, 1.0F,
-			List.of(new AABB(-0.8, 0.5, -0.8, 0.8, 2.2, 0.8)), true, 0.85F, null);
+			List.of(new AABB(-0.8, 0.5, -0.8, 0.8, 2.2, 0.8)), null);
 	public static final ShipFeatures TIE_INTERCEPTOR = new ShipFeatures(new Vec3(0.0, 1.375, 0.66), "tie", List.of(), "tie_interceptor", 1.0F,
-			1.0F, List.of(new AABB(-0.8, 0.5, -0.8, 0.8, 2.2, 0.8)), true, 0.85F, null);
+			1.0F, List.of(new AABB(-0.8, 0.5, -0.8, 0.8, 2.2, 0.8)), null);
 	public static final ShipFeatures FALCON = new ShipFeatures(new Vec3(4.125, 1.2, 3.7), "falcon", List.of(), "falcon", 0.6F, 0.85F,
 			List.of(new AABB(-5.2, 0.3, -6.0, 5.2, 2.0, 4.0), new AABB(-2.4, 0.3, 2.0, 2.4, 1.9, 6.0), new AABB(2.4, 0.6, 0.0, 4.7, 1.8, 3.8)),
-			true, 1.0F, "falcon");
+			"falcon");
 	public static final ShipFeatures STAR_DESTROYER = new ShipFeatures(new Vec3(0.0, 14.0, -21.8), "bridge", List.of(), "star_destroyer", 0.15F,
 			0.5F, List.of(new AABB(-8.0, 0.0, 6.0, 8.0, 6.0, 40.0), new AABB(-16.0, 0.0, -12.0, 16.0, 6.5, 6.0), new AABB(-21.0, 0.0, -32.0, 21.0, 7.5,
-					-12.0), new AABB(-10.0, 6.0, -30.0, 10.0, 10.0, -12.0), new AABB(-8.5, 10.0, -26.0, 8.5, 15.0, -22.0)), true, 0.6F,
+					-12.0), new AABB(-10.0, 6.0, -30.0, 10.0, 10.0, -12.0), new AABB(-8.5, 10.0, -26.0, 8.5, 15.0, -22.0)),
 			"star_destroyer");
 
 	private static final Map<String, ShipFeatures> BY_SHIP = Map.of(ShipType.XWING.id(), XWING, ShipType.TIE_FIGHTER.id(), TIE_FIGHTER,
@@ -59,7 +57,7 @@ public record ShipFeatures(Vec3 cockpit, String frame, List<String> hideHull, St
 		return features != null ? features
 				: new ShipFeatures(new Vec3(0.0, type.height() * 0.7, 0.0), "none", List.of(), type.id(), 1.0F, 1.0F,
 						List.of(new AABB(-type.width() / 2.0, 0.0, -type.width() / 2.0, type.width() / 2.0, type.height(), type.width() / 2.0)),
-						false, 1.0F, null);
+						null);
 	}
 
 	/**

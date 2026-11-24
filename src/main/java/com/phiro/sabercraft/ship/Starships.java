@@ -171,7 +171,6 @@ public final class Starships {
 			GROUNDED_UNTIL.clear();
 			ENERGY.clear();
 			BLASTS.clear();
-			Hyperspace.reset();
 		});
 	}
 
@@ -511,9 +510,7 @@ public final class Starships {
 		}
 
 		switch (action) {
-			case "hyperspace" -> {
-				return Hyperspace.request(player);
-			}
+			// Phase 31: no hyperspace jump in the open world any more ("hyperspace" is an unknown action now).
 			case "interior" -> {
 				// Bug fix 2026-11-14: one press does it all, as "board" does for the cockpit. Not out
 				// yet, the wrong ship or too far away: the ship is called first, then you walk aboard.

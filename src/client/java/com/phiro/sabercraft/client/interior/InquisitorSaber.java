@@ -179,6 +179,11 @@ final class InquisitorSaber {
 
 	/** Phase 30: how far the saber was moved out of her body in the frame before, per figure (its seed): the time then (seconds), the distance. */
 	private static final java.util.Map<Integer, float[]> MOVED = new java.util.HashMap<>();
+
+	/** Phase 31: a duel begun again: the ring's last positions are forgotten. */
+	static void forget() {
+		MOVED.clear();
+	}
 	/** Phase 30: how fast the saber may go out to where it is clear and back in towards her (blocks a second). */
 	static final float OUT_SPEED = 4.0F;
 	static final float IN_SPEED = 0.6F;

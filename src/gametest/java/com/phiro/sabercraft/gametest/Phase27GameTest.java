@@ -803,7 +803,8 @@ public class Phase27GameTest implements FabricClientGameTest {
 			this.teleport(s, session, new Vec3(41.6, R, 36.6), 0.0F);
 		});
 		this.context.waitTicks(1);
-		this.server.runOnServer(s -> StoryTesting.takedown(this.session(s)));
+		// (Phase 31: crouching, as one has to.)
+		this.server.runOnServer(s -> StoryTesting.takedownCrouched(this.session(s)));
 		check(this.on(s -> StoryTesting.takedowns()) == takedowns + 1, "the lab's guard cannot be overpowered from behind while he looks east");
 		this.context.waitTicks(2);
 		check(this.on(s -> this.level(s).noCollision(this.me(s), this.me(s).getBoundingBox().deflate(0.01))), "the takedown puts the player into something");

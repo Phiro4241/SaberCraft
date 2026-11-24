@@ -160,8 +160,6 @@ public final class Seats {
 		face(player, seat.yaw());
 		sat++;
 		return switch (seat.role()) {
-			case Seat.PILOT, Seat.COPILOT -> Component.translatableWithFallback("sabercraft.seat.cockpit",
-					"Sneak to stand up. Hyperspace: the hyperspace key or the lever by the co-pilot.");
 			case Seat.GUNNER -> Component.translatableWithFallback("sabercraft.seat.gunner", "Aim with the mouse, attack to fire. Sneak to stand up.");
 			default -> Component.translatableWithFallback("sabercraft.seat.sit", "Sneak to stand up.");
 		};

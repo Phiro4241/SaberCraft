@@ -128,10 +128,6 @@ public class ShipEntity extends Pig {
 	private float repairPool;
 	/** Phase 14: ticks until the next hull alarm in the cockpit. */
 	private int alarmCooldown;
-	/** Phase 14: the hyperspace jump of this ship, while it charges or flies (see {@link Hyperspace}). */
-	Hyperspace.@Nullable Jump jump;
-	/** Phase 14: game time from which this ship can jump again. */
-	long jumpReadyAt;
 	/** Phase 14: the ship is being destroyed; nothing may steer, hit or board it any more. */
 	private boolean wrecked;
 	private static int hullRepairs;
@@ -251,7 +247,6 @@ public class ShipEntity extends Pig {
 		this.sinceHit++;
 		this.repair();
 		this.alarm();
-		Hyperspace.tick(this);
 
 		if (this.getHealth() < this.getMaxHealth() * 0.35F && this.tickCount % 4 == 0) {
 			((ServerLevel) this.level()).sendParticles(ParticleTypes.LARGE_SMOKE, this.getX(), this.getY() + this.ship.height() * 0.6, this.getZ(),
@@ -264,7 +259,7 @@ public class ShipEntity extends Pig {
 
 	@Override
 	public void travel(Vec3 input) {
-		if (this.level() instanceof ServerLevel && !this.wrecked && this.jump == null) {
+		if (this.level() instanceof ServerLevel && !this.wrecked) {
 			this.fly();
 		}
 	}
@@ -683,47 +678,6 @@ public class ShipEntity extends Pig {
 		return this.depleted;
 	}
 
-	/** Phase 14: uses flight energy (a hyperspace jump), in ticks of full throttle. */
-	void useEnergy(float ticks) {
-		if (this.energy >= 0.0F) {
-			this.energy = Math.max(0.0F, this.energy - ticks);
-		}
-	}
-
-	/** Phase 14: the ship hit something hard less than a second ago. */
-	boolean justCrashed() {
-		return this.crashCooldown > 0;
-	}
-
-	/** Phase 14: holds the ship steady while the hyperdrive spools up: level, no turning. */
-	void holdForJump(double cruise) {
-		this.yawRate = 0.0F;
-		this.setXRot(this.getXRot() * 0.8F);
-		this.speed = Math.min(this.speed, cruise);
-		Vec3 motion = Vec3.directionFromRotation(this.getXRot(), this.getYRot()).scale(this.speed * 0.5);
-		this.setDeltaMovement(motion);
-		this.move(MoverType.SELF, motion);
-		this.resetFallDistance();
-	}
-
-	/** Phase 14: comes out of hyperspace at that spot, level, flying on at {@code speed}. */
-	void arrive(Vec3 at, double speed) {
-		this.snapTo(at.x, at.y, at.z, this.getYRot(), 0.0F);
-		this.setYHeadRot(this.getYRot());
-		this.setYBodyRot(this.getYRot());
-		this.speed = speed;
-		this.yawRate = 0.0F;
-		this.setDeltaMovement(Vec3.ZERO);
-		this.resetFallDistance();
-
-		for (Entity passenger : this.getPassengers()) {
-			this.positionRider(passenger);
-			passenger.resetFallDistance();
-		}
-
-		this.needsSync = true;
-	}
-
 	/** Phase 13: takes over the energy the owner's ship had (parked ships charge meanwhile). */
 	void restoreEnergy(float energy, boolean depleted) {
 		this.energy = energy;
@@ -762,7 +716,7 @@ public class ShipEntity extends Pig {
 	 * Returns whether it fired.
 	 */
 	boolean fire(ServerPlayer pilot) {
-		if (this.fireCooldown > 0 || this.ship.cannons().isEmpty() || this.wrecked || this.jump != null) {
+		if (this.fireCooldown > 0 || this.ship.cannons().isEmpty() || this.wrecked) {
 			return false;
 		}
 
@@ -906,7 +860,6 @@ public class ShipEntity extends Pig {
 		ServerLevel level = (ServerLevel) this.level();
 		explosions++;
 		this.wrecked = true;
-		this.jump = null;
 		double radius = Math.min(12.0, this.ship.handling().modelRadius());
 		Vec3 centre = this.position().add(0.0, this.ship.height() * 0.5, 0.0);
 		level.sendParticles(ParticleTypes.EXPLOSION_EMITTER, centre.x, centre.y, centre.z, 1, 0.0, 0.0, 0.0, 0.0);

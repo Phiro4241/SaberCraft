@@ -238,6 +238,8 @@ static final int CHECKPOINT_TICKS = 60;
 		ClientTickEvents.END_CLIENT_TICK.register(StoryClient::tick);
 		net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper.registerKeyMapping(FOCUS_KEY);
 		StoryCinema.init();
+		// Phase 31: the keys of the story's screens do nothing else while held.
+		StoryKeys.init();
 		ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> reset());
 		HudElementRegistry.addLast(SaberCraft.id("story"), new StoryHud());
 		// Phase 28: Minecraft's status effects (top right) under the mission panel while it shows.
@@ -294,6 +296,8 @@ static final int CHECKPOINT_TICKS = 60;
 		previous = null;
 		current = null;
 		dialog = null;
+		SEEN.clear();
+		StoryKeys.reset();
 		STRIDES.clear();
 		RADIO.clear();
 		radioNow = null;
@@ -339,6 +343,34 @@ static final int CHECKPOINT_TICKS = 60;
 		throwFrom = null;
 	}
 
+	/**
+	 * Phase 31: nothing of a duel before is left on this client (a fight begun again after a
+	 * capture, a restart, a new difficulty, leaving): her first phase (one blade), no Focus, no
+	 * blade lock, no ring flaring, no hits, no props, no 50 % scene still showing, the sabers'
+	 * poses forgotten. Before, the second phase stayed until she was beaten or the world was left,
+	 * so a fight begun again after dying in it showed her staff and both blades from the start.
+	 */
+	static void resetDuel(Minecraft client) {
+		duelPhase = 1;
+		focusOn = false;
+		focusMeter = -1;
+		lockAge = 1000;
+		lockTicks = 0;
+		RING_FLARES.clear();
+		HITS.clear();
+		clearDuelProps();
+		StoryCinema.stopIf(client, "boss_mid");
+		com.phiro.sabercraft.client.interior.MeshAudit.forgetDuel();
+		duelResets++;
+	}
+
+	private static int duelResets;
+
+	/** Phase 31, for the tests: how often the duel was reset on this client. */
+	public static int duelResetsForTest() {
+		return duelResets;
+	}
+
 	// --- Receiving ---------------------------------------------------------------------------------
 
 	private static void state(StoryStatePayload payload) {
@@ -351,7 +383,7 @@ static final int CHECKPOINT_TICKS = 60;
 		// there then was there already (the Falcon waiting does not rise into view again).
 		if (!was && payload.active()) {
 			enteredMillis = net.minecraft.util.Util.getMillis();
-			clearDuelProps();
+			resetDuel(Minecraft.getInstance());
 		}
 
 		// Phase 24: the section changed, or the alarm is over: the shouts still waiting are old news.
@@ -365,7 +397,7 @@ static final int CHECKPOINT_TICKS = 60;
 			current = null;
 			STRIDES.clear();
 			music = null;
-			clearDuelProps();
+			resetDuel(Minecraft.getInstance());
 
 			if (was) {
 				RADIO.clear();
@@ -405,12 +437,29 @@ static final int CHECKPOINT_TICKS = 60;
 	private static void dialog(Minecraft client, StoryDialogPayload payload) {
 		if (!payload.open()) {
 			dialog = null;
+			SEEN.clear();
 
 			if (client.gui.screen() instanceof DialogScreen) {
 				client.gui.setScreen(null);
 			}
 
 			return;
+		}
+
+		// Phase 31: the lines of this box, to read again with the arrow keys (a new box starts afresh;
+		// the same line sent again, after a wrong answer or a click on the speaker, is kept once).
+		if (dialog == null) {
+			SEEN.clear();
+		}
+
+		if (!SEEN.isEmpty() && SEEN.getLast().line().line().equals(payload.line())) {
+			SEEN.set(SEEN.size() - 1, new Seen(payload, -1));
+		} else {
+			SEEN.add(new Seen(payload, -1));
+
+			if (SEEN.size() > SEEN_MAX) {
+				SEEN.removeFirst();
+			}
 		}
 
 		dialog = payload;
@@ -440,6 +489,12 @@ static final int CHECKPOINT_TICKS = 60;
 			}
 			case CUE_DUEL -> duel(client, payload.who(), payload.value(), payload.points());
 			case CUE_HINT -> {
+				// Phase 31: a tip of the story goes on the card at the left (not over the hotbar).
+				if ("tip".equals(payload.who())) {
+					com.phiro.sabercraft.client.Hints.storyTip(client, payload.text());
+					return;
+				}
+
 				if ("stun".equals(payload.who())) {
 					stuns = payload.value();
 					stunAge = 0;
@@ -468,7 +523,8 @@ static final int CHECKPOINT_TICKS = 60;
 				// Phase 26: and whatever effect ran (a field stuttering).
 				EFFECTS.clear();
 				// Phase 28: and her saber on the floor, her staff in flight (back at a checkpoint).
-				clearDuelProps();
+				// (Phase 31: and everything else of the duel: her second phase, the Focus, the lock.)
+				resetDuel(client);
 			}
 			case CUE_SOUND -> sound(client, payload.text(), 0.9F, 1.0F, figure(payload.value()));
 			case CUE_MUSIC -> music = payload.text().isEmpty() ? null : payload.text();
@@ -482,8 +538,8 @@ static final int CHECKPOINT_TICKS = 60;
 				title = payload.text();
 				titleAge = 0;
 				// Phase 28: a mission begins (a start, a restart, a mission played again): nothing
-				// of an earlier duel is left lying in the ship.
-				clearDuelProps();
+				// of an earlier duel is left lying in the ship (Phase 31: nor of the duel itself).
+				resetDuel(client);
 				// Phase 30: nor a progress bar from before it (the download's finished "100 %" stood
 				// under Mission 5's title); the bar is no longer hidden under a title card, so one
 				// begun under it (the maintenance door's release) shows.
@@ -532,6 +588,7 @@ static final int CHECKPOINT_TICKS = 60;
 
 		if (screen instanceof DialogScreen || screen instanceof CoverScreen || screen instanceof com.phiro.sabercraft.client.menu.SaberMenuScreen) {
 			dialog = null;
+			SEEN.clear();
 			client.gui.setScreen(null);
 		} else if (screen instanceof net.minecraft.client.gui.screens.inventory.AbstractContainerScreen<?> && client.player != null) {
 			client.player.closeContainer();
@@ -543,6 +600,30 @@ static final int CHECKPOINT_TICKS = 60;
 	/** For the tests: how often the story told this client to close its screens. */
 	public static int interruptsForTest() {
 		return interrupts;
+	}
+
+	/** Phase 31: a line of the open dialog box as it was shown, and the answer chosen there (-1: none). */
+	record Seen(StoryDialogPayload line, int chosen) {
+	}
+
+	/** Phase 31: the lines of the open box so far (the last is the one the server waits on). */
+	private static final java.util.List<Seen> SEEN = new java.util.ArrayList<>();
+	private static final int SEEN_MAX = 64;
+
+	static java.util.List<Seen> seen() {
+		return SEEN;
+	}
+
+	/** Phase 31: the answer given to the last line (shown when it is read again). */
+	static void chose(int answer) {
+		if (!SEEN.isEmpty()) {
+			SEEN.set(SEEN.size() - 1, new Seen(SEEN.getLast().line(), answer));
+		}
+	}
+
+	/** Phase 31: the box was closed here (it gave up waiting): its lines are gone. */
+	static void forgetSeen() {
+		SEEN.clear();
 	}
 
 	/** Phase 27: the dialog the server has open (null: none), for a film that hid its screen. */
@@ -748,6 +829,8 @@ static final int CHECKPOINT_TICKS = 60;
 				flash(0x00FF7A5A, 0);
 			}
 			case "phase" -> duelPhase = value;
+			// Phase 31: the fight begins again (or is left): as a fresh one.
+			case "reset" -> resetDuel(client);
 			case "throw" -> {
 				// Phase 25: her staff thrown at the player.
 				if (points.size() >= 3) {

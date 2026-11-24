@@ -524,6 +524,14 @@ public final class StoryTesting {
 		progress.placeShip = "";
 		progress.finished = false;
 		progress.flags.remove(Chapter1.CHAPTER_DONE);
+
+		if (Chapter1.PRISON_STEPS.contains(stepId)) {
+			// Phase 31: a step of the detention block by file is the way without Hale's trap: with the
+			// trap's flag (left by a test before) it would read as an older version's break-out and
+			// be put back into the cell. The trap is played, never set by file.
+			progress.flags.remove("m5.trapped");
+		}
+
 		StoryStore.save(server, player, progress);
 	}
 
@@ -687,6 +695,83 @@ public final class StoryTesting {
 
 	public static int takedowns() {
 		return Chapter1.takedownsForTest();
+	}
+
+	/**
+	 * Phase 31: as {@link #takedown(StorySession)}, crouching (a takedown asks for it): the player
+	 * crouches for that moment only (the client did not press the key, so it would not tell the
+	 * server to stand up again).
+	 */
+	public static void takedownCrouched(StorySession s) {
+		net.minecraft.server.level.ServerPlayer player = s.player();
+
+		if (player == null) {
+			return;
+		}
+
+		player.setShiftKeyDown(true);
+
+		try {
+			Chapter1.takedown(s);
+		} finally {
+			player.setShiftKeyDown(false);
+		}
+	}
+
+	/** Phase 31: that one overpowered (as the player's use key on him would); returns whether the scene began. */
+	public static boolean takedown(StorySession s, Figure figure) {
+		return Chapter1.overpower(s, figure);
+	}
+
+	/** Phase 31: whether that one can be overpowered now (who he is, how unaware), and from where the player stands. */
+	public static boolean takedownable(StorySession s, Figure figure) {
+		return Chapter1.takedownable(s, figure);
+	}
+
+	public static boolean takedownReady(StorySession s, Figure figure) {
+		return s.chapter.takedownReady(s, figure, s.local(Story.DESTROYER));
+	}
+
+	/** Phase 31: the player crouches (as holding the sneak key would; the server is told so with the next input). */
+	public static void crouch(net.minecraft.server.level.ServerPlayer player, boolean crouch) {
+		player.setShiftKeyDown(crouch);
+	}
+
+	/** Phase 31: the field of Hale's cell switched off (as M-31's work at its emitter ends). */
+	public static void openCell(StorySession s) {
+		s.set("cell2.open");
+		Chapter1.field(s, 1, true);
+	}
+
+	/** Phase 31: whether the story holds the cell's checkpoint now (the break-out from Hale's cell). */
+	public static boolean prisonBreak(StorySession s) {
+		return Chapter1.prisonBreak(s);
+	}
+
+	/** Phase 31: the takedown's flags (known how, where one lies), and how often the tip was given. */
+	public static String knowTakedown() {
+		return Chapter1.KNOW_TAKEDOWN;
+	}
+
+	public static String downPrefix() {
+		return Chapter1.DOWN_PREFIX;
+	}
+
+	public static int takedownTips() {
+		return Chapter1.takedownTipsForTest();
+	}
+
+	/** Phase 31: the ticks until the detention block's guard looks to the door again (0 while he does). */
+	public static long detGuardDoorIn(StorySession s) {
+		Figure guard = s.figure("det_guard");
+
+		if (guard == null) {
+			return 0L;
+		}
+
+		long cycle = Chapter1.GUARD_DOOR_TICKS + Chapter1.GUARD_ROOM_TICKS + 2L * Chapter1.GUARD_TURN_TICKS;
+		long t = Math.floorMod(s.time() + guard.id * 37L, cycle);
+		return t < Chapter1.GUARD_DOOR_TICKS - 40 ? 0L : cycle - t + 4L;
 	}
 
 	/** Phase 24: the blade lock's scene (how often it began), the escape film, shudders of the failing reactor, wings kept. */
@@ -1206,11 +1291,30 @@ public final class StoryTesting {
 	}
 
 	/** Phase 29: these flags taken out of a player's saved story (a test going back to a point before them). */
+	/**
+	 * Phase 31: the takedown as never learnt in the saved file (known how, the guards down, where
+	 * anyone lay; also in the missions' starts), so that a test after this one starts without it.
+	 */
+	public static void forgetTakedowns(net.minecraft.server.MinecraftServer server, java.util.UUID player) {
+		StoryProgress progress = StoryStore.load(server, player);
+		java.util.function.Predicate<String> takedown = flag -> flag.equals(Chapter1.KNOW_TAKEDOWN) || flag.equals(Chapter1.GUARD_DOWN)
+				|| flag.equals(Chapter1.LAB_GUARD_DOWN) || flag.startsWith(Chapter1.DOWN_PREFIX);
+		progress.flags.removeIf(takedown);
+		progress.missionStart.replaceAll((mission, flags) -> flags.stream().filter(takedown.negate()).toList());
+		StoryStore.save(server, player, progress);
+	}
+
 	public static void forget(net.minecraft.server.MinecraftServer server, java.util.UUID player, String... flags) {
 		StoryProgress progress = StoryStore.load(server, player);
 
 		for (String flag : flags) {
 			progress.flags.remove(flag);
+			// Phase 31: a guard forgotten as overpowered does not lie where he fell either.
+			String key = Chapter1.GUARD_DOWN.equals(flag) ? "det_guard" : Chapter1.LAB_GUARD_DOWN.equals(flag) ? "lab_guard" : null;
+
+			if (key != null) {
+				progress.flags.removeIf(kept -> kept.startsWith(Chapter1.DOWN_PREFIX) && kept.contains("/" + key + "/"));
+			}
 		}
 
 		StoryStore.save(server, player, progress);
@@ -1275,5 +1379,97 @@ public final class StoryTesting {
 	/** Phase 28: the objective's key for the step now (the text of the refusing branch, else the step's own). */
 	public static String objective(StorySession s) {
 		return Chapter1.objective(s, s.step());
+	}
+
+	// --- Phase 31: the boss fight begun again ---------------------------------------------------------
+
+	/**
+	 * Phase 31: everything left over of a fight, as a list of what is not as in a fresh one: her
+	 * (phase, strength, what she does, staff, ring, spin, slam, moves, reactions), the session's
+	 * flags and timers of a fight, the Focus, and the player (stricter guard, stamina, the guard's
+	 * cooldown, slowness). {@code started}: the fight was just begun (its own flag and the first
+	 * pauses are expected then). Empty: nothing is left over.
+	 */
+	public static List<String> fightLeftovers(StorySession s, net.minecraft.server.level.ServerPlayer player, boolean started) {
+		List<String> left = new java.util.ArrayList<>();
+		Figure f = s.figure("shadow");
+
+		if (f != null) {
+			check(left, f.health >= 1.0F, "health " + f.health);
+			check(left, Finale.phase(f) == 1, "phase " + Finale.phase(f));
+			check(left, !f.ringOn, "ring on");
+			check(left, f.thrown == 0, "thrown " + f.thrown);
+			check(left, f.throwFrom == null && f.throwAge == 0, "staff out");
+			check(left, !f.lunge && !f.lockScene && !f.disarmed, "lunge/lock/disarmed");
+			check(left, !Finale.spinLive(f) && f.spinHitWindup == -1 && !f.spinHurt && !f.spinReached && !f.spinDodged, "spin");
+			check(left, f.slamDir == null && !f.shove, "slam/shove");
+			check(left, java.util.Arrays.stream(f.moves).allMatch(m -> m == 0), "moves " + java.util.Arrays.toString(f.moves));
+			check(left, f.pattern == -1 && f.combo == 0 && f.hits == 0 && f.parried == 0 && f.burst == 0, "pattern/combo/hits");
+			check(left, f.react == 0 && f.reactTicks == 0 && f.pushX == 0.0 && f.pushZ == 0.0, "reaction " + f.react);
+			check(left, f.rearHits == 0 && f.behindTicks == 0 && f.flightHits == 0 && f.strokes == 0, "rear/flight/strokes");
+			check(left, started ? f.action == Finale.GUARD : f.action == Finale.GUARD && !f.lit, "action " + action(f) + (f.lit ? " lit" : ""));
+		}
+
+		for (String flag : List.of(Finale.BOSS_SCENE, Finale.BOSS_DONE, "tmp.boss_reveal", Finale.SCENE_PENDING, "tmp.boss_fierce", "tmp.hint_guard_break",
+				"tmp.hint_guard_strain")) {
+			check(left, !s.has(flag), flag);
+		}
+
+		check(left, started == s.has("tmp.duel"), "tmp.duel " + s.has("tmp.duel"));
+
+		for (String timer : List.of("rush", "throw", "slam", "lunge", "shove", "ring_min", "rear_answer", "guard_broken", "throw_back", "boss_mid",
+				"boss_pending", "stroke")) {
+			check(left, !s.timers.containsKey(timer), "timer " + timer);
+		}
+
+		if (!started) {
+			check(left, !s.timers.containsKey("push") && !s.timers.containsKey("leap"), "timer push/leap");
+		}
+
+		check(left, s.focus >= 1.0F && s.focusTicks == 0, "focus " + s.focus + "/" + s.focusTicks);
+		long[] strict = com.phiro.sabercraft.ability.SaberAbilities.strictForTest(player);
+		check(left, strict[0] == 0 && strict[1] == 0 && strict[2] == 0 && strict[3] == 0, "strict guard " + java.util.Arrays.toString(strict));
+		check(left, com.phiro.sabercraft.ability.SaberAbilities.stamina(player) >= com.phiro.sabercraft.ability.AbilityConfig.get().staminaMax - 0.5F,
+				"stamina " + com.phiro.sabercraft.ability.SaberAbilities.stamina(player));
+		check(left, !player.hasEffect(net.minecraft.world.effect.MobEffects.SLOWNESS), "slowness");
+		check(left, !s.captureDue, "capture still due");
+		return left;
+	}
+
+	private static void check(List<String> left, boolean fresh, String what) {
+		if (!fresh) {
+			left.add(what);
+		}
+	}
+
+	/** Phase 31: the next hit takes the player down (no resistance, one half heart). */
+	public static void lethal(net.minecraft.server.level.ServerPlayer player) {
+		player.removeEffect(net.minecraft.world.effect.MobEffects.RESISTANCE);
+		player.setHealth(1.0F);
+	}
+
+	/** Phase 31: whether the player's saved file says they are in the story (the way back kept there). */
+	public static boolean fileActive(net.minecraft.server.MinecraftServer server, java.util.UUID player) {
+		return StoryStore.load(server, player).active;
+	}
+
+	/** Phase 31: an input of the player reaches the server (as from the client): a stroke, a key. */
+	public static void action(net.minecraft.server.level.ServerPlayer player, byte action) {
+		Story.action(player, new com.phiro.sabercraft.network.StoryActionPayload(action, "", 0));
+	}
+
+	/** Phase 31: whether the player was struck down and is still to be caught (at the next tick). */
+	public static boolean captureDue(StorySession s) {
+		return s.captureDue;
+	}
+
+	/** Phase 31: the duel begins anew with the figure she is now (as her "threat" line does). */
+	public static void restartDuel(StorySession s) {
+		Finale.duelStarts(s);
+	}
+
+	/** Phase 31: how often a fight was reset since the game started. */
+	public static int fightResets() {
+		return Finale.resetsForTest();
 	}
 }

@@ -45,21 +45,19 @@ import com.phiro.sabercraft.client.ImmersionConfig;
 import com.phiro.sabercraft.client.character.OutfitClient;
 import com.phiro.sabercraft.client.music.SaberMusic;
 import com.phiro.sabercraft.client.ship.CockpitView;
-import com.phiro.sabercraft.client.ship.HyperspaceClient;
 import com.phiro.sabercraft.client.ship.InteriorAmbience;
 import com.phiro.sabercraft.client.ship.ShipClient;
 import com.phiro.sabercraft.interior.InteriorPlan;
 import com.phiro.sabercraft.interior.InteriorSystems;
 import com.phiro.sabercraft.interior.ShipInteriors;
-import com.phiro.sabercraft.ship.Hyperspace;
 import com.phiro.sabercraft.ship.ShipEntity;
 import com.phiro.sabercraft.ship.ShipFeatures;
 import com.phiro.sabercraft.ship.ShipType;
 import com.phiro.sabercraft.ship.Starships;
 
 /**
- * Phase 14: flight music, flight sounds, the cockpit view, ship damage, the hyperspace jump, the
- * walkable interiors and Vader's helmet.
+ * Phase 14: flight music, flight sounds, the cockpit view, ship damage, the walkable interiors and
+ * Vader's helmet (Phase 31: the hyperspace jump of ships in the open world is gone).
  *
  * <ul>
  * <li>Flight: boarding starts the flight music at once (only one piece plays), a space battle
@@ -70,12 +68,12 @@ import com.phiro.sabercraft.ship.Starships;
  * than a quarter of the hull, the hull mends only after the delay and slowly, keeps its damage
  * when the ship is sent away and called again, and big ships are hit on their whole hull.
  * Destroyed: the wreck is gone, nothing drops, the pilot lives.</li>
- * <li>Hyperspace: not on the ground, not with too little energy, not through a wall; the jump
- * moves the ship ahead, every client hears of it, the cooldown holds.</li>
+ * <li>Hyperspace (Phase 31): gone from the open world. No key, no setting, no command, no sound of
+ * a failed jump, nothing kept on the ship; a ship in the air stays on its course.</li>
  * <li>Interiors: every room of both ships can be walked to from the entry (lifts included), the
  * rooms are protected, exit and helm work, a lost ship puts the crew out next to the wreck, the
  * interior is still there after leaving the world, and a player logged out aboard is still aboard.</li>
- * <li>A dedicated server: the cockpit view, a jump and the Falcon's interior.</li>
+ * <li>A dedicated server: the cockpit view and the Falcon's interior.</li>
  * </ul>
  *
  * <p>Screenshots: {@code phase14_*}.
@@ -122,7 +120,7 @@ public class Phase14GameTest implements FabricClientGameTest {
 			flight(context, server, self);
 			cockpits(context, server, self);
 			damage(context, server, self);
-			hyperspace(context, server, self);
+			noHyperspace(context, server, self);
 			falconInterior(context, server, self);
 			destroyerInterior(context, server, self);
 			vader(context, server);
@@ -139,8 +137,8 @@ public class Phase14GameTest implements FabricClientGameTest {
 		check(config.shipRepairDelaySeconds == 45 && config.shipRepairPerMinute == 0.1F && !config.shipRepairInFlight,
 				"repair: 45 s delay, a tenth of the hull per minute, not in flight");
 		check(config.shipMaxHitShare == 0.25F, "no hit takes more than a quarter of the hull");
-		check(config.hyperspaceEnabled && config.hyperspaceDistance == 160 && config.hyperspaceCooldownSeconds == 60,
-				"hyperspace: on, 160 blocks, 60 s cooldown");
+		check(!new com.google.gson.Gson().toJson(config).toLowerCase(Locale.ROOT).contains("hyperspace"),
+				"Phase 31: no hyperspace settings any more");
 		check(config.shipInteriors && config.shipInteriorGuests, "interiors on, guests welcome");
 		check(new ImmersionConfig().musicFlight, "flight music is on by default");
 		check(ShipFeatures.of(ShipType.FALCON).interior() != null && ShipFeatures.of(ShipType.STAR_DESTROYER).interior() != null
@@ -337,69 +335,37 @@ public class Phase14GameTest implements FabricClientGameTest {
 		context.waitTicks(20);
 	}
 
-	// Hyperspace.
-
-	private static void hyperspace(ClientGameTestContext context, TestServerContext server, UUID self) {
+	/**
+	 * Phase 31: the hyperspace jump of ships in the open world is gone for good (it made the game
+	 * stutter): no key, no setting, no command, no sound of a failed jump, nothing kept on the ship.
+	 * The Falcon's jump in the story stays (Phase 16, 17, 28 and 31 test it).
+	 */
+	private static void noHyperspace(ClientGameTestContext context, TestServerContext server, UUID self) {
 		server.runCommand("tp @a 0 ~ 0 180 0");
-		server.runOnServer(s -> Hyperspace.reset());
 		context.waitTicks(10);
+		check(context.computeOnClient(client -> java.util.Arrays.stream(client.options.keyMappings)
+				.noneMatch(mapping -> mapping.getName().contains("hyperspace"))), "no hyperspace key in the controls");
+		check(context.computeOnClient(client -> client.getSoundManager().getSoundEvent(SaberCraft.id("ship.hyperspace_fail")) == null
+				&& client.getSoundManager().getSoundEvent(SaberCraft.id("ship.hyperspace_jump")) != null),
+				"the sound of a failed jump is gone, the story's jump sounds stay");
+		check(java.util.Arrays.stream(ShipEntity.class.getDeclaredFields()).noneMatch(field -> field.getName().toLowerCase(Locale.ROOT).contains("hyper"))
+				&& java.util.Arrays.stream(ShipEntity.class.getDeclaredMethods()).noneMatch(method -> method.getName().toLowerCase(Locale.ROOT).contains("hyper"))
+				&& java.util.Arrays.stream(Starships.class.getDeclaredMethods()).noneMatch(method -> method.getName().toLowerCase(Locale.ROOT).contains("hyper")),
+				"nothing of a jump is kept or ticked on the ships");
 		server.computeOnServer(s -> Starships.command(me(s, self), "board", "xwing"));
-		until(context, client -> ShipClient.piloting(client) != null, 80, "into the X-Wing for a jump");
-		check(key(server.computeOnServer(s -> Hyperspace.request(me(s, self)))).equals("sabercraft.hyperspace.landed"), "no jump from the ground");
-
-		context.getInput().holdKeyFor(options -> options.keyJump, 60);
-		context.getInput().holdKeyFor(options -> options.keyUp, 20);
-		server.runOnServer(s -> ship(s).setEnergyForTest(5.0F));
-		check(key(server.computeOnServer(s -> Hyperspace.request(me(s, self)))).equals("sabercraft.hyperspace.energy"), "no jump with too little energy");
-		server.runOnServer(s -> ship(s).setEnergyForTest(100000.0F));
-
-		// A wall ahead: the jump stops before it, or is refused.
-		Vec3 at = server.computeOnServer(s -> ship(s).position());
-		float yaw = server.computeOnServer(s -> ship(s).getYRot());
-		Vec3 ahead = Vec3.directionFromRotation(0.0F, yaw);
-		Vec3 wall = at.add(ahead.scale(60.0));
-		Vec3 side = Vec3.directionFromRotation(0.0F, yaw + 90.0F);
-		Vec3 a = wall.add(side.scale(-12.0));
-		Vec3 b = wall.add(side.scale(12.0)).add(ahead.scale(2.0));
-		server.runCommand(String.format(Locale.ROOT, "fill %d %d %d %d %d %d minecraft:stone", (int) Math.floor(Math.min(a.x, b.x)), (int) at.y - 10,
-				(int) Math.floor(Math.min(a.z, b.z)), (int) Math.ceil(Math.max(a.x, b.x)), (int) at.y + 12, (int) Math.ceil(Math.max(a.z, b.z))));
-		context.waitTicks(5);
-		Vec3 blocked = server.computeOnServer(s -> Hyperspace.targetForTest(ship(s)));
-		check(blocked == null || blocked.distanceTo(at) < 58.0, "the jump never goes through the wall ("
-				+ (blocked == null ? "refused" : Math.round(blocked.distanceTo(at)) + " blocks") + ")");
-		server.runCommand(String.format(Locale.ROOT, "fill %d %d %d %d %d %d minecraft:air", (int) Math.floor(Math.min(a.x, b.x)), (int) at.y - 10,
-				(int) Math.floor(Math.min(a.z, b.z)), (int) Math.ceil(Math.max(a.x, b.x)), (int) at.y + 12, (int) Math.ceil(Math.max(a.z, b.z))));
-		context.waitTicks(5);
-
-		int seen = HyperspaceClient.jumpsSeen();
-		int jumps = Hyperspace.jumps();
-		Vec3 from = server.computeOnServer(s -> ship(s).position());
-		String charging = key(server.computeOnServer(s -> Hyperspace.request(me(s, self))));
-		check(charging.equals("sabercraft.hyperspace.charging"), "in the air the hyperdrive charges: " + charging);
-		context.waitTicks(15);
-		check(context.computeOnClient(client -> HyperspaceClient.charge(0.0F)) >= 0.0F, "the pilot sees the charge");
-		context.takeScreenshot("phase14_hyperspace_charge");
-
-		for (int i = 0; i < 40 && Hyperspace.jumps() == jumps; i++) {
-			context.waitTick();
-		}
-
-		check(Hyperspace.jumps() == jumps + 1, "the ship jumps");
-		context.waitTicks(3);
-		context.takeScreenshot("phase14_hyperspace_tunnel");
-		Vec3 to = server.computeOnServer(s -> ship(s).position());
-		double distance = to.distanceTo(from);
-		check(distance > 24.0 && distance <= AbilityConfig.get().hyperspaceDistance + 8.0, "it comes out far ahead (" + Math.round(distance) + " blocks)");
-		check(to.subtract(from).normalize().dot(Vec3.directionFromRotation(0.0F, yaw)) > 0.8, "along its heading");
-		check(server.computeOnServer(s -> s.overworld().noCollision(ship(s), ship(s).getBoundingBox())), "in free space");
-		check(HyperspaceClient.jumpsSeen() > seen, "the client was told of the jump");
-		context.waitTicks(20);
-		context.takeScreenshot("phase14_hyperspace_arrival");
-		check(key(server.computeOnServer(s -> Hyperspace.request(me(s, self)))).equals("sabercraft.hyperspace.cooldown"), "then the drive cools down");
-
+		until(context, client -> ShipClient.piloting(client) != null, 80, "into the X-Wing (no hyperspace)");
+		context.getInput().holdKeyFor(options -> options.keyJump, 40);
+		check(server.computeOnServer(s -> Starships.commandForTest(me(s, self), "hyperspace", ShipType.XWING)) == null,
+				"the old hyperspace command does nothing");
+		// The old key (X) does nothing either: the ship hovers on where it was.
+		Vec3 before = server.computeOnServer(s -> ship(s).position());
+		context.getInput().pressKey(org.lwjgl.glfw.GLFW.GLFW_KEY_X);
+		context.waitTicks(30);
+		Vec3 after = server.computeOnServer(s -> ship(s).position());
+		check(after.distanceTo(before) < 20.0, "X does not throw the ship ahead (" + Math.round(after.distanceTo(before)) + " blocks)");
 		context.getInput().holdKeyFor(options -> options.keyShift, 3);
 		until(context, client -> client.player.getVehicle() == null, 20, "out of the X-Wing");
-		context.waitTicks(100);
+		context.waitTicks(60);
 		server.computeOnServer(s -> Starships.command(me(s, self), "dismiss", "xwing"));
 		server.runCommand("tp @a 0 ~ 0 180 0");
 		context.waitTicks(20);
@@ -649,7 +615,7 @@ public class Phase14GameTest implements FabricClientGameTest {
 		}
 	}
 
-	/** On a dedicated server: the cockpit view, a jump everyone hears of, the Falcon's rooms. */
+	/** On a dedicated server: the cockpit view and the Falcon's rooms. */
 	private static void dedicatedServer(ClientGameTestContext context) {
 		try (TestDedicatedServerContext server = context.worldBuilder().createServer()) {
 			try (var connection = server.connect()) {
@@ -661,17 +627,6 @@ public class Phase14GameTest implements FabricClientGameTest {
 				until(context, client -> ShipClient.piloting(client) != null, 80, "dedicated server: into the X-Wing");
 				context.waitTicks(3);
 				check(context.computeOnClient(CockpitView::active), "dedicated server: the cockpit view");
-				context.getInput().holdKeyFor(options -> options.keyJump, 60);
-				context.getInput().holdKeyFor(options -> options.keyUp, 20);
-				int seen = HyperspaceClient.jumpsSeen();
-				context.getInput().pressKey(options -> HyperspaceClient.JUMP_KEY);
-				for (int i = 0; i < 80 && HyperspaceClient.jumpsSeen() == seen; i++) {
-					context.waitTick();
-				}
-
-				check(HyperspaceClient.jumpsSeen() > seen, "dedicated server: the X key jumps, and the client sees it");
-				context.waitTicks(2);
-				context.takeScreenshot("phase14_dedicated_hyperspace");
 				context.getInput().holdKeyFor(options -> options.keyShift, 3);
 				until(context, client -> client.player.getVehicle() == null, 20, "dedicated server: out");
 				context.waitTicks(120);

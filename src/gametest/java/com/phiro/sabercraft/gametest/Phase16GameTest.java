@@ -39,7 +39,7 @@ import com.phiro.sabercraft.ship.Starships;
 
 /**
  * Phase 16: the interiors without flickering or missing faces, with seats, turrets, doors, lights,
- * the ship's status and the cockpit's hyperspace jump; no ships called inside them.
+ * the ship's status and the hyperspace jump (Phase 31: the story's only); no ships called inside them.
  *
  * <p>Screenshots: {@code phase16_*}.
  */
@@ -292,24 +292,22 @@ public class Phase16GameTest implements FabricClientGameTest {
 		context.waitTicks(5);
 	}
 
-	/** The jump from the cockpit: only from its front seats, then the drive cools down. */
+	/**
+	 * The jump inside the Falcon. Phase 31: only the story makes it (no lever, no key, no cooldown
+	 * for players); its film of light round the ship, its sounds and its stages stay as they were.
+	 */
 	private static void hyperspace(ClientGameTestContext context, TestServerContext server, UUID self, BlockPos falcon) {
 		tp(context, server, falcon, new Vec3(43.5, 7, 22.5), 180, 0);
-		check(key(server.computeOnServer(s -> InteriorJump.request(me(s, self)))).equals("sabercraft.interior.jump_seat"), "no jump standing");
-		Seat rear = FalconInterior.SEATS.get(2);
-		server.runOnServer(s -> InteriorSystems.useForTest(me(s, self), falcon.offset(rear.cell())));
-		context.waitTicks(5);
-		check(key(server.computeOnServer(s -> InteriorJump.request(me(s, self)))).equals("sabercraft.interior.jump_seat"), "no jump from a rear seat");
-		server.runOnServer(s -> me(s, self).stopRiding());
-		context.waitTicks(5);
 		Seat copilot = FalconInterior.SEATS.get(1);
 		server.runOnServer(s -> InteriorSystems.useForTest(me(s, self), falcon.offset(copilot.cell())));
 		context.waitTicks(10);
 		context.runOnClient(client -> client.player.setXRot(-8.0F));
-		// The hyperdrive lever on the dashboard, used from the seat.
+		// The old hyperdrive lever on the dashboard: used from the seat, it starts nothing any more.
 		server.runOnServer(s -> InteriorSystems.useForTest(me(s, self), falcon.offset(45, FalconInterior.FLOOR + 1, FalconInterior.COCKPIT_FRONT + 1)));
-		check(server.computeOnServer(s -> InteriorJump.running(falcon)), "the hyperdrive lever starts the jump from the co-pilot's seat");
-		check(key(server.computeOnServer(s -> InteriorJump.request(me(s, self)))).equals("sabercraft.hyperspace.busy"), "one jump at a time");
+		context.waitTicks(2);
+		check(server.computeOnServer(s -> !InteriorJump.running(falcon)), "Phase 31: the lever no longer starts a jump");
+		check(server.computeOnServer(s -> InteriorJump.story(s.getLevel(ShipInteriors.DIMENSION), falcon)), "the story's jump starts");
+		check(server.computeOnServer(s -> !InteriorJump.story(s.getLevel(ShipInteriors.DIMENSION), falcon)), "one jump at a time");
 		context.waitTicks(20);
 		check(context.computeOnClient(client -> InteriorClient.jump(falcon, client.level) != null), "the client shows the jump");
 		context.takeScreenshot("phase16_hyperspace_charge");
@@ -322,7 +320,6 @@ public class Phase16GameTest implements FabricClientGameTest {
 		context.waitTicks(40);
 		check(server.computeOnServer(s -> !InteriorJump.running(falcon)), "the jump ends");
 		context.takeScreenshot("phase16_hyperspace_after");
-		check(key(server.computeOnServer(s -> InteriorJump.request(me(s, self)))).equals("sabercraft.hyperspace.cooldown"), "then the drive cools down");
 		server.runOnServer(s -> me(s, self).stopRiding());
 		context.waitTicks(5);
 	}
