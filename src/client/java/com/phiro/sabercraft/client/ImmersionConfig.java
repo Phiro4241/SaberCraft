@@ -211,7 +211,9 @@ public final class ImmersionConfig {
 	/**
 	 * Phase 27: brightens the story's own darkening (the emergency lights, the alarm's pulsing,
 	 * the lights failing as the ship shudders): 0 as made (the default), 1 brighter, 2 bright. The
-	 * colours stay (red stays red), only less dark.
+	 * colours stay (red stays red), only less dark. Phase 31: 3 "Maximal" also lifts the dark places
+	 * of the story's ships (the world's light and the rooms' dimming, see
+	 * {@code client.story.StoryBrightness}); bright spots stay as they are.
 	 */
 	@SerializedName("story_brightness")
 	public int storyBrightness = 0;
@@ -224,6 +226,8 @@ public final class ImmersionConfig {
 	@SerializedName("menu_key_moved")
 	public boolean menuKeyMoved = false;
 
+	/** Phase 31: the highest level of {@link #storyBrightness} ("Maximal"). */
+	public static final int STORY_BRIGHTNESS_MAX = 3;
 	public static final String CAMERA_COCKPIT = "cockpit";
 	public static final String CAMERA_CHASE = "chase";
 	public static final String CAMERA_KEEP = "keep";
@@ -232,9 +236,10 @@ public final class ImmersionConfig {
 
 	/** Phase 27: how far the story's darkening is lifted (0 none .. 1 none of it left). */
 	public float storyLift() {
-		return switch (Mth.clamp(this.storyBrightness, 0, 2)) {
+		return switch (Mth.clamp(this.storyBrightness, 0, STORY_BRIGHTNESS_MAX)) {
 			case 1 -> 0.4F;
 			case 2 -> 0.7F;
+			case 3 -> 0.85F;
 			default -> 0.0F;
 		};
 	}
@@ -285,7 +290,7 @@ public final class ImmersionConfig {
 			this.language = "auto";
 		}
 		this.storyTextSpeed = Mth.clamp(this.storyTextSpeed, 0, 2);
-		this.storyBrightness = Mth.clamp(this.storyBrightness, 0, 2);
+		this.storyBrightness = Mth.clamp(this.storyBrightness, 0, STORY_BRIGHTNESS_MAX);
 		if (this.hintsShown == null) {
 			this.hintsShown = new java.util.ArrayList<>();
 		}

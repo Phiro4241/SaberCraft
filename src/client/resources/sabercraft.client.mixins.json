@@ -18,6 +18,7 @@
     "ItemInHandLayerMixin",
     "ItemInHandRendererMixin",
     "LanguageManagerMixin",
+    "LightmapRenderStateExtractorMixin",
     "LivingEntityRendererMixin",
     "LocalPlayerMixin",
     "MinecraftMixin",

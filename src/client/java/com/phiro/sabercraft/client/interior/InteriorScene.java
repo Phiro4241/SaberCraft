@@ -350,6 +350,11 @@ public final class InteriorScene {
 			model.storyDim += (storyTarget - model.storyDim) * storyStep;
 			model.brightnessAt = seconds;
 			float dim = model.brightness * model.storyDim;
+
+			// Phase 31: at the story's brightness "Maximal" its rooms are less dark (bright stays bright).
+			if (com.phiro.sabercraft.client.story.StoryClient.storyPlot(model.origin)) {
+				dim = com.phiro.sabercraft.client.story.StoryBrightness.shade(dim, com.phiro.sabercraft.client.story.StoryBrightness.level());
+			}
 			poseStack.pushPose();
 			poseStack.translate(origin.getX() - camera.x, origin.getY() - camera.y, origin.getZ() - camera.z);
 
