@@ -375,7 +375,8 @@ public final class StorySession {
 	 * leaving is no way out of being caught).
 	 */
 	void keepOnLeave() {
-		if (this.progress.finished || this.alarm > 0 || this.fighting || this.completing()) {
+		// Phase 31: (and not while breaking out of Hale's cell: its checkpoint is the cell's.)
+		if (this.progress.finished || this.alarm > 0 || this.fighting || this.completing() || this.chapter.holdsCheckpoint(this)) {
 			return;
 		}
 

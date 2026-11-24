@@ -63,6 +63,14 @@ public interface Chapter {
 		return new Mission.Place(step.ship(), step.spawn(), step.yaw());
 	}
 
+	/**
+	 * Phase 31: whether the last checkpoint must stay as it is now, even on leaving the game calmly
+	 * (a section that goes back to its start when one is caught: Hale's cell). By default no.
+	 */
+	default boolean holdsCheckpoint(StorySession session) {
+		return false;
+	}
+
 	/** Phase 20: whether the step makes a checkpoint as it begins (by default: as the step says). */
 	default boolean checkpoint(StorySession session, Mission.Step step) {
 		return step.checkpoint();

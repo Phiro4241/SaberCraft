@@ -376,7 +376,61 @@ public final class Chapter1 implements Chapter {
 	}
 
 	static String captureLine(StorySession s) {
+		// Phase 31: caught breaking out of Hale's cell: back in it (said so, with what to do).
+		if (s.has("m5.trapped") && s.at("m5.cell")) {
+			return "sabercraft.story.radio.caught.m5_cell";
+		}
+
 		return "sabercraft.story.radio.caught." + s.mission().id();
+	}
+
+	/**
+	 * Phase 31: the steps of the break-out from Hale's cell (trusting him: the trap). From the trap
+	 * until the hideout ends Mission 5 the cell's checkpoint is the only one: caught anywhere on the
+	 * way (in the block, its lobby, Kestrel's crawl way), one is put back into the cell with
+	 * everything as it was then (the field on, R2-V7 restrained, Kestrel in her cell, the guard at
+	 * his post, the door locked). Before, freeing R2-V7 or Kestrel made checkpoints of their own
+	 * behind the pillar in the block, so being caught after it put one there, not in the cell.
+	 */
+	static final java.util.Set<String> PRISON_STEPS = java.util.Set.of("m5.r2", "m5.cell1", "m5.back");
+
+	/** Phase 31: whether the player is breaking out of Hale's cell now (out of it, or about to be). */
+	static boolean prisonBreak(StorySession s) {
+		return s.has("m5.trapped") && (s.at("m5.cell") && s.has("cell2.open") || PRISON_STEPS.contains(s.step().id()));
+	}
+
+	@Override
+	public boolean holdsCheckpoint(StorySession s) {
+		return prisonBreak(s);
+	}
+
+	/**
+	 * Phase 31: a file saved by an older version in the middle of the break-out (at the checkpoint
+	 * made on freeing R2-V7 or Kestrel, behind the pillar) goes back into the cell, as the break-out
+	 * now does: the cell's step and place, and nothing of the break-out done yet.
+	 */
+	static boolean prisonSave(StoryProgress progress) {
+		if (progress.mission != 4 || !progress.flags.contains("m5.trapped") || !PRISON_STEPS.contains(progress.stepId)) {
+			return false;
+		}
+
+		Mission mission = INSTANCE.missions().get(4);
+		int cell = mission.indexOf("m5.cell");
+
+		if (cell < 0) {
+			return false;
+		}
+
+		progress.step = cell;
+		progress.stepId = "m5.cell";
+		progress.flags.removeAll(java.util.List.of("cell2.open", "droid.r2v7", "cell1.open", "cell3.open", "kestrel.free", "hatch.f", GUARD_DOWN,
+				"opt.prisoner", "gone.prisoner"));
+		progress.placeShip = D;
+		progress.placeX = CELL_2.x;
+		progress.placeY = CELL_2.y;
+		progress.placeZ = CELL_2.z;
+		progress.placeYaw = 0.0F;
+		return true;
 	}
 
 	// --- People ------------------------------------------------------------------------------------
@@ -2459,7 +2513,7 @@ public final class Chapter1 implements Chapter {
 	 */
 	private static void safeCheckpoint(StorySession s, ServerPlayer player) {
 		if (!D.equals(s.here) || s.dialog != null || s.pending != null || s.completing() || s.alarm > 0 || s.fighting
-				|| s.suspicion >= Stealth.SUSPICIOUS || !s.unsaved() || NO_SAFE_CHECKPOINT.contains(s.step().id())) {
+				|| s.suspicion >= Stealth.SUSPICIOUS || !s.unsaved() || NO_SAFE_CHECKPOINT.contains(s.step().id()) || prisonBreak(s)) {
 			return;
 		}
 
@@ -3013,6 +3067,9 @@ public final class Chapter1 implements Chapter {
 		Story.cue(s, Story.CUE_SOUND, "", "story.caught", 0);
 		field(s, 1, false);
 		Story.place(s, D, CELL_2, 0.0F);
+		// Phase 31: the cell's checkpoint at once (it waited for Hale to be out, and M-31 sent out
+		// quickly kept it from being made at all: a capture then went back before the trap).
+		s.checkpoint(D, CELL_2, 0.0F);
 
 		for (String key : List.of("hale", "trap1")) {
 			Figure figure = s.figure(key);
@@ -3974,9 +4031,19 @@ public final class Chapter1 implements Chapter {
 		}
 
 		if (x == DestroyerInterior.CX - 4 && y == H && z == DestroyerInterior.DETENTION_DOOR_Z0) {
+			// Phase 31: never shut onto the player standing in its opening.
+			if (inDetentionDoorway(s)) {
+				return false;
+			}
+
 			// The detention block: open only for the one Hale expects (Phase 20: and for Hale and
 			// his trooper leaving after the trap).
-			boolean shut = !(s.has("trust.hale") && s.at("m5.route")) && !(s.at("m5.cell") && (s.has("tmp.leave.hale") || s.has("tmp.leave.trap1")));
+			boolean entrance = s.has("trust.hale") && s.at("m5.route");
+			boolean haleOut = s.at("m5.cell") && (s.has("tmp.leave.hale") || s.has("tmp.leave.trap1"));
+			// Phase 31: and from inside for the player at it (out of the cell, not in Hale's scene),
+			// and back in during the break-out from Hale's cell; it shuts again once they walk on.
+			boolean exit = !(s.at("m5.cell") && !s.has("cell2.open")) && detentionExit(s);
+			boolean shut = !entrance && !haleOut && !exit;
 
 			if (shut && s.at("m5.route") && !s.has("trust.hale")) {
 				// Phase 28: without Hale's trust this door is his trap (the intercept says so): it
@@ -3984,9 +4051,9 @@ public final class Chapter1 implements Chapter {
 				refusedDoor(s, new Vec3(x, y, z + 1.0), "sabercraft.story.hint.detention_main");
 			}
 
-			if (!shut && s.at("m5.route") && s.pursued()) {
+			if (!shut && !haleOut && s.pursued()) {
 				// Phase 24: not with troopers on one's heels: Hale's trap (and the room it needs) is
-				// not for a chase; the door opens once they lost the player.
+				// not for a chase; the door opens once they lost the player (Phase 31: either way).
 				refusedDoor(s, new Vec3(x, y, z + 1.0));
 				return true;
 			}
@@ -4078,11 +4145,58 @@ public final class Chapter1 implements Chapter {
 	static final double M31_UNBOLT_REACH = 14.0;
 	static final int M31_UNBOLT_TICKS = 34;
 
+	/** Phase 31: the detention block's main door's plane (plot x), the block west of it, the lobby east. */
+	static final double DETENTION_PLANE = DestroyerInterior.CX - 4 + 0.5;
+
+	/**
+	 * Phase 31: whether the player stands at the detention block's main door to go through it: inside
+	 * the block by it (or in its opening), or, breaking out of Hale's cell, just outside it too (so
+	 * one who went out before freeing R2-V7 or Kestrel can get back in: the hatches stay bolted).
+	 */
+	static boolean detentionExit(StorySession s) {
+		if (!D.equals(s.here)) {
+			return false;
+		}
+
+		Vec3 me = s.local(D);
+		double z0 = DestroyerInterior.DETENTION_DOOR_Z0;
+
+		if (me.z < z0 - 0.6 || me.z > z0 + 2.6 || Math.abs(me.y - H) > 1.0) {
+			return false;
+		}
+
+		if (me.x >= DETENTION_PLANE - 3.0 && me.x <= DETENTION_PLANE + 0.85) {
+			return true;
+		}
+
+		return prisonBreak(s) && me.x > DETENTION_PLANE && me.x <= DETENTION_PLANE + 3.0;
+	}
+
+	/** Phase 31: whether the player stands in the open main door of the detention block (it must not shut on them). */
+	static boolean inDetentionDoorway(StorySession s) {
+		ServerLevel level = interiors(s);
+
+		if (level == null || !D.equals(s.here)
+				|| !level.getBlockState(s.destroyer.offset(DestroyerInterior.CX - 4, H, DestroyerInterior.DETENTION_DOOR_Z0)).isAir()) {
+			return false;
+		}
+
+		Vec3 me = s.local(D);
+		AABB doorway = new AABB(DestroyerInterior.CX - 4, H, DestroyerInterior.DETENTION_DOOR_Z0, DestroyerInterior.CX - 3, H + 3,
+				DestroyerInterior.DETENTION_DOOR_Z0 + 2);
+		return doorway.intersects(new AABB(me.x - 0.3, me.y, me.z - 0.3, me.x + 0.3, me.y + 1.8, me.z + 0.3));
+	}
+
 	// --- Checkpoints (Phase 20) --------------------------------------------------------------------
 
 	@Override
 	public boolean checkpoint(StorySession s, Mission.Step step) {
 		// Out of Hale's cell the checkpoint stays the cell's; through the crawl way it is at its hatch.
+		// (Phase 31: all the way out of the prison, freeing R2-V7 and Kestrel included.)
+		if (s.has("m5.trapped") && PRISON_STEPS.contains(step.id())) {
+			return false;
+		}
+
 		if (step.id().equals("m5.r2")) {
 			return !s.has("trust.hale");
 		}

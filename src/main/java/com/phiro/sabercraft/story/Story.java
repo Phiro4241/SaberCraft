@@ -272,6 +272,11 @@ public final class Story {
 
 		progress.mission = Math.max(0, Math.min(progress.mission, missions - 1));
 		resolveStep(chapter, progress);
+
+		// Phase 31: a file saved in the middle of the break-out from Hale's cell goes back into it.
+		if (chapter instanceof Chapter1 && Chapter1.prisonSave(progress)) {
+			SaberCraft.LOGGER.info("Story file of {} moved back into Hale's cell (break-out checkpoint of an older version)", player.getPlainTextName());
+		}
 		// Phase 22: a save that ended the chapter before Phase 22 (finished, still at the epilogue
 		// after it was spoken) knows it is over too.
 		if (start == Start.CONTINUE && progress.format < 3 && progress.finished && progress.mission == missions - 1 && chapter instanceof Chapter1
