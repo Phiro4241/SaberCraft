@@ -1102,11 +1102,26 @@ public class Phase28GameTest implements FabricClientGameTest {
 		this.converse();
 		String before = this.musicNow("music.story_launch", 160);
 		check("music.story_launch".equals(before), "aboard the Falcon before the jump the music is not tense (" + before + ")");
+		int jumps = com.phiro.sabercraft.interior.InteriorJump.jumpsForTest();
 		this.flags("tmp.jump_go");
 		String film = this.film(60);
 		check("escape".equals(film), "the escape's film does not begin (" + film + ")");
 		this.context.waitTicks(20);
 		this.skip("escape");
+		// Phase 31: the story's jump inside the Falcon stays (only the open world's hyperspace went).
+		for (int i = 0; i < 20 && com.phiro.sabercraft.interior.InteriorJump.jumpsForTest() == jumps; i++) {
+			this.context.waitTick();
+		}
+
+		check(com.phiro.sabercraft.interior.InteriorJump.jumpsForTest() > jumps, "the Falcon does not jump to hyperspace after the escape");
+		this.context.waitTicks(3);
+		BlockPos falcon = this.on(s -> {
+			StorySession session = this.session(s);
+			return session == null ? null : session.falcon;
+		});
+		check(falcon != null && this.on(s -> com.phiro.sabercraft.interior.InteriorJump.running(falcon)), "the Falcon's jump is not running");
+		check(falcon != null && this.context.computeOnClient(client -> com.phiro.sabercraft.client.interior.InteriorClient.jump(falcon, client.level) != null),
+				"the client does not show the Falcon's jump");
 		String away = this.musicNow("music.story_triumph", 100);
 		check("music.story_triumph".equals(away), "once the Falcon is away the music is not triumphant (" + away + ")");
 	}

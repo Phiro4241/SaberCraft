@@ -361,18 +361,9 @@ public final class AbilityConfig {
 	/** Phase 14: the most one single hit may take off a ship, as a share of its full hull (no one-shot kills). */
 	@SerializedName("ship_max_hit_share")
 	public float shipMaxHitShare = 0.25F;
-	/** Phase 14: ships can jump to hyperspace (key X while flying). */
-	@SerializedName("hyperspace_enabled")
-	public boolean hyperspaceEnabled = true;
-	/** Phase 14: the longest hyperspace jump in blocks (the Star Destroyer and the TIEs jump a little shorter). */
-	@SerializedName("hyperspace_distance")
-	public int hyperspaceDistance = 160;
-	/** Phase 14: seconds between two jumps of the same ship. */
-	@SerializedName("hyperspace_cooldown_seconds")
-	public int hyperspaceCooldownSeconds = 60;
-	/** Phase 14: share of the flight energy a jump uses; with less the jump does not start. */
-	@SerializedName("hyperspace_energy_share")
-	public float hyperspaceEnergyShare = 0.2F;
+	// Phase 31: the hyperspace jump of ships in the open world is gone (hyperspace_enabled,
+	// hyperspace_distance, hyperspace_cooldown_seconds, hyperspace_energy_share): an old file's keys
+	// are ignored and dropped the next time the file is written.
 	/** Phase 14: the Millennium Falcon and the Star Destroyer have interiors that players can walk into. */
 	@SerializedName("ship_interiors")
 	public boolean shipInteriors = true;
@@ -538,9 +529,6 @@ public final class AbilityConfig {
 		config.shipRepairDelaySeconds = Mth.clamp(config.shipRepairDelaySeconds, 0, 3600);
 		config.shipRepairPerMinute = Mth.clamp(config.shipRepairPerMinute, 0.0F, 60.0F);
 		config.shipMaxHitShare = Mth.clamp(config.shipMaxHitShare, 0.01F, 1.0F);
-		config.hyperspaceDistance = Mth.clamp(config.hyperspaceDistance, 16, 512);
-		config.hyperspaceCooldownSeconds = Mth.clamp(config.hyperspaceCooldownSeconds, 0, 3600);
-		config.hyperspaceEnergyShare = Mth.clamp(config.hyperspaceEnergyShare, 0.0F, 1.0F);
 		Map<String, Float> weapons = weaponDefaults();
 		if (config.shipWeaponDamage != null) {
 			config.shipWeaponDamage.forEach((id, value) -> {

@@ -52,17 +52,14 @@ public final class SaberNetworking {
 		PayloadTypeRegistry.clientboundPlay().register(ShipStatusPayload.TYPE, ShipStatusPayload.CODEC);
 		PayloadTypeRegistry.clientboundPlay().register(ShipShotPayload.TYPE, ShipShotPayload.CODEC);
 		PayloadTypeRegistry.clientboundPlay().register(ShipEnergyPayload.TYPE, ShipEnergyPayload.CODEC);
-		// Phase 14: hyperspace jumps, seen by everyone near the ship.
-		PayloadTypeRegistry.clientboundPlay().register(HyperspacePayload.TYPE, HyperspacePayload.CODEC);
 		// Phase 15: where the detailed interiors and hulls stand.
 		PayloadTypeRegistry.clientboundPlay().register(InteriorPlotsPayload.TYPE, InteriorPlotsPayload.CODEC);
-		// Phase 16: the hyperdrive and the guns from the seats of an interior.
+		// Phase 16: the guns from the seats of an interior; the story's hyperspace jump inside the Falcon
+		// (Phase 31: no player starts a jump any more, see InteriorJump).
 		PayloadTypeRegistry.serverboundPlay().register(InteriorActionPayload.TYPE, InteriorActionPayload.CODEC);
 		PayloadTypeRegistry.clientboundPlay().register(InteriorJumpPayload.TYPE, InteriorJumpPayload.CODEC);
 		ServerPlayNetworking.registerGlobalReceiver(InteriorActionPayload.TYPE, (payload, context) -> {
-			if (payload.action() == InteriorActionPayload.HYPERSPACE) {
-				context.player().sendOverlayMessage(com.phiro.sabercraft.interior.InteriorJump.request(context.player()));
-			} else if (payload.action() == InteriorActionPayload.FIRE) {
+			if (payload.action() == InteriorActionPayload.FIRE) {
 				com.phiro.sabercraft.interior.Turrets.fire(context.player());
 			} else if (payload.action() == InteriorActionPayload.TALK) {
 				com.phiro.sabercraft.interior.CrewTalk.talk(context.player());

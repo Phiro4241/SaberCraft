@@ -1142,7 +1142,9 @@ def phase14():
     write_ogg("hyperspace_charge", hyper_charge(rng), SHIP_OUT)
     write_ogg("hyperspace_jump", hyper_jump(rng), SHIP_OUT)
     write_ogg("hyperspace_arrive", hyper_arrive(rng), SHIP_OUT)
-    write_ogg("hyperspace_fail", hyper_fail(rng), SHIP_OUT)
+    # Phase 31: the open world's hyperspace (and its failed jump) is gone; the sound is no longer
+    # written, but still drawn so the sounds after it keep their random stream.
+    hyper_fail(rng)
     write_ogg("explode_big", big_explosion(rng), SHIP_OUT)
     write_ogg("alarm", alarm(rng), SHIP_OUT)
     write_ogg("ramp", ramp(rng), SHIP_OUT)

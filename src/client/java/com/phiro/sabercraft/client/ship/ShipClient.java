@@ -142,7 +142,6 @@ public final class ShipClient {
 		HudElementRegistry.addLast(SaberCraft.id("ship_hud"), new ShipHud());
 		// Phase 14: the frame of the cockpit, under the flight display.
 		HudElementRegistry.addFirst(SaberCraft.id("cockpit_frame"), new CockpitView.Frame());
-		HyperspaceClient.init();
 		InteriorAmbience.init();
 	}
 

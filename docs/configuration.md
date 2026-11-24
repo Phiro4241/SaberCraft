@@ -112,13 +112,11 @@ Decided by the server (in single player by the integrated server). Players conne
 | `ship_repair_in_flight` | `false` | Phase 14: whether the hull also mends in flight. `false`: only landed, parked, unpiloted (or a Star Destroyer standing still). |
 | `ship_weapon_damage` | `saber 1`, `blaster 1`, `ship_laser 1`, `explosion 1`, `other 0.5` | Phase 14: multiplier of each kind of weapon against ship hulls (0..10). On top, each ship is tougher against hand weapons (Falcon 60 %, Star Destroyer 15 %) and heavy weapons (Falcon 85 %, Star Destroyer 50 %). |
 | `ship_max_hit_share` | `0.25` | Phase 14: no single hit takes more than this share of the full hull, so nothing is destroyed in one hit, 0.05..1. Hard crashes are not capped. |
-| `hyperspace_enabled` | `true` | Phase 14: the hyperspace jump (key X while flying). Since Phase 16 also the jump from the Falcon's cockpit seats (the same key or the hyperdrive lever). |
-| `hyperspace_distance` | `160` | Phase 14: how far a jump goes at most, blocks (32..1024); TIEs jump 85 %, the Star Destroyer 60 %. The jump stops short of anything in the way and never leaves loaded chunks or the world border. |
-| `hyperspace_cooldown_seconds` | `60` | Phase 14: seconds between two jumps of one player, 0..3600. Since Phase 16 a jump from the Falcon's cockpit uses the same cooldown (of the ship's owner). |
-| `hyperspace_energy_share` | `0.2` | Phase 14: share of a full energy charge one jump costs (only with `ship_energy`), 0..1. |
 | `ship_interiors` | `true` | Phase 14: the Millennium Falcon and the Star Destroyer can be walked through (dimension `sabercraft:ship_interiors`). |
 | `ship_interior_guests` | `true` | Phase 14: other players may come aboard too. `false`: only the owner. The helm only ever answers the owner. |
 | `config_version` | `14` | The version of the file, used to move changed defaults over once. Do not edit. |
+
+Phase 31: the hyperspace jump of ships in the open world is gone, and with it its settings (`hyperspace_enabled`, `hyperspace_distance`, `hyperspace_cooldown_seconds`, `hyperspace_energy_share`). An older file's entries are ignored and dropped the next time the file is written. The jump inside the Millennium Falcon in the story is not a setting and stays.
 
 ### `droid_balance`
 

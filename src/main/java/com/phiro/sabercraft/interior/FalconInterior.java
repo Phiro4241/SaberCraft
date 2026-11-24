@@ -449,7 +449,10 @@ public final class FalconInterior extends InteriorPlan {
 		return DOORS;
 	}
 
-	/** The hyperdrive lever on the dashboard (co-pilot's side), the engineering station's desk and bank. */
+	/**
+	 * The hyperdrive lever on the dashboard (co-pilot's side; Phase 31: a click on it is taken and
+	 * does nothing, the jump is the story's), the engineering station's desk and bank.
+	 */
 	public static final List<Console> CONSOLES = List.of(
 			new Console(new BlockPos(44, FLOOR + 1, COCKPIT_FRONT + 1), Console.HYPERSPACE),
 			new Console(new BlockPos(45, FLOOR + 1, COCKPIT_FRONT + 1), Console.HYPERSPACE),

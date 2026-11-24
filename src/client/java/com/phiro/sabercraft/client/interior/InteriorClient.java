@@ -38,10 +38,10 @@ import com.phiro.sabercraft.network.InteriorJumpPayload;
 
 /**
  * Phase 16: what this client knows about the interiors beyond their models: the seat the player
- * sits on (the attack key fires the guns from a gunner's seat, the hyperspace key starts the
- * jump from a cockpit seat), how far each door is open (from its blocks, eased), where every
- * gunner aims (from their rotation, so everyone sees the guns turn), whether the lights are
- * dimmed, and the hyperspace jumps running in a plot.
+ * sits on (the attack key fires the guns from a gunner's seat), how far each door is open (from
+ * its blocks, eased), where every gunner aims (from their rotation, so everyone sees the guns
+ * turn), whether the lights are dimmed, and the hyperspace jumps running in a plot (Phase 31:
+ * only the story's).
  */
 public final class InteriorClient {
 	/** How fast doors slide (share of the way per second). */
@@ -318,18 +318,6 @@ public final class InteriorClient {
 	/** For tests: how often the use key spoke to the crew. */
 	public static int talkedForTest() {
 		return talked;
-	}
-
-	/** The hyperspace key: from a cockpit seat it asks for the jump. Returns whether it did. */
-	public static boolean hyperspaceKey(Minecraft client) {
-		Sitting sitting = sitting(client);
-
-		if (sitting == null || !sitting.seat().cockpit() || !ClientPlayNetworking.canSend(InteriorActionPayload.TYPE)) {
-			return false;
-		}
-
-		ClientPlayNetworking.send(new InteriorActionPayload(InteriorActionPayload.HYPERSPACE));
-		return true;
 	}
 
 	// --- Jumps -------------------------------------------------------------------------------------
