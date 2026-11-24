@@ -16,7 +16,6 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContex
 import net.minecraft.client.CameraType;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
@@ -170,7 +169,11 @@ public class Phase31GameTest implements FabricClientGameTest {
 			return false;
 		});
 		check(!key, "a key for the hyperspace jump is still there");
-		check(BuiltInRegistries.SOUND_EVENT.getValue(SaberCraft.id("ship.hyperspace_fail")) == null, "the open world's hyperspace sound is still registered");
+		// (The mod's sounds are not in the sound event registry: the client's sound list is what counts.)
+		check(this.context.computeOnClient(client -> client.getSoundManager().getSoundEvent(SaberCraft.id("ship.hyperspace_fail")) == null),
+				"the open world's sound of a failed jump is still there");
+		check(this.context.computeOnClient(client -> client.getSoundManager().getSoundEvent(SaberCraft.id("ship.hyperspace_jump")) != null),
+				"the story's jump sound is gone");
 		boolean gone;
 
 		try {

@@ -206,12 +206,13 @@ final class FalconJump {
 		float y0 = FLOOR + 1;
 
 		if (colour == 0) {
-			b.layer(Layer.SOLID).worldLight().anim(0).colour(0xFF26302B).fit(InteriorAtlas.WHITE);
+			// Dark, it is part of the console: dimmed with the room's lights like the dashboard under it.
+			b.inside(true).layer(Layer.SOLID).worldLight().anim(0).colour(0xFF26302B).fit(InteriorAtlas.WHITE);
 		} else {
 			b.layer(Layer.GLOW).fullBright().anim(0).colour(colour).fit(InteriorAtlas.WHITE);
 		}
 
 		b.box(cx + 0.35F, y0 + 0.86F, z0 + 1.3F, cx + 0.7F, y0 + 0.94F, z0 + 1.6F, MeshBuilder.ALL & ~MeshBuilder.DOWN);
-		b.white().layer(Layer.SOLID).worldLight();
+		b.inside(false).white().layer(Layer.SOLID).worldLight();
 	}
 }
