@@ -846,7 +846,8 @@ public class Phase26GameTest implements FabricClientGameTest {
 		check(last - first >= 3, "the finale's troopers hardly shoot (" + (last - first) + " bolts in 16 seconds)");
 		check(together == 0, "two bolts fired in the same moment (" + together + ")");
 		check(at.size() < 2 || least >= timing[3] - 1, "two bolts closer together than the fair gap (" + least + " ticks)");
-		check(timing[0] >= 20 && timing[0] + timing[1] <= 50, "the shot cooldown is not between the old one and a fair minimum: " + timing[0] + ".." + (timing[0] + timing[1]));
+		// (Phase 30: a little more often again, 18 + up to 17: the fair minimum is 16 now.)
+		check(timing[0] >= 16 && timing[0] + timing[1] <= 50, "the shot cooldown is not between the old one and a fair minimum: " + timing[0] + ".." + (timing[0] + timing[1]));
 	}
 
 	// --- 11: the Falcon under the hangar's field -------------------------------------------------------------------

@@ -355,7 +355,8 @@ static final int CHECKPOINT_TICKS = 60;
 		}
 
 		// Phase 24: the section changed, or the alarm is over: the shouts still waiting are old news.
-		if (before != null && payload.active() && (!before.objective().equals(payload.objective()) || before.alarm() > 0 && payload.alarm() == 0)) {
+		// (Phase 30: a section is a mission's step, not each objective it shows: see sameStep.)
+		if (before != null && payload.active() && (!sameStep(before, payload) || before.alarm() > 0 && payload.alarm() == 0)) {
 			dropBefore(clientTicks, true);
 		}
 
@@ -375,6 +376,24 @@ static final int CHECKPOINT_TICKS = 60;
 		}
 
 		StoryMenus.refresh();
+	}
+
+	/** Phase 30: the objective of the reactor's escape (Mission 5's first step), and the start of the ones it shows on the way. */
+	private static final String ESCAPE_OBJECTIVE = "sabercraft.story.obj.m5.escape";
+	private static final String ESCAPE_MOMENTS = ESCAPE_OBJECTIVE + "_";
+
+	/**
+	 * Phase 30: whether two states are in the same mission and step. The state says no step, only
+	 * the objective shown; the escape out of the reactor shows a new one at each moment of the
+	 * chase (unlock the door, it unlocks, bolt it, into the shaft), and with each the troopers'
+	 * shouts were dropped: those count as the step's own objective.
+	 */
+	private static boolean sameStep(StoryStatePayload a, StoryStatePayload b) {
+		return a.mission() == b.mission() && stepObjective(a.objective()).equals(stepObjective(b.objective()));
+	}
+
+	private static String stepObjective(String objective) {
+		return objective.startsWith(ESCAPE_MOMENTS) ? ESCAPE_OBJECTIVE : objective;
 	}
 
 	private static void figures(StoryFiguresPayload payload) {
@@ -465,6 +484,11 @@ static final int CHECKPOINT_TICKS = 60;
 				// Phase 28: a mission begins (a start, a restart, a mission played again): nothing
 				// of an earlier duel is left lying in the ship.
 				clearDuelProps();
+				// Phase 30: nor a progress bar from before it (the download's finished "100 %" stood
+				// under Mission 5's title); the bar is no longer hidden under a title card, so one
+				// begun under it (the maintenance door's release) shows.
+				progressKey = null;
+				progressValue = 0;
 			}
 			case CUE_NOISE -> {
 				noise = List.copyOf(payload.points());
@@ -1000,6 +1024,11 @@ static final int CHECKPOINT_TICKS = 60;
 	/** Phase 28, for the tests: the story's hint over the hotbar now (its key), or null. */
 	public static @Nullable String hintForTest() {
 		return hint;
+	}
+
+	/** Phase 30, for the tests: the progress bar's words now (its key), or null. */
+	public static @Nullable String progressKeyForTest() {
+		return progressKey;
 	}
 
 	/** Phase 28: how long the comlink line now shown has been up (-1 without one), and how many wait. */

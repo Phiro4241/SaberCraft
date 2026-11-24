@@ -105,8 +105,16 @@ public final class Chapter1 implements Chapter {
 	static {
 		// Phase 29: every thing one can use in this chapter (its words: sabercraft.story.point.<id>).
 		Mission.Point.declare("sign", "pad", "security", "locker", "locker2", "card", "console", "coolant", "recorder", "cell1", "cell3", "lab_door",
-				"holo", "saber", "terminal", "crate_c3", "crate_f9", "crate_k7", "takedown", "service_release", "service_lock", "vent_cover", "toolbox");
+				"holo", "saber", "terminal", "crate_c3", "crate_f9", "crate_k7", "takedown", "service_release", "service_lock", "vent_cover", "toolbox", "service_door");
 	}
+
+	/** Phase 30: the maintenance door's face on the walkway's side (a click on it begins the release, as one on the release does). */
+	static final AABB SERVICE_DOOR_FACE = new AABB(48.0, R, DestroyerInterior.SERVICE_DOOR_Z + 0.6, 50.0, R + 2.2, DestroyerInterior.SERVICE_DOOR_Z + 1.05);
+	/**
+	 * Phase 30: behind the maintenance door (plot space): its chamber, the hatch in the chamber's
+	 * north wall and the crawl way beyond it (where the way on leads once the door is bolted).
+	 */
+	static final AABB SERVICE_INSIDE = DestroyerInterior.SERVICE_ROOM.minmax(DestroyerInterior.SERVICE_VENT);
 	/** Phase 20: by the stack of crates on the hangar's east side. */
 	static final Vec3 HANGAR_CRATES = new Vec3(57.3, H, -27.9);
 	/**
@@ -977,6 +985,8 @@ public final class Chapter1 implements Chapter {
 				if (step.equals("m5.escape") && !s.has("tmp.film")) {
 					if (!s.has("service.open") && !s.has("tmp.release")) {
 						list.add(new Mission.Point("service_release", D, DestroyerInterior.SERVICE_RELEASE, false));
+						// Phase 30: a click on the shut door itself begins the release too.
+						list.add(new Mission.Point("service_door", D, SERVICE_DOOR_FACE, false));
 					} else if (s.has("service.open") && !s.has("service.locked")) {
 						list.add(new Mission.Point("service_lock", D, DestroyerInterior.SERVICE_LOCK, false));
 					}
@@ -1084,7 +1094,7 @@ public final class Chapter1 implements Chapter {
 			case "recorder" -> s.talk("m5_recording", null);
 			case "holo" -> s.talk("m6_ilyra", null);
 			case "saber" -> s.talk("m6_saber", null);
-			case "service_release" -> Scenes.release(s);
+			case "service_release", "service_door" -> Scenes.release(s);
 			case "service_lock" -> Scenes.bolt(s);
 			case "toolbox" -> unwatched(s, "m2_toolbox");
 			case "vent_cover" -> coverUsed(s);
@@ -3794,6 +3804,34 @@ public final class Chapter1 implements Chapter {
 			case "m5.cell" -> {
 				return null;
 			}
+			case "m5.escape" -> {
+				// Phase 30: the marker leads to the maintenance door's release (it pointed at the
+				// hideout, far beyond, and nothing showed that a door had to be unlocked on the way),
+				// then into the chamber behind the door, to the panel that bolts it, into the shaft.
+				if (s.has("tmp.film")) {
+					return step.target();
+				}
+
+				if (!s.has("service.open")) {
+					net.minecraft.world.phys.Vec3 c = DestroyerInterior.SERVICE_RELEASE.getCenter();
+					return at(D, c.x + 0.1, c.y + 0.5, c.z);
+				}
+
+				if (!s.has("service.locked")) {
+					net.minecraft.world.phys.Vec3 c = DestroyerInterior.SERVICE_LOCK.getCenter();
+					return at(D, c.x - 0.1, c.y + 0.5, c.z);
+				}
+
+				// Phase 30: bolted with the player outside (by hand only from behind it since Phase
+				// 30; kept for any other way): the crawl way is behind the shut door, so the old way
+				// to the hideout.
+				if (!behindServiceDoor(s)) {
+					return step.target();
+				}
+
+				net.minecraft.world.phys.Vec3 v = DestroyerInterior.SERVICE_VENT.getCenter();
+				return at(D, v.x, R + 0.5, v.z + 1.0);
+			}
 			case "m1.distract" -> {
 				// Over the guard while he stands at the hatch. (Phase 27: once in the crawl way, Kestrel's hideout.)
 				if (inCrawlWay(s)) {
@@ -3866,12 +3904,40 @@ public final class Chapter1 implements Chapter {
 	}
 
 	/**
+	 * Phase 30: whether the player is behind the maintenance door ({@link #SERVICE_INSIDE}). Its
+	 * panel can be reached through the open doorway from outside, but bolts the door only from here
+	 * (Scenes.bolt): bolted from outside, the door shut the player out of the crawl way. Should it
+	 * be shut with them outside all the same, the escape's objective and marker are the step's own
+	 * again (the old way to the hideout, which still ends the escape).
+	 */
+	static boolean behindServiceDoor(StorySession s) {
+		return D.equals(s.here) && SERVICE_INSIDE.contains(s.local(D).add(0.0, 0.3, 0.0));
+	}
+
+	/**
 	 * Phase 28: the objective shown for a step, where the step's own does not say enough: without
 	 * Hale's trust, once the intercept is read, the way into the detention block is Kestrel's hatch
 	 * in the hideout, which M-31 unbolts (Phiro found the main door shut and the marker on a hatch
 	 * that would not open, with nothing telling him either was meant so).
 	 */
 	public static String objective(StorySession s, Mission.Step step) {
+		// Phase 30: the escape out of the reactor says what to do at each moment: unlock the
+		// maintenance door (one click on the panel beside it), wait while it unlocks, go through and
+		// bolt it, into the shaft.
+		if (step.id().equals("m5.escape") && !s.has("tmp.film")) {
+			if (s.has("service.locked")) {
+				// Phase 30: bolted with the player outside (see target): the step's own objective
+				// as in Phase 29 (its marker the old way to the hideout); the shaft only from behind the door.
+				return behindServiceDoor(s) ? "sabercraft.story.obj.m5.escape_shaft" : step.objective();
+			}
+
+			if (s.has("service.open")) {
+				return "sabercraft.story.obj.m5.escape_bolt";
+			}
+
+			return s.has("tmp.release") ? "sabercraft.story.obj.m5.escape_releasing" : "sabercraft.story.obj.m5.escape_release";
+		}
+
 		if (step.id().equals("m5.route") && !s.has("trust.hale") && (s.has("know.hale_trap") || s.has("hatch.f"))) {
 			return s.has("hatch.f") ? "sabercraft.story.obj.m5.route_crawl" : "sabercraft.story.obj.m5.route_hatch";
 		}

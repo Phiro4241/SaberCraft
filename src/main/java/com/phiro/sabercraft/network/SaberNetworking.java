@@ -36,6 +36,8 @@ public final class SaberNetworking {
 		PayloadTypeRegistry.serverboundPlay().register(ChooseOutfitPayload.TYPE, ChooseOutfitPayload.CODEC);
 		PayloadTypeRegistry.clientboundPlay().register(OutfitSyncPayload.TYPE, OutfitSyncPayload.CODEC);
 		PayloadTypeRegistry.clientboundPlay().register(BlasterHeatPayload.TYPE, BlasterHeatPayload.CODEC);
+		// Phase 30: the reactor's lift on its way (the HUD shows it).
+		PayloadTypeRegistry.clientboundPlay().register(LiftPayload.TYPE, LiftPayload.CODEC);
 		// Phase 11: the muzzle flash for everyone, and the blaster menu.
 		PayloadTypeRegistry.clientboundPlay().register(BlasterShotPayload.TYPE, BlasterShotPayload.CODEC);
 		PayloadTypeRegistry.clientboundPlay().register(SaberFinisherPayload.TYPE, SaberFinisherPayload.CODEC);

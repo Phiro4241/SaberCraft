@@ -57,9 +57,13 @@ final class Finale {
 	 * before each shot (the wind-up the client shows), and two troopers never fire within
 	 * {@link #VOLLEY_GAP} ticks of each other (one can turn each bolt aside, one after the other).
 	 */
-	static final int SHOT_MIN = 22;
-	static final int SHOT_RANDOM = 22;
-	static final float DOUBLE_CHANCE = 0.3F;
+	// (Phase 30: a little more often again, after Phiro's playtest of the finale: 18 + up to 17
+	// ticks (was 22 + up to 21; for one trooper about a fifth fewer shots, this is about a quarter
+	// more), a second shot a little more often (0.35, was 0.3). The wind-up before each shot and the
+	// gap between two troopers' shots stay.)
+	static final int SHOT_MIN = 18;
+	static final int SHOT_RANDOM = 18;
+	static final float DOUBLE_CHANCE = 0.35F;
 	static final int DOUBLE_GAP = 7;
 	static final int VOLLEY_GAP = 7;
 	/** How far a trooper shoots, and how close they come. */
@@ -198,8 +202,24 @@ final class Finale {
 	static final float PUSH_DAMAGE = 2.5F;
 	static final int RUSH_OPENING = 12;
 	/** Phase 25: a spin's wind-up is longer (the staff twirls round her: to be seen coming), and it reaches a little further. */
-	static final int SPIN_WINDUP = 20;
-	static final double SPIN_REACH = 3.5;
+	static final double SPIN_REACH = com.phiro.sabercraft.network.StoryFiguresPayload.SPIN_RADIUS;
+	/**
+	 * Phase 30: the spin has two parts. First the ring spins up round the grip ({@code SPIN_RISE}
+	 * ticks: its whirr rising, nothing on the floor yet: the warning); then its blades whirl round
+	 * her ({@code SPIN_LIVE} ticks) and the red circle lies on the floor, exactly {@link #SPIN_REACH}
+	 * round her (the client draws it from the same number while the server says it is live). Whoever
+	 * stands in it then (their feet, the middle of them, within its rim: as one sees oneself in the
+	 * drawn circle or not) is hit at once, also one already standing in it as it begins, and again
+	 * every {@code SPIN_REHIT} of her ticks while they stay (weaker: {@code SPIN_AGAIN}). Before
+	 * Phase 30 the whole spin was a wind-up of 20 ticks and one blow at its end: one stood in the
+	 * circle a second and more (with the ring's slow turning before it, longer) before anything
+	 * happened.
+	 */
+	static final int SPIN_RISE = com.phiro.sabercraft.network.StoryFiguresPayload.SPIN_RISE_TICKS;
+	static final int SPIN_LIVE = com.phiro.sabercraft.network.StoryFiguresPayload.SPIN_LIVE_TICKS;
+	static final int SPIN_WINDUP = SPIN_RISE + SPIN_LIVE;
+	static final int SPIN_REHIT = 10;
+	static final float SPIN_AGAIN = 0.6F;
 	/**
 	 * Phase 25: the throw: how long she draws the staff back (the warning), how often at most, from
 	 * how far to how far she throws, what it takes when it hits, how near it must come to hit, and
@@ -1227,8 +1247,21 @@ final class Finale {
 					Stealth.step(f, me, f.lunge ? LUNGE_SPEED : 2.5, level, corner);
 				}
 
+				// Phase 30: her spin's blades whirl round her: whoever is in the red circle is hit at once.
+				if (f.attack == SPIN && f.windup <= SPIN_LIVE) {
+					spinContact(s, f, player, me, level, corner, phase);
+
+					if (f.action != WINDUP) {
+						return;
+					}
+				}
+
 				if (--f.windup <= 0) {
-					blow(s, f, player, me, level, corner, phase);
+					if (f.attack == SPIN) {
+						spinEnds(s, f, player, level, phase);
+					} else {
+						blow(s, f, player, me, level, corner, phase);
+					}
 				}
 			}
 			case OPEN_UP -> {
@@ -1816,12 +1849,22 @@ final class Finale {
 			ticks = Math.max(ticks, SPIN_WINDUP);
 			spins++;
 			ringGoes(s, f);
+			f.spinHitWindup = -1;
+			f.spinReached = false;
+			f.spinHurt = false;
+			f.spinDodged = false;
+			f.spinInside = false;
 		}
 
 		act(f, WINDUP, kind, ticks);
 		f.windup = ticks;
 		Vec3 at = f.position().add(Vec3.atLowerCornerOf(s.origin(f.ship)));
 		level.playSound(null, at.x, at.y + 1.2, at.z, ShipInteriors.sound("saber.swing"), SoundSource.HOSTILE, 0.7F, kind == THRUST ? 1.1F : 0.8F);
+
+		if (kind == SPIN) {
+			// Phase 30: the ring spins up round the grip: its whirr rising is heard (the warning before the circle).
+			level.playSound(null, at.x, at.y + 1.3, at.z, ShipInteriors.sound("story.ring_spin"), SoundSource.HOSTILE, 1.0F, 1.0F);
+		}
 	}
 
 	/**
@@ -1952,6 +1995,169 @@ final class Finale {
 		f.combo = 0;
 		f.burst = 0;
 		act(f, RECOIL, 0, 10);
+	}
+
+	/** Phase 30: whether her spin's blades whirl round her now (the red circle on the floor, hitting whoever is in it). */
+	static boolean spinLive(Figure f) {
+		return f.saber && f.action == WINDUP && f.attack == SPIN && f.windup > 0 && f.windup <= SPIN_LIVE;
+	}
+
+	/**
+	 * Phase 30: whether a point (plot space, feet) is in her spin's circle: within its rim (the
+	 * player's middle, not their body's edge: as they see themselves in the drawn circle or out of
+	 * it), at her height.
+	 */
+	static boolean inSpin(Figure f, Vec3 me) {
+		return Math.hypot(me.x - f.x, me.z - f.z) <= SPIN_REACH && Math.abs(me.y - f.y) <= 2.0;
+	}
+
+	/**
+	 * Phase 30: a tick of her spin while its blades whirl round her: the player in the red circle is
+	 * hit at once (blocked, the guard pays for it; a guard raised just in time parries it and she
+	 * reels), and again a little later while they stay in it. The blow throws them out towards the
+	 * circle's edge. The dash's own moment evades the blades. A dash begun in the circle (or under
+	 * way as it appears) dodges them when they reach the player, as a dodged blow before Phase 30:
+	 * heard and counted once, she is open when the spin ends her combo without having hurt them (see
+	 * spinEnds), and they reach the player again only SPIN_REHIT later if they stay in it; the first
+	 * blow that then lands counts as a first one (full, and a parry just in time is perfect). A dash
+	 * rolled into the circle from outside only passes through: once it is over the circle hits as
+	 * for anyone in it. A dash outside the circle dodges nothing.
+	 */
+	private static void spinContact(StorySession s, Figure f, ServerPlayer player, Vec3 me, ServerLevel level, Vec3 corner, int phase) {
+		boolean inside = inSpin(f, me);
+		boolean evading = SaberAbilities.evading(player);
+		// (Its first tick counts as "before": one standing in the circle as it appears may dodge it.)
+		boolean wasInside = f.spinInside || f.windup >= SPIN_LIVE;
+
+		// (A dash keeps where it began: rolled in from outside, the player counts as outside until it is over.)
+		if (!evading || !inside) {
+			f.spinInside = inside;
+		}
+
+		if (!inside) {
+			return;
+		}
+
+		if (evading) {
+			// (Counted when the blades reach the player: at once, or SPIN_REHIT after they last did.)
+			if (wasInside && !f.spinDodged && (f.spinHitWindup < 0 || f.spinHitWindup - f.windup >= SPIN_REHIT)) {
+				// Phase 30: dodged (as blow() did with a dodged blow before Phase 30).
+				f.spinDodged = true;
+				f.spinHitWindup = f.windup;
+				Vec3 at = contact(f, me).add(corner);
+				level.playSound(null, at.x, at.y, at.z, ShipInteriors.sound("saber.swing"), SoundSource.HOSTILE, 0.6F, 0.7F);
+				dodges++;
+				s.counters.merge("dodged", 1, Integer::sum);
+				Story.cue(s, Story.CUE_DUEL, "dodged", "", f.id);
+			}
+
+			return;
+		}
+
+		// Phase 30: again only after SPIN_REHIT of her own ticks (her wind-up), so also under the Focus.
+		if (f.spinHitWindup >= 0 && f.spinHitWindup - f.windup < SPIN_REHIT) {
+			return;
+		}
+
+		boolean again = f.spinReached;
+		f.spinHitWindup = f.windup;
+		f.spinReached = true;
+		Vec3 at = contact(f, me).add(corner);
+		Vec3 out = new Vec3(me.x - f.x, 0.0, me.z - f.z);
+		out = out.lengthSqr() < 1.0E-4 ? f.look().scale(-1.0) : out.normalize();
+		Vec3 toHer = out.scale(-1.0);
+		Vec3 look = player.getLookAngle();
+		boolean facing = new Vec3(look.x, 0.0, look.z).normalize().dot(toHer) > 0.35;
+		long guardTicks = guardTicks(s, player);
+		s.counters.merge("spin_contact", 1, Integer::sum);
+
+		if (guardTicks >= 0 && facing) {
+			boolean perfect = !again && guardTicks <= PERFECT && perfectReady(f, player);
+			int held = strain(s, f, player, perfect ? STRAIN_PERFECT : again ? STRAIN_SPIN * 0.5F : STRAIN_SPIN, at, level, !perfect && !again);
+
+			if (held == SaberAbilities.GUARD_BROKEN) {
+				breaksThrough(s, f, player, me, level, corner, BLOWS[phase] * BREAK_DAMAGE);
+				f.combo = 0;
+				f.burst = 0;
+				act(f, RECOIL, 0, 10 + pause(f, phase) / 2);
+				return;
+			}
+
+			boolean strained = held == SaberAbilities.GUARD_STRAINED;
+			level.sendParticles(ParticleTypes.ELECTRIC_SPARK, at.x, at.y, at.z, perfect ? 28 : strained ? 22 : 16, 0.1, 0.1, 0.1, 0.45);
+			level.playSound(null, at.x, at.y, at.z, ShipInteriors.sound(perfect ? "story.clash_big" : "saber.clash"), SoundSource.HOSTILE, 1.1F,
+					perfect ? 1.1F : strained ? 0.7F : 0.85F + player.getRandom().nextFloat() * 0.15F);
+			s.counters.merge(perfect ? "perfect" : "blocked", 1, Integer::sum);
+			s.focus = Math.min(1.0F, s.focus + (perfect ? 0.5F : strained ? FOCUS_BLOCK * 0.5F : FOCUS_BLOCK));
+			Story.cue(s, Story.CUE_DUEL, perfect ? "perfect" : strained ? "strained" : "blocked", "", f.id, java.util.List.of(at));
+			f.burst = 0;
+
+			if (perfect) {
+				// Just in time: the whirling blades are thrown back, she reels (the spin is over).
+				perfects++;
+				f.combo = 0;
+				f.react(Figure.STUMBLE, 14);
+				Hits.push(f, me, 0.25);
+				act(f, OPEN_UP, STAGGER, opening(f, OPENINGS[phase] + 8));
+				f.hits = 0;
+				f.parried = 0;
+				return;
+			}
+
+			// Held: the blades drive the player back towards the circle's edge.
+			double by = strained ? 0.55 : 0.42;
+			player.push(out.x * by, 0.05, out.z * by);
+			player.hurtMarked = true;
+			return;
+		}
+
+		// In the circle, neither blocked nor dodged: it hurts at once.
+		float damage = BLOWS[phase] * f.power * (again ? SPIN_AGAIN : 1.0F);
+		s.counters.merge("duel_hurt", 1, Integer::sum);
+		s.counters.merge("spin_hurt", 1, Integer::sum);
+		player.hurtServer(level, level.damageSources().generic(), damage);
+		player.push(out.x * 0.6, 0.25, out.z * 0.6);
+		player.hurtMarked = true;
+		level.playSound(null, at.x, at.y, at.z, ShipInteriors.sound("saber.hit"), SoundSource.HOSTILE, 1.0F, 0.9F);
+		level.sendParticles(ParticleTypes.ELECTRIC_SPARK, player.getX(), player.getY() + 1.1, player.getZ(), 12, 0.15, 0.2, 0.15, 0.3);
+		Story.cue(s, Story.CUE_DUEL, "hurt", "", Math.round(damage), java.util.List.of(f.position().add(corner)));
+		f.spinHurt = true;
+	}
+
+	/**
+	 * Phase 30: her spin is over (its blades slow; what happened in it was dealt while they
+	 * whirled): having hurt the player she steps back; otherwise her combo goes on, or after its
+	 * last blow she is open, as after any blow blocked, dodged or missed.
+	 */
+	private static void spinEnds(StorySession s, Figure f, ServerPlayer player, ServerLevel level, int phase) {
+		f.combo--;
+		f.lunge = false;
+		f.turnabout = false;
+
+		if (f.spinHurt) {
+			f.combo = 0;
+			f.burst = 0;
+			act(f, RECOIL, 0, 10);
+		} else if (f.combo > 0) {
+			blowStarts(f, nextKind(f, phase, player.getRandom()), follow(f, phase) + player.getRandom().nextInt(3) - 1, level, s);
+		} else if (f.spinDodged) {
+			// Phase 30: dodged with the dash (see spinContact): the whole opening, as blow() gave a dodged blow before Phase 30.
+			act(f, OPEN_UP, STAGGER, opening(f, OPENINGS[phase]));
+			f.hits = 0;
+		} else {
+			act(f, OPEN_UP, STAGGER, opening(f, OPENINGS[phase] - (f.spinReached ? 0 : 6)));
+			f.hits = 0;
+
+			// (Blocked: what she parried before is over, as after a blocked last blow before Phase 30; a plain miss keeps it.)
+			if (f.spinReached) {
+				f.parried = 0;
+			}
+		}
+
+		f.spinReached = false;
+		f.spinHurt = false;
+		f.spinDodged = false;
+		f.spinInside = false;
 	}
 
 	/**

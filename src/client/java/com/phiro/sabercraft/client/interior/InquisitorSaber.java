@@ -136,67 +136,170 @@ final class InquisitorSaber {
 	 * Moves the saber out of her body if a part of it (the grip, the ring, a lit blade, at the
 	 * ring's angle now) would be in it: away from her, the way its middle lies from her. While the
 	 * ring spins fast the blades sweep a whole disc: then the whole disc is kept out (so that the
-	 * saber does not twitch to and fro with every half turn).
+	 * saber does not twitch to and fro with every half turn). Phase 30: her body as drawn
+	 * ({@link CrewModels#inDrawnBody}: her torso leaning over her hips as it is, her head turned as
+	 * it is, {@code lean}); out in steps of 0.1, then back by quarter steps as far as it stays clear.
 	 */
-	static Hold clear(Hold hold, float angle, boolean second, float shoulder, boolean spinning) {
+	static Hold clear(Hold hold, float angle, boolean second, boolean spinning, CrewModels.Lean lean) {
+		float[] away = away(hold);
+		float out = out(hold, away, angle, second, spinning, lean);
+		return hold.moved(away[0] * out, 0.0F, away[1] * out);
+	}
+
+	/** Phase 30: the way the saber is moved out of her body (x, z: away from her, the way its middle lies from her). */
+	private static float[] away(Hold hold) {
 		float rx = hold.c()[0];
 		float rz = hold.c()[2];
 		float length = Mth.sqrt(rx * rx + rz * rz);
-
-		if (length < 0.05F) {
-			rx = 0.0F;
-			rz = 1.0F;
-		} else {
-			rx /= length;
-			rz /= length;
-		}
-
-		Hold h = hold;
-
-		for (int i = 0; i < 80 && (spinning ? discInBody(h, second, shoulder) : inBody(h, angle, second, shoulder)); i++) {
-			h = h.moved(rx * 0.025F, 0.0F, rz * 0.025F);
-		}
-
-		return h;
+		return length < 0.05F ? new float[] {0.0F, 1.0F} : new float[] {rx / length, rz / length};
 	}
 
-	/** Whether the saber lies in her body at any angle of its ring (eight looked at). */
-	static boolean discInBody(Hold h, boolean second, float shoulder) {
-		for (int i = 0; i < 8; i++) {
-			if (inBody(h, Mth.TWO_PI * i / 8.0F, second, shoulder)) {
-				return true;
+	/** Phase 30: how far the saber has to be moved that way to be clear of her body (see {@link #clear}). */
+	private static float out(Hold hold, float[] away, float angle, boolean second, boolean spinning, CrewModels.Lean lean) {
+		int steps = 0;
+
+		while (steps < 20 && in(hold.moved(away[0] * steps * 0.1F, 0.0F, away[1] * steps * 0.1F), angle, second, spinning, lean)) {
+			steps++;
+		}
+
+		float out = steps * 0.1F;
+
+		for (int k = 0; steps > 0 && k < 3; k++) {
+			float back = out - 0.025F;
+
+			if (in(hold.moved(away[0] * back, 0.0F, away[1] * back), angle, second, spinning, lean)) {
+				break;
+			}
+
+			out = back;
+		}
+
+		return out;
+	}
+
+	/** Phase 30: how far the saber was moved out of her body in the frame before, per figure (its seed): the time then (seconds), the distance. */
+	private static final java.util.Map<Integer, float[]> MOVED = new java.util.HashMap<>();
+	/** Phase 30: how fast the saber may go out to where it is clear and back in towards her (blocks a second). */
+	static final float OUT_SPEED = 4.0F;
+	static final float IN_SPEED = 0.6F;
+
+	/**
+	 * Phase 30: {@link #clear} as she is drawn frame by frame (figure {@code seed}, time {@code t} in
+	 * seconds, the ring's {@code blur} 0..1): the blades at the ring's angle now are always clear of
+	 * her, and so is the whole disc once its blur shows ({@link #DISC_SOLID}); beyond that the saber
+	 * goes out quickly and comes back in slowly, so that it no longer jumps a quarter block in one
+	 * frame when the ring's blur starts or stops, nor pumps in and out with each half turn of a ring
+	 * turning slowly. While the ring spins it goes out to where the whole disc is clear. (A small step
+	 * back of the time, as the client's clock is set by the server's, counts as none.)
+	 */
+	static Hold steady(int seed, float t, Hold hold, float angle, boolean second, float blur, CrewModels.Lean lean) {
+		float[] away = away(hold);
+		float now = out(hold, away, angle, second, false, lean);
+		float disc = blur > 0.0F ? Math.max(now, out(hold, away, angle, second, true, lean)) : now;
+		float least = blur >= DISC_SOLID ? disc : now;
+		float out = disc;
+		float[] last = MOVED.get(seed);
+		float time = t;
+
+		if (last != null && Math.abs(t - last[0]) < 0.5F) {
+			float dt = Math.max(0.0F, t - last[0]);
+			out = disc > last[1] ? Math.min(disc, last[1] + OUT_SPEED * dt) : Math.max(disc, last[1] - IN_SPEED * dt);
+			out = Math.max(out, least);
+			time = Math.max(t, last[0]);
+		}
+
+		MOVED.put(seed, new float[] {time, out});
+		return hold.moved(away[0] * out, 0.0F, away[1] * out);
+	}
+
+	/** Phase 30: from how much blur on the spinning disc shows enough that it is kept clear of her at once (not eased out to it). */
+	static final float DISC_SOLID = 0.1F;
+
+	private static boolean in(Hold h, float angle, boolean second, boolean spinning, CrewModels.Lean lean) {
+		return spinning ? discInBody(h, second, lean) : inBody(h, angle, second, lean);
+	}
+
+	/** Phase 30: how many ways the spinning blades are looked at round the disc (sixteen let one between them graze her robe). */
+	static final int DISC_RAYS = 96;
+	/** Phase 30: how far apart the points along the grip and a blade are looked at (blocks). */
+	static final float ALONG = 0.04F;
+	/** Phase 30: how many points round the ring are looked at (48: about 0.022 apart, half the margin). */
+	static final int RING_POINTS = 48;
+	/**
+	 * Phase 30: how far the grip, the ring and the emitters (their own thickness, about 0.035, and the
+	 * spacing of the points looked at) and a blade (its coloured edge, 0.034 round its core, and the
+	 * spacing) keep off her body as drawn.
+	 */
+	static final float HILT_MARGIN = 0.045F;
+	static final float BLADE_MARGIN = 0.055F;
+
+	/**
+	 * Whether the saber lies in her body at any angle of its ring: the grip, the ring and its
+	 * emitters all round, and the disc the spinning blades sweep (a blade every {@link #DISC_RAYS}th
+	 * of a turn: the first blade alone sweeps the whole disc as it spins).
+	 */
+	static boolean discInBody(Hold h, boolean second, CrewModels.Lean lean) {
+		if (gripInBody(h, lean)) {
+			return true;
+		}
+
+		float[] c = h.c();
+
+		for (int i = 0; i < DISC_RAYS; i++) {
+			float[] b = h.blade(Mth.TWO_PI * i / DISC_RAYS);
+
+			for (float t = i % 2 == 0 ? RING_R : EMIT; t <= EMIT + BLADE + 0.001F; t += ALONG) {
+				if (CrewModels.inDrawnBody(c[0] + b[0] * t, c[1] + b[1] * t, c[2] + b[2] * t, lean, t > EMIT ? BLADE_MARGIN : HILT_MARGIN)) {
+					return true;
+				}
 			}
 		}
 
 		return false;
 	}
 
-	/** Whether a part of the saber (grip, ring, the first blade and, if lit, the second) lies in her body. */
-	static boolean inBody(Hold h, float angle, boolean second, float shoulder) {
-		float[] c = h.c();
-		float[] a = h.a();
-
-		for (float t = -GRIP_BACK; t <= GRIP_FRONT; t += 0.05F) {
-			if (CrewModels.inBody(c[0] + a[0] * t, c[1] + a[1] * t, c[2] + a[2] * t, shoulder)) {
-				return true;
-			}
+	/**
+	 * Whether a part of the saber (grip, ring, both emitters, the first blade and, if lit, the
+	 * second) lies in her body.
+	 */
+	static boolean inBody(Hold h, float angle, boolean second, CrewModels.Lean lean) {
+		if (gripInBody(h, lean)) {
+			return true;
 		}
 
-		for (int i = 0; i < 12; i++) {
-			float[] r = h.blade(angle + Mth.TWO_PI * i / 12.0F);
+		float[] c = h.c();
 
-			if (CrewModels.inBody(c[0] + r[0] * RING_R, c[1] + r[1] * RING_R, c[2] + r[2] * RING_R, shoulder)) {
+		for (int i = 0; i < RING_POINTS; i++) {
+			float[] r = h.blade(angle + Mth.TWO_PI * i / RING_POINTS);
+
+			if (CrewModels.inDrawnBody(c[0] + r[0] * RING_R, c[1] + r[1] * RING_R, c[2] + r[2] * RING_R, lean, HILT_MARGIN)) {
 				return true;
 			}
 		}
 
 		float[] b = h.blade(angle);
 
-		for (int side = 1; side >= (second ? -1 : 1); side -= 2) {
-			for (float t = EMIT; t <= EMIT + BLADE + 0.001F; t += 0.05F) {
-				if (CrewModels.inBody(c[0] + b[0] * t * side, c[1] + b[1] * t * side, c[2] + b[2] * t * side, shoulder)) {
+		// (The emitters stand out from the ring on both sides, the second blade only if lit.)
+		for (int side = 1; side >= -1; side -= 2) {
+			float to = EMIT + (side > 0 || second ? BLADE : 0.0F) + 0.001F;
+
+			for (float t = RING_R; t <= to; t += ALONG) {
+				if (CrewModels.inDrawnBody(c[0] + b[0] * t * side, c[1] + b[1] * t * side, c[2] + b[2] * t * side, lean, t > EMIT ? BLADE_MARGIN : HILT_MARGIN)) {
 					return true;
 				}
+			}
+		}
+
+		return false;
+	}
+
+	private static boolean gripInBody(Hold h, CrewModels.Lean lean) {
+		float[] c = h.c();
+		float[] a = h.a();
+
+		for (float t = -GRIP_BACK; t <= GRIP_FRONT; t += ALONG) {
+			if (CrewModels.inDrawnBody(c[0] + a[0] * t, c[1] + a[1] * t, c[2] + a[2] * t, lean, HILT_MARGIN)) {
+				return true;
 			}
 		}
 

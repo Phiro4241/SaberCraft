@@ -13,6 +13,7 @@
     "EntityRenderDispatcherMixin",
     "FogRendererMixin",
     "GameRendererMixin",
+    "HudAccessor",
     "HumanoidModelMixin",
     "ItemInHandLayerMixin",
     "ItemInHandRendererMixin",
