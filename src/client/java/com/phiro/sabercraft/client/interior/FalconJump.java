@@ -14,8 +14,9 @@ import com.phiro.sabercraft.network.InteriorJumpPayload;
  * Phase 16: a hyperspace jump seen from inside the Falcon (through the cockpit window, the
  * turrets' domes): first the stars stretch into lines, then a few seconds in hyperspace with the
  * lines rushing past in a pale blue tunnel, then they shrink back to stars. And what the ship
- * shows of it: the light by the hyperdrive lever (green ready, blinking amber while the drive
- * spools up, blue in hyperspace) and the hyperdrive's glow in the engine room.
+ * shows of it: the light by the hyperdrive lever (blinking amber while the drive spools up, blue
+ * in hyperspace, dark otherwise; until Phase 31 it showed green "ready") and the hyperdrive's
+ * glow in the engine room.
  */
 final class FalconJump {
 	/**
@@ -189,17 +190,27 @@ final class FalconJump {
 		b.twoSided(false).white().layer(Layer.SOLID).worldLight();
 	}
 
-	/** The light by the hyperdrive lever: green ready, blinking amber spooling up, blue in hyperspace. */
+	/**
+	 * The light by the hyperdrive lever: blinking amber spooling up, blue in hyperspace. (Phase 31:
+	 * dark otherwise. It showed green "ready", but no player starts a jump any more: the open
+	 * world's hyperspace is gone, the story's Falcon jumps when the story says so.)
+	 */
 	private static void lamp(MeshBuilder b, byte stage, float seconds) {
 		int colour = switch (stage) {
 			case InteriorJumpPayload.CHARGE -> (seconds * 6.0F) % 1.0F < 0.5F ? 0xFFFFB030 : 0xFF503010;
 			case InteriorJumpPayload.TUNNEL, InteriorJumpPayload.ARRIVE -> 0xFF60A0FF;
-			default -> 0xFF50E070;
+			default -> 0;
 		};
 		float cx = (float) COCKPIT_X;
 		float z0 = COCKPIT_FRONT;
 		float y0 = FLOOR + 1;
-		b.layer(Layer.GLOW).fullBright().anim(0).colour(colour).fit(InteriorAtlas.WHITE);
+
+		if (colour == 0) {
+			b.layer(Layer.SOLID).worldLight().anim(0).colour(0xFF26302B).fit(InteriorAtlas.WHITE);
+		} else {
+			b.layer(Layer.GLOW).fullBright().anim(0).colour(colour).fit(InteriorAtlas.WHITE);
+		}
+
 		b.box(cx + 0.35F, y0 + 0.86F, z0 + 1.3F, cx + 0.7F, y0 + 0.94F, z0 + 1.6F, MeshBuilder.ALL & ~MeshBuilder.DOWN);
 		b.white().layer(Layer.SOLID).worldLight();
 	}

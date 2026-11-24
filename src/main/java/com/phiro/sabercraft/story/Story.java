@@ -1455,11 +1455,7 @@ public final class Story {
 			case StoryActionPayload.CONTINUE -> message(player, enter(player, Start.CONTINUE, 0));
 			case StoryActionPayload.RESTART -> {
 				if (session != null) {
-					// Phase 31: written first: entering keeps the way back (where one came from, the
-					// game mode, one's own droids) and what is known for good only in memory until a
-					// checkpoint; the new start reads the file and would take the story's ship, its
-					// mode and its droids for them.
-					save(session);
+					keepWayBack(player, session);
 					SESSIONS.remove(player.getUUID());
 					keepDifficulty(player, session);
 				}
@@ -1468,7 +1464,7 @@ public final class Story {
 			}
 			case StoryActionPayload.MISSION -> {
 				if (session != null) {
-					save(session);
+					keepWayBack(player, session);
 					SESSIONS.remove(player.getUUID());
 					keepDifficulty(player, session);
 				}
@@ -1591,6 +1587,36 @@ public final class Story {
 		session.begin(true);
 		session.hint("sabercraft.story.difficulty.changed." + chosen.id);
 		sendState(session);
+	}
+
+	/**
+	 * Phase 31: before a new start from the running story (Restart, Play Mission): the way back
+	 * written into the file if it is not there yet. Entering keeps it (where one came from, the game
+	 * mode, one's own droids) only in memory until the first checkpoint; the new start reads the
+	 * file, and would otherwise take the story's ship, its mode and its droids for it. Nothing else
+	 * of the running story is written (the new start begins from the file as before).
+	 */
+	private static void keepWayBack(ServerPlayer player, StorySession session) {
+		MinecraftServer server = player.level().getServer();
+		StoryProgress file = StoryStore.load(server, player.getUUID());
+		StoryProgress now = session.progress;
+
+		if (file.active || !now.active) {
+			return;
+		}
+
+		file.active = true;
+		file.stashed = now.stashed;
+		file.returnDimension = now.returnDimension;
+		file.returnX = now.returnX;
+		file.returnY = now.returnY;
+		file.returnZ = now.returnZ;
+		file.returnYaw = now.returnYaw;
+		file.returnPitch = now.returnPitch;
+		file.returnMode = now.returnMode;
+		file.ownDroids = new ArrayList<>(now.ownDroids);
+		file.difficulty = now.difficulty;
+		StoryStore.save(server, player.getUUID(), file);
 	}
 
 	/**

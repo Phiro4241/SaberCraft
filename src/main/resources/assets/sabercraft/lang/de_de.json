@@ -1414,7 +1414,7 @@
   "sabercraft.story.hint.takedown_alert": "Zu spät – er ist gewarnt.",
   "sabercraft.story.hud.takedown_crouch": "%2$s (nur geduckt: %1$s)",
   "sabercraft.story.tip.takedown.title": "Lautlos ausschalten",
-  "sabercraft.story.tip.takedown": "Der Sturmtruppler schaut weg. Geduckt (%1$s) von hinten heran, dann %2$s: lautlos ausgeschaltet. Wer dich bemerkt hat, lässt sich nicht mehr überrumpeln.",
+  "sabercraft.story.tip.takedown": "Der Sturmtruppler schaut weg. Geduckt (%1$s) von hinten heran, dann %2$s: lautlos ausgeschaltet. Wer dich gerade gesehen hat oder gewarnt ist, lässt sich nicht überrumpeln.",
   "sabercraft.story.film.escape.title": "DAS ENDE DER TENEBRIS",
   "sabercraft.story.film.escape.subtitle": "Kapitel 1: Nachtschatten",
   "sabercraft.story.film.escape.dax1": "Festhalten! Wir sind draußen, und sie fliegt uns gleich um die Ohren!",

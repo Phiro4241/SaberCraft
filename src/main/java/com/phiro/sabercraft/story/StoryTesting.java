@@ -524,6 +524,14 @@ public final class StoryTesting {
 		progress.placeShip = "";
 		progress.finished = false;
 		progress.flags.remove(Chapter1.CHAPTER_DONE);
+
+		if (Chapter1.PRISON_STEPS.contains(stepId)) {
+			// Phase 31: a step of the detention block by file is the way without Hale's trap: with the
+			// trap's flag (left by a test before) it would read as an older version's break-out and
+			// be put back into the cell. The trap is played, never set by file.
+			progress.flags.remove("m5.trapped");
+		}
+
 		StoryStore.save(server, player, progress);
 	}
 
@@ -1301,6 +1309,12 @@ public final class StoryTesting {
 
 		for (String flag : flags) {
 			progress.flags.remove(flag);
+			// Phase 31: a guard forgotten as overpowered does not lie where he fell either.
+			String key = Chapter1.GUARD_DOWN.equals(flag) ? "det_guard" : Chapter1.LAB_GUARD_DOWN.equals(flag) ? "lab_guard" : null;
+
+			if (key != null) {
+				progress.flags.removeIf(kept -> kept.startsWith(Chapter1.DOWN_PREFIX) && kept.contains("/" + key + "/"));
+			}
 		}
 
 		StoryStore.save(server, player, progress);

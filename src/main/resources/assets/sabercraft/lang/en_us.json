@@ -1414,7 +1414,7 @@
   "sabercraft.story.hint.takedown_alert": "Too late – he's on alert.",
   "sabercraft.story.hud.takedown_crouch": "%2$s (crouch first: %1$s)",
   "sabercraft.story.tip.takedown.title": "Silent takedown",
-  "sabercraft.story.tip.takedown": "The stormtrooper is looking away. Crouch (%1$s), creep up behind him, then %2$s: a silent takedown. Once he has spotted you, he won't be caught off guard.",
+  "sabercraft.story.tip.takedown": "The stormtrooper is looking away. Crouch (%1$s), creep up behind him, then %2$s: a silent takedown. One who has just seen you, or is on alert, can't be caught off guard.",
   "sabercraft.story.film.escape.title": "THE END OF THE TENEBRIS",
   "sabercraft.story.film.escape.subtitle": "Chapter 1: Nightshade",
   "sabercraft.story.film.escape.dax1": "Hold on! We're out, and she's about to blow!",
