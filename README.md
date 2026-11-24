@@ -217,9 +217,9 @@ All keys are in **Options → Controls → Key Binds → SaberCraft** and can be
 | Sneak in front of an open vent hatch (Star Destroyer) | Get down on all fours and crawl in (Phase 18) |
 | Right mouse button on an open vent hatch | Shut it again, from either side (Phase 20) |
 | Right mouse button on a person or thing (story) | Speak to them, use a console, a locker, a terminal (Phase 19) |
-| **Enter** / **Space** / click, **1**–**4**, arrow keys (story dialog) | Show the whole line or go on; choose an answer (Phase 19) |
+| **Enter** / **Space** / click, **1**–**4**, arrow keys (story dialog) | Show the whole line or go on; choose an answer (Phase 19); **←** / **→** read earlier lines of the box again (Phase 31) |
 | **N** (story) | M-31's or R2-V7's ability; you need not look at the droid: R2-V7 works on a lock nearby, M-31 drives to the spot you look at and makes a noise there, then needs 20 seconds' rest (Phase 19, 21) |
-| **Space** / **Enter** / **Esc** (story film) | Skip the film (Phase 20) |
+| **Space** / **Esc** (story film) | Skip the film (Phase 20; Phase 31: only these two keys) |
 | **G** (story) | The Focus: when its meter is full, the enemies slow to half speed for four seconds; learnt with Ilyra's saber (Phase 21) |
 
 **Starships** (fixed keys, they reuse your movement keys):

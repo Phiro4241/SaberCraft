@@ -238,6 +238,8 @@ static final int CHECKPOINT_TICKS = 60;
 		ClientTickEvents.END_CLIENT_TICK.register(StoryClient::tick);
 		net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper.registerKeyMapping(FOCUS_KEY);
 		StoryCinema.init();
+		// Phase 31: the keys of the story's screens do nothing else while held.
+		StoryKeys.init();
 		ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> reset());
 		HudElementRegistry.addLast(SaberCraft.id("story"), new StoryHud());
 		// Phase 28: Minecraft's status effects (top right) under the mission panel while it shows.
@@ -294,6 +296,8 @@ static final int CHECKPOINT_TICKS = 60;
 		previous = null;
 		current = null;
 		dialog = null;
+		SEEN.clear();
+		StoryKeys.reset();
 		STRIDES.clear();
 		RADIO.clear();
 		radioNow = null;
@@ -405,12 +409,29 @@ static final int CHECKPOINT_TICKS = 60;
 	private static void dialog(Minecraft client, StoryDialogPayload payload) {
 		if (!payload.open()) {
 			dialog = null;
+			SEEN.clear();
 
 			if (client.gui.screen() instanceof DialogScreen) {
 				client.gui.setScreen(null);
 			}
 
 			return;
+		}
+
+		// Phase 31: the lines of this box, to read again with the arrow keys (a new box starts afresh;
+		// the same line sent again, after a wrong answer or a click on the speaker, is kept once).
+		if (dialog == null) {
+			SEEN.clear();
+		}
+
+		if (!SEEN.isEmpty() && SEEN.getLast().line().line().equals(payload.line())) {
+			SEEN.set(SEEN.size() - 1, new Seen(payload, -1));
+		} else {
+			SEEN.add(new Seen(payload, -1));
+
+			if (SEEN.size() > SEEN_MAX) {
+				SEEN.removeFirst();
+			}
 		}
 
 		dialog = payload;
@@ -532,6 +553,7 @@ static final int CHECKPOINT_TICKS = 60;
 
 		if (screen instanceof DialogScreen || screen instanceof CoverScreen || screen instanceof com.phiro.sabercraft.client.menu.SaberMenuScreen) {
 			dialog = null;
+			SEEN.clear();
 			client.gui.setScreen(null);
 		} else if (screen instanceof net.minecraft.client.gui.screens.inventory.AbstractContainerScreen<?> && client.player != null) {
 			client.player.closeContainer();
@@ -543,6 +565,30 @@ static final int CHECKPOINT_TICKS = 60;
 	/** For the tests: how often the story told this client to close its screens. */
 	public static int interruptsForTest() {
 		return interrupts;
+	}
+
+	/** Phase 31: a line of the open dialog box as it was shown, and the answer chosen there (-1: none). */
+	record Seen(StoryDialogPayload line, int chosen) {
+	}
+
+	/** Phase 31: the lines of the open box so far (the last is the one the server waits on). */
+	private static final java.util.List<Seen> SEEN = new java.util.ArrayList<>();
+	private static final int SEEN_MAX = 64;
+
+	static java.util.List<Seen> seen() {
+		return SEEN;
+	}
+
+	/** Phase 31: the answer given to the last line (shown when it is read again). */
+	static void chose(int answer) {
+		if (!SEEN.isEmpty()) {
+			SEEN.set(SEEN.size() - 1, new Seen(SEEN.getLast().line(), answer));
+		}
+	}
+
+	/** Phase 31: the box was closed here (it gave up waiting): its lines are gone. */
+	static void forgetSeen() {
+		SEEN.clear();
 	}
 
 	/** Phase 27: the dialog the server has open (null: none), for a film that hid its screen. */

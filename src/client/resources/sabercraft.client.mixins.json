@@ -17,6 +17,8 @@
     "HumanoidModelMixin",
     "ItemInHandLayerMixin",
     "ItemInHandRendererMixin",
+    "KeyboardHandlerMixin",
+    "KeyMappingMixin",
     "LanguageManagerMixin",
     "LightmapRenderStateExtractorMixin",
     "LivingEntityRendererMixin",

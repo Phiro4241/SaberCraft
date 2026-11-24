@@ -26,6 +26,11 @@ import com.phiro.sabercraft.network.StoryDialogPayload;
  * with Space, Enter, a click or Escape; a first press only shows the whole line. The game goes
  * on behind it (nobody watches the player while they talk, though).
  *
+ * <p>Phase 31: the arrow keys left and right page through the lines of this box: left shows the
+ * line before (to read it again, with the answer chosen there), right the next one; at the
+ * current line right goes on as Space does. Reading again never answers and never moves the
+ * story on; Space, Escape or a click go back to the current line.
+ *
  * <p>The server leads: it sends each line and closes the dialog; this only shows the line and
  * sends the choice back.
  */
@@ -49,6 +54,8 @@ public final class DialogScreen extends Screen {
 	private boolean sent;
 	private int sentAge;
 	private int age;
+	/** Phase 31: the line of this box read again (its place in {@link StoryClient#seen}), -1: the current one. */
+	private int view = -1;
 	/** Where the answers are on screen (for the mouse). */
 	private final List<int[]> answerBoxes = new ArrayList<>();
 	private static int shownLines;
@@ -82,6 +89,25 @@ public final class DialogScreen extends Screen {
 		this.selected = 0;
 		this.sent = false;
 		this.sentAge = 0;
+		this.view = -1;
+	}
+
+	/** Phase 31: where the current line is among the box's lines (their number when it is not among them). */
+	private int live() {
+		List<StoryClient.Seen> seen = StoryClient.seen();
+		return !seen.isEmpty() && seen.getLast().line().line().equals(this.line.line()) ? seen.size() - 1 : seen.size();
+	}
+
+	/** Phase 31: the line read again now, or null at the current line. */
+	private StoryClient.@org.jspecify.annotations.Nullable Seen viewed() {
+		List<StoryClient.Seen> seen = StoryClient.seen();
+		return this.view >= 0 && this.view < seen.size() && this.view < this.live() ? seen.get(this.view) : null;
+	}
+
+	/** Phase 27/31: gives up waiting for the server: the box and its lines are gone. */
+	private void giveUp() {
+		StoryClient.forgetSeen();
+		this.onClose();
 	}
 
 	private boolean typing() {
@@ -106,12 +132,12 @@ public final class DialogScreen extends Screen {
 			// Phase 27: the server always answers now; should a reply be lost, the screen closes by
 			// itself after two seconds instead of holding the player (it used to wait for Escape).
 			if (this.sentAge > 40) {
-				this.onClose();
+				this.giveUp();
 				return;
 			}
 		}
 
-		if (!this.typing()) {
+		if (!this.typing() || this.view >= 0) {
 			return;
 		}
 
@@ -169,7 +195,35 @@ public final class DialogScreen extends Screen {
 		if (this.sent) {
 			// The server has not answered: Escape lets one out after a while.
 			if (event.isEscape() && this.sentAge > 40) {
-				this.onClose();
+				this.giveUp();
+			}
+
+			return true;
+		}
+
+		// Phase 31: reading an earlier line again: left and right page, Space/Escape/Enter go back
+		// to the current line; nothing is answered from here.
+		if (this.viewed() != null) {
+			if (event.isLeft()) {
+				this.view = Math.max(0, this.view - 1);
+			} else if (event.isRight()) {
+				this.view = this.view + 1 >= this.live() ? -1 : this.view + 1;
+			} else if (event.isSelection() || event.isEscape()) {
+				this.view = -1;
+			}
+
+			return true;
+		}
+
+		this.view = -1;
+
+		if (event.isLeft()) {
+			// Phase 31: the line before (the current one shown whole first, so nothing is missed).
+			int live = this.live();
+
+			if (live > 0) {
+				this.shown = this.words.length();
+				this.view = live - 1;
 			}
 
 			return true;
@@ -177,13 +231,14 @@ public final class DialogScreen extends Screen {
 
 		List<String> answers = this.line.answers();
 
-		if (this.typing() && (event.isSelection() || event.isEscape() || event.getDigit() >= 1)) {
+		if (this.typing() && (event.isSelection() || event.isEscape() || event.getDigit() >= 1 || event.isRight())) {
 			this.shown = this.words.length();
 			return true;
 		}
 
 		if (answers.isEmpty()) {
-			if (event.isSelection() || event.isEscape()) {
+			// Phase 31: right goes on as Space does.
+			if (event.isSelection() || event.isEscape() || event.isRight()) {
 				this.choose(-1);
 			}
 
@@ -211,6 +266,12 @@ public final class DialogScreen extends Screen {
 			return true;
 		}
 
+		if (this.viewed() != null) {
+			// Phase 31: a click while reading an earlier line goes back to the current one.
+			this.view = -1;
+			return true;
+		}
+
 		if (this.typing()) {
 			this.shown = this.words.length();
 			return true;
@@ -235,6 +296,10 @@ public final class DialogScreen extends Screen {
 
 	@Override
 	public void mouseMoved(double x, double y) {
+		if (this.viewed() != null) {
+			return;
+		}
+
 		for (int i = 0; i < this.answerBoxes.size(); i++) {
 			int[] box = this.answerBoxes.get(i);
 
@@ -246,6 +311,7 @@ public final class DialogScreen extends Screen {
 
 	private void choose(int answer) {
 		if (StoryClient.send(StoryActionPayload.ANSWER, "", answer)) {
+			StoryClient.chose(answer);
 			this.sent = true;
 			this.sentAge = 0;
 
@@ -286,7 +352,13 @@ public final class DialogScreen extends Screen {
 	@Override
 	public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float a) {
 		super.extractRenderState(graphics, mouseX, mouseY, a);
-		StoryDialogPayload line = this.line;
+		// Phase 31: an earlier line read again is drawn whole, with the answer chosen there.
+		StoryClient.Seen viewed = this.viewed();
+		StoryDialogPayload line = viewed != null ? viewed.line() : this.line;
+		String allWords = viewed != null ? Component.translatable(line.text()).getString() : this.words;
+		int shownCount = viewed != null ? allWords.length() : (int) this.shown;
+		boolean typing = viewed == null && this.typing();
+		int live = this.live();
 		boolean radio = line.radio();
 		boolean self = "funke".equals(line.speaker());
 		int panelWidth = Math.min(this.width - 16, 460);
@@ -295,7 +367,7 @@ public final class DialogScreen extends Screen {
 		int textWidth = panelWidth - PORTRAIT - PAD * 3;
 
 		// The whole line is laid out at once, so the words do not jump while they appear.
-		List<FormattedText> rows = this.font.splitIgnoringLanguage(Component.literal(this.words), textWidth);
+		List<FormattedText> rows = this.font.splitIgnoringLanguage(Component.literal(allWords), textWidth);
 		List<FormattedCharSequence> answers = new ArrayList<>();
 		List<Integer> answerOf = new ArrayList<>();
 
@@ -338,7 +410,7 @@ public final class DialogScreen extends Screen {
 
 		// The words, as far as they are shown.
 		int y = top + PAD + 2;
-		int left2 = (int) this.shown;
+		int left2 = shownCount;
 
 		for (FormattedText row : rows) {
 			String text = row.getString();
@@ -350,7 +422,7 @@ public final class DialogScreen extends Screen {
 			String part = text.length() <= left2 ? text : text.substring(0, left2);
 			left2 -= text.length();
 			// A wrapped line lost the space it broke at.
-			left2 -= left2 > 0 && this.words.length() > 0 ? 1 : 0;
+			left2 -= left2 > 0 && allWords.length() > 0 ? 1 : 0;
 			graphics.text(this.font, part, textLeft, y, alpha << 24 | (radio ? 0xD8E6FA : 0xECEFF4));
 			y += 10;
 		}
@@ -358,7 +430,19 @@ public final class DialogScreen extends Screen {
 		y = top + PAD + 2 + textHeight + 6;
 		this.answerBoxes.clear();
 
-		if (!this.typing() && !answers.isEmpty()) {
+		if (viewed != null && !answers.isEmpty()) {
+			// Phase 31: the answers of an earlier line, dimmed, the one chosen marked; none to click.
+			for (int i = 0; i < answers.size(); i++) {
+				boolean chosen = answerOf.get(i) == viewed.chosen();
+
+				if (chosen) {
+					graphics.fill(textLeft - 4, y - 2, textLeft - 2, y + ANSWER_HEIGHT - 2, alpha << 24 | (radio ? 0x8CC0FF : 0xE8C878));
+				}
+
+				graphics.text(this.font, answers.get(i), textLeft + 2, y + 1, alpha << 24 | (chosen ? 0xD8DEE8 : 0x6A7484));
+				y += ANSWER_HEIGHT;
+			}
+		} else if (!typing && !answers.isEmpty()) {
 			int[] box = null;
 			int current = -1;
 
@@ -396,9 +480,21 @@ public final class DialogScreen extends Screen {
 		}
 
 		// How to go on, small in the corner; a blinking mark while the line is done.
-		if (!this.typing() && !this.sent) {
+		if (viewed != null) {
+			// Phase 31: which earlier line this is, and how to get back.
+			Component how = Component.translatable("sabercraft.story.dialog.history", this.view + 1, live + 1);
+			int w = this.font.width(how);
+			int hx = self ? left + PAD : left + panelWidth - PAD - w;
+			graphics.text(this.font, how, hx, top + panelHeight - 11, alpha * 3 / 5 << 24 | 0x8890A0);
+		} else if (!typing && !this.sent) {
 			Component how = answers.isEmpty() ? Component.translatable("sabercraft.story.dialog.continue")
 					: Component.translatable("sabercraft.story.dialog.choose", line.answers().size());
+
+			if (live > 0) {
+				// Phase 31: there are earlier lines to read again.
+				how = how.copy().append(Component.translatable("sabercraft.story.dialog.back"));
+			}
+
 			int w = this.font.width(how);
 			int hx = self ? left + PAD : left + panelWidth - PAD - w;
 			graphics.text(this.font, how, hx, top + panelHeight - 11, alpha * 3 / 5 << 24 | 0x8890A0);
@@ -432,6 +528,22 @@ public final class DialogScreen extends Screen {
 	/** How many lines were shown since the game started. */
 	public static int shownForTest() {
 		return shownLines;
+	}
+
+	/** Phase 31: the line shown now (its id: dialog.node), the current or one read again. */
+	public String viewedLineForTest() {
+		StoryClient.Seen viewed = this.viewed();
+		return viewed != null ? viewed.line().line() : this.line.line();
+	}
+
+	/** Phase 31: whether an earlier line is read again now. */
+	public boolean reviewingForTest() {
+		return this.viewed() != null;
+	}
+
+	/** Phase 31: how many lines this box has shown (the current one included). */
+	public static int seenForTest() {
+		return StoryClient.seen().size();
 	}
 
 	/** Shows the whole line at once (as a key would). */
