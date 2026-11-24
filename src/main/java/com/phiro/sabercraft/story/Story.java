@@ -790,8 +790,8 @@ public final class Story {
 					: null;
 
 			if (session.here == null && player.level() != interiors) {
-				// Out of the interiors some other way (a command): the story ends for now.
-				SESSIONS.remove(session.player);
+				// Out of the interiors some other way (a command): the story ends for now. (Phase 31:
+				// as leaving it does, with the session: how far one got kept, things given back.)
 				leave(player);
 				continue;
 			}
@@ -1426,13 +1426,40 @@ public final class Story {
 
 	// --- Network -----------------------------------------------------------------------------------
 
-	private static void action(ServerPlayer player, StoryActionPayload payload) {
+	static void action(ServerPlayer player, StoryActionPayload payload) {
 		StorySession session = SESSIONS.get(player.getUUID());
+
+		// Phase 31: struck down in the last tick and not caught yet (that waits for the next tick):
+		// caught now, before this input is handled. An input of the old fight (a stroke, the Focus,
+		// a key in a scene) then counts no more: it would play out against the fight just ended.
+		if (session != null && session.captureDue) {
+			switch (payload.action()) {
+				case StoryActionPayload.ANSWER, StoryActionPayload.USE, StoryActionPayload.TALK, StoryActionPayload.TAKEDOWN, StoryActionPayload.SKIP,
+						StoryActionPayload.STRIKE, StoryActionPayload.COVER, StoryActionPayload.FOCUS -> {
+					session.captureDue = false;
+					capture(session, null);
+					session.afterTick();
+					return;
+				}
+				case StoryActionPayload.LEAVE -> {
+					// Leaving right then: with the state of the checkpoint, not of the fight.
+					session.captureDue = false;
+					capture(session, null);
+				}
+				default -> {
+				}
+			}
+		}
 
 		switch (payload.action()) {
 			case StoryActionPayload.CONTINUE -> message(player, enter(player, Start.CONTINUE, 0));
 			case StoryActionPayload.RESTART -> {
 				if (session != null) {
+					// Phase 31: written first: entering keeps the way back (where one came from, the
+					// game mode, one's own droids) and what is known for good only in memory until a
+					// checkpoint; the new start reads the file and would take the story's ship, its
+					// mode and its droids for them.
+					save(session);
 					SESSIONS.remove(player.getUUID());
 					keepDifficulty(player, session);
 				}
@@ -1441,6 +1468,7 @@ public final class Story {
 			}
 			case StoryActionPayload.MISSION -> {
 				if (session != null) {
+					save(session);
 					SESSIONS.remove(player.getUUID());
 					keepDifficulty(player, session);
 				}

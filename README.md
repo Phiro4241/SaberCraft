@@ -103,7 +103,7 @@ Status labels: ✅ **finished** (built and covered by automated tests) · 🧪 *
 - **The duel against the Schattenklinge** (Phase 21): a scene in the hangar before it, then a fight of blows you can see coming: block the last blow of a combo and he staggers, hammering into his guard gets you a riposte, two more phases with a leap and a Force push. In the story the **Focus** (key **G**) replaces the Force powers that have nothing to act on there.
 - **Saved at every checkpoint**: leave the story at any time (your own things, place and droids come back), continue later, or play a reached mission again. The end gives a lightsaber to keep.
 - **Three difficulties** (Phase 27): Leicht, Normal, Schwer, chosen before the story begins and changeable in the story menu at any time. They change how many enemies there are, how far and how fast they notice you, how quickly they move, search and shoot, how many stun bolts catch you (4, 3 or 2) and how the boss fights. Each player keeps their own.
-- **Crawl ways you can recognise** (Phase 27): usable hatches have a yellow and black frame, a handle and a small lamp; one right-click opens a hatch and you simply walk in. A **Story-Helligkeit** setting brightens the story's dark scenes if you like.
+- **Crawl ways you can recognise** (Phase 27): usable hatches have a yellow and black frame, a handle and a small lamp; one right-click opens a hatch and you simply walk in. A **Story-Helligkeit** setting brightens the story's dark scenes if you like (Phase 31: its highest level, **Maximal**, also lifts the crawl ways and other dark rooms, without washing them out).
 - Its own **language setting** (Auto, German, English) for all SaberCraft texts, independent of Minecraft's.
 
 ### 🌌 Skies and planets ✅
@@ -221,6 +221,7 @@ All keys are in **Options → Controls → Key Binds → SaberCraft** and can be
 | **N** (story) | M-31's or R2-V7's ability; you need not look at the droid: R2-V7 works on a lock nearby, M-31 drives to the spot you look at and makes a noise there, then needs 20 seconds' rest (Phase 19, 21) |
 | **Space** / **Esc** (story film) | Skip the film (Phase 20; Phase 31: only these two keys) |
 | **G** (story) | The Focus: when its meter is full, the enemies slow to half speed for four seconds; learnt with Ilyra's saber (Phase 21) |
+| Sneak + right mouse button close behind an unaware stormtrooper (story) | Silent takedown (Phase 31): a card explains it once, in the prison; never from the front, while he is alert or while someone else sees you |
 
 **Starships** (fixed keys, they reuse your movement keys):
 

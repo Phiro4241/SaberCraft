@@ -729,6 +729,17 @@ public final class StoryTesting {
 		player.setShiftKeyDown(crouch);
 	}
 
+	/** Phase 31: the field of Hale's cell switched off (as M-31's work at its emitter ends). */
+	public static void openCell(StorySession s) {
+		s.set("cell2.open");
+		Chapter1.field(s, 1, true);
+	}
+
+	/** Phase 31: whether the story holds the cell's checkpoint now (the break-out from Hale's cell). */
+	public static boolean prisonBreak(StorySession s) {
+		return Chapter1.prisonBreak(s);
+	}
+
 	/** Phase 31: the takedown's flags (known how, where one lies), and how often the tip was given. */
 	public static String knowTakedown() {
 		return Chapter1.KNOW_TAKEDOWN;
@@ -1421,6 +1432,21 @@ public final class StoryTesting {
 	public static void lethal(net.minecraft.server.level.ServerPlayer player) {
 		player.removeEffect(net.minecraft.world.effect.MobEffects.RESISTANCE);
 		player.setHealth(1.0F);
+	}
+
+	/** Phase 31: whether the player's saved file says they are in the story (the way back kept there). */
+	public static boolean fileActive(net.minecraft.server.MinecraftServer server, java.util.UUID player) {
+		return StoryStore.load(server, player).active;
+	}
+
+	/** Phase 31: an input of the player reaches the server (as from the client): a stroke, a key. */
+	public static void action(net.minecraft.server.level.ServerPlayer player, byte action) {
+		Story.action(player, new com.phiro.sabercraft.network.StoryActionPayload(action, "", 0));
+	}
+
+	/** Phase 31: whether the player was struck down and is still to be caught (at the next tick). */
+	public static boolean captureDue(StorySession s) {
+		return s.captureDue;
 	}
 
 	/** Phase 31: the duel begins anew with the figure she is now (as her "threat" line does). */

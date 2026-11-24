@@ -407,10 +407,12 @@ public final class Chapter1 implements Chapter {
 	/**
 	 * Phase 31: a file saved by an older version in the middle of the break-out (at the checkpoint
 	 * made on freeing R2-V7 or Kestrel, behind the pillar) goes back into the cell, as the break-out
-	 * now does: the cell's step and place, and nothing of the break-out done yet.
+	 * now does: the cell's step and place, and nothing of the break-out done yet. So does one saved
+	 * on leaving at the cell's step with its field already off (the older versions kept that too).
 	 */
 	static boolean prisonSave(StoryProgress progress) {
-		if (progress.mission != 4 || !progress.flags.contains("m5.trapped") || !PRISON_STEPS.contains(progress.stepId)) {
+		if (progress.mission != 4 || !progress.flags.contains("m5.trapped")
+				|| !PRISON_STEPS.contains(progress.stepId) && !("m5.cell".equals(progress.stepId) && progress.flags.contains("cell2.open"))) {
 			return false;
 		}
 
@@ -425,6 +427,7 @@ public final class Chapter1 implements Chapter {
 		progress.stepId = "m5.cell";
 		progress.flags.removeAll(java.util.List.of("cell2.open", "droid.r2v7", "cell1.open", "cell3.open", "kestrel.free", "hatch.f", GUARD_DOWN,
 				"opt.prisoner", "gone.prisoner"));
+		progress.journal.remove("droid_r2v7");
 		progress.placeShip = D;
 		progress.placeX = CELL_2.x;
 		progress.placeY = CELL_2.y;
@@ -4454,19 +4457,29 @@ public final class Chapter1 implements Chapter {
 			return false;
 		}
 
-		if (me.x >= DETENTION_PLANE - 3.0 && me.x <= DETENTION_PLANE + 0.85) {
+		if (me.x >= DETENTION_PLANE - 3.0 && me.x <= DETENTION_PLANE) {
 			return true;
 		}
 
-		return prisonBreak(s) && me.x > DETENTION_PLANE && me.x <= DETENTION_PLANE + 3.0;
+		if (prisonBreak(s)) {
+			return me.x > DETENTION_PLANE && me.x <= DETENTION_PLANE + 3.0;
+		}
+
+		// Just past the plane only while going out through the open door (it stays open until they
+		// are through). At the shut door from the lobby one stands there too (the door's face is
+		// 0.5 past the plane): that is not the way out, and the door stays as the story wants it.
+		return me.x <= DETENTION_PLANE + 0.85 && detentionDoorOpen(s);
+	}
+
+	/** Phase 31: whether the detention block's main door stands open (its first cell is air). */
+	private static boolean detentionDoorOpen(StorySession s) {
+		ServerLevel level = interiors(s);
+		return level != null && level.getBlockState(s.destroyer.offset(DestroyerInterior.CX - 4, H, DestroyerInterior.DETENTION_DOOR_Z0)).isAir();
 	}
 
 	/** Phase 31: whether the player stands in the open main door of the detention block (it must not shut on them). */
 	static boolean inDetentionDoorway(StorySession s) {
-		ServerLevel level = interiors(s);
-
-		if (level == null || !D.equals(s.here)
-				|| !level.getBlockState(s.destroyer.offset(DestroyerInterior.CX - 4, H, DestroyerInterior.DETENTION_DOOR_Z0)).isAir()) {
+		if (!D.equals(s.here) || !detentionDoorOpen(s)) {
 			return false;
 		}
 

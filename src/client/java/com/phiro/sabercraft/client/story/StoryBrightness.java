@@ -6,6 +6,7 @@ import org.joml.Vector3fc;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.state.LightmapRenderState;
 import net.minecraft.util.Mth;
+import net.minecraft.world.effect.MobEffects;
 
 import com.phiro.sabercraft.client.ImmersionConfig;
 import com.phiro.sabercraft.interior.ShipInteriors;
@@ -68,12 +69,18 @@ public final class StoryBrightness {
 
 	/** Called each time the game works out the world's light (see the lightmap mixin). */
 	public static void lightmap(LightmapRenderState state) {
-		// The Darkness effect keeps its own darkness (the story uses none, but a command might).
-		if (state.darknessEffectScale > 0.0F || !liftsWorld(Minecraft.getInstance())) {
-			return;
+		if (liftsNow(Minecraft.getInstance())) {
+			apply(state);
 		}
+	}
 
-		apply(state);
+	/**
+	 * Whether the world's light is lifted now: as {@link #liftsWorld}, but not under the Darkness
+	 * effect, which keeps its own darkness (the story uses none, but a command might). Asked of the
+	 * player, not of the light: the light's darkness pulses and is 0 half the time.
+	 */
+	public static boolean liftsNow(Minecraft client) {
+		return liftsWorld(client) && !(client.player != null && client.player.hasEffect(MobEffects.DARKNESS));
 	}
 
 	/** Lifts that light: the brightest vanilla curve (never beyond it) and the raised floor. */

@@ -373,23 +373,33 @@ public final class StorySession {
 	 * Phase 20: leaving the story while all is calm keeps how far one got (at the step's safe
 	 * place, as a checkpoint); during an alarm, a chase or a fight the last checkpoint stays (so
 	 * leaving is no way out of being caught).
+	 *
+	 * <p>Phase 31: either way the file is written: the last checkpoint with what is known for good
+	 * since (kept at once, such as the takedown learned while breaking out of Hale's cell).
 	 */
 	void keepOnLeave() {
+		if (this.calmToKeep() && this.unsaved()) {
+			Mission.Place place = this.chapter.place(this, this.step());
+			this.checkpoint(place.ship(), place.at(), place.yaw());
+			return;
+		}
+
+		Story.save(this);
+	}
+
+	private boolean calmToKeep() {
 		// Phase 31: (and not while breaking out of Hale's cell: its checkpoint is the cell's.)
 		if (this.progress.finished || this.alarm > 0 || this.fighting || this.completing() || this.chapter.holdsCheckpoint(this)) {
-			return;
+			return false;
 		}
 
 		for (Figure figure : this.figures) {
 			if (figure.mode == Figure.CHASE || figure.stage >= Figure.ALERTED) {
-				return;
+				return false;
 			}
 		}
 
-		if (this.unsaved()) {
-			Mission.Place place = this.chapter.place(this, this.step());
-			this.checkpoint(place.ship(), place.at(), place.yaw());
-		}
+		return true;
 	}
 
 	// --- What is known -----------------------------------------------------------------------------

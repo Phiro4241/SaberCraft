@@ -31,11 +31,18 @@ import net.minecraft.client.input.KeyEvent;
  *
  * <p>Nothing is delayed and nothing else changes: the next fresh press works as always (a jump
  * outside a dialog, Escape for the pause menu). Keys other than the story's (walking, sneaking)
- * are left alone.
+ * stay down for the game; pressed in a film or a box, only their repeats are kept from it until
+ * they are let go (no inventory, dropped item or chat as the screen closes).
  */
 public final class StoryKeys {
 	/** The keys used in the story's screens and still held since. */
 	private static final IntSet HELD = new IntOpenHashSet();
+	/**
+	 * Other keys pressed in a film or a dialog box and still held since (E, Q, F, T...): they do not
+	 * repeat into the game once the screen is gone (the inventory, a dropped item, the chat). Unlike
+	 * {@link #HELD} they stay down for the game (walking on as the film ends).
+	 */
+	private static final IntSet QUIET = new IntOpenHashSet();
 	private static int swallowed;
 
 	private StoryKeys() {
@@ -73,6 +80,7 @@ public final class StoryKeys {
 		if (action == GLFW.GLFW_RELEASE) {
 			// Let go: it is free again (and Minecraft sees it go up, as always).
 			HELD.remove(key);
+			QUIET.remove(key);
 			return false;
 		}
 
@@ -84,6 +92,12 @@ public final class StoryKeys {
 				return false;
 			}
 
+			swallowed++;
+			return true;
+		}
+
+		if (QUIET.contains(key) && action == GLFW.GLFW_REPEAT) {
+			// Held since a film or a box: its repeats do not reach the game (each one a click there).
 			swallowed++;
 			return true;
 		}
@@ -100,6 +114,8 @@ public final class StoryKeys {
 		if ((film || box || screen instanceof CoverScreen) && action == GLFW.GLFW_PRESS && storyKey(key)) {
 			// The press still goes to the screen; from now on the key is the screen's until let go.
 			HELD.add(key);
+		} else if ((film || box) && action == GLFW.GLFW_PRESS) {
+			QUIET.add(key);
 		}
 
 		return false;
@@ -111,6 +127,10 @@ public final class StoryKeys {
 	}
 
 	private static void tick(Minecraft client) {
+		if (!QUIET.isEmpty()) {
+			QUIET.removeIf(key -> !InputConstants.isKeyDown(client.getWindow(), key));
+		}
+
 		if (HELD.isEmpty()) {
 			return;
 		}
@@ -129,6 +149,7 @@ public final class StoryKeys {
 	/** Leaving the world: nothing held any more. */
 	static void reset() {
 		HELD.clear();
+		QUIET.clear();
 	}
 
 	// --- For tests -----------------------------------------------------------------------------------
@@ -136,6 +157,11 @@ public final class StoryKeys {
 	/** Whether that key is held since a story screen used it. */
 	public static boolean heldForTest(int key) {
 		return HELD.contains(key);
+	}
+
+	/** Phase 31: whether that other key is held since a film or a box (its repeats are kept from the game). */
+	public static boolean quietForTest(int key) {
+		return QUIET.contains(key);
 	}
 
 	/** How many key events the gate kept from the game since it started. */
