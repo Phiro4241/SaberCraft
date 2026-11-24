@@ -34,6 +34,8 @@ public record StoryActionPayload(byte action, String text, int value) implements
 	public static final byte DIFFICULTY = 11;
 	/** Phase 28: the four screws of the side way's cover are out (the close-up on the client is done). */
 	public static final byte COVER = 12;
+	/** Phase 31: the player overpowers someone from behind (the figure in the value). */
+	public static final byte TAKEDOWN = 13;
 public static final CustomPacketPayload.Type<StoryActionPayload> TYPE = new CustomPacketPayload.Type<>(SaberCraft.id("story_action"));
 	public static final StreamCodec<FriendlyByteBuf, StoryActionPayload> CODEC = CustomPacketPayload.codec(StoryActionPayload::write, StoryActionPayload::new);
 

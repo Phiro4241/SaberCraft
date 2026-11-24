@@ -355,7 +355,7 @@ public final class Chapter1 implements Chapter {
 		}
 
 		if (mission >= 5) {
-			list.addAll(List.of("droid.r2v7", "hatch.f", "kestrel.free", "know.hale_trap"));
+			list.addAll(List.of("droid.r2v7", "hatch.f", "kestrel.free", "know.hale_trap", KNOW_TAKEDOWN));
 		}
 
 		return list;
@@ -447,6 +447,8 @@ public final class Chapter1 implements Chapter {
 		Stealth.patrols(s, list);
 		// Phase 27: fewer or more enemies by the difficulty.
 		byDifficulty(s, list);
+		// Phase 31: those overpowered lie where they fell.
+		downs(s, list);
 		return list;
 	}
 
@@ -1058,12 +1060,8 @@ public final class Chapter1 implements Chapter {
 					list.add(point("cell3", 34.0, H, 2.0, 36.0, H + 3.0, 3.0, true));
 				}
 
-				// Phase 24: the guard, from close behind, while he does not see one coming.
-				Figure guard = s.figure("det_guard");
-
-				if (guard != null && takedownOpen(s, guard)) {
-					list.add(new Mission.Point("takedown", D, guard.box().inflate(0.2, 0.0, 0.2), false));
-				}
+				// (Phase 24: the guard, from close behind: Phase 31: under the crosshair as anyone
+				// who can be overpowered, see takedownReady.)
 			}
 			case 5 -> {
 				if (step.equals("m6.door") && !s.has("lab.open")) {
@@ -1076,13 +1074,6 @@ public final class Chapter1 implements Chapter {
 
 				if (step.equals("m6.saber")) {
 					list.add(point("saber", 44.0, R, 50.0, 45.0, R + 2.0, 51.0, false));
-				}
-
-				// Phase 26: the lab's guard too, from close behind, while he does not see one coming.
-				Figure guard = s.figure("lab_guard");
-
-				if (guard != null && takedownOpen(s, guard)) {
-					list.add(new Mission.Point("takedown", D, guard.box().inflate(0.2, 0.0, 0.2), false));
 				}
 			}
 			default -> {
@@ -1126,7 +1117,6 @@ public final class Chapter1 implements Chapter {
 		}
 
 		switch (point.id()) {
-			case "takedown" -> takedown(s);
 			case "pad" -> s.talk("m1_pad", null);
 			case "sign" -> s.talk("m1_sign", null);
 			case "terminal" -> s.talk("terminal", null);
@@ -2038,10 +2028,14 @@ public final class Chapter1 implements Chapter {
 			ventCover(s);
 		}
 
+		// Phase 31: the takedown's scene, whoever it is about.
+		takedownScene(s, player, level);
+
 		// Phase 24: the detention block's guard keeps watch (and can be overpowered). Phase 26: so
-		// does the lab's guard.
+		// does the lab's guard. Phase 31: behind him, out of the cell, the takedown's tip.
 		if (s.mission == 4) {
 			guardTick(s, player, level);
+			takedownTip(s, player);
 		} else if (s.mission == 5) {
 			labGuardTick(s, player, level);
 			catwalkTick(s, player);
@@ -3102,39 +3096,156 @@ public final class Chapter1 implements Chapter {
 	static final int GUARD_TURN_TICKS = 20;
 	/** Phase 24: overpowered (a mark kept with the checkpoints after it). */
 	static final String GUARD_DOWN = "det_guard.down";
-	/** Phase 24: how near behind him one has to be, and how long the scene is (ticks, as the client's film). */
-	static final double TAKEDOWN_REACH = 2.4;
+	/**
+	 * Phase 24: how near behind him one has to be, and how long the scene is (ticks, as the client's
+	 * film). Phase 31: on the same floor, a little nearer (2.4 before), and only from behind: within
+	 * {@link #TAKEDOWN_SEEN} of his look he sees it coming, between that and {@link #TAKEDOWN_BACK}
+	 * one is too far round to his side.
+	 */
+	static final double TAKEDOWN_REACH = 2.0;
+	static final double TAKEDOWN_STEP = 0.6;
+	static final double TAKEDOWN_BACK = 110.0;
+	static final double TAKEDOWN_SEEN = 85.0;
 	static final int TAKEDOWN_FILM = 76;
+	/** Phase 31: he must not have seen the player for this long (ticks), nor anyone else just now (ticks). */
+	static final int TAKEDOWN_FRESH = 40;
+	static final int TAKEDOWN_WITNESS = 8;
+	/** Phase 31: after one, a short breath before the next (ticks). */
+	static final int TAKEDOWN_COOLDOWN = 40;
+	/**
+	 * Phase 31: known how (the prison guard's tip shown, or one done): from then on every unaware
+	 * stormtrooper can be overpowered, not only the two guards of the story.
+	 */
+	static final String KNOW_TAKEDOWN = "know.takedown";
+	/** Phase 31: where one overpowered lies ({@code down/<mission>/<key>/x/y/z/yaw}), kept with the checkpoints. */
+	static final String DOWN_PREFIX = "down/";
+	/**
+	 * Phase 31: troopers the story needs standing: the lure's lesson in Mission 1, the trooper of
+	 * Hale's trap, the checkpoint's (he talks), the service way's.
+	 */
+	static final Set<String> TAKEDOWN_NEVER = Set.of("maint", "trap1", "checkpoint", "svc_guard");
+	/** Phase 31: how near (and how far round behind him) one is for the prison guard's tip. */
+	static final double TIP_RANGE = 8.0;
+	static final double TIP_BACK = 100.0;
 	private static int takedowns;
+	private static int takedownTips;
 
 	/** For the tests: how often the guard was overpowered since the game started. */
 	public static int takedownsForTest() {
 		return takedowns;
 	}
 
+	/** Phase 31, for the tests: how often the takedown's tip was given. */
+	static int takedownTipsForTest() {
+		return takedownTips;
+	}
+
 	/**
 	 * Phase 24: whether the guard can be overpowered now (on duty, not hunting the player, the
 	 * player out of the cell). Phase 26: the lab's guard too, while the saber lies in the lab.
+	 * Phase 31: any stormtrooper who has not noticed the player (see {@link #takedownable}).
 	 */
 	static boolean takedownOpen(StorySession s, Figure guard) {
-		boolean open;
+		return takedownable(s, guard);
+	}
 
-		if ("lab_guard".equals(guard.key)) {
-			open = s.mission == 5 && !s.has("saber.taken") && !guard.hostile && !s.has(LAB_GUARD_DOWN)
-					&& (s.at("m6.reactor") || s.at("m6.door") || s.at("m6.lab") || s.at("m6.saber"));
-		} else if ("det_guard".equals(guard.key)) {
-			open = (s.at("m5.cell") && s.has("m5.trapped") && s.has("cell2.open") || s.at("m5.r2") || s.at("m5.cell1") || s.at("m5.back")) && !s.has(GUARD_DOWN);
-		} else {
+	/** Phase 31: whether the player knows how (the tip, or one done; in the last mission always). */
+	static boolean takedownKnown(StorySession s) {
+		return s.mission >= 5 || s.has(KNOW_TAKEDOWN) || s.has(GUARD_DOWN);
+	}
+
+	/**
+	 * Phase 31: whether one is someone who can be overpowered at all, now: a stormtrooper on watch
+	 * or on his round (no officer, technician, pilot, droid, no one the story needs standing, no
+	 * one who fights or talks, nobody come as help), the story calm (no alarm, no fight, no dialog,
+	 * no scene). The detention block's and the lab's guards keep their windows of the story; the
+	 * others once the player knows how.
+	 */
+	static boolean takedownWho(StorySession s, Figure f) {
+		if (!D.equals(f.ship) || !D.equals(s.here) || !Crew.TROOPER.equals(f.kind()) || !f.observer || f.hostile || f.engaged || f.talks || f.blind
+				|| f.talking || f == s.partner || f.key.startsWith(Stealth.REINFORCEMENT) || TAKEDOWN_NEVER.contains(f.key)) {
 			return false;
 		}
 
-		return open && guard.mode != Figure.DOWN && guard.mode != Figure.CHASE && guard.mode != Figure.CALL && guard.mode != Figure.FIGHT
-				&& guard.mode != Figure.SCRIPTED && guard.stage < Figure.ALERTED && !s.has("tmp.film") && !s.pursued();
+		if (s.alarm > 0 || s.fighting || s.cornered > 0 || s.dialog != null || s.has("tmp.film") || s.has("tmp.scene") || s.has("tmp.takedown")
+				|| s.timer("takedown_cd")) {
+			return false;
+		}
+
+		return switch (f.key) {
+			case "det_guard" -> (s.at("m5.cell") && s.has("m5.trapped") && s.has("cell2.open") || s.at("m5.r2") || s.at("m5.cell1") || s.at("m5.back"))
+					&& !s.has(GUARD_DOWN);
+			case "lab_guard" -> s.mission == 5 && !s.has("saber.taken") && !s.has(LAB_GUARD_DOWN)
+					&& (s.at("m6.reactor") || s.at("m6.door") || s.at("m6.lab") || s.at("m6.saber"));
+			default -> takedownKnown(s);
+		};
 	}
 
-	/** Phase 26: the guard a takedown is about now (the detention's in mission 5, the lab's in 6). */
-	private static @Nullable Figure takedownGuard(StorySession s) {
-		return s.figure(s.mission == 5 ? "lab_guard" : "det_guard");
+	/**
+	 * Phase 31: whether he is unaware enough: on his routine, looking round, gone to look at a noise
+	 * (a lure) or on his way back, not alerted, and he has not seen the player for a while.
+	 */
+	static boolean takedownCalm(StorySession s, Figure f) {
+		boolean mode = f.mode == Figure.ROUTINE || f.mode == Figure.LOOK || f.mode == Figure.INVESTIGATE || f.mode == Figure.RETURN;
+		return mode && f.stage < Figure.ALERTED && s.time() - f.lastSeen >= TAKEDOWN_FRESH;
+	}
+
+	/** Phase 31: whether one can be overpowered now (by whom one is and how unaware), from close behind. */
+	static boolean takedownable(StorySession s, Figure f) {
+		return takedownWho(s, f) && takedownCalm(s, f);
+	}
+
+	/** Phase 31: how far round from his look the player is (degrees; 180 right behind him). */
+	static double behind(Figure f, Vec3 me) {
+		Vec3 to = new Vec3(me.x - f.x, 0.0, me.z - f.z);
+		double distance = to.length();
+		return distance < 1.0E-3 ? 180.0 : Math.toDegrees(Math.acos(Mth.clamp(to.normalize().dot(f.look()), -1.0, 1.0)));
+	}
+
+	/** Phase 31: whether the player is near enough (same floor, within reach, nothing between them). */
+	private static boolean takedownNear(StorySession s, ServerPlayer player, Figure f, Vec3 me) {
+		ServerLevel level = interiors(s);
+
+		if (level == null || Math.hypot(me.x - f.x, me.z - f.z) > TAKEDOWN_REACH || Math.abs(me.y - f.y) > TAKEDOWN_STEP) {
+			return false;
+		}
+
+		Vec3 corner = Vec3.atLowerCornerOf(s.destroyer);
+		Vec3 eye = player.getEyePosition();
+		return Stealth.clear(level, eye, corner.add(f.eye())) || Stealth.clear(level, eye, corner.add(f.x, f.y + 1.1, f.z));
+	}
+
+	/**
+	 * Phase 31: whether overpowering him would work from where the player stands now (plot space;
+	 * the prompt under the crosshair shows only then): near, behind him, he unaware. Crouching is
+	 * asked for at the click (the prompt says so while one stands).
+	 */
+	@Override
+	public boolean takedownReady(StorySession s, Figure f, Vec3 me) {
+		if (!D.equals(s.here) || Math.abs(me.x - f.x) > TAKEDOWN_REACH || Math.abs(me.z - f.z) > TAKEDOWN_REACH || Math.abs(me.y - f.y) > TAKEDOWN_STEP) {
+			return false;
+		}
+
+		ServerPlayer player = s.player();
+		return player != null && takedownable(s, f) && behind(f, me) >= TAKEDOWN_BACK && takedownNear(s, player, f, me);
+	}
+
+	@Override
+	public boolean takedown(StorySession session, Figure figure) {
+		return overpower(session, figure);
+	}
+
+	/** Phase 31: whether someone else (on watch) sees the player right now. */
+	private static boolean witnessed(StorySession s, Figure f) {
+		long now = s.time();
+
+		for (Figure o : s.figures) {
+			if (o != f && o.observer && o.mode != Figure.DOWN && D.equals(o.ship) && now - o.lastSeen <= TAKEDOWN_WITNESS) {
+				return true;
+			}
+		}
+
+		return false;
 	}
 
 	/**
@@ -3147,11 +3258,6 @@ public final class Chapter1 implements Chapter {
 		Figure guard = s.figure("det_guard");
 
 		if (guard == null) {
-			return;
-		}
-
-		if (s.has("tmp.takedown")) {
-			takedownTick(s, player, level, guard);
 			return;
 		}
 
@@ -3198,11 +3304,6 @@ public final class Chapter1 implements Chapter {
 		Figure guard = s.figure("lab_guard");
 
 		if (guard == null) {
-			return;
-		}
-
-		if (s.has("tmp.takedown")) {
-			takedownTick(s, player, level, guard);
 			return;
 		}
 
@@ -3328,63 +3429,152 @@ public final class Chapter1 implements Chapter {
 	 * Phase 24: the player overpowers the guard: from close behind, while he looks away. From the
 	 * front or the side he sees it coming and raises the alarm; from too far one is told to come
 	 * closer. Then a short scene seen from outside: a grab, a blow, he goes down (and stays down).
+	 * Phase 31: whoever stands nearest within reach that can be overpowered (the tests' way in).
 	 */
 	static void takedown(StorySession s) {
-		Figure guard = takedownGuard(s);
 		ServerPlayer player = s.player();
 
-		if (guard == null || player == null || !takedownOpen(s, guard)) {
+		if (player == null || !D.equals(s.here)) {
 			return;
 		}
 
 		Vec3 me = s.local(D);
-		Vec3 to = new Vec3(me.x - guard.x, 0.0, me.z - guard.z);
-		double distance = to.length();
+		Figure best = null;
+		double bestDistance = Story.REACH;
 
-		if (distance > TAKEDOWN_REACH) {
-			s.hint("sabercraft.story.hint.takedown_near");
-			return;
+		for (Figure f : s.figures) {
+			double distance = Math.hypot(f.x - me.x, f.z - me.z);
+
+			if (distance < bestDistance && takedownWho(s, f)) {
+				best = f;
+				bestDistance = distance;
+			}
 		}
 
-		double angle = distance < 1.0E-3 ? 180.0 : Math.toDegrees(Math.acos(Mth.clamp(to.normalize().dot(guard.look()), -1.0, 1.0)));
+		if (best != null) {
+			overpower(s, best);
+		}
+	}
 
-		if (angle < 100.0) {
+	/**
+	 * Phase 31: the player tries to overpower him (the use key on him). Only a stormtrooper who has
+	 * not noticed them (see {@link #takedownable}), from close behind, crouching (or he hears them
+	 * coming), with nobody else looking: then the scene. From the front he sees it coming and the
+	 * alarm goes up (as in Phase 24); otherwise a short hint says why not, and nothing happens.
+	 * Returns whether the scene began.
+	 */
+	static boolean overpower(StorySession s, Figure f) {
+		ServerPlayer player = s.player();
+
+		if (player == null || !takedownWho(s, f)) {
+			if (player != null && f.observer && (f.stage >= Figure.ALERTED || f.mode == Figure.CHASE || f.hostile) && Crew.TROOPER.equals(f.kind())) {
+				s.hint("sabercraft.story.hint.takedown_alert");
+			}
+
+			return false;
+		}
+
+		Vec3 me = s.local(D);
+
+		if (!takedownNear(s, player, f, me)) {
+			s.hint("sabercraft.story.hint.takedown_near");
+			return false;
+		}
+
+		double angle = behind(f, me);
+
+		if (angle <= TAKEDOWN_SEEN) {
 			// He sees it coming.
-			guard.suspicion = 1.0F;
-			guard.stage = Figure.DETECTED;
-			guard.seenAt = me;
+			f.suspicion = 1.0F;
+			f.stage = Figure.DETECTED;
+			f.seenAt = me;
 			s.hint("sabercraft.story.hint.takedown_seen");
-			Story.detected(s, guard);
-			return;
+			Story.detected(s, f);
+			return false;
+		}
+
+		if (!takedownCalm(s, f)) {
+			// He is on his guard already (he saw the player a moment ago, or is alerted).
+			s.hint("sabercraft.story.hint.takedown_alert");
+			return false;
+		}
+
+		if (angle < TAKEDOWN_BACK) {
+			s.hint("sabercraft.story.hint.takedown_near");
+			return false;
+		}
+
+		if (!player.isShiftKeyDown() && !player.isCrouching()) {
+			s.hint("sabercraft.story.hint.takedown_crouch");
+			return false;
+		}
+
+		if (witnessed(s, f)) {
+			s.hint("sabercraft.story.hint.takedown_witness");
+			return false;
 		}
 
 		takedowns++;
+		double distance = Math.hypot(me.x - f.x, me.z - f.z);
+		Vec3 to = new Vec3(me.x - f.x, 0.0, me.z - f.z);
 		s.set("tmp.film");
 		s.set("tmp.takedown");
+		s.set("tmp.takedown." + f.key);
 		s.timer("takedown", TAKEDOWN_FILM);
-		guard.mode = Figure.SCRIPTED;
-		guard.blind = true;
-		guard.speed = 0.0F;
-		guard.way = List.of();
+		f.mode = Figure.SCRIPTED;
+		f.blind = true;
+		f.speed = 0.0F;
+		f.way = List.of();
 		// The player right behind him, facing him. Phase 27: unless something stands there (the
 		// lab guard's back towards the console): then on the side they came from, or where they are.
 		Vec3 corner0 = Vec3.atLowerCornerOf(s.destroyer);
-		Vec3 back = guard.position().subtract(guard.look().scale(0.9));
+		Vec3 back = f.position().subtract(f.look().scale(0.9));
 
 		if (!room(player, back.add(corner0))) {
-			Vec3 side = distance < 1.0E-3 ? null : guard.position().add(to.normalize().scale(0.9));
+			Vec3 side = distance < 1.0E-3 ? null : f.position().add(to.normalize().scale(0.9));
 			back = side != null && room(player, side.add(corner0)) ? side : me;
 		}
 
-		Story.place(s, D, back, guard.yaw);
-		Vec3 world = guard.position().add(Vec3.atLowerCornerOf(s.destroyer));
+		Story.place(s, D, back, f.yaw);
+		Vec3 world = f.position().add(corner0);
 		Story.cue(s, Story.CUE_CINEMA, "takedown", "", TAKEDOWN_FILM, List.of(world));
+		// Phase 31: from now on the player knows how (kept at once: a capture does not take it back).
+		keepNow(s, KNOW_TAKEDOWN);
 		s.dirty = true;
+		return true;
 	}
 
 	/** Phase 27: whether the player fits standing at that place (world space). */
 	private static boolean room(ServerPlayer player, Vec3 at) {
 		return player.level().noCollision(player, player.getDimensions(net.minecraft.world.entity.Pose.STANDING).makeBoundingBox(at).deflate(0.02));
+	}
+
+	/**
+	 * Phase 31: the takedown's scene runs (whoever it is about; it was the two guards' ticks that
+	 * ran it, so only those two could be overpowered). Returns whether it does.
+	 */
+	private static boolean takedownScene(StorySession s, ServerPlayer player, ServerLevel level) {
+		if (!s.has("tmp.takedown")) {
+			return false;
+		}
+
+		Figure target = null;
+
+		for (String flag : s.flags) {
+			if (flag.startsWith("tmp.takedown.")) {
+				target = s.figure(flag.substring("tmp.takedown.".length()));
+				break;
+			}
+		}
+
+		if (target == null) {
+			// (The step went on and he with it: nothing to show any more.)
+			endTakedown(s, null);
+			return false;
+		}
+
+		takedownTick(s, player, level, target);
+		return true;
 	}
 
 	private static void takedownTick(StorySession s, ServerPlayer player, ServerLevel level, Figure guard) {
@@ -3421,23 +3611,122 @@ public final class Chapter1 implements Chapter {
 				guard.reactTicks = 0;
 			}
 
-			s.unset("tmp.takedown");
-			s.unset("tmp.film");
-			s.timers.remove("takedown");
+			endTakedown(s, guard);
 			s.hint("sabercraft.story.hint.takedown_done");
-			s.dirty = true;
 		}
 	}
 
-	/** Phase 24: the guard lies where he fell: no longer on watch (and it is remembered with the checkpoints). */
+	/** Phase 31: the scene's marks gone; a short breath before the next. */
+	private static void endTakedown(StorySession s, @Nullable Figure guard) {
+		s.flags.removeIf(flag -> flag.startsWith("tmp.takedown"));
+		s.unset("tmp.film");
+		s.timers.remove("takedown");
+
+		if (guard != null) {
+			s.timer("takedown_cd", TAKEDOWN_COOLDOWN);
+		}
+
+		s.dirty = true;
+	}
+
+	/**
+	 * Phase 24: the guard lies where he fell: no longer on watch (and it is remembered with the
+	 * checkpoints). Phase 31: anyone overpowered: where he lies is kept too ({@link #DOWN_PREFIX}),
+	 * so that he lies there still after being caught (back at the checkpoint after it) or as the
+	 * steps go on, not back on his round (nor up again at the start of it).
+	 */
 	private static void guardDown(StorySession s, Figure guard) {
 		guard.mode = Figure.DOWN;
 		guard.observer = false;
+		guard.lamp = false;
 		guard.speed = 0.0F;
 		guard.suspicion = 0.0F;
 		guard.stage = Figure.CALM;
 		guard.react(Figure.FALL, 16);
-		s.set("lab_guard".equals(guard.key) ? LAB_GUARD_DOWN : GUARD_DOWN);
+
+		if ("lab_guard".equals(guard.key)) {
+			s.set(LAB_GUARD_DOWN);
+		} else if ("det_guard".equals(guard.key)) {
+			s.set(GUARD_DOWN);
+		}
+
+		String mine = DOWN_PREFIX + s.mission().id() + "/" + guard.key + "/";
+		s.flags.removeIf(flag -> flag.startsWith(mine));
+		s.set(mine + String.format(java.util.Locale.ROOT, "%.2f/%.2f/%.2f/%.0f", guard.x, guard.y, guard.z, guard.yaw));
+	}
+
+	/**
+	 * Phase 31: those overpowered in this mission lie where they fell (as kept): their routine is
+	 * that place, lying, no longer on watch.
+	 */
+	private static void downs(StorySession s, List<Figure> list) {
+		String mine = DOWN_PREFIX + s.mission().id() + "/";
+
+		for (String flag : s.flags) {
+			if (!flag.startsWith(mine)) {
+				continue;
+			}
+
+			String[] parts = flag.substring(mine.length()).split("/");
+
+			if (parts.length != 5) {
+				continue;
+			}
+
+			try {
+				double x = Double.parseDouble(parts[1]);
+				double y = Double.parseDouble(parts[2]);
+				double z = Double.parseDouble(parts[3]);
+				float yaw = Float.parseFloat(parts[4]);
+
+				for (Figure f : list) {
+					if (f.key.equals(parts[0])) {
+						f.crew = Crew.at(f.kind(), Crew.STAND, x, y, z, yaw).as(f.crew.role());
+						f.mode = Figure.DOWN;
+						f.observer = false;
+						f.lamp = false;
+					}
+				}
+			} catch (NumberFormatException e) {
+				// (A mark spoilt by hand: he stands as at the start.)
+			}
+		}
+	}
+
+	/**
+	 * Phase 31: the takedown's tip, once per game: the first time the player is out of the cell
+	 * (or in from the crawl way), calm, a few steps behind the detention block's guard while he
+	 * looks to the door, a card at the left says what one can do (crouch, from behind, the use key)
+	 * and when not (once one has been noticed). Done at once, it needs no tip any more.
+	 */
+	private static void takedownTip(StorySession s, ServerPlayer player) {
+		if (s.has(KNOW_TAKEDOWN) || s.stepTicks < 40 || s.stepTicks % 5 != 0 || !D.equals(s.here)) {
+			return;
+		}
+
+		Figure guard = s.figure("det_guard");
+
+		if (guard == null || guard.mode != Figure.ROUTINE || guard.stage != Figure.CALM || !takedownable(s, guard)) {
+			return;
+		}
+
+		if (s.grace > 0 || s.suspicion >= Stealth.SUSPICIOUS || CellField.running(s) || s.timer("hack") || !player.onGround()) {
+			return;
+		}
+
+		Vec3 me = s.local(D);
+
+		if (!DestroyerInterior.DETENTION.contains(me.add(0.0, 0.5, 0.0)) || me.z <= DestroyerInterior.CELL_FRONT + 0.6 || inVent(me)) {
+			return;
+		}
+
+		if (Math.hypot(me.x - guard.x, me.z - guard.z) > TIP_RANGE || Math.abs(me.y - guard.y) > 1.0 || behind(guard, me) < TIP_BACK) {
+			return;
+		}
+
+		keepNow(s, KNOW_TAKEDOWN);
+		takedownTips++;
+		Story.cue(s, Story.CUE_HINT, "tip", "sabercraft.story.tip.takedown", 0);
 	}
 
 	/**

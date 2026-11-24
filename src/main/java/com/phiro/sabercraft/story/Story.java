@@ -908,7 +908,8 @@ public final class Story {
 		if (session.mission + 1 < session.chapter.missions().size()) {
 			session.mission++;
 			session.stepIndex = 0;
-			session.flags.removeIf(flag -> flag.startsWith("tmp."));
+			// (Phase 31: and where those overpowered lay: that was the mission before.)
+			session.flags.removeIf(flag -> flag.startsWith("tmp.") || flag.startsWith(Chapter1.DOWN_PREFIX));
 			progress.missionStart.put(session.mission, List.copyOf(session.flags));
 			session.begin(false);
 			cue(session, CUE_TITLE, "", session.mission().title(), 0);
@@ -1475,6 +1476,12 @@ public final class Story {
 					session.afterTick();
 				}
 			}
+			case StoryActionPayload.TAKEDOWN -> {
+				if (session != null) {
+					takedown(session, player, payload.value());
+					session.afterTick();
+				}
+			}
 			case StoryActionPayload.SKIP -> {
 				if (session != null && session.chapter instanceof Chapter1 chapter) {
 					chapter.skipFilm(session, payload.text());
@@ -1673,6 +1680,32 @@ public final class Story {
 		return false;
 	}
 
+	/**
+	 * Phase 31: the player tries to overpower someone (the use key on them while the prompt says
+	 * so), if they are there and within reach.
+	 */
+	public static boolean takedown(StorySession session, ServerPlayer player, int id) {
+		if (session.dialog != null) {
+			sendDialog(session);
+			return true;
+		}
+
+		Figure figure = session.figureById(id);
+
+		if (session.here == null || figure == null || !session.here.equals(figure.ship) || figure.mode == Figure.DOWN) {
+			return false;
+		}
+
+		AABB box = figure.box().move(Vec3.atLowerCornerOf(session.origin(figure.ship)));
+
+		if (box.distanceToSqr(player.getEyePosition()) > REACH * REACH) {
+			return false;
+		}
+
+		acted(session);
+		return session.chapter.takedown(session, figure);
+	}
+
 	static void sendState(StorySession session) {
 		ServerPlayer player = session.player();
 
@@ -1812,7 +1845,8 @@ public final class Story {
 					| (f.talks && session.chapter.talksNow(session, f) ? StoryFiguresPayload.TALKS : 0) | (f.observer ? StoryFiguresPayload.OBSERVER : 0) | (f.lit ? StoryFiguresPayload.LIT : 0)
 					| (Combat.pistol(f) && f.observer && (f.mode == Figure.CHASE || f.mode == Figure.FIGHT) && f.react != Figure.COMLINK ? StoryFiguresPayload.ARMED : 0)
 					| (Finale.disarmed(f) ? StoryFiguresPayload.UNARMED : 0) | (f.ringOn && f.saber && f.lit ? StoryFiguresPayload.RING_SPIN : 0)
-					| (Finale.spinLive(f) ? StoryFiguresPayload.SPIN_LIVE : 0) | (f.saber && Finale.phase(f) >= 2 ? StoryFiguresPayload.TWIN : 0);
+					| (Finale.spinLive(f) ? StoryFiguresPayload.SPIN_LIVE : 0) | (f.saber && Finale.phase(f) >= 2 ? StoryFiguresPayload.TWIN : 0)
+					| (session.chapter.takedownReady(session, f, me) ? StoryFiguresPayload.TAKEDOWN : 0);
 			list.add(new StoryFiguresPayload.Fig(f.id, f.kind(), f.pose(), f.speaker, (float) f.x, (float) f.y, (float) f.z, f.yaw, f.headYaw, f.speed, f.stage,
 					Math.round(f.suspicion * 255.0F), flags, Math.round(Math.max(0.0F, f.health) * 255.0F), Finale.shown(f), f.reactShown()));
 		}

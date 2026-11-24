@@ -489,6 +489,12 @@ static final int CHECKPOINT_TICKS = 60;
 			}
 			case CUE_DUEL -> duel(client, payload.who(), payload.value(), payload.points());
 			case CUE_HINT -> {
+				// Phase 31: a tip of the story goes on the card at the left (not over the hotbar).
+				if ("tip".equals(payload.who())) {
+					com.phiro.sabercraft.client.Hints.storyTip(client, payload.text());
+					return;
+				}
+
 				if ("stun".equals(payload.who())) {
 					stuns = payload.value();
 					stunAge = 0;

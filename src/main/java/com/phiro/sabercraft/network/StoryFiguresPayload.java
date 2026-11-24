@@ -43,6 +43,11 @@ public record StoryFiguresPayload(BlockPos origin, long time, List<Fig> figures)
 	 * still remembered the second phase cannot draw it.
 	 */
 	public static final int TWIN = 1024;
+	/**
+	 * Phase 31: they can be overpowered from where the player stands (close behind them, they
+	 * unaware): the use key on them says so under the crosshair.
+	 */
+	public static final int TAKEDOWN = 2048;
 	public static final double SPIN_RADIUS = 3.5;
 	/**
 	 * Phase 30: her spin's two parts (ticks of her wind-up): the ring spinning up round the grip

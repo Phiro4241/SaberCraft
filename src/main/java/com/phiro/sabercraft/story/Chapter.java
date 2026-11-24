@@ -135,4 +135,17 @@ public interface Chapter {
 	default boolean scriptedRespawn(StorySession session, Mission.Step step) {
 		return false;
 	}
+
+	/**
+	 * Phase 31: whether that one could be overpowered from where the player stands now ({@code me},
+	 * plot space): the prompt under the crosshair shows then. By default nobody.
+	 */
+	default boolean takedownReady(StorySession session, Figure figure, net.minecraft.world.phys.Vec3 me) {
+		return false;
+	}
+
+	/** Phase 31: the player tries to overpower them; returns whether the scene began. By default nothing happens. */
+	default boolean takedown(StorySession session, Figure figure) {
+		return false;
+	}
 }

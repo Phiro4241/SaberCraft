@@ -689,6 +689,72 @@ public final class StoryTesting {
 		return Chapter1.takedownsForTest();
 	}
 
+	/**
+	 * Phase 31: as {@link #takedown(StorySession)}, crouching (a takedown asks for it): the player
+	 * crouches for that moment only (the client did not press the key, so it would not tell the
+	 * server to stand up again).
+	 */
+	public static void takedownCrouched(StorySession s) {
+		net.minecraft.server.level.ServerPlayer player = s.player();
+
+		if (player == null) {
+			return;
+		}
+
+		player.setShiftKeyDown(true);
+
+		try {
+			Chapter1.takedown(s);
+		} finally {
+			player.setShiftKeyDown(false);
+		}
+	}
+
+	/** Phase 31: that one overpowered (as the player's use key on him would); returns whether the scene began. */
+	public static boolean takedown(StorySession s, Figure figure) {
+		return Chapter1.overpower(s, figure);
+	}
+
+	/** Phase 31: whether that one can be overpowered now (who he is, how unaware), and from where the player stands. */
+	public static boolean takedownable(StorySession s, Figure figure) {
+		return Chapter1.takedownable(s, figure);
+	}
+
+	public static boolean takedownReady(StorySession s, Figure figure) {
+		return s.chapter.takedownReady(s, figure, s.local(Story.DESTROYER));
+	}
+
+	/** Phase 31: the player crouches (as holding the sneak key would; the server is told so with the next input). */
+	public static void crouch(net.minecraft.server.level.ServerPlayer player, boolean crouch) {
+		player.setShiftKeyDown(crouch);
+	}
+
+	/** Phase 31: the takedown's flags (known how, where one lies), and how often the tip was given. */
+	public static String knowTakedown() {
+		return Chapter1.KNOW_TAKEDOWN;
+	}
+
+	public static String downPrefix() {
+		return Chapter1.DOWN_PREFIX;
+	}
+
+	public static int takedownTips() {
+		return Chapter1.takedownTipsForTest();
+	}
+
+	/** Phase 31: the ticks until the detention block's guard looks to the door again (0 while he does). */
+	public static long detGuardDoorIn(StorySession s) {
+		Figure guard = s.figure("det_guard");
+
+		if (guard == null) {
+			return 0L;
+		}
+
+		long cycle = Chapter1.GUARD_DOOR_TICKS + Chapter1.GUARD_ROOM_TICKS + 2L * Chapter1.GUARD_TURN_TICKS;
+		long t = Math.floorMod(s.time() + guard.id * 37L, cycle);
+		return t < Chapter1.GUARD_DOOR_TICKS - 40 ? 0L : cycle - t + 4L;
+	}
+
 	/** Phase 24: the blade lock's scene (how often it began), the escape film, shudders of the failing reactor, wings kept. */
 	public static int bossScenes() {
 		return Finale.bossScenesForTest();
@@ -1206,6 +1272,19 @@ public final class StoryTesting {
 	}
 
 	/** Phase 29: these flags taken out of a player's saved story (a test going back to a point before them). */
+	/**
+	 * Phase 31: the takedown as never learnt in the saved file (known how, the guards down, where
+	 * anyone lay; also in the missions' starts), so that a test after this one starts without it.
+	 */
+	public static void forgetTakedowns(net.minecraft.server.MinecraftServer server, java.util.UUID player) {
+		StoryProgress progress = StoryStore.load(server, player);
+		java.util.function.Predicate<String> takedown = flag -> flag.equals(Chapter1.KNOW_TAKEDOWN) || flag.equals(Chapter1.GUARD_DOWN)
+				|| flag.equals(Chapter1.LAB_GUARD_DOWN) || flag.startsWith(Chapter1.DOWN_PREFIX);
+		progress.flags.removeIf(takedown);
+		progress.missionStart.replaceAll((mission, flags) -> flags.stream().filter(takedown.negate()).toList());
+		StoryStore.save(server, player, progress);
+	}
+
 	public static void forget(net.minecraft.server.MinecraftServer server, java.util.UUID player, String... flags) {
 		StoryProgress progress = StoryStore.load(server, player);
 

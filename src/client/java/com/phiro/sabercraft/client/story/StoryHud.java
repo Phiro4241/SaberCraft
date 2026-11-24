@@ -650,15 +650,38 @@ public final class StoryHud implements HudElement {
 			return;
 		}
 
-		Component key = client.options.keyUse.getTranslatedKeyMessage();
-		Component text = target.figure() > 0 ? Component.translatable("sabercraft.story.hud.talk", key, StoryPortraits.name(target.speaker()))
-				: Component.translatable(target.hack() ? "sabercraft.story.hud.use_hack" : "sabercraft.story.hud.use", key,
-						words(target.label(), "sabercraft.story.point.generic"));
+		Component text = promptText(client, target);
 		int w = client.font.width(text);
 		int x = width / 2 - w / 2;
 		int y = height / 2 + 14;
 		graphics.fill(x - 4, y - 2, x + w + 4, y + 10, 0x80000000);
-		graphics.text(client.font, text, x, y, target.hack() ? 0xFFB0C8E8 : TEXT);
+		// Phase 31: a takedown while one stands: grey (crouch first).
+		int colour = target.hack() ? 0xFFB0C8E8 : target.takedown() && !crouching(client) ? 0xFFA8A8A8 : TEXT;
+		graphics.text(client.font, text, x, y, colour);
+	}
+
+	/** Phase 31: whether the player crouches (a takedown needs it). */
+	private static boolean crouching(Minecraft client) {
+		return client.player != null && (client.player.isShiftKeyDown() || client.player.isCrouching());
+	}
+
+	/**
+	 * The words under the crosshair: speak to someone, use a thing. Phase 31: overpower someone
+	 * (while one stands, it says to crouch first).
+	 */
+	private static Component promptText(Minecraft client, StoryInput.Target target) {
+		Component key = client.options.keyUse.getTranslatedKeyMessage();
+
+		if (target.takedown()) {
+			Component label = words(target.label(), "sabercraft.story.point.generic");
+			return crouching(client) ? Component.translatable("sabercraft.story.hud.use", key, label)
+					: Component.translatable("sabercraft.story.hud.takedown_crouch", client.options.keyShift.getTranslatedKeyMessage(),
+							Component.translatable("sabercraft.story.hud.use", key, label));
+		}
+
+		return target.figure() > 0 ? Component.translatable("sabercraft.story.hud.talk", key, StoryPortraits.name(target.speaker()))
+				: Component.translatable(target.hack() ? "sabercraft.story.hud.use_hack" : "sabercraft.story.hud.use", key,
+						words(target.label(), "sabercraft.story.point.generic"));
 	}
 
 	/** Phase 29: the keys already reported as having no words (each once). */
@@ -693,12 +716,11 @@ public final class StoryHud implements HudElement {
 	public static @org.jspecify.annotations.Nullable String promptForTest(Minecraft client) {
 		StoryInput.Target target = StoryInput.target(client, 1.0F);
 
-		if (target == null || target.figure() > 0) {
+		if (target == null || target.figure() > 0 && !target.takedown()) {
 			return null;
 		}
 
-		return Component.translatable(target.hack() ? "sabercraft.story.hud.use_hack" : "sabercraft.story.hud.use", client.options.keyUse.getTranslatedKeyMessage(),
-				words(target.label(), "sabercraft.story.point.generic")).getString();
+		return promptText(client, target).getString();
 	}
 
 	// --- Lines and hints -----------------------------------------------------------------------------

@@ -16,6 +16,7 @@ import com.phiro.sabercraft.network.StoryActionPayload;
 import com.phiro.sabercraft.network.StoryFiguresPayload;
 import com.phiro.sabercraft.network.StoryStatePayload;
 import com.phiro.sabercraft.saber.SaberVariant;
+import com.phiro.sabercraft.story.Mission;
 
 /**
  * Phase 19: what the player's keys do in the story. The use key on a thing of the story (a panel,
@@ -42,7 +43,14 @@ public final class StoryInput {
 	 * ({@code id}, its words {@code label}; {@code hack} when only a droid opens it), and how far.
 	 */
 	public record Target(int figure, String speaker, String id, String label, boolean hack, double distance) {
+		/** Phase 31: someone to overpower (from behind), not to speak to. */
+		public boolean takedown() {
+			return this.figure > 0 && TAKEDOWN.equals(this.id);
+		}
 	}
+
+	/** Phase 31: the id of a takedown's target (its words are the point's of Phase 24). */
+	public static final String TAKEDOWN = "takedown";
 
 	static void tick(Minecraft client) {
 		// Nothing to keep from tick to tick yet: the prompt and the keys ask target() themselves.
@@ -78,7 +86,10 @@ public final class StoryInput {
 			for (StoryClient.Pose pose : StoryClient.figures(origin, partial)) {
 				StoryFiguresPayload.Fig fig = pose.fig();
 
-				if ((fig.flags() & StoryFiguresPayload.TALKS) == 0 || (fig.flags() & StoryFiguresPayload.HOSTILE) != 0 || "down".equals(fig.pose())) {
+				// Phase 31: or one who can be overpowered from here (behind him, he unaware).
+				boolean takedown = (fig.flags() & StoryFiguresPayload.TAKEDOWN) != 0;
+
+				if ((fig.flags() & StoryFiguresPayload.TALKS) == 0 && !takedown || (fig.flags() & StoryFiguresPayload.HOSTILE) != 0 || "down".equals(fig.pose())) {
 					continue;
 				}
 
@@ -88,7 +99,8 @@ public final class StoryInput {
 				if (distance < bestDistance) {
 					bestDistance = distance;
 					bestBox = box;
-					best = new Target(fig.id(), fig.speaker(), "", "", false, distance);
+					best = takedown ? new Target(fig.id(), "", TAKEDOWN, Mission.Point.LABEL_PREFIX + TAKEDOWN, false, distance)
+							: new Target(fig.id(), fig.speaker(), "", "", false, distance);
 				}
 			}
 		}
@@ -193,8 +205,9 @@ public final class StoryInput {
 			return false;
 		}
 
-		boolean sent = target.figure() > 0 ? StoryClient.send(StoryActionPayload.TALK, "", target.figure())
-				: StoryClient.send(StoryActionPayload.USE, target.id(), 0);
+		boolean sent = target.takedown() ? StoryClient.send(StoryActionPayload.TAKEDOWN, "", target.figure())
+				: target.figure() > 0 ? StoryClient.send(StoryActionPayload.TALK, "", target.figure())
+						: StoryClient.send(StoryActionPayload.USE, target.id(), 0);
 
 		if (sent) {
 			client.player.swing(InteractionHand.MAIN_HAND);
