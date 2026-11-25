@@ -638,6 +638,20 @@ public final class Story {
 		String ship = origin.equals(session.falcon) ? FALCON : DESTROYER;
 		String why = null;
 
+		// Phase 32: the hangar sealed for the duel: no hatch opens from a room into a crawl way (out of
+		// one, yes: nobody is shut in). Its lock is heard; nothing is said.
+		if (room != null && DESTROYER.equals(ship) && Chapter1.hangarSealed(session)) {
+			Vec3 from = player.position().subtract(Vec3.atCenterOf(origin.offset(cell)));
+
+			if (from.x * room.getStepX() + from.z * room.getStepZ() > 0.0) {
+				if (session.player.equals(player.getUUID())) {
+					Chapter1.sealedHatch(session);
+				}
+
+				return true;
+			}
+		}
+
 		// Phase 26: a crawl way the story means as the way out of a chase (the reactor's maintenance
 		// chamber) opens with the hunters behind one: that is what it is for.
 		if (room != null && DESTROYER.equals(ship) && session.pursued() && session.player.equals(player.getUUID())
@@ -1841,6 +1855,11 @@ public final class Story {
 			// Phase 26: the Falcon waits under the hangar's field while one escapes (drawn by the client).
 			if (Chapter1.falconWaits(session)) {
 				known.add(Chapter1.FALCON_WAITING);
+			}
+
+			// Phase 32: the hangar sealed for the duel (its doors' lamps red).
+			if (Chapter1.hangarSealed(session)) {
+				known.add(Chapter1.HANGAR_SEALED);
 			}
 
 			// Phase 22: after the chapter no objective is left: the client shows that it is over.

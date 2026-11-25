@@ -518,7 +518,8 @@ public class Phase29GameTest implements FabricClientGameTest {
 		SaberCraft.LOGGER.info("PHASE29 FIGHT DOORS: opened {} times while the two fought beside them (she came within {} of the wall)", total,
 				String.format(Locale.ROOT, "%.1f", nearest));
 		check(total == 0, "in the duel the doors by the arena open " + total + " times while the two only fight beside them (flapping)");
-		// The player walks through the hangar's door: it opens, also in the fight.
+		// The player walks at the hangar's door. (Phase 32: in the duel the hangar is sealed, Phiro: the
+		// door stays shut. That it opens for one walking through in a fight is checked by the rules above.)
 		InteriorPlan.Door door = doors.get(near.stream().min((a, b) -> Double.compare(this.doorDistance(doors.get(a), arena), this.doorDistance(doors.get(b), arena))).get());
 		Vec3 middle = new Vec3((door.x0() + door.x1() + 1) / 2.0, H, (door.z0() + door.z1() + 1) / 2.0);
 		Vec3 start = door.alongX() ? middle.add(middle.x > arena.x ? -3.0 : 3.0, 0.0, 0.0) : middle.add(0.0, 0.0, middle.z > arena.z ? -3.0 : 3.0);
@@ -536,7 +537,7 @@ public class Phase29GameTest implements FabricClientGameTest {
 		}
 
 		this.context.getInput().releaseKey(options -> options.keyUp);
-		check(opened, "in the duel the door by the arena does not open for the player walking through it");
+		check(!opened, "in the duel the hangar's door opens for the player walking at it (it is sealed in the duel)");
 	}
 
 	private void fightDoor(List<String> wrong, String who, InteriorPlan.Door door, Vec3 at, @Nullable Vec3 was, @Nullable Vec3 older, boolean expected) {

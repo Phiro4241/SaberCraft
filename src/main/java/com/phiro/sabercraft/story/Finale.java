@@ -333,6 +333,8 @@ final class Finale {
 	static final float STRAIN_SPIN = 0.2F;
 	static final float STRAIN_RUSH = 0.26F;
 	static final float STRAIN_THROW = 0.12F;
+	/** Phase 32: how high over her feet a high throw is let go (over her head: see CrewModels.THROW_HIGH_AT; the shoulder 1.32 over her feet). */
+	static final double THROW_HIGH = 1.87;
 	static final float STRAIN_PERFECT = 0.04F;
 	static final float UNSTABLE = 0.35F;
 	/** Phase 28: a blow that breaks the guard still comes through, weakened. */
@@ -2878,9 +2880,12 @@ final class Finale {
 			// Let go.
 			Vec3 look = f.look();
 			// (Phase 29: thrown low from low down, skimming at shin height: a jump clears it.)
-			// (Phase 32: at her right, where the staff is drawn as she lets go; it was at her left.)
+			// (Phase 32: at her right, where the staff is drawn as she lets go (CrewModels.THROW_HIGH_AT,
+			// THROW_LOW_AT): high over her head, a little before it, from the wind-up; low before her.
+			// It was at her left, at her head's height.)
 			Vec3 right = new Vec3(-look.z, 0.0, look.x);
-			Vec3 start = f.position().add(corner).add(0.0, f.throwLow ? 0.6 : 1.45, 0.0).add(look.scale(0.35)).add(right.scale(0.3));
+			Vec3 start = f.throwLow ? f.position().add(corner).add(0.0, 0.6, 0.0).add(look.scale(0.35)).add(right.scale(0.3))
+					: f.position().add(corner).add(0.0, THROW_HIGH, 0.0).add(look.scale(0.22)).add(right.scale(0.3));
 			Vec3 target = player.position().add(0.0, f.throwLow ? 0.25 : 1.0, 0.0);
 			Vec3 dir = target.subtract(start).normalize();
 			// (Phase 29: a low throw skims on level past the player, not down into the floor.)

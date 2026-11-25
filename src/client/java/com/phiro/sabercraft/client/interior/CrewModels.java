@@ -810,9 +810,9 @@ final class CrewModels {
 			c = new float[] {-0.4F, shoulder + 0.63F, -0.06F};
 			a = new float[] {-0.15F, 1.0F, 0.1F};
 			d = new float[] {0.0F, 0.0F, 1.0F};
-			// Phase 32: the throw itself, in the wind-up's last fifth: brought forward and down to
-			// where she lets go (at her right, before her, as the server starts its flight: high at
-			// the chest, or low at the shins for a throw at the legs, gear.aim() 1), flat as it flies.
+			// Phase 32: the throw itself, in the wind-up's last fifth: brought to where she lets go
+			// (at her right, as the server starts its flight: over her head and forward, or low at
+			// the shins for a throw at the legs, gear.aim() 1), flat as it flies.
 			float e = Mth.clamp((p - 0.8F) / 0.2F, 0.0F, 1.0F);
 
 			if (e > 0.0F) {
@@ -847,10 +847,11 @@ final class CrewModels {
 
 	/**
 	 * Phase 32: where she lets go of her staff in the throw (body space; the height over her
-	 * shoulder): at her right and before her, at the chest or (a throw at the legs) at the shins, as
-	 * the server's flight begins (Finale.throwTick).
+	 * shoulder): at her right, as the server's flight begins (Finale.throwTick): over her head and a
+	 * little before it (an overhand throw from the wind-up: the flat disc clears her head, the grip
+	 * within her arm's reach), or for a throw at the legs low before her, at the shins.
 	 */
-	static final float[] THROW_HIGH_AT = {-0.3F, 0.13F, 0.35F};
+	static final float[] THROW_HIGH_AT = {-0.3F, 0.55F, 0.22F};
 	static final float[] THROW_LOW_AT = {-0.3F, -0.72F, 0.35F};
 
 	/** Phase 30: the spinning disc stood upright: how much of the grip's upward tilt stays, and how far it is raised (blocks). */

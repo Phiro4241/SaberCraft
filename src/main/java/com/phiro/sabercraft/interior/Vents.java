@@ -238,6 +238,11 @@ public final class Vents {
 		return true;
 	}
 
+	/** Phase 32: shuts an open hatch at once, as one does (unless someone is in it; a story keeping it shut). */
+	public static boolean shut(ServerLevel level, BlockPos at) {
+		return close(level, at, true);
+	}
+
 	/** Phase 20: all hatches of the plot at that corner shut (a story's checkpoint); none stays open. */
 	public static void closeAll(ServerLevel level, BlockPos origin) {
 		InteriorPlan plan = ShipInteriors.planAt(origin.getX() + 1.0, origin.getZ() + 1.0);

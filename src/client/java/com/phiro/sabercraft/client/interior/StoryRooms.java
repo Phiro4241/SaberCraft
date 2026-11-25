@@ -618,6 +618,56 @@ final class StoryRooms {
 	 * lift's bay ({@link com.phiro.sabercraft.story.Chapter1#sealBridge}); the field is drawn on its
 	 * near face, where one walks into it.
 	 */
+	/**
+	 * Phase 32: the hangar sealed for the duel, to be seen: over its two doors (both sides) a red
+	 * lamp pulses, two yellow and black bars are bolted across each door on the hangar's side, and the
+	 * crawl way's hatch shows a red lamp and a bar across its grille. Gone again once the duel is
+	 * over (the doors open as ever then).
+	 */
+	private static void hangarSeal(MeshBuilder b, boolean sealed) {
+		if (!sealed) {
+			return;
+		}
+
+		float main0 = CX - 2;
+		float main1 = CX + 3;
+		float mainZ = HANGAR_Z1;
+		float top = H + 4.0F;
+		// The main door (its wall z HANGAR_Z1 .. + 1; the hangar to the south of it).
+		b.layer(Layer.SOLID).worldLight().white().anim(0).twoSided(false).tile(InteriorAtlas.IMP_HAZARD, 0.5F);
+
+		for (float y : new float[] {H + 0.95F, H + 2.35F}) {
+			b.box(main0 - 0.15F, y, mainZ - 0.09F, main1 + 0.15F, y + 0.26F, mainZ - 0.01F);
+		}
+
+		b.tile(InteriorAtlas.IMP_METAL, 1.0F);
+		b.box(main0 - 0.3F, H + 0.85F, mainZ - 0.12F, main0 - 0.1F, H + 2.75F, mainZ - 0.01F, MeshBuilder.ALL & ~MeshBuilder.SOUTH);
+		b.box(main1 + 0.1F, H + 0.85F, mainZ - 0.12F, main1 + 0.3F, H + 2.75F, mainZ - 0.01F, MeshBuilder.ALL & ~MeshBuilder.SOUTH);
+		// The flight control room's door (its wall x HANGAR_X0 .. + 1; the hangar to the east of it).
+		float side = HANGAR_X0 + 1;
+		float side0 = -40.0F;
+		float side1 = -37.0F;
+		b.tile(InteriorAtlas.IMP_HAZARD, 0.5F);
+
+		for (float y : new float[] {H + 0.85F, H + 2.0F}) {
+			b.box(side + 0.01F, y, side0 - 0.15F, side + 0.09F, y + 0.24F, side1 + 0.15F, MeshBuilder.ALL & ~MeshBuilder.WEST);
+		}
+
+		// The hatch of the crawl way: a bar across its grille.
+		float hz = HANGAR_HATCH.getZ();
+		b.box(side + 0.02F, H + 0.42F, hz - 0.05F, side + 0.1F, H + 0.58F, hz + 1.05F, MeshBuilder.ALL & ~MeshBuilder.WEST);
+		// The lamps: red, pulsing.
+		b.layer(Layer.GLOW).fullBright().anim(InteriorScene.ANIM_PULSE).colour(SEALED_LAMP).fit(InteriorAtlas.IMP_CEILING_LIGHT_GLOW);
+		b.box(CX - 0.3F, top + 0.12F, mainZ - 0.1F, CX + 1.3F, top + 0.3F, mainZ + 1.1F, MeshBuilder.ALL & ~MeshBuilder.UP);
+		b.box(side - 0.1F, H + 3.12F, -39.3F, side + 0.1F, H + 3.3F, -37.7F, MeshBuilder.ALL & ~MeshBuilder.UP);
+		b.box(side - 1.1F, H + 3.12F, -39.3F, side - 0.9F, H + 3.3F, -37.7F, MeshBuilder.ALL & ~MeshBuilder.UP);
+		b.box(side + 0.04F, H + 1.15F, hz + 0.4F, side + 0.1F, H + 1.27F, hz + 0.6F, MeshBuilder.ALL & ~MeshBuilder.WEST);
+		b.layer(Layer.SOLID).worldLight().white().anim(0);
+	}
+
+	/** Phase 32: the sealed hangar's lamps. */
+	static final int SEALED_LAMP = 0xFFE84030;
+
 	static void bridgeBarrier(MeshBuilder b, float seconds) {
 		float x0 = com.phiro.sabercraft.story.Chapter1.BRIDGE_BARRIER_X0;
 		float x1 = com.phiro.sabercraft.story.Chapter1.BRIDGE_BARRIER_X1 + 1;
@@ -785,6 +835,7 @@ final class StoryRooms {
 		b.layer(Layer.SOLID).worldLight().white().anim(0).twoSided(false);
 		collapse(b, seconds, plot, story);
 		serviceLights(b, seconds, story);
+		hangarSeal(b, story && StoryClient.has(com.phiro.sabercraft.story.Chapter1.HANGAR_SEALED));
 		// Phase 30: the reactor's lift on its way: light running along its posts.
 		LiftHud.lights(b, seconds, plot);
 

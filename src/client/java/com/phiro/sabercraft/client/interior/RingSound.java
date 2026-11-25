@@ -42,9 +42,11 @@ public final class RingSound {
 
 	/**
 	 * Each frame the ring is drawn: how fast it turns (radians a second; 0 for a ring that cannot
-	 * turn now: one blade, her staff away, unlit), and where it is (world space).
+	 * turn now: one blade, unlit), whether it is made to turn (spun up for a move, her ring's mode,
+	 * thrown; not only twitched round by a parried stroke, which is not to start its whirr), and
+	 * where it is (world space).
 	 */
-	static void heard(int id, float speed, double x, double y, double z) {
+	static void heard(int id, float speed, boolean driven, double x, double y, double z) {
 		Minecraft client = Minecraft.getInstance();
 
 		if (client.level == null || StoryCinema.active()) {
@@ -60,7 +62,7 @@ public final class RingSound {
 		}
 
 		if (loop == null) {
-			if (fast < HEARD_FROM) {
+			if (fast < HEARD_FROM || !driven) {
 				return;
 			}
 

@@ -984,7 +984,8 @@ public class Phase28GameTest implements FabricClientGameTest {
 
 		// Phase 28: out of her sight round a corner (she in the passage north of the hangar, the
 		// player in the hangar beside its door) she comes the way round, no longer standing at the
-		// wall between for the rest of the fight.
+		// wall between for the rest of the fight. (Phase 32: the hangar is sealed in the duel: put
+		// out of it she is back in it a moment later, and comes on to the player.)
 		this.server.runOnServer(s -> {
 			StorySession session = this.session(s);
 			Figure f = session.figure("shadow");

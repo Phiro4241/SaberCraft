@@ -16,6 +16,7 @@ import com.phiro.sabercraft.client.interior.MeshBuilder.Layer;
 import com.phiro.sabercraft.client.story.StoryClient;
 import com.phiro.sabercraft.interior.Crew;
 import com.phiro.sabercraft.network.StoryFiguresPayload;
+import com.phiro.sabercraft.story.StaffThrow;
 
 /**
  * Phase 19: the people of a story's ship, as the server moves them: the crew's figures with the
@@ -98,6 +99,16 @@ final class StoryModels {
 
 		if (flying != null) {
 			CrewModels.flyingStaff(b, flying[0], flying[1], flying[2], flying[3], flying[4], RED);
+
+			// Phase 32: its whirr goes with it as it spins through the air (the ring in her hand is
+			// silent meanwhile: it is not there).
+			for (StoryClient.Pose pose : people) {
+				if ("shadow".equals(pose.fig().kind())) {
+					RingSound.heard(pose.fig().id(), StaffThrow.SPIN * 20.0F * Mth.DEG_TO_RAD * (StoryClient.focusing() ? 0.5F : 1.0F), true,
+							plot.origin().getX() + flying[0], plot.origin().getY() + flying[1], plot.origin().getZ() + flying[2]);
+					break;
+				}
+			}
 		}
 
 		b.layer(Layer.SOLID).worldLight().white().anim(0).twoSided(false);
@@ -142,12 +153,13 @@ final class StoryModels {
 			}
 		}
 
-		if (saber && shadow) {
-			// Phase 32: her ring's whirr, exactly while it is drawn turning (both blades out, in her hand).
+		if (saber && shadow && !staffAway) {
+			// Phase 32: her ring's whirr, exactly while it is drawn turning (both blades out, in her
+			// hand; thrown, the staff's own whirr goes with it, see draw).
 			float[] state = SABERS.get(fig.id());
-			boolean turns = state != null && lit && !down && !staffAway && state[8] > 0.35F && (fig.flags() & StoryFiguresPayload.UNARMED) == 0;
+			boolean turns = state != null && lit && !down && state[8] > 0.35F && (fig.flags() & StoryFiguresPayload.UNARMED) == 0;
 			float facing = yaw * Mth.DEG_TO_RAD;
-			RingSound.heard(fig.id(), turns ? state[10] : 0.0F, origin.getX() + pose.x() - Mth.sin(facing) * StoryFiguresPayload.DISC_AHEAD,
+			RingSound.heard(fig.id(), turns ? state[10] : 0.0F, turns && state[15] > 0.0F, origin.getX() + pose.x() - Mth.sin(facing) * StoryFiguresPayload.DISC_AHEAD,
 					origin.getY() + pose.y() + StoryFiguresPayload.DISC_HEIGHT, origin.getZ() + pose.z() + Mth.cos(facing) * StoryFiguresPayload.DISC_AHEAD);
 		}
 		CrewModels.figure(b, crew, look, pose.x(), pose.y(), pose.z(), yaw, pose.walk(), t, seed, head, gear);
@@ -282,7 +294,7 @@ final class StoryModels {
 	 */
 	private static CrewModels.Gear saber(StoryFiguresPayload.Fig fig, boolean lit, float dt, boolean down, boolean skirt, float reactP) {
 		// raise, swing, the kind last seen, its progress, the kind swung, crouch, lean, hand, aim
-		float[] state = SABERS.computeIfAbsent(fig.id(), id -> new float[15]);
+		float[] state = SABERS.computeIfAbsent(fig.id(), id -> new float[16]);
 		int kind = fig.windup() >> 5;
 		float progress = (fig.windup() & 31) / 31.0F;
 		int lastKind = (int) state[2];
@@ -430,6 +442,9 @@ final class StoryModels {
 		}
 
 		state[10] = speed;
+		// (Phase 32: whether it is made to turn now, not only twitched round by a parried stroke: its
+		// whirr begins only then, see RingSound.)
+		state[15] = goal > 0.0F || inquisitor && both && StoryClient.ringFlared(fig.id()) ? 1.0F : 0.0F;
 		float angle = state[9] + speed * dt;
 
 		if (!inquisitor || !both) {
@@ -570,7 +585,7 @@ final class StoryModels {
 	 * fall and the comlink.
 	 */
 	private static CrewModels.Gear rifle(StoryFiguresPayload.Fig fig, float dt, boolean down, float reactP) {
-		float[] state = SABERS.computeIfAbsent(fig.id(), id -> new float[15]);
+		float[] state = SABERS.computeIfAbsent(fig.id(), id -> new float[16]);
 		state[8] = approach(state[8], fig.windup() > 0 && !down ? 1.0F : 0.0F, dt * 8.0F);
 		int react = fig.reactKind();
 		// The old jolt only where no reaction of the server shows the hit.

@@ -318,7 +318,7 @@ final class Scenes {
 		Story.cue(s, Story.CUE_HINT, "progress", "sabercraft.story.hint.service_release", 0);
 		Story.cue(s, Story.CUE_SOUND, "", "story.hack", 0);
 		// Phase 30: it runs by itself now (the hint to click goes; the bar shows over it).
-		s.hint("sabercraft.story.hint.service_running");
+		// (Phase 32: no more words on how it works: Phiro wants no technical texts in the game.)
 	}
 
 	/** The release is pulled: the door opens (for anyone near it, as doors do). */
