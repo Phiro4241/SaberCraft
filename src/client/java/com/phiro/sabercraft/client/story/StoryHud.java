@@ -1036,6 +1036,10 @@ public final class StoryHud implements HudElement {
 		// over it), in wide capitals, coming in a little after the text and fading out with it.
 		float credit = Mth.clamp(Math.min((age - CREDIT_FROM) / 30.0F, (END_TICKS - age) / 40.0F), 0.0F, 1.0F);
 
+		if (age < CREDIT_FROM) {
+			creditAge = -1;
+		}
+
 		if (credit > 0.0F) {
 			String text = Component.translatable("sabercraft.story.hud.end_credit").getString().toUpperCase(java.util.Locale.ROOT);
 			int track = 2;
@@ -1061,6 +1065,10 @@ public final class StoryHud implements HudElement {
 
 			graphics.pose().popMatrix();
 			creditShown = true;
+
+			if (creditAge < 0) {
+				creditAge = age;
+			}
 		}
 	}
 
@@ -1072,6 +1080,12 @@ public final class StoryHud implements HudElement {
 	static final int CREDIT_FROM = 60;
 	static final int CREDIT_COLOUR = 0xE8C46A;
 	private static boolean creditShown;
+	private static int creditAge = -1;
+
+	/** Phase 32, for the tests: at which age of the chapter's end its credit was first drawn (-1: not yet). */
+	public static int creditAgeForTest() {
+		return creditAge;
+	}
 
 	/** Phase 32, for the tests: how long the chapter's end shows (ticks), and whether its credit has been drawn. */
 	public static int endTicksForTest() {

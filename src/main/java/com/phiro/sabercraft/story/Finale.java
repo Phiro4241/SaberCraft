@@ -297,7 +297,7 @@ final class Finale {
 	 * an opening. It comes back once she is left alone for a moment. By the difficulty
 	 * ({@link #POISE_BY}: Easy, Normal, Hard).
 	 */
-	static final float POISE_LIGHT = 0.24F;
+	static final float POISE_LIGHT = 0.15F;
 	static final float POISE_HEAVY = 0.42F;
 	static final float POISE_CLASH = 0.16F;
 	static final float POISE_DISC = 0.12F;
@@ -587,6 +587,9 @@ final class Finale {
 
 				if (figure.saber) {
 					float body = figure.yaw;
+					// Phase 32: where her head was turned the last ticks (as the player sees her, a moment late).
+					figure.headYawLate[1] = figure.headYawLate[0];
+					figure.headYawLate[0] = figure.headYaw;
 					duel(s, figure, player, me, level, corner);
 					keepHead(s, figure, body);
 				} else {
@@ -895,7 +898,7 @@ final class Finale {
 
 				// Phase 32: from behind while she winds up a blow forward: it hits, as from behind ever
 				// (it clashed before, as if from before her).
-				if (new Vec3(eye.x - f.x, 0.0, eye.z - f.z).normalize().dot(f.look()) < -0.35 && !f.turnabout) {
+				if (behind(f, eye) && !f.turnabout) {
 					fromBehind(s, f, player, me, level, corner, at, heavy);
 					return;
 				}
@@ -906,12 +909,21 @@ final class Finale {
 					return;
 				}
 
+				if (!heavy && phase(f) >= 2) {
+					// Phase 32: a hasty stroke from before her into her wind-up (in her second phase): her
+					// blow wins, it beats the blade aside and falls at once. Only a full stroke meets it
+					// (the clash). Before, every stroke clashed: hammering away broke each of her answers
+					// and wore her guard down besides; waiting for the right moment was worth nothing.
+					beatenAside(s, f, player, me, level, corner);
+					return;
+				}
+
 				clash(s, f, player, me, level, corner);
 				return;
 			}
 			case RING_START -> {
 				// Phase 32: into the ring as she spins it up: turned aside (from behind it hits, as ever).
-				if (new Vec3(eye.x - f.x, 0.0, eye.z - f.z).normalize().dot(f.look()) < -0.35) {
+				if (behind(f, eye)) {
 					fromBehind(s, f, player, me, level, corner, at, heavy);
 				} else {
 					discTurns(s, f, player, me, level, corner);
@@ -952,7 +964,7 @@ final class Finale {
 					f.react = 0;
 					f.reactTicks = 0;
 					clash(s, f, player, me, level, corner);
-				} else if (toMe.dot(f.look()) < -0.35) {
+				} else if (behind(f, eye)) {
 					// From behind, while she drives on: it hits (Phase 29: once; the next soon after she turns aside).
 					fromBehind(s, f, player, me, level, corner, at, heavy);
 				} else {
@@ -966,8 +978,7 @@ final class Finale {
 			}
 		}
 
-		Vec3 toPlayer = new Vec3(eye.x - f.x, 0.0, eye.z - f.z).normalize();
-		boolean behind = toPlayer.dot(f.look()) < -0.35;
+		boolean behind = behind(f, eye);
 
 		if (f.action == OPEN_UP) {
 			bossHit(s, f, player, me, level, corner, at, heavy, false);
@@ -988,6 +999,42 @@ final class Finale {
 		}
 
 		parried(s, f, player, me, level, corner, heavy);
+	}
+
+	/**
+	 * Phase 32: whether a stroke from there (plot space, the player's eyes) comes from behind her: as
+	 * she faces now, or as she faced a tick or two ago. The player sees her a moment late (the
+	 * figures come every tick or two and are drawn between the last two); since Phase 29 she turns
+	 * naturally (16 to 26 degrees a tick), so a stroke seen landing on her back was judged against a
+	 * head already turned round, and she parried it or whirled round on it.
+	 */
+	static boolean behind(Figure f, Vec3 eye) {
+		Vec3 to = new Vec3(eye.x - f.x, 0.0, eye.z - f.z);
+
+		if (to.lengthSqr() < 1.0E-4) {
+			return false;
+		}
+
+		to = to.normalize();
+
+		if (to.dot(f.look()) < -0.35) {
+			return true;
+		}
+
+		for (float was : f.headYawLate) {
+			// (Only a turn she made: a yaw from before she was set somewhere else does not count.)
+			if (Math.abs(Mth.wrapDegrees(was - f.headYaw)) > 100.0F) {
+				continue;
+			}
+
+			float rad = was * Mth.DEG_TO_RAD;
+
+			if (to.dot(new Vec3(-Mth.sin(rad), 0.0, Mth.cos(rad))) < -0.35) {
+				return true;
+			}
+		}
+
+		return false;
 	}
 
 	/**
@@ -1090,6 +1137,24 @@ final class Finale {
 		Story.cue(s, Story.CUE_DUEL, "parried", "", f.id, java.util.List.of(contact));
 		s.counters.merge("parried", 1, Integer::sum);
 	}
+
+	/**
+	 * Phase 32: a hasty stroke into her wind-up from before her: her blow beats it aside (a spark,
+	 * a short ring of the blades) and falls at once. No clash, her guard is not worn by it.
+	 */
+	private static void beatenAside(StorySession s, Figure f, ServerPlayer player, Vec3 me, ServerLevel level, Vec3 corner) {
+		Vec3 contact = contact(f, me).add(corner);
+		level.sendParticles(ParticleTypes.ELECTRIC_SPARK, contact.x, contact.y, contact.z, 10, 0.08, 0.08, 0.08, 0.35);
+		level.playSound(null, contact.x, contact.y, contact.z, ShipInteriors.sound("saber.clash"), SoundSource.HOSTILE, 1.0F, 0.62F + player.getRandom().nextFloat() * 0.08F);
+		Story.cue(s, Story.CUE_DUEL, "parried", "", f.id, java.util.List.of(contact));
+		f.windup = Math.min(f.windup, BEATEN_WINDUP);
+		beaten++;
+		s.counters.merge("beaten_aside", 1, Integer::sum);
+	}
+
+	/** Phase 32: what is left of her wind-up after she beat a hasty stroke aside (her blow falls at once). */
+	static final int BEATEN_WINDUP = 2;
+	private static int beaten;
 
 	/** Phase 29: strokes while her staff is away: after a few she dodges back out of reach. */
 	private static void flightEvades(StorySession s, Figure f, Vec3 me, ServerLevel level, Vec3 corner) {
@@ -1241,7 +1306,13 @@ final class Finale {
 			// close a shove with the Force; not the same answer twice running).
 			double distance = Math.hypot(me.x - f.x, me.z - f.z);
 
-			if (distance < SHOVE_NEAR + 0.3 && !s.timer("shove") && f.moves[0] != MOVE_SHOVE && player.getRandom().nextFloat() < 0.4F) {
+			if (ringDue(s, f) && distance < RING_SWITCH_NEAR) {
+				// Phase 32: with her ring's mode due, her answer is to raise the ring (before, a player
+				// striking after each of her blows kept her in parry, riposte and recoil, and the
+				// mode never came: it is checked only when she is on guard).
+				f.parried = 0;
+				ringStarts(s, f);
+			} else if (distance < SHOVE_NEAR + 0.3 && !s.timer("shove") && f.moves[0] != MOVE_SHOVE && player.getRandom().nextFloat() < 0.4F) {
 				f.parried = 0;
 				shoveStarts(s, f, level, corner);
 			} else {
@@ -1295,7 +1366,7 @@ final class Finale {
 
 	/** Phase 32, for the tests: her guard broken by strokes, strokes at her side that hit, contacts of the ring's disc (hurt, blocked). */
 	static int[] defenceForTest() {
-		return new int[] {poiseBreaks, flankHits, discHits, discBlocks, overextended, spinChips, spinTurned};
+		return new int[] {poiseBreaks, flankHits, discHits, discBlocks, overextended, spinChips, spinTurned, beaten};
 	}
 
 	private static int discHits;
@@ -1468,6 +1539,9 @@ final class Finale {
 		f.react(Figure.CLASH, CLASH_TICKS);
 		f.combo = 0;
 		f.burst++;
+		// (Phase 32: her lunge is over with the clash: before, it stayed set and her next thrust from
+		// further off closed in at the lunge's speed.)
+		f.lunge = false;
 		act(f, CLASHED, f.attack, CLASH_TICKS);
 		clashes++;
 		s.counters.merge("clashes", 1, Integer::sum);
@@ -1634,6 +1708,9 @@ final class Finale {
 		discContact(s, f, player, me, level, corner, phase);
 
 		// Phase 23: thrown back by a hit, turning a stroke aside, reeling from a perfect parry.
+		// (Phase 32: the reaction's kind taken before the tick: on its last tick Hits.tick clears it
+		// but still holds her, and the parry's rule below was missed then.)
+		int reaction = f.react;
 		boolean held = Hits.tick(f, level, corner);
 
 		if (f.action == CLASHED) {
@@ -1659,7 +1736,7 @@ final class Finale {
 			// Phase 32: a parry does not stop her: on guard her pause runs on while she turns strokes
 			// aside (before, each parried stroke held her, and strokes in a row kept her from ever
 			// attacking), and a blow she winds up is not broken off by it.
-			if (f.react == Figure.PARRY) {
+			if (reaction == Figure.PARRY) {
 				if (f.action == GUARD && f.cooldown > 0) {
 					f.cooldown--;
 				}
@@ -1745,8 +1822,13 @@ final class Finale {
 				}
 
 				if (--f.timer <= 0) {
-					act(f, GUARD, 0, 0);
-					f.cooldown = pause(f, phase) / 2;
+					if (ringDue(s, f) && distance < RING_SWITCH_NEAR) {
+						// Phase 32: stepped back, she raises the ring when its mode is due.
+						ringStarts(s, f);
+					} else {
+						act(f, GUARD, 0, 0);
+						f.cooldown = pause(f, phase) / 2;
+					}
 				}
 			}
 			case LEAP -> leap(s, f, player, me, level, corner, phase);
@@ -1992,6 +2074,16 @@ final class Finale {
 			return;
 		}
 
+		// Phase 32: the ring's mode, when it is due (in the second phase, now and then for a while):
+		// she spins the ring up before her, to be seen and heard, before it is dangerous; she turns to
+		// the player as she raises it. (Checked before her pause between moves and her answers to one
+		// behind her or crowding her: with the player pressing her all the time, from every side,
+		// those always came first and the mode never came.)
+		if (ringDue(s, f) && distance < RING_SWITCH_NEAR) {
+			ringStarts(s, f);
+			return;
+		}
+
 		// Phase 28: her throw is due (once or twice a fight): she keeps off to throw from there.
 		// (Phase 32: not in the ring's mode: the ring whirls before her then, her staff stays in her hand.)
 		boolean throwDue = throwDue(s, f, phase) && !f.ringOn;
@@ -2041,13 +2133,6 @@ final class Finale {
 				}
 			}
 
-			return;
-		}
-
-		// Phase 32: the ring's mode, when it is due (in the second phase, now and then for a while):
-		// she spins the ring up before her, to be seen and heard, before it is dangerous.
-		if (ringDue(s, f) && distance < RING_SWITCH_NEAR) {
-			ringStarts(s, f);
 			return;
 		}
 

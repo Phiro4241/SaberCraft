@@ -66,6 +66,12 @@ public final class Story {
 	public static final byte CUE_RADIO = 0;
 	public static final byte CUE_HINT = 1;
 	public static final byte CUE_FADE = 2;
+	/**
+	 * Phase 32: a fade's {@code who} for a black moment in the middle of the duel (the player set back
+	 * into the sealed hangar): the client keeps the duel as it is. Any other fade resets it on the
+	 * client (Phase 31): after it, she was drawn in her first phase with the server in her second.
+	 */
+	public static final String FADE_KEEPS_DUEL = "keep_duel";
 	public static final byte CUE_SOUND = 3;
 	public static final byte CUE_MUSIC = 4;
 	public static final byte CUE_SCAN = 5;
@@ -839,7 +845,9 @@ public final class Story {
 				keepDroidsNear(session, player);
 			}
 
-			if (server.getTickCount() % 2 == 0) {
+			// (Phase 32: every tick in a fight: her wind-ups and turns are seen as they are, not a
+			// tick or two late in steps of two.)
+			if (server.getTickCount() % 2 == 0 || session.fighting) {
 				sendFigures(session, player);
 			}
 

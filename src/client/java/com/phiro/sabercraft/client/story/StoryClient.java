@@ -526,7 +526,11 @@ static final int CHECKPOINT_TICKS = 60;
 				EFFECTS.clear();
 				// Phase 28: and her saber on the floor, her staff in flight (back at a checkpoint).
 				// (Phase 31: and everything else of the duel: her second phase, the Focus, the lock.)
-				resetDuel(client);
+				// (Phase 32: not for the black moment of being set back into the sealed hangar: the
+				// duel goes on as it was.)
+				if (!com.phiro.sabercraft.story.Story.FADE_KEEPS_DUEL.equals(payload.who())) {
+					resetDuel(client);
+				}
 			}
 			case CUE_SOUND -> sound(client, payload.text(), 0.9F, 1.0F, figure(payload.value()));
 			case CUE_MUSIC -> music = payload.text().isEmpty() ? null : payload.text();
@@ -1723,6 +1727,15 @@ static final int CHECKPOINT_TICKS = 60;
 
 	static void dismissEnd() {
 		ended = false;
+	}
+
+	/** Phase 32, for the tests: whether the chapter's end shows, and since how many ticks. */
+	public static boolean endedForTest() {
+		return ended;
+	}
+
+	public static int endAgeForTest() {
+		return endAge;
 	}
 
 	/** Sends an action to the server (if it has the story). */

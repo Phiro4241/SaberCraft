@@ -1475,4 +1475,79 @@ public final class StoryTesting {
 	public static int fightResets() {
 		return Finale.resetsForTest();
 	}
+
+	// --- Phase 32 ----------------------------------------------------------------------------------------------
+
+	/** Phase 32: her guard broken by strokes, strokes at her side that hit, the disc's hits and blocks, blows overreached, spin chips through a guard, spins turned by a guard. */
+	public static int[] defence() {
+		return Finale.defenceForTest();
+	}
+
+	/** Phase 32: switches into the ring's mode begun, and the mode ended. */
+	public static int[] ringSwitches() {
+		return Finale.ringSwitchesForTest();
+	}
+
+	/** Phase 32: she switches into the ring's mode now. */
+	public static void ringModeNow(StorySession s, Figure f) {
+		Finale.ringModeForTest(s, f);
+	}
+
+	/** Phase 32: the ring's mode runs out now (she ends it at her next calm moment). */
+	public static void ringModeEnds(StorySession s) {
+		Finale.ringModeEndsForTest(s);
+	}
+
+	/** Phase 32: whether the hangar is sealed for the duel now. */
+	public static boolean hangarSealed(StorySession s) {
+		return Chapter1.hangarSealed(s);
+	}
+
+	/** Phase 32: the client's flag for the sealed hangar. */
+	public static String hangarSealedFlag() {
+		return Chapter1.HANGAR_SEALED;
+	}
+
+	/** Phase 32: refusals at a sealed door or hatch, and players set back into the hangar. */
+	public static int[] sealed() {
+		return Chapter1.sealedForTest();
+	}
+
+	/** Phase 32: whether that place (plot space, feet) is in the hangar (not in its crawl way). */
+	public static boolean inHangar(Vec3 at) {
+		return Chapter1.inHangar(at);
+	}
+
+	/** Phase 32: her thrown staff caught back; the player's breath at her openings. */
+	public static int catches() {
+		return Finale.catchesForTest();
+	}
+
+	public static int breathers() {
+		return Finale.breathersForTest();
+	}
+
+	/** Phase 25: the player's strokes that hit her. */
+	public static int landed() {
+		return Finale.landedForTest();
+	}
+
+	public static int strokes() {
+		return Finale.strokesForTest();
+	}
+
+	/** Phase 32: her poise (her guard's strength left, 0..1). */
+	public static float poise(Figure f) {
+		return f.poise;
+	}
+
+	/** Phase 32: whether her thrown staff is let go low (else over her head). */
+	public static boolean throwLow(Figure f) {
+		return f.throwLow;
+	}
+
+	/** Phase 32: how high over her feet a high throw is let go. */
+	public static double throwHigh() {
+		return Finale.THROW_HIGH;
+	}
 }

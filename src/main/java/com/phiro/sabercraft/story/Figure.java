@@ -81,6 +81,8 @@ public final class Figure {
 	public double z;
 	public float yaw;
 	public float headYaw;
+	/** Phase 32: the duel's head yaw a tick and two ticks ago (strokes at her back as the player saw her; never saved). */
+	public final float[] headYawLate = new float[2];
 	/** How fast they walk now (blocks a second), for the legs. */
 	public float speed;
 
@@ -324,6 +326,8 @@ public final class Figure {
 	 * belongs here (a new one too).
 	 */
 	public void resetFight() {
+		this.headYawLate[0] = this.headYaw;
+		this.headYawLate[1] = this.headYaw;
 		this.health = 1.0F;
 		this.lit = false;
 		this.disarmed = false;

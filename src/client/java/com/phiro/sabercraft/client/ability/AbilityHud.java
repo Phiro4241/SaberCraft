@@ -27,10 +27,12 @@ final class AbilityHud implements HudElement {
 	public void extractRenderState(GuiGraphicsExtractor graphics, DeltaTracker delta) {
 		Minecraft client = Minecraft.getInstance();
 
-		// Phase 32: nor in a film (a cutscene: the boss fight's scenes and the others), nor with the HUD
-		// hidden. (Drawn after the screen, these lines came through a film's black bars before.)
+		// Phase 32: nor in a film (a cutscene: the boss fight's scenes and the others), nor in a story
+		// conversation (her words before the duel and after it), nor with the HUD hidden. (Drawn after
+		// the screen, these lines came through a film's black bars and over the dialog box before.)
 		if (!CombatConfig.get().abilityHud || client.player == null
-				|| !SaberVariant.canHold(client.player.getMainHandItem()) || client.gui.hud.isHidden() || StoryCinema.hidesHud()) {
+				|| !SaberVariant.canHold(client.player.getMainHandItem()) || client.gui.hud.isHidden() || StoryCinema.hidesHud()
+				|| client.gui.screen() instanceof com.phiro.sabercraft.client.story.DialogScreen) {
 			return;
 		}
 

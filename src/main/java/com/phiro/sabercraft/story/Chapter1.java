@@ -4823,7 +4823,8 @@ public final class Chapter1 implements Chapter {
 		} else if (!s.timer("outside_hangar")) {
 			s.timers.remove("outside_hangar");
 			sealedReturns++;
-			Story.cue(s, Story.CUE_FADE, "", "", 20);
+			// (A fade that keeps the duel as it is on the client: her second phase, her ring, the Focus.)
+			Story.cue(s, Story.CUE_FADE, Story.FADE_KEEPS_DUEL, "", 20);
 			Story.place(s, D, new Vec3(40.5, H, -18.5), 180.0F);
 		}
 	}
