@@ -1484,6 +1484,11 @@ public final class StoryTesting {
 	}
 
 	/** Phase 32: switches into the ring's mode begun, and the mode ended. */
+	/** Phase 32: the hangar's seal in the duel lifted (true) or as ever (false), for a test of the doors' own rules. */
+	public static void unsealHangar(boolean off) {
+		Chapter1.unsealedForTest = off;
+	}
+
 	public static int[] ringSwitches() {
 		return Finale.ringSwitchesForTest();
 	}
@@ -1549,5 +1554,10 @@ public final class StoryTesting {
 	/** Phase 32: how high over her feet a high throw is let go. */
 	public static double throwHigh() {
 		return Finale.THROW_HIGH;
+	}
+
+	/** Phase 32: how high over her feet a low throw is let go. */
+	public static double throwLowHeight() {
+		return Finale.THROW_LOW;
 	}
 }

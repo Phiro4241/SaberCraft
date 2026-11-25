@@ -253,8 +253,10 @@ public final class Figure {
 	 * then wound down again; no longer set going by each ring move for 400 ticks and more.
 	 */
 	public boolean ringOn;
-	/** Phase 32: when the ring's spinning disc last cut the player (game time of the story; the next only a moment later). */
+	/** Phase 32: when the ring's spinning disc last cut the player (by her own ticks, {@link #duelTicks}; the next only a moment later). */
 	public long discHitAt = -1000L;
+	/** Phase 32: her own ticks in the duel (every other game tick under the Focus); never saved. */
+	public long duelTicks;
 	/**
 	 * Phase 32: her guard's poise (1 full, 0 broken): each stroke she turns aside takes some; it
 	 * comes back once she is left alone a moment ({@code poiseAt}: when it was last taken).

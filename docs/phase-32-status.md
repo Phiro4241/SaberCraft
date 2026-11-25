@@ -1,6 +1,6 @@
 # Phase 32: the boss fight made sound again, and the last corrections
 
-Built on `main` after Phase 31 (PR #36, merge commit `6e5b58a`). No release, nothing merged. Phiro tested the last version himself and found the boss fight (the Inquisitor, "die Schattenklinge", in the hangar) partly buggy and worse than before. This phase looks for the causes in the last phases' changes and fixes them there; the mechanics that worked stay. As before, the server decides everything from vanilla blocks and entities: **no new blocks, items or entity types are registered.** No new network message: one new figure flag (`StoryFiguresPayload.THROW_LOW`) and two numbers for her ring's disc (`DISC_AHEAD`, `DISC_HEIGHT`, `DISC_RADIUS`, constants both sides share), one derived client flag (`hangar.sealed`, never saved) and one new sound file (`story/ring_loop.ogg`, made by `tools/synth_sounds.py` like the others).
+Built on `main` after Phase 31 (PR #36, merge commit `6e5b58a`). No release, nothing merged. Phiro tested the last version himself and found the boss fight (the Inquisitor, "die Schattenklinge", in the hangar) partly buggy and worse than before. This phase looks for the causes in the last phases' changes and fixes them there; the mechanics that worked stay. As before, the server decides everything from vanilla blocks and entities: **no new blocks, items or entity types are registered.** No new network message: two new figure flags (`StoryFiguresPayload.DISC`, `THROW_LOW`) and three numbers for her ring's disc (`DISC_AHEAD`, `DISC_HEIGHT`, `DISC_RADIUS`, constants both sides share), one derived client flag (`hangar.sealed`, never saved) and one new sound file (`story/ring_loop.ogg`, made by `tools/synth_sounds.py` like the others).
 
 **Saves.** Old stories load as before. Nothing new is saved: the hangar's seal is derived from the story's step each time, her ring's mode and her guard's poise live only in the running fight and are reset with it.
 
@@ -24,6 +24,7 @@ The analysis compared the boss fight at `main` with the phases before it (Phases
 - **A loop on the client** (`RingSound`), one per figure at most, fed every frame her ring is drawn with how fast it turns: it starts as the ring spins up, gets louder and higher the faster it turns, fades out as it slows, and stops when she is no longer drawn. It only starts when the ring is **made** to turn (her ring's mode, the spin, the rush, the thrown staff), never when a parried stroke only twitches it round.
 - **It stops at once** when a film begins (`StoryCinema.start`), when the fight is reset (a capture, a checkpoint, the duel begun again) and when the story is left. While a film runs nothing starts it.
 - **The thrown staff** carries its own whirr through the air (the ring in her hand is silent meanwhile).
+- **A loop the sound engine drops by itself** (all its channels taken, the sounds reloaded) counts as gone, and a new one begins while the ring still turns; a loop that could not start is not kept.
 - **The server no longer plays the whirr** at all (slam, rush, the ring set going, the spin's rise). Her slam has no whirr (the ring does not turn in it); with one blade her own swish only.
 - Other sounds checked: the ignition only once when the duel begins (no second one after her film), the clash, hit and block sounds only in their own situations.
 
@@ -46,14 +47,15 @@ Improved where they were wrong, not replaced:
 
 - **In her hand:** a grip beyond her arm's reach is drawn in to it (the hand stays on the grip); holds change in a quick motion instead of one frame; after a stagger or a crouch the staff comes back to guard from where it was, without a flick round.
 - **Blows in her ring's mode:** the ring slows to a turn while she strikes with a blade, so the striking blade points the way of the blow.
-- **The throw:** drawn back to her right, let go at her right: **high** over her head (a horizontal disc above her, the server's start at the same place, 1.87 over her feet) or **low** at the legs (0.6); high and low take turns. The staff comes back into her right hand; catching it costs her a moment (an opening, see 6).
+- **The throw:** drawn back to her right, let go at her right: **high** over her head (a horizontal disc above her, the server's start at the same place, 1.87 over her feet) or **low** at the legs, from beside her right hip (0.9 over her feet, the spinning disc upright out at her side, thrown down at the shins; held flat at the shins, as first planned, the disc went through her legs and was drawn pushed a block out of her hand); high and low take turns. The staff comes back into her right hand **where it is now** (she follows the player round with her eyes while it flies; it went back to where her hand had been as she let go), on the server and on the client alike; catching it costs her a moment (an opening, see 6), and her hold on it is taken up from her outstretched hand, not in one frame.
+- **Her ring's mode:** the disc is drawn exactly where the server cuts with it (it was drawn 0.18 higher).
 - **Switches:** the ring spun up before her as she raises it (the switch into the ring's mode), lowered a moment as it winds down (out of it).
 
 ## 5. Phase 2: plain blade work and the ring's mode take turns (5)
 
 - **Plain blade work:** the ring stands still, both blades out, her combos without the spin, plus the lunge, the leap, the push, the slam and the throw.
 - **The ring's mode:** she spins the ring up before her (18 ticks, seen and heard, nothing hurts yet), it turns for **210 ticks** (10.5 s; its disc before her cuts, her spin and the ring's rush come only now), then it winds down while she lowers the staff (26 ticks, she is open meanwhile) and fights with plain blade work for **300 ticks** (15 s; in her last quarter 190) before it comes again. The first time 6 s after the scene at half her strength. All at her tempo of the chosen difficulty.
-- **No hectic switching:** the mode ends only at a calm moment (never in the middle of a move); a stroke while she spins the ring up breaks the switch off and she tries again a little later.
+- **No hectic switching:** the mode ends only at a calm moment (never in the middle of a move). A stroke from before her while she spins the ring up is turned aside by the spinning ring and the switch goes on; struck from behind she reels (the switch is gone) and raises the ring again once she has stepped back.
 - **Sounds, damage and animation follow the switch:** the whirr comes and goes with the ring, the disc cuts only while it turns, the client's ring stands still in her blade work.
 
 ## 6. Phase 2 is no longer a wall (6)
@@ -61,8 +63,9 @@ Improved where they were wrong, not replaced:
 Not less health, not a weaker guard; limits and openings:
 
 - **Her parry no longer locks her:** a parried stroke keeps her riposte, and her pause between attacks runs on while she turns strokes aside (before, a player hammering at her guard froze her in parries and she never attacked, nor did her riposte arrive).
-- **Her guard can be worn down (poise):** each stroke she turns aside costs her poise (a hasty light stroke 0.15, a full heavy one 0.42, a full stroke clashing into her wind-up 0.16, the disc 0.12; on Easy ×1.3, on Hard ×0.8). Three full strokes break it, hasty ones take twice as many. With none left her guard breaks: she reels, an opening of 22 ticks. Her poise comes back once she has been left alone for 2.5 s.
-- **Hammering is not the way through:** a hasty stroke (less than 0.8 s after the last) from before her into her wind-up (in the second phase) is beaten aside by her blow, which falls at once; only a full stroke meets it (the clash). Before, every stroke clashed: hammering away broke each of her answers and wore her guard down besides. A full stroke, from a pause, a jump or a run, still clashes as before.
+- **Her guard can be worn down (poise):** each stroke she turns aside costs her poise (a hasty light stroke 0.15, a full heavy one 0.42, a full stroke clashing into her wind-up 0.16, the disc 0.12; on Easy ×1.3, on Hard ×0.8). Three full strokes break it. With none left her guard breaks: she reels, an opening of 22 ticks. Her poise comes back once she has been left alone for 2.5 s.
+- **Watching her pays, hammering hardly does:** strokes into her guard in a row (the first may come after a pause) are answered as before Phase 32, three in a row in her first phase, two in her second (a thrust, or a shove with the Force); with her answer she gathers herself (+0.2 poise). Full strokes with pauses between them are a row of their own each time, never answered. A player who waits for the right moment breaks her guard clearly more often than one who hammers away (checked by the test, see 10).
+- **Hammering is not the way through:** a hasty stroke (less than 0.8 s after the last) from before her into her wind-up (in the second phase) is beaten aside by her blow, which falls at once; only a full stroke meets it (the clash). Before, every stroke clashed: hammering away broke each of her answers and wore her guard down besides. A full stroke (after a pause) still clashes as before; a stroke while running or jumping still does its heavy damage where it hits, but counts as hasty for her defence (before, strokes hammered while running held her in parries for good).
 - **Ways through:** a stroke at her side while she winds up a blow (more than 70° round) hits and her blow is gone; a stroke from behind into her wind-up hits (it clashed before); a blow dodged right under it in the second phase carries her past (an opening of 20 ticks); her pause after a combo is a little longer again (17 ticks); her openings after a blocked last blow, a dodge, a perfect parry, the ring's wind-down and the staff caught back (12 ticks).
 - **Strokes at her back count as the player saw them:** she still turns naturally and still whirls round on one who keeps behind her (Phase 29), but a stroke at her back is judged by where she faced now or a tick or two ago, as she is drawn. In the fight her figure is sent to the client every tick (before every second tick), so her wind-ups and turns are seen as they are.
 - **Her ring's mode comes when it is due** also under constant pressure: the switch is checked before her pause and before her answers to one behind her or crowding her (before, a player pressing her from every side kept it from ever coming).
@@ -85,6 +88,8 @@ From the duel's start (`m6.duel`) until she is gone (`gone.shadow`):
 
 At the maintenance door after the reactor escape (Mission 5): the click on the panel no longer shows "Die Tür entriegelt sich von selbst – lauf weiter!", the bar is "Notentriegelung … N %" again, and the objective does not switch to "it is unlocking … it will open in a moment". The control hint on the walkway ("Rechtsklick aufs Bedienfeld …") is gone too; the objective now names the panel without a mouse button ("… das Bedienfeld ist links neben der Tür"); Kestrel's radio, the marker, the amber panel and its prompt (with the key actually bound) lead the way. The mechanic is unchanged (one use starts it, it finishes in 1.4 s wherever the player goes).
 
+In the options and the hilt menu, four texts no longer refer to the mod's history ("aus Phase 12", "das alte Aussehen", "(wie bisher)", "der ersten Version"): they describe the setting as it is.
+
 Also: the one-time toast about the menu key no longer tells the history of the change ("vorher V, das jetzt frei ist, z. B. für Simple Voice Chat"); five text keys no longer used are deleted. **New texts in this phase:** only the credit "Erstellt von Phiro" / "Created by Phiro". The hangar's seal and her new behaviour have no texts. The new and changed texts were reviewed; helpful mission hints stay.
 
 ## 9. The chapter's end (9)
@@ -95,16 +100,16 @@ Shown **15 s** instead of 18 (the text fully visible about 11.5 s, fading in and
 
 `Phase32GameTest` (new, about 6 min; env `PHASE32_ONLY` selects parts) checks Phiro's 15 points in the real game:
 
-- **texts:** no story hint, objective, prompt, radio or HUD text with "von selbst", "automatisch", "by itself", "automatically", "Rechtsklick", "right-click" (control texts like the screws' and the dialog's excepted); both languages have the same keys; the removed keys are gone; the credit is there.
+- **texts:** no story hint, objective, prompt, radio or HUD text with "von selbst", "automatisch", "by itself", "automatically", "Rechtsklick", "right-click" (control texts like the screws' and the dialog's excepted); no text at all (options included) that tells the mod's history ("Phase 12", "wie bisher", "as before", "first version", "old look" …); both languages have the same keys; the removed keys are gone; the credit is there.
 - **end:** 240 to 359 ticks; the credit not drawn before age 50, drawn from about age 60; the screen gone after its time; screenshot.
-- **hud:** the stamina bar (stamina held low) is not drawn in the duel's film at its start, in the film of the scene at half her strength and in her defeat's film, and is drawn again after them.
-- **sound:** no whirr in her blade work (apart from a thrown staff), exactly one loop in her ring's mode, gone within 40 ticks of the ring stopping, stopped at a film's start and back after it, gone after a capture and after leaving.
+- **hud:** the stamina bar (stamina held low) is not drawn in the duel's film at its start, in the film of the scene at half her strength and in her defeat's film, and is drawn again after each of them.
+- **sound:** no whirr in her blade work (apart from a thrown staff), exactly one loop in her ring's mode, gone within 40 ticks of the ring stopping, stopped at a film's start and back after it; playing before a capture and gone after it; playing before leaving the story and gone within 3 ticks of it (before it could fade out by itself).
 - **spin:** hit at once with health lost at 16 places in the circle (0.7 to 3.15 blocks, before her, at both sides, behind her); kept in it: hit twice; a stroke into it does not end it; jumping and running past her through it: hit; outside the circle: nothing; a guard held up in it lets the next blow through in part.
-- **throw:** two throws: let go at her right, high (1.87) and low (0.6) in turn, from her right hand; she is open as she catches the staff.
-- **defence:** 55 s of her second phase against a player who strikes at the right moments: at least a fifth of the strokes hit, her guard is worn down at least once, she attacks at least 8 times, her ring's mode comes at least twice with stretches of 6 to 21 s and blade work of at least 8 s between them, the client's ring still in her blade work; a player hammering at her guard gets her riposte, which reaches the player, and not every stroke is turned aside.
+- **throw:** the release as the client draws it, high and low, at 12 angles of the spinning ring: clear of her body, in her hand (at most 0.12 short of the grip), within 0.25 of where the server lets the staff fly; two throws: let go at her right, high (1.87) and low (0.9) in turn, back into a right hand; she is open as she catches the staff.
+- **defence:** 55 s of her second phase against a player who strikes at the right moments: at least a fifth of the strokes hit, her guard is worn down at least once, she attacks at least 8 times, her ring's mode comes at least twice with stretches of 6 to 21 s and blade work of at least 8 s between them, the client's ring still in her blade work; a player hammering at her guard gets her riposte, which reaches the player, and not every stroke is turned aside; hasty strokes into her wind-up are beaten aside by her blow (and do not clash it away); of the hammering player's strokes clearly fewer hit her (under 85 % of the watching player's share) and her guard breaks less often in the same time; set back into the hangar in her second phase, the client still draws her second phase and her second blade.
 - **hangar:** both doors stay shut (walked at, pressed against, jumped at) and nobody gets through; a click on the hatch is refused, an open hatch is shut; the toolbox and the vent cover are not offered; set back in from the corridor and from the crawl way; the client's flag and screenshots of the lamps; after her defeat the doors open and the flag is gone; leaving the story frees the doors.
 
-Older tests adapted to the new rules (not loosened): `Phase29GameTest` (the hangar's door now stays shut in the duel), `Phase28GameTest` (she is set back into the sealed hangar), `Phase30GameTest` (no control hint on the walkway and no "by itself" texts at the maintenance door; the mechanic's checks unchanged).
+Older tests adapted to the new rules (not loosened): `Phase29GameTest` (the hangar's door now stays shut in the duel; its check that doors open for a player passing in a fight and do not flap beside one runs with the seal lifted for that part, and checks first that the door is not locked, so it cannot pass vacuously), `Phase28GameTest` (she is set back into the sealed hangar), `Phase30GameTest` (no control hint on the walkway and no "by itself" texts at the maintenance door; the mission's own hint allowed; the mechanic's checks unchanged). `StoryGameTest`'s rule from Phase 21 (three strokes in a row into her guard are answered) holds again: the first Phase 32 builds did not count a full stroke in the row.
 
 RESULTS_PLACEHOLDER
 
@@ -139,7 +144,7 @@ Mit der JAR aus diesem PR, am einfachsten über **Story → Kapitel 1** und den 
 **4. Animationen**
 
 9. Das Schwert liegt in ihrer Hand, auch bei schnellen Wechseln; es schwebt nicht vor ihr.
-10. Wurf: sie holt rechts aus, wirft einmal hoch über den Kopf, einmal tief auf die Beine; die Klinge kommt in ihre rechte Hand zurück, danach ist sie kurz offen.
+10. Wurf: sie holt rechts aus, wirft einmal hoch über den Kopf, einmal tief auf die Beine (aus Hüfthöhe neben ihr); die Klinge kommt in ihre rechte Hand zurück, auch wenn sie sich inzwischen gedreht hat, danach ist sie kurz offen.
 11. Schläge im Ringmodus: die schlagende Klinge zeigt in Schlagrichtung, der Ring dreht dabei langsamer.
 
 **5. Wechsel Klinge / Rotation in Phase 2**
@@ -148,7 +153,7 @@ Mit der JAR aus diesem PR, am einfachsten über **Story → Kapitel 1** und den 
 
 **6. Verteidigung in Phase 2**
 
-13. Nur draufhauen: sie pariert, kontert aber auch und greift weiter an. Mehrere schwere Schläge hintereinander auf ihre Deckung brechen sie (sie taumelt): dann treffen.
+13. Nur draufhauen: sie pariert, kontert und sammelt sich dabei; so bricht ihre Deckung nur selten. Mit Pausen gesetzte volle Schläge (etwa drei) brechen sie (sie taumelt): dann treffen. Abwarten und im richtigen Moment zuschlagen soll sich deutlich mehr lohnen.
 14. Von der Seite in ihren ausholenden Schlag, von hinten, nach einem Ausweichen direkt unter ihrem Schlag, nach dem Fangen ihres Wurfs: Treffer möglich.
 15. Fühlt sich Phase 2 fair, aber anspruchsvoll an? Zu leicht oder zu schwer? Bitte melden (auch auf Leicht und Schwer).
 

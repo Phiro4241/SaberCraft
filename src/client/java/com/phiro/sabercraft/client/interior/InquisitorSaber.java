@@ -223,6 +223,20 @@ final class InquisitorSaber {
 		return out;
 	}
 
+	/**
+	 * Phase 32: while the staff is away from her hands (thrown, or guided round her in her spin's
+	 * whirl): where it comes back into her right hand, held out after it, the grip forward (body
+	 * space), kept as the hold last drawn; so that the hold she takes up again goes there from her
+	 * hand in a quick motion, not in one frame from wherever it was before she let go.
+	 */
+	static void caught(int seed, float t, float[] hand) {
+		float[] a = CrewModels.norm(0.0F, 0.12F, 1.0F);
+		Hold caught = of(new float[] {hand[0] + a[0] * HAND, hand[1] + a[1] * HAND, hand[2] + a[2] * HAND}, a, new float[] {0.0F, 1.0F, 0.0F});
+		FOLLOWED.put(seed, new float[] {t, caught.c()[0], caught.c()[1], caught.c()[2], caught.a()[0], caught.a()[1], caught.a()[2], caught.d()[0],
+				caught.d()[1], caught.d()[2]});
+		MOVED.remove(seed);
+	}
+
 	private static float[] toward(float[] from, float[] to, float most) {
 		float dx = to[0] - from[0];
 		float dy = to[1] - from[1];

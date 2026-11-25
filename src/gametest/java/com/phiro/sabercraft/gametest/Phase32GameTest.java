@@ -159,6 +159,12 @@ public class Phase32GameTest implements FabricClientGameTest {
 
 	/** Words that tell the player how something is made to work (the door "opens by itself"), or name a mouse button instead of the key bound. */
 	private static final List<String> TECHNICAL = List.of("von selbst", "automatisch", "by itself", "automatically", "rechtsklick", "right-click", "right click");
+	/**
+	 * Words of the mod's making in any text (options, menus, the story): its phases, how it looked
+	 * or worked before. The player is not told of changes to the game (Phiro, Phase 32).
+	 */
+	private static final java.util.regex.Pattern HISTORY = java.util.regex.Pattern.compile(
+			"\\bphase \\d|wie bisher|\\bas before|ersten version|first version|alte aussehen|old look|vorher v\\b|jetzt frei|now free");
 	/** Text keys of the story that are about controls by their nature (they name the key bound, or holding a mouse button for the screws). */
 	private static final List<String> CONTROLS = List.of("sabercraft.story.cover.", "sabercraft.story.dialog.", "sabercraft.story.film.skip", "sabercraft.story.hint.vent");
 	/** Text keys only the code taken out in Phase 32 used (the release's texts at the maintenance door, two dead ones of Phase 30). */
@@ -190,6 +196,12 @@ public class Phase32GameTest implements FabricClientGameTest {
 
 		for (Map.Entry<String, JsonObject> lang : langs.entrySet()) {
 			for (String key : lang.getValue().keySet()) {
+				String text = lang.getValue().get(key).getAsString().toLowerCase(Locale.ROOT);
+
+				if (HISTORY.matcher(text).find()) {
+					technical.add(lang.getKey() + " " + key + " (the mod's history)");
+				}
+
 				boolean story = key.startsWith("sabercraft.story.hint.") || key.startsWith("sabercraft.story.obj.") || key.startsWith("sabercraft.story.point.")
 						|| key.startsWith("sabercraft.story.hud.") || key.startsWith("sabercraft.story.radio.") || key.startsWith("sabercraft.hint.")
 						|| key.startsWith("sabercraft.interior.");
@@ -436,6 +448,7 @@ public class Phase32GameTest implements FabricClientGameTest {
 			this.context.waitTick();
 		}
 
+		check(this.context.computeOnClient(client -> RingSound.playingForTest()) == 1, "her ring's whirr does not play before the capture");
 		int captures = this.on(s -> Story.capturesForTest());
 		this.server.runOnServer(s -> {
 			ServerPlayer me = this.me(s);
@@ -456,7 +469,29 @@ public class Phase32GameTest implements FabricClientGameTest {
 		check(loud == 0, "her ring's whirr goes on " + loud + " ticks after the player was caught");
 		this.server.runCommand("effect give @a minecraft:resistance 100000 4 true");
 		this.leave();
+		// Leaving the story in her ring's mode: the whirr stops at once (within 3 ticks: by itself,
+		// her figure no longer drawn, it would fade out only after 4 ticks and more).
+		if (!this.secondPhase()) {
+			return;
+		}
+
+		this.server.runOnServer(s -> {
+			this.before(s, 2.6);
+			StoryTesting.ringModeNow(this.session(s), this.her(s));
+			this.session(s).timer("ring_mode", 4000);
+		});
+
+		for (int i = 0; i < 40 && this.context.computeOnClient(client -> RingSound.playingForTest()) == 0; i++) {
+			this.context.waitTick();
+		}
+
+		check(this.context.computeOnClient(client -> RingSound.playingForTest()) == 1, "her ring's whirr does not play before leaving");
+		this.context.runOnClient(client -> StoryClient.send(StoryActionPayload.LEAVE, "", 0));
+		this.context.waitTicks(3);
 		check(this.context.computeOnClient(client -> RingSound.playingForTest()) == 0, "her ring's whirr goes on after leaving the story");
+		this.context.waitTicks(27);
+		check(this.on(s -> !Story.playing(this.me(s))), "still in the story after leaving");
+		check(this.context.computeOnClient(client -> RingSound.playingForTest()) == 0, "her ring's whirr comes back after leaving the story");
 	}
 
 	/**
@@ -693,6 +728,18 @@ public class Phase32GameTest implements FabricClientGameTest {
 
 		boolean[] seen = new boolean[2];
 		int catches0 = this.on(s -> StoryTesting.catches());
+		// Her release as drawn: the spinning staff clear of her body, in her hand, where the server
+		// lets it fly (the low one was drawn a block out, its flat disc through her legs).
+		float[][] release = this.context.computeOnClient(client -> MeshAudit.throwRelease());
+
+		for (int low = 0; low <= 1; low++) {
+			String which = low == 1 ? "low" : "high";
+			SaberCraft.LOGGER.info("PHASE32 THROW RELEASE {}: {} poses touching her, hand at most {} short of the grip, drawn {} from the server's start",
+					which, (int) release[low][0], String.format(Locale.ROOT, "%.2f", release[low][1]), String.format(Locale.ROOT, "%.2f", release[low][2]));
+			check(release[low][0] == 0, "her " + which + " throw's release is drawn through her body (" + (int) release[low][0] + " poses)");
+			check(release[low][1] <= 0.12F, "her " + which + " throw's release is drawn out of her hand (" + release[low][1] + ")");
+			check(release[low][2] <= 0.25F, "her " + which + " throw's release is drawn " + release[low][2] + " from where it flies from");
+		}
 
 		for (int round = 0; round < 2; round++) {
 			this.server.runOnServer(s -> {
@@ -732,7 +779,7 @@ public class Phase32GameTest implements FabricClientGameTest {
 						wrong.add(String.format(Locale.ROOT, "let go %.2f to her right", from.dot(right)));
 					}
 
-					double height = low ? 0.6 : StoryTesting.throwHigh();
+					double height = low ? StoryTesting.throwLowHeight() : StoryTesting.throwHigh();
 
 					if (Math.abs(from.y - height) > 0.2) {
 						wrong.add(String.format(Locale.ROOT, "let go %.2f over her feet (%s throw, %.2f wanted)", from.y, low ? "low" : "high", height));
@@ -946,6 +993,16 @@ public class Phase32GameTest implements FabricClientGameTest {
 		// guard is worn down more slowly than by a player who watches her (above).
 		check(beaten >= 1, "hasty strokes into her wind-up are never beaten aside by her blow");
 		check(clashesMash <= beaten, "hammering at her, her answers are clashed away " + clashesMash + " times (beaten aside " + beaten + ")");
+		// Watching her pays: of a hammering player's strokes clearly fewer hit her, and her guard is
+		// broken less often in the same time, than for the player who watched her above.
+		double rateWatching = hits / (double) Math.max(1, strokes);
+		double rateHammering = hitsMash / (double) Math.max(1, mashes);
+		SaberCraft.LOGGER.info("PHASE32 DEFENCE watching pays: hits per stroke {} watching, {} hammering; guard broken every {} ticks watching, every {} hammering",
+				String.format(Locale.ROOT, "%.2f", rateWatching), String.format(Locale.ROOT, "%.2f", rateHammering), breaks == 0 ? "-" : 1100 / breaks,
+				breaksMash == 0 ? "-" : 336 / breaksMash);
+		check(rateHammering < 0.85 * rateWatching, String.format(Locale.ROOT, "hammering at her pays as well as watching her (%.2f of the strokes hit her, %.2f watching)",
+				rateHammering, rateWatching));
+		check(breaksMash * 1100 < breaks * 336, "hammering at her breaks her guard as often as watching her (" + breaksMash + " in 336 ticks, " + breaks + " in 1100)");
 		// Set back into the sealed hangar in her second phase: the duel goes on as it was on the
 		// client too (her second blade, her phase), not drawn as at its start.
 		this.server.runOnServer(s -> this.teleport(s, this.session(s), new Vec3(40.5, H, -12.5), 0.0F));
@@ -1053,6 +1110,24 @@ public class Phase32GameTest implements FabricClientGameTest {
 		this.skip("duel_end");
 		this.waitStep("m6.falcon", 160);
 		this.context.waitTicks(10);
+
+		// After her defeat (its film and any words after it): the stamina bar back.
+		for (int i = 0; i < 40; i++) {
+			String film = this.context.computeOnClient(client -> StoryCinema.filmForTest());
+
+			if (film != null) {
+				this.skip(film);
+			} else if (this.on(s -> this.session(s).dialog != null)) {
+				this.server.runOnServer(s -> StoryTesting.answer(this.session(s), 0));
+				this.context.waitTicks(5);
+			} else if (this.context.computeOnClient(client -> client.gui.screen() == null)) {
+				break;
+			} else {
+				this.context.waitTicks(5);
+			}
+		}
+
+		this.drawnAgain("after her defeat");
 		check(!this.on(s -> StoryTesting.hangarSealed(this.session(s))), "the hangar stays sealed after her defeat");
 		check(!this.context.computeOnClient(client -> StoryClient.has(StoryTesting.hangarSealedFlag())), "the client still shows the hangar sealed after her defeat");
 		check(this.opens(main, new Vec3(40.5, H, -19.0), 0.0F), "after her defeat the hangar's main door does not open for the player");

@@ -150,7 +150,13 @@ public final class InteriorSystems {
 			}
 
 			// Phase 19: a story can keep a door shut (until a card, a console, a droid opens it).
-			boolean open = allOpen || wanted && !com.phiro.sabercraft.story.Story.locked(origin, door.x0(), door.y0(), door.z0());
+			boolean locked = !allOpen && wanted && com.phiro.sabercraft.story.Story.locked(origin, door.x0(), door.y0(), door.z0());
+			boolean open = allOpen || wanted && !locked;
+
+			if (locked) {
+				// Phase 32: someone at a door the story keeps shut (the sealed hangar's lock is heard).
+				com.phiro.sabercraft.story.Story.refused(origin, door.x0(), door.y0(), door.z0());
+			}
 
 			if (open && !isOpen) {
 				HELD_OPEN.put(key, now + DOOR_HOLD);

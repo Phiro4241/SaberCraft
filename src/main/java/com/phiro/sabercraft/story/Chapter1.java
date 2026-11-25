@@ -2280,7 +2280,10 @@ public final class Chapter1 implements Chapter {
 
 				// (Phase 32: in the hangar itself, clear of its door: it is sealed then. Before, any place
 				// south of the door's line counted, the crawl way and the flight control room too.)
-				if (D.equals(s.here) && me.z < DestroyerInterior.HANGAR_Z1 - 1.2 && me.y > H - 1.0 && me.y < H + 3.0 && inHangar(me)) {
+				// (And clear of the west wall's door to the flight control room and of the crawl way's
+				// hatch in it: standing in either, the step began with the player half out of the hangar.)
+				if (D.equals(s.here) && me.z < DestroyerInterior.HANGAR_Z1 - 1.2 && me.x > DestroyerInterior.HANGAR_X0 + 2.2 && me.y > H - 1.0 && me.y < H + 3.0
+						&& inHangar(me)) {
 					s.complete();
 				}
 			}
@@ -4349,7 +4352,7 @@ public final class Chapter1 implements Chapter {
 				return false;
 			}
 
-			sealedDoor(s, x, y, z);
+			// (Its lock is heard from refused(), when someone comes to it: not on each path search.)
 			return true;
 		}
 
@@ -4681,8 +4684,11 @@ public final class Chapter1 implements Chapter {
 	 * once the step is over or the story is left.
 	 */
 	public static boolean hangarSealed(StorySession s) {
-		return s.at("m6.duel") && !s.has("gone.shadow");
+		return !unsealedForTest && s.at("m6.duel") && !s.has("gone.shadow");
 	}
+
+	/** Phase 32, for the tests: the seal lifted (the doors' fight rules tested beside the duel's arena, Phase 29). */
+	static boolean unsealedForTest;
 
 	/** Phase 32: the client's flag for it (derived each time, never saved): the doors' lamps red. */
 	public static final String HANGAR_SEALED = "hangar.sealed";
@@ -4729,9 +4735,16 @@ public final class Chapter1 implements Chapter {
 		return false;
 	}
 
+	@Override
+	public void refused(StorySession s, String ship, int x, int y, int z) {
+		if (D.equals(ship) && hangarSealed(s) && hangarDoor(x, y, z)) {
+			sealedDoor(s, x, y, z);
+		}
+	}
+
 	/**
-	 * Phase 32: the player at a sealed door (pressing against it): its lock is heard (now and then,
-	 * not every tick). No words: the red lamp and the lock say it.
+	 * Phase 32: the player at a sealed door (pressing against it, anywhere along it): its lock is
+	 * heard (now and then, not every tick). No words: the red lamp and the lock say it.
 	 */
 	private static void sealedDoor(StorySession s, int x, int y, int z) {
 		if (!D.equals(s.here) || s.timer("sealed_door")) {
@@ -4742,10 +4755,13 @@ public final class Chapter1 implements Chapter {
 			com.phiro.sabercraft.interior.InteriorPlan.Door door = DestroyerInterior.DOORS.get(index);
 
 			if (door.x0() == x && door.y0() == y && door.z0() == z) {
-				Vec3 middle = new Vec3((door.x0() + door.x1() + 1) / 2.0, door.y0(), (door.z0() + door.z1() + 1) / 2.0);
+				// (Measured from the door itself, its whole width: from its middle the lock was not heard
+				// at the ends of the wide main door.)
 				Vec3 me = s.local(D);
+				double nearX = Mth.clamp(me.x, door.x0(), door.x1() + 1.0);
+				double nearZ = Mth.clamp(me.z, door.z0(), door.z1() + 1.0);
 
-				if (Math.hypot(me.x - middle.x, me.z - middle.z) < SEALED_NEAR) {
+				if (Math.hypot(me.x - nearX, me.z - nearZ) < SEALED_NEAR) {
 					s.timer("sealed_door", 40);
 					sealedRefusals++;
 					Story.cue(s, Story.CUE_SOUND, "", "story.door_lock", 0);
@@ -4756,8 +4772,8 @@ public final class Chapter1 implements Chapter {
 		}
 	}
 
-	/** Phase 32: how near a sealed door one has to come for its lock to be heard (its middle, blocks). */
-	static final double SEALED_NEAR = 1.9;
+	/** Phase 32: how near a sealed door one has to come for its lock to be heard (from the door, blocks). */
+	static final double SEALED_NEAR = 1.2;
 
 	/** Phase 32: a sealed hatch tried from the hangar: its lock is heard, nothing is said. */
 	public static void sealedHatch(StorySession s) {

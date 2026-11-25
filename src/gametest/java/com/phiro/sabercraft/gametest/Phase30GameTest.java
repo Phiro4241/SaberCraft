@@ -607,7 +607,9 @@ public class Phase30GameTest implements FabricClientGameTest {
 		this.put(new Vec3(48.6, R, 16.0), 180.0F, 5.0F);
 		this.context.waitTicks(10);
 		String walkHint = this.context.computeOnClient(client -> StoryClient.hintForTest());
-		check(walkHint == null || !walkHint.contains("service"), "walking up to the locked door still shows a control text (" + walkHint + ")");
+		// (The mission's own hint of the way, from the escape's start, may still show: it is no control text.)
+		check(walkHint == null || "sabercraft.story.hint.service_way".equals(walkHint) || !walkHint.contains("service"),
+				"walking up to the locked door still shows a control text (" + walkHint + ")");
 		this.context.takeScreenshot("phase30_release_door");
 		// One click on the panel (as the client sends it), then walk away and look elsewhere.
 		this.put(new Vec3(48.6, R, 13.0), 90.0F, 10.0F);

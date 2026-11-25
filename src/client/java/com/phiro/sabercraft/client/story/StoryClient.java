@@ -1037,6 +1037,14 @@ static final int CHECKPOINT_TICKS = 60;
 			return null;
 		}
 
+		// Phase 32: back into her hand where it is drawn now (as the server reckons it each tick).
+		for (Pose pose : figures(origin, partial)) {
+			if ("shadow".equals(pose.fig().kind())) {
+				hand = StaffThrow.hand(new Vec3(origin.getX() + pose.x(), origin.getY() + pose.y(), origin.getZ() + pose.z()), pose.head());
+				break;
+			}
+		}
+
 		Vec3 at = StaffThrow.at(from, far, hand, throwOut, throwBack, t);
 		float yaw = StaffThrow.yaw(from, far, hand, throwOut, throwBack, t);
 		return new float[] {(float) (at.x - origin.getX()), (float) (at.y - origin.getY()), (float) (at.z - origin.getZ()), yaw, t * StaffThrow.SPIN};

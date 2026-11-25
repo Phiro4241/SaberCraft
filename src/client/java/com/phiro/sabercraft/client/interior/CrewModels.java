@@ -328,6 +328,11 @@ final class CrewModels {
 
 		if (thrown) {
 			hilt = null;
+
+			if (gear.inquisitor()) {
+				// (Phase 32: caught back, it is taken up from her outstretched hand.)
+				InquisitorSaber.caught(seed, t, new float[] {-0.14F, shoulder + 0.06F, 0.6F});
+			}
 		}
 
 		// Phase 26: her Inquisitor's saber: the ring where the single blade's emitter was, or in the
@@ -759,7 +764,9 @@ final class CrewModels {
 			// Phase 32: her ring's mode: the disc held up before her, as before the rush (the grip at
 			// the player, the disc upright between them), where the server cuts with it
 			// (StoryFiguresPayload.DISC_AHEAD / DISC_HEIGHT); what she does besides goes from there.
-			hold = blend(hold, gear.disc(), new float[] {-0.04F, shoulder - 0.12F, 0.56F}, new float[] {0.0F, 0.12F, 1.0F}, new float[] {0.0F, 1.0F, 0.0F});
+			hold = blend(hold, gear.disc(), new float[] {-0.04F, (float) com.phiro.sabercraft.network.StoryFiguresPayload.DISC_HEIGHT - LEG,
+					(float) com.phiro.sabercraft.network.StoryFiguresPayload.DISC_AHEAD},
+					new float[] {0.0F, 0.12F, 1.0F}, new float[] {0.0F, 1.0F, 0.0F});
 		}
 
 		if (gear.blur() > 0.0F) {
@@ -772,7 +779,9 @@ final class CrewModels {
 			float u = Mth.clamp(gear.blur() * 4.0F, 0.0F, 1.0F) * Mth.clamp((shoulder + DISC_HIGH - hold.c()[1]) / DISC_FADE, 0.0F, 1.0F);
 			float[] hc = hold.c();
 			float[] ha = hold.a();
-			hold = InquisitorSaber.of(new float[] {hc[0], hc[1] + DISC_RAISE * u, hc[2]}, norm(ha[0], ha[1] * Mth.lerp(u, 1.0F, DISC_UPRIGHT), ha[2]),
+			// (Phase 32: not raised in her ring's mode: held there where the server cuts with it.)
+			hold = InquisitorSaber.of(new float[] {hc[0], hc[1] + DISC_RAISE * u * (1.0F - Mth.clamp(gear.disc(), 0.0F, 1.0F)), hc[2]},
+					norm(ha[0], ha[1] * Mth.lerp(u, 1.0F, DISC_UPRIGHT), ha[2]),
 					hold.d());
 		}
 
@@ -817,10 +826,15 @@ final class CrewModels {
 
 			if (e > 0.0F) {
 				e = e * e * (3.0F - 2.0F * e);
-				float[] at = gear.aim() > 0.5F ? THROW_LOW_AT : THROW_HIGH_AT;
+				boolean low = gear.aim() > 0.5F;
+				float[] at = low ? THROW_LOW_AT : THROW_HIGH_AT;
+				// (Low: the grip out to her right, the disc upright beside her hip, clear of her legs:
+				// held flat at the shins it went through them and was pushed a block out of her hand.)
+				float[] ta = low ? THROW_LOW_GRIP : new float[] {0.0F, 1.0F, 0.25F};
+				float[] td = low ? new float[] {0.0F, 1.0F, 0.0F} : new float[] {-1.0F, 0.0F, 0.0F};
 				c = new float[] {Mth.lerp(e, c[0], at[0]), Mth.lerp(e, c[1], shoulder + at[1]), Mth.lerp(e, c[2], at[2])};
-				a = new float[] {Mth.lerp(e, a[0], 0.0F), Mth.lerp(e, a[1], 1.0F), Mth.lerp(e, a[2], 0.25F)};
-				d = new float[] {Mth.lerp(e, d[0], -1.0F), Mth.lerp(e, d[1], 0.0F), Mth.lerp(e, d[2], 0.0F)};
+				a = new float[] {Mth.lerp(e, a[0], ta[0]), Mth.lerp(e, a[1], ta[1]), Mth.lerp(e, a[2], ta[2])};
+				d = new float[] {Mth.lerp(e, d[0], td[0]), Mth.lerp(e, d[1], td[1]), Mth.lerp(e, d[2], td[2])};
 			}
 		}
 
@@ -849,10 +863,12 @@ final class CrewModels {
 	 * Phase 32: where she lets go of her staff in the throw (body space; the height over her
 	 * shoulder): at her right, as the server's flight begins (Finale.throwTick): over her head and a
 	 * little before it (an overhand throw from the wind-up: the flat disc clears her head, the grip
-	 * within her arm's reach), or for a throw at the legs low before her, at the shins.
+	 * within her arm's reach), or for a throw at the legs beside her right hip, the disc upright out at
+	 * her side (Finale.THROW_LOW, THROW_LOW_SIDE, THROW_LOW_AHEAD: 0.9 over her feet, the shoulder 1.32).
 	 */
 	static final float[] THROW_HIGH_AT = {-0.3F, 0.55F, 0.22F};
-	static final float[] THROW_LOW_AT = {-0.3F, -0.72F, 0.35F};
+	static final float[] THROW_LOW_AT = {-0.55F, -0.42F, 0.3F};
+	static final float[] THROW_LOW_GRIP = {-1.0F, 0.0F, 0.15F};
 
 	/** Phase 30: the spinning disc stood upright: how much of the grip's upward tilt stays, and how far it is raised (blocks). */
 	static final float DISC_UPRIGHT = 0.2F;

@@ -6,6 +6,7 @@ import java.util.Map;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.resources.sounds.AbstractTickableSoundInstance;
 import net.minecraft.client.resources.sounds.SoundInstance;
+import net.minecraft.client.sounds.SoundManager;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.Mth;
@@ -56,7 +57,9 @@ public final class RingSound {
 		float fast = Math.abs(speed);
 		Loop loop = LOOPS.get(id);
 
-		if (loop != null && loop.isStopped()) {
+		// (A loop the sound engine dropped by itself, say its channels all taken or the sounds
+		// reloaded, is gone too: without this it was kept, silent, and no new one was begun.)
+		if (loop != null && (loop.isStopped() || !client.getSoundManager().isActive(loop))) {
 			LOOPS.remove(id);
 			loop = null;
 		}
@@ -67,9 +70,13 @@ public final class RingSound {
 			}
 
 			loop = new Loop(id);
+
+			if (client.getSoundManager().play(loop) == net.minecraft.client.sounds.SoundEngine.PlayResult.NOT_STARTED) {
+				return;
+			}
+
 			LOOPS.put(id, loop);
 			started++;
-			client.getSoundManager().play(loop);
 		}
 
 		loop.speed = fast;
@@ -93,8 +100,10 @@ public final class RingSound {
 	public static int playingForTest() {
 		int playing = 0;
 
+		SoundManager sounds = Minecraft.getInstance().getSoundManager();
+
 		for (Loop loop : LOOPS.values()) {
-			if (!loop.isStopped()) {
+			if (!loop.isStopped() && sounds.isActive(loop)) {
 				playing++;
 			}
 		}
@@ -110,7 +119,7 @@ public final class RingSound {
 	/** Phase 32, for the tests: how loud the loop of that figure is now (0 without one). */
 	public static float volumeForTest(int id) {
 		Loop loop = LOOPS.get(id);
-		return loop == null || loop.isStopped() ? 0.0F : loop.getVolume();
+		return loop == null || loop.isStopped() || !Minecraft.getInstance().getSoundManager().isActive(loop) ? 0.0F : loop.getVolume();
 	}
 
 	private static final class Loop extends AbstractTickableSoundInstance {

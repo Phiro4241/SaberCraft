@@ -58,6 +58,13 @@ public interface Chapter {
 		return false;
 	}
 
+	/**
+	 * Phase 32: someone came to that door (plot space, its first cell) and it stayed shut, locked by
+	 * the story (the door system asks; a path search does not). By default nothing happens.
+	 */
+	default void refused(StorySession session, String ship, int x, int y, int z) {
+	}
+
 	/** Phase 20: the step's safe place now (by default the step's own; a chapter may choose by what is known). */
 	default Mission.Place place(StorySession session, Mission.Step step) {
 		return new Mission.Place(step.ship(), step.spawn(), step.yaw());

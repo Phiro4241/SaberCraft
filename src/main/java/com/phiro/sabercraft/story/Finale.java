@@ -303,6 +303,8 @@ final class Finale {
 	static final float POISE_DISC = 0.12F;
 	static final float[] POISE_BY = {1.3F, 1.0F, 0.8F};
 	static final int POISE_REST = 50;
+	/** Phase 32: the poise she gathers with her answer to strokes hammered at her guard. */
+	static final float POISE_ANSWER = 0.2F;
 	static final float POISE_BACK = 0.025F;
 	static final int GUARD_BREAK_OPENING = 22;
 	/**
@@ -351,6 +353,14 @@ final class Finale {
 
 	/** Phase 32: how high over her feet a high throw is let go (over her head: see CrewModels.THROW_HIGH_AT; the shoulder 1.32 over her feet). */
 	static final double THROW_HIGH = 1.87;
+	/**
+	 * Phase 32: where a low throw (at the legs) is let go: beside her right hip, its spinning disc
+	 * standing upright out at her side (see CrewModels.THROW_LOW_AT): held flat at the shins, as it
+	 * was, the disc went through her legs and was drawn pushed a block out of her hand.
+	 */
+	static final double THROW_LOW = 0.9;
+	static final double THROW_LOW_SIDE = 0.55;
+	static final double THROW_LOW_AHEAD = 0.3;
 	static final float STRAIN_PERFECT = 0.04F;
 	static final float UNSTABLE = 0.35F;
 	/** Phase 28: a blow that breaks the guard still comes through, weakened. */
@@ -838,7 +848,8 @@ final class Finale {
 		// Phase 23: a full swing (after a pause), one from a jump or a run is a heavy stroke; quick
 		// strokes one after the other are light ones.
 		long now = s.time();
-		boolean heavy = now - s.lastStroke >= HEAVY_GAP || !player.onGround() && player.getDeltaMovement().y < -0.05 || player.isSprinting();
+		boolean full = now - s.lastStroke >= HEAVY_GAP;
+		boolean heavy = full || !player.onGround() && player.getDeltaMovement().y < -0.05 || player.isSprinting();
 		s.lastStroke = now;
 
 		if (!best.saber) {
@@ -846,7 +857,7 @@ final class Finale {
 			return;
 		}
 
-		duelStroke(s, best, player, eye, level, at, heavy);
+		duelStroke(s, best, player, eye, level, at, heavy, full);
 	}
 
 	/**
@@ -856,7 +867,7 @@ final class Finale {
 	 * stroke throws her back); into her guard she turns it aside, and answers strokes hammered at
 	 * her guard with a quick thrust; in the blade lock each stroke pushes against her blade.
 	 */
-	private static void duelStroke(StorySession s, Figure f, ServerPlayer player, Vec3 eye, ServerLevel level, Vec3 at, boolean heavy) {
+	private static void duelStroke(StorySession s, Figure f, ServerPlayer player, Vec3 eye, ServerLevel level, Vec3 at, boolean heavy, boolean full) {
 		Vec3 corner = Vec3.atLowerCornerOf(s.origin(s.here));
 		Vec3 me = player.position().subtract(corner);
 
@@ -909,11 +920,13 @@ final class Finale {
 					return;
 				}
 
-				if (!heavy && phase(f) >= 2) {
+				if (!full && phase(f) >= 2) {
 					// Phase 32: a hasty stroke from before her into her wind-up (in her second phase): her
 					// blow wins, it beats the blade aside and falls at once. Only a full stroke meets it
 					// (the clash). Before, every stroke clashed: hammering away broke each of her answers
 					// and wore her guard down besides; waiting for the right moment was worth nothing.
+					// (Hasty by the time since the last stroke only: running or jumping, strokes still
+					// come as fast as the player clicks; they hit harder, they do not beat her defence.)
 					beatenAside(s, f, player, me, level, corner);
 					return;
 				}
@@ -994,11 +1007,11 @@ final class Finale {
 			// Phase 32: the ring's mode: the spinning disc before her turns the stroke aside (it
 			// wears her poise less than her blade's parry: the disc does the work).
 			discTurns(s, f, player, me, level, corner);
-			wearPoise(s, f, POISE_DISC * (heavy ? 1.5F : 1.0F), level, corner, me);
+			wearPoise(s, f, POISE_DISC * (full ? 1.5F : 1.0F), level, corner, me);
 			return;
 		}
 
-		parried(s, f, player, me, level, corner, heavy);
+		parried(s, f, player, me, level, corner, full);
 	}
 
 	/**
@@ -1276,7 +1289,7 @@ final class Finale {
 	 * shove with the Force when one is close), full strokes in a good rhythm are not; now and then
 	 * she gives a step with the parry.
 	 */
-	private static void parried(StorySession s, Figure f, ServerPlayer player, Vec3 me, ServerLevel level, Vec3 corner, boolean heavy) {
+	private static void parried(StorySession s, Figure f, ServerPlayer player, Vec3 me, ServerLevel level, Vec3 corner, boolean full) {
 		Vec3 contact = contact(f, me).add(corner);
 		boolean worn = f.poise < 0.45F;
 		level.sendParticles(ParticleTypes.ELECTRIC_SPARK, contact.x, contact.y, contact.z, worn ? 16 : 10, 0.08, 0.08, 0.08, 0.35);
@@ -1289,21 +1302,31 @@ final class Finale {
 			return;
 		}
 
-		if (wearPoise(s, f, heavy ? POISE_HEAVY : POISE_LIGHT, level, corner, me)) {
+		if (wearPoise(s, f, full ? POISE_HEAVY : POISE_LIGHT, level, corner, me)) {
 			return;
 		}
 
 		f.react(Figure.PARRY, 6);
 
-		if (heavy) {
-			// A full stroke: she gives a step with it (no answer: she is busy holding it).
+		if (full) {
+			// A full stroke (after a pause): she gives a step with it (no answer: she is busy holding
+			// it). (Phase 32: by the pause alone: before, every stroke running or jumping counted, and
+			// strokes hammered while running held her in parries for good and broke her guard.) It
+			// begins a row of strokes into her guard: hammered on after it, they are answered as
+			// before (three in a row in her first phase, the first of them after a pause); full
+			// strokes with pauses between them are a new row each time.
+			f.parried = 1;
 			Hits.push(f, me, worn ? 0.22 : 0.14);
 			return;
 		}
 
 		if (++f.parried >= PARRIES[phase(f)]) {
 			// Hammering at her guard: she answers at once (Phase 32: a thrust, or with the player
-			// close a shove with the Force; not the same answer twice running).
+			// close a shove with the Force; not the same answer twice running). Phase 32: and she
+			// gathers herself as she takes the fight back: hammered at, her guard is worn down much
+			// more slowly than by full strokes with pauses between them (each a row of its own,
+			// never answered); watching her for the moment pays, hammering hardly does.
+			f.poise = Math.min(1.0F, f.poise + POISE_ANSWER);
 			double distance = Math.hypot(me.x - f.x, me.z - f.z);
 
 			if (ringDue(s, f) && distance < RING_SWITCH_NEAR) {
@@ -1443,7 +1466,8 @@ final class Finale {
 	 * through the player harmlessly.
 	 */
 	private static void discContact(StorySession s, Figure f, ServerPlayer player, Vec3 me, ServerLevel level, Vec3 corner, int phase) {
-		if (phase < 2 || !discUp(f) || !inDisc(f, me) || s.time() - f.discHitAt < Math.max(1, scaled(f, DISC_REHIT))) {
+		// (Counted in her own ticks, as her spin's re-hits: under the Focus the disc too cuts half as often.)
+		if (phase < 2 || !discUp(f) || !inDisc(f, me) || f.duelTicks - f.discHitAt < Math.max(1, scaled(f, DISC_REHIT))) {
 			return;
 		}
 
@@ -1451,7 +1475,7 @@ final class Finale {
 			return;
 		}
 
-		f.discHitAt = s.time();
+		f.discHitAt = f.duelTicks;
 		Vec3 at = discMiddle(f).add(corner);
 		Vec3 out = new Vec3(me.x - f.x, 0.0, me.z - f.z);
 		out = out.lengthSqr() < 1.0E-4 ? f.look() : out.normalize();
@@ -1663,6 +1687,7 @@ final class Finale {
 	}
 
 	private static void duel(StorySession s, Figure f, ServerPlayer player, Vec3 me, ServerLevel level, Vec3 corner) {
+		f.duelTicks++;
 		int phase = phase(f);
 		// Phase 27: how she fights by the story's difficulty.
 		StoryDifficulty difficulty = s.difficulty();
@@ -1748,15 +1773,12 @@ final class Finale {
 				return;
 			}
 
+			// (Phase 32: struck from behind as she spins the ring up, the hit itself ends the switch, see
+			// fromBehind; from before her the spinning ring turns the stroke aside and the switch goes on.)
 			if (f.action == WINDUP && !f.turnabout || f.action == RUSH) {
 				act(f, GUARD, 0, 0);
 				f.lunge = false;
 				f.cooldown = pause(f, phase);
-			} else if (f.action == RING_START) {
-				// Phase 32: struck while she spins the ring up: the switch is broken off (she tries again a little later).
-				act(f, GUARD, 0, 0);
-				f.cooldown = pause(f, phase);
-				s.timer("ring_rest", scaled(f, 60));
 			}
 
 			return;
@@ -3022,9 +3044,10 @@ final class Finale {
 			// (Phase 29: thrown low from low down, skimming at shin height: a jump clears it.)
 			// (Phase 32: at her right, where the staff is drawn as she lets go (CrewModels.THROW_HIGH_AT,
 			// THROW_LOW_AT): high over her head, a little before it, from the wind-up; low before her.
-			// It was at her left, at her head's height.)
+			// It was at her left, at her head's height. The low one beside her right hip: thrown down at
+			// the legs from there, it reaches them at the shins all the same.)
 			Vec3 right = new Vec3(-look.z, 0.0, look.x);
-			Vec3 start = f.throwLow ? f.position().add(corner).add(0.0, 0.6, 0.0).add(look.scale(0.35)).add(right.scale(0.3))
+			Vec3 start = f.throwLow ? f.position().add(corner).add(0.0, THROW_LOW, 0.0).add(look.scale(THROW_LOW_AHEAD)).add(right.scale(THROW_LOW_SIDE))
 					: f.position().add(corner).add(0.0, THROW_HIGH, 0.0).add(look.scale(0.22)).add(right.scale(0.3));
 			Vec3 target = player.position().add(0.0, f.throwLow ? 0.25 : 1.0, 0.0);
 			Vec3 dir = target.subtract(start).normalize();
@@ -3042,7 +3065,7 @@ final class Finale {
 			f.throwFrom = start;
 			f.throwFar = far;
 			// (Phase 32: back into her right hand as it is drawn out after the staff.)
-			f.throwHand = f.position().add(corner).add(0.0, 1.38, 0.0).add(look.scale(0.6)).add(right.scale(0.14));
+			f.throwHand = StaffThrow.hand(f.position().add(corner), f.headYaw);
 			f.throwOut = out;
 			f.throwBack = out + 2;
 			f.throwAge = 0;
@@ -3059,6 +3082,9 @@ final class Finale {
 		}
 
 		turn(f, me, 8.0F);
+		// Phase 32: it comes back into her hand where it is now (she follows the player round with
+		// her eyes meanwhile), not to where it was as she let go.
+		f.throwHand = StaffThrow.hand(f.position().add(corner), f.headYaw);
 		int t = ++f.throwAge;
 		Vec3 was = StaffThrow.at(f.throwFrom, f.throwFar, f.throwHand, f.throwOut, f.throwBack, t - 1);
 		Vec3 now = StaffThrow.at(f.throwFrom, f.throwFar, f.throwHand, f.throwOut, f.throwBack, t);

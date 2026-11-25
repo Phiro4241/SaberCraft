@@ -610,6 +610,15 @@ public final class Story {
 		return session != null && session.fighting && origin.equals(session.here != null ? session.origin(session.here) : null);
 	}
 
+	/** Phase 32: that door of a plot was wanted (someone at it) and stayed shut, locked by the story. */
+	public static void refused(BlockPos origin, int x, int y, int z) {
+		StorySession session = at(origin);
+
+		if (session != null) {
+			session.chapter.refused(session, origin.equals(session.falcon) ? FALCON : DESTROYER, x, y, z);
+		}
+	}
+
 	/** Whether that door of a plot is locked by a story. */
 	public static boolean locked(BlockPos origin, int x, int y, int z) {
 		StorySession session = at(origin);
@@ -847,7 +856,8 @@ public final class Story {
 
 			// (Phase 32: every tick in a fight: her wind-ups and turns are seen as they are, not a
 			// tick or two late in steps of two.)
-			if (server.getTickCount() % 2 == 0 || session.fighting) {
+			// (Under the Focus she moves every other tick only: every other tick then, each with a step.)
+			if (server.getTickCount() % 2 == 0 || session.fighting && !Finale.slowed(session)) {
 				sendFigures(session, player);
 			}
 
