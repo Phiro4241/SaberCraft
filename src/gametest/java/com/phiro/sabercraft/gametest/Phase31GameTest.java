@@ -685,10 +685,7 @@ public class Phase31GameTest implements FabricClientGameTest {
 				return null;
 			}
 
-			f.crew = Crew.at(Crew.TROOPER, Crew.STAND, f.x, f.y, f.z, f.yaw);
-			f.speed = 0.0F;
-			f.way = List.of();
-			return this.behindOf(s, f, 1.4);
+			return this.holdWithRoomBehind(s, f, 1.4);
 		});
 
 		if (back == null) {
@@ -772,10 +769,7 @@ public class Phase31GameTest implements FabricClientGameTest {
 				return "no lobby patrol";
 			}
 
-			f.crew = Crew.at(Crew.TROOPER, Crew.STAND, f.x, f.y, f.z, f.yaw);
-			f.speed = 0.0F;
-			f.way = List.of();
-			Vec3 back = this.behindOf(s, f, 1.3);
+			Vec3 back = this.holdWithRoomBehind(s, f, 1.3);
 
 			if (back == null) {
 				return "no place behind him";
@@ -1099,6 +1093,36 @@ public class Phase31GameTest implements FabricClientGameTest {
 	}
 
 	// --- Helpers ------------------------------------------------------------------------------------------------------
+
+	/**
+	 * Holds the patrol standing where he is for the test and gives a place behind him. He walks a
+	 * beat round the lobby: caught just after turning at one of its corners, his back is to the wall
+	 * and there is no room behind him (seen on CI, where the test reached him at another moment of
+	 * his walk). Then he is turned on the spot, a quarter at a time, until there is.
+	 */
+	private @Nullable Vec3 holdWithRoomBehind(MinecraftServer s, @Nullable Figure f, double distance) {
+		if (f == null) {
+			return null;
+		}
+
+		f.speed = 0.0F;
+		f.way = List.of();
+		float yaw = f.yaw;
+
+		for (int turn = 0; turn < 4; turn++) {
+			float facing = yaw + turn * 90.0F;
+			f.yaw = facing;
+			f.headYaw = facing;
+			f.crew = Crew.at(Crew.TROOPER, Crew.STAND, f.x, f.y, f.z, facing);
+			Vec3 back = this.behindOf(s, f, distance);
+
+			if (back != null) {
+				return back;
+			}
+		}
+
+		return null;
+	}
 
 	/** A free place behind one of the story's people (that far, or a little nearer or to the side), or null. */
 	private @Nullable Vec3 behindOf(MinecraftServer s, @Nullable Figure f, double distance) {
