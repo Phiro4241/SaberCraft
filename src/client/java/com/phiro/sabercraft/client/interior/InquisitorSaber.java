@@ -633,8 +633,8 @@ final class InquisitorSaber {
 	 * In flight (thrown, plot space): the ring spinning flat with both blades lit (a disc of light),
 	 * its grip upright through the middle.
 	 */
-	static void flying(MeshBuilder b, float x, float y, float z, float yaw, float spin, int colour) {
-		b.push().translate(x, y, z).rotateY(-yaw).rotateX(-12.0F);
+	static void flying(MeshBuilder b, float x, float y, float z, float yaw, float spin, float roll, int colour) {
+		b.push().translate(x, y, z).rotateY(-yaw).rotateZ(roll).rotateX(-12.0F);
 		hilt(b, spin * Mth.DEG_TO_RAD);
 		b.rotateY(-spin);
 		blade(b, EMIT, EMIT + BLADE, colour, 0.0F);

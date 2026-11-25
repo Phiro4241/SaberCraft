@@ -1019,8 +1019,8 @@ static final int CHECKPOINT_TICKS = 60;
 	}
 
 	/**
-	 * Phase 25: her thrown saber staff (plot space of that ship): {x, y, z, yaw, spin} while it
-	 * flies, or null.
+	 * Phase 25: her thrown saber staff (plot space of that ship): {x, y, z, yaw, spin, roll} while it
+	 * flies, or null (Phase 32: roll, degrees, how far it is still tipped up on its edge).
 	 */
 	public static float @Nullable [] flyingStaff(BlockPos origin, float partial) {
 		Vec3 from = throwFrom;
@@ -1037,17 +1037,20 @@ static final int CHECKPOINT_TICKS = 60;
 			return null;
 		}
 
-		// Phase 32: back into her hand where it is drawn now (as the server reckons it each tick).
+		// Phase 32: back into her hand where it is drawn now (as the server reckons it each tick; by
+		// her body's way, as her arms are drawn).
 		for (Pose pose : figures(origin, partial)) {
 			if ("shadow".equals(pose.fig().kind())) {
-				hand = StaffThrow.hand(new Vec3(origin.getX() + pose.x(), origin.getY() + pose.y(), origin.getZ() + pose.z()), pose.head());
+				hand = StaffThrow.hand(new Vec3(origin.getX() + pose.x(), origin.getY() + pose.y(), origin.getZ() + pose.z()), pose.yaw());
 				break;
 			}
 		}
 
 		Vec3 at = StaffThrow.at(from, far, hand, throwOut, throwBack, t);
 		float yaw = StaffThrow.yaw(from, far, hand, throwOut, throwBack, t);
-		return new float[] {(float) (at.x - origin.getX()), (float) (at.y - origin.getY()), (float) (at.z - origin.getZ()), yaw, t * StaffThrow.SPIN};
+		// Phase 32: a low throw is let go upright beside her hip and lies down flat in its first ticks.
+		float roll = StaffThrow.low(from, hand) ? 90.0F * (1.0F - Mth.clamp(t / StaffThrow.LAY_FLAT, 0.0F, 1.0F)) : 0.0F;
+		return new float[] {(float) (at.x - origin.getX()), (float) (at.y - origin.getY()), (float) (at.z - origin.getZ()), yaw, t * StaffThrow.SPIN, roll};
 	}
 
 	/** Only for tests: how many throws of her staff were seen, and whether one flies now. */

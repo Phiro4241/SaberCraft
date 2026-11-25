@@ -734,11 +734,13 @@ public class Phase32GameTest implements FabricClientGameTest {
 
 		for (int low = 0; low <= 1; low++) {
 			String which = low == 1 ? "low" : "high";
-			SaberCraft.LOGGER.info("PHASE32 THROW RELEASE {}: {} poses touching her, hand at most {} short of the grip, drawn {} from the server's start",
-					which, (int) release[low][0], String.format(Locale.ROOT, "%.2f", release[low][1]), String.format(Locale.ROOT, "%.2f", release[low][2]));
+			SaberCraft.LOGGER.info("PHASE32 THROW RELEASE {}: {} poses touching her, hand at most {} short of the grip, drawn {} from the server's start, "
+					+ "its disc at most {} under her feet", which, (int) release[low][0], String.format(Locale.ROOT, "%.2f", release[low][1]),
+					String.format(Locale.ROOT, "%.2f", release[low][2]), String.format(Locale.ROOT, "%.2f", release[low][3]));
 			check(release[low][0] == 0, "her " + which + " throw's release is drawn through her body (" + (int) release[low][0] + " poses)");
 			check(release[low][1] <= 0.12F, "her " + which + " throw's release is drawn out of her hand (" + release[low][1] + ")");
 			check(release[low][2] <= 0.25F, "her " + which + " throw's release is drawn " + release[low][2] + " from where it flies from");
+			check(release[low][3] <= 0.05F, "her " + which + " throw's spinning disc is drawn " + release[low][3] + " into the floor as she lets go");
 		}
 
 		for (int round = 0; round < 2; round++) {
@@ -766,7 +768,8 @@ public class Phase32GameTest implements FabricClientGameTest {
 
 					Vec3 corner = Vec3.atLowerCornerOf(this.session(s).destroyer);
 					Vec3 feet = f.position().add(corner);
-					Vec3 look = f.look();
+					// (By her body's way, as her arms are drawn and the server lets go.)
+					Vec3 look = com.phiro.sabercraft.story.StaffThrow.facing(f.yaw);
 					Vec3 flat = new Vec3(look.x, 0.0, look.z).normalize();
 					Vec3 right = new Vec3(-flat.z, 0.0, flat.x);
 					Vec3 from = f.throwFrom.subtract(feet);

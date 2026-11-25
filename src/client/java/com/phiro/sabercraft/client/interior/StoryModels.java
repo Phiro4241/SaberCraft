@@ -98,7 +98,7 @@ final class StoryModels {
 		float[] flying = StoryClient.flyingStaff(plot.origin(), partial);
 
 		if (flying != null) {
-			CrewModels.flyingStaff(b, flying[0], flying[1], flying[2], flying[3], flying[4], RED);
+			CrewModels.flyingStaff(b, flying[0], flying[1], flying[2], flying[3], flying[4], flying[5], RED);
 
 			// Phase 32: its whirr goes with it as it spins through the air (the ring in her hand is
 			// silent meanwhile: it is not there).
@@ -148,7 +148,7 @@ final class StoryModels {
 
 				if (whirl[4] > 0.3F) {
 					gear = gear.whirling();
-					CrewModels.flyingStaff(b, whirl[1], whirl[2], whirl[3], yaw, state0 == null ? 0.0F : state0[9] * Mth.RAD_TO_DEG, RED);
+					CrewModels.flyingStaff(b, whirl[1], whirl[2], whirl[3], yaw, state0 == null ? 0.0F : state0[9] * Mth.RAD_TO_DEG, 0.0F, RED);
 				}
 			}
 		}

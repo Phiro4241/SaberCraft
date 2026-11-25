@@ -1274,12 +1274,13 @@ public final class MeshAudit {
 	/**
 	 * Phase 32: her throw's release as drawn, high and low (the wind-up's last tenth, her ring
 	 * spinning, at 12 angles): {touching poses, the most her hand falls short of the grip, how far the
-	 * drawn middle of the ring is from where the server lets the staff go} per throw, high first.
-	 * Held flat at the shins, the low one went through her legs and was drawn pushed a block out.
+	 * drawn middle of the ring is from where the server lets the staff go, how deep its spinning
+	 * disc reaches under her feet (0: not at all)} per throw, high first. Held flat at the shins,
+	 * the low one went through her legs and was drawn pushed a block out.
 	 */
 	public static float[][] throwRelease() {
 		float shoulder = CrewModels.BODY - 0.06F;
-		float[][] out = new float[2][3];
+		float[][] out = new float[2][4];
 
 		for (int low = 0; low <= 1; low++) {
 			float[] at = low == 1 ? CrewModels.THROW_LOW_AT : CrewModels.THROW_HIGH_AT;
@@ -1300,6 +1301,10 @@ public final class MeshAudit {
 					}
 
 					out[low][1] = Math.max(out[low][1], handsOff(clear, gear, shoulder));
+					// The disc's lowest point (its plane at right angles to the grip; her feet at -LEG).
+					float[] ga = clear.a();
+					float lowest = clear.c()[1] - (InquisitorSaber.EMIT + InquisitorSaber.BLADE) * Mth.sqrt(Math.max(0.0F, 1.0F - ga[1] * ga[1]));
+					out[low][3] = Math.max(out[low][3], -CrewModels.LEG - lowest);
 
 					if (p == 1.0F) {
 						float[] c = clear.c();

@@ -864,10 +864,11 @@ final class CrewModels {
 	 * shoulder): at her right, as the server's flight begins (Finale.throwTick): over her head and a
 	 * little before it (an overhand throw from the wind-up: the flat disc clears her head, the grip
 	 * within her arm's reach), or for a throw at the legs beside her right hip, the disc upright out at
-	 * her side (Finale.THROW_LOW, THROW_LOW_SIDE, THROW_LOW_AHEAD: 0.9 over her feet, the shoulder 1.32).
+	 * her side, clear of the floor (Finale.THROW_LOW, THROW_LOW_SIDE, THROW_LOW_AHEAD: 1.15 over her
+	 * feet, the shoulder 1.32).
 	 */
 	static final float[] THROW_HIGH_AT = {-0.3F, 0.55F, 0.22F};
-	static final float[] THROW_LOW_AT = {-0.55F, -0.42F, 0.3F};
+	static final float[] THROW_LOW_AT = {-0.55F, -0.17F, 0.3F};
 	static final float[] THROW_LOW_GRIP = {-1.0F, 0.0F, 0.15F};
 
 	/** Phase 30: the spinning disc stood upright: how much of the grip's upward tilt stays, and how far it is raised (blocks). */
@@ -1038,14 +1039,15 @@ final class CrewModels {
 	 * Phase 25: the thrown saber staff in flight (plot space): spinning flat round its middle as it
 	 * flies, both blades lit.
 	 */
-	static void flyingStaff(MeshBuilder b, float x, float y, float z, float yaw, float spin, int colour) {
-		// Phase 26: her saber is an Inquisitor's: the ring spinning flat in flight.
+	static void flyingStaff(MeshBuilder b, float x, float y, float z, float yaw, float spin, float roll, int colour) {
+		// Phase 26: her saber is an Inquisitor's: the ring spinning flat in flight (Phase 32: a low
+		// throw tipped up on its edge as it leaves her hand, laid flat in its first ticks).
 		if (INQUISITOR) {
-			InquisitorSaber.flying(b, x, y, z, yaw, spin, colour);
+			InquisitorSaber.flying(b, x, y, z, yaw, spin, roll, colour);
 			return;
 		}
 
-		b.push().translate(x, y, z).rotateY(-yaw).rotateX(80.0F).rotateZ(spin);
+		b.push().translate(x, y, z).rotateY(-yaw).rotateZ(roll).rotateX(80.0F).rotateZ(spin);
 		staffHilt(b);
 		blade(b, STAFF_HALF, STAFF_HALF + STAFF_BLADE, colour);
 		blade(b, -STAFF_HALF, -STAFF_HALF - STAFF_BLADE, colour);
