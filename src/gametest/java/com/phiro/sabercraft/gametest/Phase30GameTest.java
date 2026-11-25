@@ -602,17 +602,12 @@ public class Phase30GameTest implements FabricClientGameTest {
 		check("sabercraft.story.obj.m5.escape_release".equals(objective), "the objective does not say to unlock the maintenance door (" + objective + ")");
 		check(marker != null && marker.distanceTo(DestroyerInterior.SERVICE_RELEASE.getCenter()) < 1.2, "the marker does not point at the door's release (" + marker + ")");
 		check(this.on(s -> StoryTesting.point(this.session(s), "service_door") != null), "the shut door itself cannot be used");
-		// Not told off the walkway (west of it, by the reactor's floor) ...
-		for (Vec3 off : new Vec3[] {new Vec3(44.9, R, 12.5), new Vec3(43.4, R, 13.4)}) {
-			this.put(off, 180.0F, 5.0F);
-			this.context.waitTicks(4);
-			check(!this.on(s -> this.session(s).has("tmp.release_told")), "off the walkway (" + off + ") the player is told how to unlock the door");
-		}
-
-		// ... walking up to the door: told what to do.
+		// Phase 32: no control text on the walkway any more (Phiro: no explaining texts in the game);
+		// walking up to the door shows no hint, the objective and the panel's prompt lead.
 		this.put(new Vec3(48.6, R, 16.0), 180.0F, 5.0F);
 		this.context.waitTicks(10);
-		check(this.on(s -> this.session(s).has("tmp.release_told")), "near the locked door the player is not told how to unlock it");
+		String walkHint = this.context.computeOnClient(client -> StoryClient.hintForTest());
+		check(walkHint == null || !walkHint.contains("service"), "walking up to the locked door still shows a control text (" + walkHint + ")");
 		this.context.takeScreenshot("phase30_release_door");
 		// One click on the panel (as the client sends it), then walk away and look elsewhere.
 		this.put(new Vec3(48.6, R, 13.0), 90.0F, 10.0F);
@@ -624,7 +619,10 @@ public class Phase30GameTest implements FabricClientGameTest {
 		int clicked = this.on(MinecraftServer::getTickCount);
 		this.context.waitTicks(2);
 		check(this.on(s -> this.session(s).has("tmp.release")), "one click on the release does not begin it");
-		check("sabercraft.story.obj.m5.escape_releasing".equals(this.on(s -> StoryTesting.objective(this.session(s)))), "the objective does not say the door is unlocking");
+		// Phase 32: no "it unlocks by itself" hint or objective on the click (only the bar runs).
+		check("sabercraft.story.obj.m5.escape_release".equals(this.on(s -> StoryTesting.objective(this.session(s)))), "the objective changed while the door unlocks");
+		String clickHint = this.context.computeOnClient(client -> StoryClient.hintForTest());
+		check(clickHint == null || !clickHint.contains("service_running"), "the click still tells the player the door unlocks by itself (" + clickHint + ")");
 		this.context.waitTicks(4);
 		String bar = this.context.computeOnClient(client -> StoryClient.progressKeyForTest());
 		int[] frames1 = this.context.computeOnClient(client -> StoryHud.progressFramesForTest());

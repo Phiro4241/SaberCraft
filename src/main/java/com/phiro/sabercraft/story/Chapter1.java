@@ -4314,7 +4314,8 @@ public final class Chapter1 implements Chapter {
 				return "sabercraft.story.obj.m5.escape_bolt";
 			}
 
-			return s.has("tmp.release") ? "sabercraft.story.obj.m5.escape_releasing" : "sabercraft.story.obj.m5.escape_release";
+			// Phase 32: no "it is unlocking" objective while the release runs (the bar shows it).
+			return "sabercraft.story.obj.m5.escape_release";
 		}
 
 		if (step.id().equals("m5.route") && !s.has("trust.hale") && (s.has("know.hale_trap") || s.has("hatch.f"))) {

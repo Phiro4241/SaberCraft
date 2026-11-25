@@ -1032,8 +1032,8 @@ public final class StoryHud implements HudElement {
 			y += 11;
 		}
 
-		// Phase 32: who made it, as the films' credits are: in their yellow, in wide capitals, a little
-		// after the text, faded out with it.
+		// Phase 32: who made it, a small credit in the mission cards' style (their gold, a gold rule
+		// over it), in wide capitals, coming in a little after the text and fading out with it.
 		float credit = Mth.clamp(Math.min((age - CREDIT_FROM) / 30.0F, (END_TICKS - age) / 40.0F), 0.0F, 1.0F);
 
 		if (credit > 0.0F) {
@@ -1047,11 +1047,10 @@ public final class StoryHud implements HudElement {
 
 			int a = Math.round(credit * 255);
 			int top = y + 14;
-			int rule = Math.round((wide * 1.5F / 2.0F + 6) * credit);
+			int rule = Math.round((wide / 2.0F + 6) * credit);
 			graphics.fill(width / 2 - rule, top - 5, width / 2 + rule, top - 4, a / 2 << 24 | CREDIT_COLOUR);
 			graphics.pose().pushMatrix();
 			graphics.pose().translate(width / 2.0F, top);
-			graphics.pose().scale(1.5F, 1.5F);
 			int x = -wide / 2;
 
 			for (int i = 0; i < text.length(); i++) {
@@ -1067,11 +1066,11 @@ public final class StoryHud implements HudElement {
 
 	/**
 	 * Phase 32: how long the chapter's end shows (ticks; it was 360: a little shorter, still time
-	 * to read it), from when the credit comes in, and its colour (the films' yellow).
+	 * to read it), from when the credit comes in, and its colour (the mission cards' gold).
 	 */
 	static final int END_TICKS = 300;
 	static final int CREDIT_FROM = 60;
-	static final int CREDIT_COLOUR = 0xFFE81F;
+	static final int CREDIT_COLOUR = 0xE8C46A;
 	private static boolean creditShown;
 
 	/** Phase 32, for the tests: how long the chapter's end shows (ticks), and whether its credit has been drawn. */

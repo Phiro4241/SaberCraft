@@ -229,14 +229,6 @@ final class Scenes {
 	 * (It took 40 ticks and stopped whenever one stepped more than 1.9 blocks away from it.)
 	 */
 	static final int RELEASE = 28;
-	/**
-	 * Phase 30: where the player not yet at the release is told where it is and that one click
-	 * starts it (plot space): on the walkway from its middle on, about 6 blocks from the door, and in
-	 * the passage up to the door (the walkway is x 48..50, z 14..20, the passage x 48..50, z 11..15).
-	 * A box over them, not a circle round the door: the east end of the north platform, across the
-	 * gap and behind the passage's wall, lay within 6 blocks of the door and used the hint up there.
-	 */
-	static final AABB RELEASE_TOLD = new AABB(47.5, R - 1.5, DestroyerInterior.SERVICE_DOOR_Z + 1.0, 50.5, R + 1.5, 17.5);
 	/** Where the troopers who reach the bolted door stand, and the places round it they search after. */
 	static final Vec3 DOOR_OUTSIDE = new Vec3(48.9, R, 16.2);
 	static final List<Vec3> SEARCH = List.of(new Vec3(50.6, R, 21.4), new Vec3(52.0, R, 26.8), new Vec3(49.2, R, 28.6), new Vec3(48.8, R, 17.6));
@@ -259,7 +251,6 @@ final class Scenes {
 	static void escapeBegin(StorySession s, boolean again) {
 		s.set("service.lit");
 		s.unset("tmp.release");
-		s.unset("tmp.release_told");
 
 		if (!again) {
 			s.radio("kestrel", "sabercraft.story.radio.m5_service");
@@ -290,16 +281,9 @@ final class Scenes {
 			if (progress >= RELEASE) {
 				released(s);
 			}
-		} else if (!s.has("service.open") && Story.DESTROYER.equals(s.here) && !s.has("tmp.release_told")) {
-			// Phase 30: on the walkway to the door and the release not begun: where it is and what to
-			// do (once a try; only there, not from the north platform across the gap).
-			Vec3 me = s.local(Story.DESTROYER);
-
-			if (RELEASE_TOLD.contains(me)) {
-				s.set("tmp.release_told");
-				s.hint("sabercraft.story.hint.service_click");
-			}
 		}
+		// Phase 32: no control text on the walkway any more (Phiro: no explaining texts); the
+		// objective, Kestrel's radio, the marker and the panel's own prompt show the way.
 
 		// In the crawl way: the scene.
 		if (Story.DESTROYER.equals(s.here) && DestroyerInterior.SERVICE_VENT.inflate(0.0, 0.5, 0.0).contains(s.local(Story.DESTROYER).add(0.0, 0.3, 0.0))) {
