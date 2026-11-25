@@ -258,6 +258,8 @@ public final class Figure {
 	 * comes back once she is left alone a moment ({@code poiseAt}: when it was last taken).
 	 */
 	public float poise = 1.0F;
+	/** Phase 32: in her present opening the player has got their breath already (see Finale's OPEN_UP). */
+	public boolean breather;
 	public long poiseAt = -1000L;
 	/**
 	 * Phase 27: the boss by the story's difficulty (set each tick of the duel): how fast she
@@ -359,6 +361,7 @@ public final class Figure {
 		this.ringOn = false;
 		this.discHitAt = -1000L;
 		this.poise = 1.0F;
+		this.breather = false;
 		this.poiseAt = -1000L;
 		this.tempo = 1.0F;
 		this.openness = 1.0F;

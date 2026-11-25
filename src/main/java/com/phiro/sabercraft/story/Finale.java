@@ -333,6 +333,22 @@ final class Finale {
 	static final float STRAIN_SPIN = 0.2F;
 	static final float STRAIN_RUSH = 0.26F;
 	static final float STRAIN_THROW = 0.12F;
+	private static int breathers;
+
+	/** Phase 32, for the tests: the player got their breath at an opening of hers. */
+	static int breathersForTest() {
+		return breathers;
+	}
+
+	/** Phase 32: the opening as she catches her thrown staff (ticks, before the difficulty's openness). */
+	static final int CATCH_OPENING = 12;
+	private static int catches;
+
+	/** Phase 32, for the tests: her staff caught back (an opening each time). */
+	static int catchesForTest() {
+		return catches;
+	}
+
 	/** Phase 32: how high over her feet a high throw is let go (over her head: see CrewModels.THROW_HIGH_AT; the shoulder 1.32 over her feet). */
 	static final double THROW_HIGH = 1.87;
 	static final float STRAIN_PERFECT = 0.04F;
@@ -877,6 +893,13 @@ final class Finale {
 					return;
 				}
 
+				// Phase 32: from behind while she winds up a blow forward: it hits, as from behind ever
+				// (it clashed before, as if from before her).
+				if (new Vec3(eye.x - f.x, 0.0, eye.z - f.z).normalize().dot(f.look()) < -0.35 && !f.turnabout) {
+					fromBehind(s, f, player, me, level, corner, at, heavy);
+					return;
+				}
+
 				if (flank(f, eye) && !f.turnabout) {
 					// Phase 32: struck from her side while she winds up her blow: she cannot parry it.
 					flankHit(s, f, player, me, level, corner, at, heavy);
@@ -1170,8 +1193,10 @@ final class Finale {
 		}
 
 		if (f.action != OPEN_UP || f.hits >= HITS_PER_OPENING) {
-			// Enough (or struck from behind): she spins round and steps back.
-			act(f, RECOIL, SPIN, RECOIL_TICKS);
+			// Enough (or struck from behind): she spins round and steps back. (Phase 32: with her staff
+			// she reels back instead, shown so: the spin's kind made the client spin her ring at full
+			// speed, its whirr loud, though she spun nothing.)
+			act(f, RECOIL, phase(f) >= 2 ? STAGGER : SPIN, RECOIL_TICKS);
 			f.hits = 0;
 		} else {
 			// Each hit takes a little of the opening.
@@ -1414,6 +1439,11 @@ final class Finale {
 		f.burst = 0;
 		f.combo = 1;
 		f.pattern = -1;
+		// (Phase 32: out of the parry's reaction first: it held her, and the held branch of her tick
+		// broke the thrust off at once. One heard its swing and saw no thrust: she never answered,
+		// she only parried, stroke after stroke: Phiro's "blocks nearly everything".)
+		f.react = 0;
+		f.reactTicks = 0;
 		blowStarts(f, THRUST, RIPOSTE, level, s);
 		ripostes++;
 		// (Phase 26: no words on the screen for what she does: her thrust, its sound, and the
@@ -1555,6 +1585,7 @@ final class Finale {
 		f.timer = ticks;
 		f.windup = 0;
 		f.turnabout = false;
+		f.breather = false;
 	}
 
 	private static void duel(StorySession s, Figure f, ServerPlayer player, Vec3 me, ServerLevel level, Vec3 corner) {
@@ -1625,6 +1656,21 @@ final class Finale {
 			// (Phase 29: reeling she still turns towards one at her side or behind her, faster than before.)
 			aware(s, f, me, distance, 6.0F);
 
+			// Phase 32: a parry does not stop her: on guard her pause runs on while she turns strokes
+			// aside (before, each parried stroke held her, and strokes in a row kept her from ever
+			// attacking), and a blow she winds up is not broken off by it.
+			if (f.react == Figure.PARRY) {
+				if (f.action == GUARD && f.cooldown > 0) {
+					f.cooldown--;
+				}
+
+				if (f.action == WINDUP) {
+					f.windup = Math.max(1, f.windup);
+				}
+
+				return;
+			}
+
 			if (f.action == WINDUP && !f.turnabout || f.action == RUSH) {
 				act(f, GUARD, 0, 0);
 				f.lunge = false;
@@ -1673,6 +1719,15 @@ final class Finale {
 			}
 			case OPEN_UP -> {
 				f.speed = 0.0F;
+
+				// Phase 32: she is open (after the player held out against her, dodged, or broke her
+				// guard): the player gets their breath at once, stamina coming back from now (unless the
+				// guard is held up): blocking her well can be kept up, holding the guard up still cannot.
+				if (phase >= 2 && !f.breather) {
+					f.breather = true;
+					SaberAbilities.breather(player);
+					breathers++;
+				}
 
 				if (--f.timer <= 0) {
 					act(f, GUARD, 0, 0);
@@ -2952,8 +3007,11 @@ final class Finale {
 			f.throwFrom = null;
 			f.react = 0;
 			f.reactTicks = 0;
-			act(f, GUARD, 0, 0);
-			f.cooldown = pause(f, phase(f));
+			// Phase 32: catching it costs her a moment (the staff's weight in her hand, low and out):
+			// a short opening after her most elaborate move.
+			act(f, OPEN_UP, STAGGER, opening(f, CATCH_OPENING));
+			f.hits = 0;
+			catches++;
 		}
 	}
 
