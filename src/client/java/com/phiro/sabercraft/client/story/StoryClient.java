@@ -361,6 +361,8 @@ static final int CHECKPOINT_TICKS = 60;
 		clearDuelProps();
 		StoryCinema.stopIf(client, "boss_mid");
 		com.phiro.sabercraft.client.interior.MeshAudit.forgetDuel();
+		// Phase 32: her ring's whirr ends with the fight (a reset, a capture, the story left).
+		com.phiro.sabercraft.client.interior.RingSound.stopAll();
 		duelResets++;
 	}
 

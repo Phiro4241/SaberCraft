@@ -195,6 +195,13 @@ public final class Figure {
 	 * glowing (the warning), then down into the floor with a shock wave in front of her.
 	 */
 	public static final int SLAM = 14;
+	/**
+	 * Phase 32: her ring's mode begins: she raises the staff before her and the ring spins up round
+	 * the grip (the switch into it, seen and heard before anything hurts).
+	 */
+	public static final int RING_UP = 15;
+	/** Phase 32: her ring's mode ends: the ring winds down, she lowers the staff, the blades settle across (her guard down). */
+	public static final int RING_DOWN = 16;
 
 	/** Phase 23: drawn into a fight (they hunted the player when it began): a fighter until it ends. */
 	public boolean engaged;
@@ -239,11 +246,19 @@ public final class Figure {
 	/** Phase 28: how often she threw her staff in this fight (at most {@code Finale.THROWS_MAX}). */
 	public int thrown;
 	/**
-	 * Phase 28: her Inquisitor's ring keeps turning (sent to the client): it is set going by her
-	 * first ring move in the second phase and stays on for a long while (in her last quarter for
-	 * good); it stops only at a clear moment (her guard while circling, the scene, the end).
+	 * Phase 28: her Inquisitor's ring keeps turning (sent to the client). Phase 32: her ring's mode
+	 * in the second phase (see {@code Finale.RING_MODE}): switched on with its own move, for a while,
+	 * then wound down again; no longer set going by each ring move for 400 ticks and more.
 	 */
 	public boolean ringOn;
+	/** Phase 32: when the ring's spinning disc last cut the player (game time of the story; the next only a moment later). */
+	public long discHitAt = -1000L;
+	/**
+	 * Phase 32: her guard's poise (1 full, 0 broken): each stroke she turns aside takes some; it
+	 * comes back once she is left alone a moment ({@code poiseAt}: when it was last taken).
+	 */
+	public float poise = 1.0F;
+	public long poiseAt = -1000L;
 	/**
 	 * Phase 27: the boss by the story's difficulty (set each tick of the duel): how fast she
 	 * attacks (shorter pauses and wind-ups above 1), how long her openings last, how hard her blows are.
@@ -342,6 +357,9 @@ public final class Figure {
 		this.thrown = 0;
 		this.lunge = false;
 		this.ringOn = false;
+		this.discHitAt = -1000L;
+		this.poise = 1.0F;
+		this.poiseAt = -1000L;
 		this.tempo = 1.0F;
 		this.openness = 1.0F;
 		this.power = 1.0F;

@@ -11,6 +11,7 @@ import net.minecraft.world.entity.HumanoidArm;
 
 import com.phiro.sabercraft.ability.SaberAbility;
 import com.phiro.sabercraft.client.combat.CombatConfig;
+import com.phiro.sabercraft.client.story.StoryCinema;
 import com.phiro.sabercraft.saber.SaberVariant;
 
 /**
@@ -26,8 +27,10 @@ final class AbilityHud implements HudElement {
 	public void extractRenderState(GuiGraphicsExtractor graphics, DeltaTracker delta) {
 		Minecraft client = Minecraft.getInstance();
 
+		// Phase 32: nor in a film (a cutscene: the boss fight's scenes and the others), nor with the HUD
+		// hidden. (Drawn after the screen, these lines came through a film's black bars before.)
 		if (!CombatConfig.get().abilityHud || client.player == null
-				|| !SaberVariant.canHold(client.player.getMainHandItem())) {
+				|| !SaberVariant.canHold(client.player.getMainHandItem()) || client.gui.hud.isHidden() || StoryCinema.hidesHud()) {
 			return;
 		}
 
@@ -54,6 +57,7 @@ final class AbilityHud implements HudElement {
 			graphics.fill(barX, y + 2, barX + BAR_WIDTH, y + 5, 0x90000000);
 			graphics.fill(barX, y + 2, barX + Math.round(BAR_WIDTH * share), y + 5, low ? 0xFFE04040 : 0xFFE8D040);
 			y -= LINE;
+			drawn++;
 		}
 
 		for (SaberAbility ability : SaberAbility.values()) {
@@ -77,6 +81,10 @@ final class AbilityHud implements HudElement {
 			graphics.fill(barX, y + 2, barX + BAR_WIDTH, y + 5, 0x90000000);
 			graphics.fill(barX, y + 2, barX + Math.round(BAR_WIDTH * share), y + 5, active ? 0xFF4FB4FF : 0xFFB0B0B0);
 			y -= LINE;
+			drawn++;
 		}
 	}
+
+	/** Phase 32, for the tests: lines drawn (the stamina, a cooldown), counted each frame they are drawn. */
+	static int drawn;
 }

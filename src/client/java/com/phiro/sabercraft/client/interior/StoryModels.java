@@ -42,6 +42,7 @@ final class StoryModels {
 		SABERS.clear();
 	}
 	private static long lastFrame;
+	private static boolean staffAway;
 
 	private StoryModels() {
 	}
@@ -59,6 +60,8 @@ final class StoryModels {
 		Minecraft client = Minecraft.getInstance();
 		float cameraYaw = client.gameRenderer.mainCamera().yRot();
 		List<StoryClient.Pose> people = StoryClient.figures(plot.origin(), partial);
+		// Phase 32: her staff away (thrown): the ring in her hand is not there to be heard.
+		staffAway = StoryClient.flyingStaff(plot.origin(), partial) != null;
 		// Phase 26: the halos of her blades face the camera.
 		Vec3 eye = client.gameRenderer.mainCamera().position();
 		InquisitorSaber.EYE.set((float) (eye.x - plot.origin().getX()), (float) (eye.y - plot.origin().getY()), (float) (eye.z - plot.origin().getZ()));
@@ -117,6 +120,15 @@ final class StoryModels {
 		// Phase 21: lit also before the fight (in the film), out once he flees.
 		boolean lit = saber && (fig.flags() & (StoryFiguresPayload.HOSTILE | StoryFiguresPayload.LIT)) != 0;
 		CrewModels.Gear gear = saber ? saber(fig, lit, dt, down, shadow, pose.reactP()) : rifle(fig, dt, down, pose.reactP());
+
+		if (saber && shadow) {
+			// Phase 32: her ring's whirr, exactly while it is drawn turning (both blades out, in her hand).
+			float[] state = SABERS.get(fig.id());
+			boolean turns = state != null && lit && !down && !staffAway && state[8] > 0.35F && (fig.flags() & StoryFiguresPayload.UNARMED) == 0;
+			float yaw = pose.yaw() * Mth.DEG_TO_RAD;
+			RingSound.heard(fig.id(), turns ? state[10] : 0.0F, origin.getX() + pose.x() - Mth.sin(yaw) * StoryFiguresPayload.DISC_AHEAD,
+					origin.getY() + pose.y() + StoryFiguresPayload.DISC_HEIGHT, origin.getZ() + pose.z() + Mth.cos(yaw) * StoryFiguresPayload.DISC_AHEAD);
+		}
 		CrewModels.figure(b, crew, look, pose.x(), pose.y(), pose.z(), pose.yaw(), pose.walk(), t, seed, head, gear);
 	}
 
@@ -177,7 +189,7 @@ final class StoryModels {
 	 */
 	private static CrewModels.Gear saber(StoryFiguresPayload.Fig fig, boolean lit, float dt, boolean down, boolean skirt, float reactP) {
 		// raise, swing, the kind last seen, its progress, the kind swung, crouch, lean, hand, aim
-		float[] state = SABERS.computeIfAbsent(fig.id(), id -> new float[13]);
+		float[] state = SABERS.computeIfAbsent(fig.id(), id -> new float[14]);
 		int kind = fig.windup() >> 5;
 		float progress = (fig.windup() & 31) / 31.0F;
 		int lastKind = (int) state[2];
@@ -221,9 +233,14 @@ final class StoryModels {
 		state[8] = approach(state[8], lit && skirt && twin ? 1.0F : 0.0F, dt * 1.6F);
 		ring(state, fig, lit && skirt, state[8] > 0.35F, kind, progress, spin, react, reactP, dt);
 		float blur = Mth.clamp((Math.abs(state[10]) - InquisitorSaber.BLUR_FROM) / (InquisitorSaber.SPIN_FAST - InquisitorSaber.BLUR_FROM), 0.0F, 1.0F);
+		// Phase 32: her ring's mode: the disc held up before her (where the server cuts with it); raised
+		// as she switches into it, lowered as she leaves it.
+		float discGoal = !lit || down || state[8] <= 0.35F ? 0.0F
+				: (fig.flags() & StoryFiguresPayload.DISC) != 0 ? 1.0F : react == CrewModels.RING_UP ? Mth.clamp(reactP * 1.4F, 0.0F, 1.0F) : 0.0F;
+		state[13] = approach(state[13], discGoal, dt * (discGoal > state[13] ? 5.0F : 3.5F));
 		return new CrewModels.Gear((fig.flags() & StoryFiguresPayload.LAMP) != 0, RED, lit, state[0], state[1], down, skirt, attack, 0.0F, state[5],
 				state[6], state[7], spin, react, reactP, false, (fig.flags() & StoryFiguresPayload.UNARMED) != 0, state[8], skirt, state[9], blur,
-				state[11]);
+				state[11], state[13]);
 	}
 
 	/**
@@ -235,7 +252,7 @@ final class StoryModels {
 	 * blades across again (the nearest half turn). The flare: when blades meet, in the lock, and
 	 * once as the last quarter of her strength begins.
 	 */
-	/** Phase 28: how fast the ring turns while it keeps turning (a share of its fastest). */
+	/** Phase 28: how fast the ring turns while it keeps turning (a share of its fastest; Phase 32: in her ring's mode). */
 	static final float RING_CRUISE = 0.55F;
 
 	/** Phase 28, for the tests: how fast that figure's ring turns now (radians a second; 0 when unknown). */
@@ -255,6 +272,7 @@ final class StoryModels {
 		float goal = 0.0F;
 		// Phase 28: the server says the ring keeps turning (a state that lasts through her moves,
 		// no longer spun up and down with each): it turns steadily, faster for a ring move.
+		// (Phase 32: her ring's mode, for a while now and then in the second phase, not for good.)
 		boolean turning = (fig.flags() & StoryFiguresPayload.RING_SPIN) != 0;
 
 		if (inquisitor && both) {
@@ -271,6 +289,9 @@ final class StoryModels {
 				goal = Math.max(goal, InquisitorSaber.SPIN_FAST * (reactP < CrewModels.RING_WIND ? 0.25F + 0.75F * reactP / CrewModels.RING_WIND : 1.0F));
 			} else if (react == CrewModels.THROW_WIND) {
 				goal = Math.max(goal, InquisitorSaber.SPIN_FAST * 0.85F * Mth.clamp(reactP * 1.3F, 0.0F, 1.0F));
+			} else if (react == CrewModels.RING_UP) {
+				// Phase 32: into her ring's mode: the ring spins up to its steady turning as she raises it.
+				goal = Math.max(goal, InquisitorSaber.SPIN_FAST * RING_CRUISE * Mth.clamp(0.2F + reactP * 1.1F, 0.0F, 1.0F));
 			}
 
 			if (!turning && react == CrewModels.PARRY && (int) state[12] != CrewModels.PARRY) {
@@ -430,7 +451,7 @@ final class StoryModels {
 	 * fall and the comlink.
 	 */
 	private static CrewModels.Gear rifle(StoryFiguresPayload.Fig fig, float dt, boolean down, float reactP) {
-		float[] state = SABERS.computeIfAbsent(fig.id(), id -> new float[13]);
+		float[] state = SABERS.computeIfAbsent(fig.id(), id -> new float[14]);
 		state[8] = approach(state[8], fig.windup() > 0 && !down ? 1.0F : 0.0F, dt * 8.0F);
 		int react = fig.reactKind();
 		// The old jolt only where no reaction of the server shows the hit.

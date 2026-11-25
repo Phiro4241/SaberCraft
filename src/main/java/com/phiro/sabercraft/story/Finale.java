@@ -17,6 +17,7 @@ import com.phiro.sabercraft.blaster.BlasterBolt;
 import com.phiro.sabercraft.blaster.BlasterType;
 import com.phiro.sabercraft.interior.Crew;
 import com.phiro.sabercraft.interior.ShipInteriors;
+import com.phiro.sabercraft.network.StoryFiguresPayload;
 import com.phiro.sabercraft.saber.SaberVariant;
 
 /**
@@ -136,10 +137,17 @@ final class Finale {
 	static final int[] FOLLOW = {0, 12, 10};
 	/** (Phase 29: harder, 3.0 and 3.5 before: a blow not blocked or dodged is felt.) */
 	static final float[] BLOWS = {0.0F, 3.5F, 4.0F};
-	/** (Phase 29: a little shorter, 30 and 24 before; still long enough for two or three strokes.) */
-	static final int[] OPENINGS = {0, 28, 22};
-	/** (Phase 27: the first phase's pause shorter, 34 before: she presses on sooner. Phase 29: shorter still, 28 and 18 before.) */
-	static final int[] PAUSES = {0, 22, 14};
+	/**
+	 * (Phase 29: a little shorter, 30 and 24 before; still long enough for two or three strokes.
+	 * Phase 32: the second phase's a little longer again, 22 before: two or three strokes fit.)
+	 */
+	static final int[] OPENINGS = {0, 28, 26};
+	/**
+	 * (Phase 27: the first phase's pause shorter, 34 before: she presses on sooner. Phase 29: shorter
+	 * still, 28 and 18 before. Phase 32: the second phase's 17, 14 before: a moment to act between
+	 * her attacks.)
+	 */
+	static final int[] PAUSES = {0, 22, 17};
 	static final int[] PARRIES = {0, 3, 2};
 	/**
 	 * Phase 23: her combos, per phase: the kinds of blow one after the other (the second phase's are
@@ -149,17 +157,22 @@ final class Finale {
 			{OVERHEAD, SWEEP, THRUST},
 			// Phase 27: the first phase harder and more varied: longer and mixed combos too.
 			{THRUST, SWEEP, OVERHEAD}, {SWEEP, THRUST, SWEEP}, {OVERHEAD, OVERHEAD, THRUST}},
+			// (Phase 32: her plain blade work of the second phase: no spin, which comes with the ring's mode.)
 			{{SWEEP, SWEEP, OVERHEAD}, {THRUST, SWEEP, THRUST}, {OVERHEAD, THRUST}, {SWEEP, OVERHEAD, SWEEP}, {OVERHEAD, SWEEP, THRUST},
-					// Phase 25: with the staff she spins too (both blades round her: blocked or dodged as any blow).
-					{SPIN, THRUST}, {SWEEP, SPIN}, {OVERHEAD, SPIN, SWEEP}}};
+					{SWEEP, THRUST}, {THRUST, OVERHEAD, SWEEP}}};
+	/**
+	 * Phase 32: her combos while the ring turns (the ring's mode): her spin in each (Phase 25: both
+	 * blades round her; Phase 30: the red circle), short, so that the spin comes often then.
+	 */
+	static final int[][] RING_PATTERNS = {{SPIN}, {SPIN, THRUST}, {SWEEP, SPIN}, {OVERHEAD, SPIN}, {THRUST, SPIN}};
 	/**
 	 * Phase 26: the last quarter of her strength: she fights harder (shorter pauses, quicker
 	 * follow-up blows, the ring's rush more often, longer combos that end in a spin), still with an
-	 * opening after each combo.
+	 * opening after each combo. Phase 32: the spin only in the ring's mode, as always now.
 	 */
 	static final float FIERCE = 0.25F;
-	static final int[][] FIERCE_PATTERNS = {{SWEEP, OVERHEAD, SPIN}, {THRUST, SWEEP, THRUST, SPIN}, {OVERHEAD, THRUST, SWEEP}, {SWEEP, SPIN, OVERHEAD},
-			{THRUST, THRUST, SWEEP}};
+	static final int[][] FIERCE_PATTERNS = {{SWEEP, OVERHEAD, THRUST}, {THRUST, SWEEP, THRUST}, {OVERHEAD, THRUST, SWEEP}, {THRUST, THRUST, SWEEP}};
+	static final int[][] FIERCE_RING_PATTERNS = {{SWEEP, SPIN}, {THRUST, SWEEP, SPIN}, {SPIN, OVERHEAD}, {SPIN, THRUST, SWEEP}};
 	/**
 	 * Phase 26: the lunge of the first phase: from this far to this far she drives in with a thrust
 	 * (the wind-up a little longer: to be seen coming), at this speed (blocks a second), at most
@@ -244,10 +257,66 @@ final class Finale {
 	static final double THROW_NEAR = 3.3;
 	static final int THROW_FIERCE = 90;
 	/**
-	 * Phase 28: her ring, once set going in the second phase, keeps turning at least this long; then
-	 * it may stop at a calm moment (circling on guard), not in her last quarter.
+	 * Phase 32: her two ways of fighting in the second phase (Phiro: the ring turned practically the
+	 * whole second phase). <b>Plain blade work</b>: the ring stands still, both blades out, her
+	 * combos without the spin, the lunge, the leap, the push, the slam. <b>The ring's mode</b>: she
+	 * spins the ring up before her ({@link #RING_UP} ticks: seen and heard, nothing hurts yet), it
+	 * turns for {@link #RING_MODE} ticks (its spinning disc before her cuts whoever walks into it,
+	 * her spin and the ring's rush come only now), then she lets it wind down and lowers the staff
+	 * ({@link #RING_DOWN} ticks: she is open meanwhile) and fights with plain blade work for
+	 * {@link #RING_REST} ticks before the ring comes again (in her last quarter sooner,
+	 * {@link #RING_REST_FIERCE}). The first time {@link #RING_FIRST} ticks after the scene at half
+	 * her strength. All at her tempo (the difficulty).
 	 */
-	static final int RING_MIN = 400;
+	static final int RING_MODE = 210;
+	static final int RING_REST = 300;
+	static final int RING_REST_FIERCE = 190;
+	static final int RING_FIRST = 120;
+	static final int RING_UP = 18;
+	static final int RING_DOWN = 26;
+	/** Phase 32: the switch into the ring's mode and back ({@link Figure#action}). */
+	static final int RING_START = 15;
+	static final int RING_END = 16;
+	/** Phase 32: she switches into the ring's mode only with the player this near (she sees the fight going on). */
+	static final double RING_SWITCH_NEAR = 10.0;
+	/**
+	 * Phase 32: the spinning disc before her in the ring's mode cuts whoever touches it (as drawn:
+	 * {@link com.phiro.sabercraft.network.StoryFiguresPayload#DISC_AHEAD} before her, its middle
+	 * {@code DISC_HEIGHT} over her feet, its blades {@code DISC_RADIUS} round it), at most every
+	 * {@link #DISC_REHIT} of her ticks; it hurts less than a blow.
+	 */
+	static final int DISC_REHIT = 14;
+	static final float DISC_DAMAGE = 2.0F;
+	/** Phase 32: how far she keeps the player off while she circles in the ring's mode (just beyond her disc). */
+	static final double DISC_KEEP = StoryFiguresPayload.DISC_AHEAD + StoryFiguresPayload.DISC_RADIUS + 0.55;
+	static final float STRAIN_DISC = 0.1F;
+	/**
+	 * Phase 32: her guard can be worn down (Phiro: in the second phase she parried nearly every
+	 * stroke). Each stroke she turns aside costs her poise (a full, heavy stroke more; a stroke
+	 * into her wind-up, the blades meeting, a little); with none left her guard breaks: she reels,
+	 * an opening. It comes back once she is left alone for a moment. By the difficulty
+	 * ({@link #POISE_BY}: Easy, Normal, Hard).
+	 */
+	static final float POISE_LIGHT = 0.24F;
+	static final float POISE_HEAVY = 0.42F;
+	static final float POISE_CLASH = 0.16F;
+	static final float POISE_DISC = 0.12F;
+	static final float[] POISE_BY = {1.3F, 1.0F, 0.8F};
+	static final int POISE_REST = 50;
+	static final float POISE_BACK = 0.025F;
+	static final int GUARD_BREAK_OPENING = 22;
+	/**
+	 * Phase 32: struck from her side while she winds up a blow (further round than this from where
+	 * she faces): she is set on her blow and cannot parry; the stroke hits and her blow is gone.
+	 */
+	static final double FLANK_ANGLE = 70.0;
+	/** Phase 32: how long she is open after a blow dodged right under it in the second phase (she overreached). */
+	static final int OVEREXTEND_OPENING = 20;
+	/**
+	 * Phase 32: in her spin's circle, on guard: the first time the blades meet the guard holds them;
+	 * staying in the whirling blades, a part of each next blow comes through ({@code SPIN_CHIP}).
+	 */
+	static final float SPIN_CHIP = 0.4F;
 	/**
 	 * Phase 28: the strain of her blows on the player's guard (shares of the most stamina, see
 	 * {@link SaberAbilities#strainGuard}): a blow of the first phase, of the second, the spin, the
@@ -255,9 +324,13 @@ final class Finale {
 	 * through combo after combo (no stamina comes back while it is up) shakes ({@code UNSTABLE}: less
 	 * than that share left) and breaks. By the difficulty ({@link StoryDifficulty#bossStrain}).
 	 */
+	// (Phase 32: a blow of the second phase as one of the first, 0.17 before, and the spin 0.2, 0.24
+	// before: a whole combo of the second phase blocked from a full guard held it only just, with
+	// the strain of blows in a row and of the guard held; one combo fully blocked must hold, the
+	// next one right after it need not.)
 	static final float STRAIN_BLOW = 0.14F;
-	static final float STRAIN_BLOW_2 = 0.17F;
-	static final float STRAIN_SPIN = 0.24F;
+	static final float STRAIN_BLOW_2 = 0.14F;
+	static final float STRAIN_SPIN = 0.2F;
 	static final float STRAIN_RUSH = 0.26F;
 	static final float STRAIN_THROW = 0.12F;
 	static final float STRAIN_PERFECT = 0.04F;
@@ -794,7 +867,32 @@ final class Finale {
 				return;
 			}
 			case WINDUP -> {
+				if (f.attack == SPIN) {
+					// Phase 32: into her spin the blades whirl on: the stroke is turned aside and the spin
+					// goes on (before, the blades clashed and the spin was gone: striking her was a way
+					// to stand in its circle unhurt).
+					spinTurnsAside(s, f, player, me, level, corner);
+					return;
+				}
+
+				if (flank(f, eye) && !f.turnabout) {
+					// Phase 32: struck from her side while she winds up her blow: she cannot parry it.
+					flankHit(s, f, player, me, level, corner, at, heavy);
+					return;
+				}
+
 				clash(s, f, player, me, level, corner);
+				return;
+			}
+			case RING_START -> {
+				// Phase 32: into the ring as she spins it up: turned aside (from behind it hits, as ever).
+				if (new Vec3(eye.x - f.x, 0.0, eye.z - f.z).normalize().dot(f.look()) < -0.35) {
+					fromBehind(s, f, player, me, level, corner, at, heavy);
+				} else {
+					discTurns(s, f, player, me, level, corner);
+					wearPoise(s, f, POISE_DISC, level, corner, me);
+				}
+
 				return;
 			}
 			case THROW -> {
@@ -856,8 +954,50 @@ final class Finale {
 			return;
 		}
 
-		parried(s, f, player, me, level, corner);
+		if (f.ringOn && (f.action == GUARD || f.action == RECOIL || f.action == PUSH)) {
+			// Phase 32: the ring's mode: the spinning disc before her turns the stroke aside (it
+			// wears her poise less than her blade's parry: the disc does the work).
+			discTurns(s, f, player, me, level, corner);
+			wearPoise(s, f, POISE_DISC * (heavy ? 1.5F : 1.0F), level, corner, me);
+			return;
+		}
+
+		parried(s, f, player, me, level, corner, heavy);
 	}
+
+	/**
+	 * Phase 32: whether a stroke from there (plot space, the player's eyes) comes at her side, further
+	 * round than {@link #FLANK_ANGLE} from where she faces (and not from behind, which has its own
+	 * rules), close enough to reach her.
+	 */
+	static boolean flank(Figure f, Vec3 eye) {
+		Vec3 to = new Vec3(eye.x - f.x, 0.0, eye.z - f.z);
+
+		if (to.lengthSqr() < 1.0E-4) {
+			return false;
+		}
+
+		double off = Math.toDegrees(Math.acos(Mth.clamp(to.normalize().dot(f.look()), -1.0, 1.0)));
+		return off > FLANK_ANGLE && to.normalize().dot(f.look()) >= -0.35;
+	}
+
+	/**
+	 * Phase 32: struck from her side while she winds up a blow (the player stepped or dashed round
+	 * it): set on her blow she cannot parry, the stroke hits and her blow is gone (she flinches,
+	 * then steps back on guard).
+	 */
+	private static void flankHit(StorySession s, Figure f, ServerPlayer player, Vec3 me, ServerLevel level, Vec3 corner, Vec3 at, boolean heavy) {
+		flankHits++;
+		s.counters.merge("flank_hits", 1, Integer::sum);
+		f.combo = 0;
+		f.burst = 0;
+		f.lunge = false;
+		act(f, OPEN_UP, STAGGER, opening(f, 12));
+		f.hits = 0;
+		bossHit(s, f, player, me, level, corner, at, heavy, false);
+	}
+
+	private static int flankHits;
 
 	/**
 	 * Phase 29: a stroke from behind her. The first hits (she flinches only a moment, then whirls
@@ -995,15 +1135,20 @@ final class Finale {
 
 		// Phase 26: the last quarter: the ring flares and whirls once round the grip, and she
 		// fights harder from now on (seen and heard; no words).
-		if (fierce(f) && !s.has("tmp.boss_fierce")) {
+		// (Phase 32: not while her staff is away: the flare is her ring's, in her hand; it comes with the next hit.)
+		if (fierce(f) && !s.has("tmp.boss_fierce") && !flying) {
 			s.set("tmp.boss_fierce");
 			Vec3 ring = f.position().add(corner).add(0.0, 1.3, 0.0);
-			level.playSound(null, ring.x, ring.y, ring.z, ShipInteriors.sound("story.ring_spin"), SoundSource.HOSTILE, 1.1F, 0.85F);
+			// (Phase 32: the ring's whirr is heard on the client, with the ring as it turns: no sound
+			// of its own here that went on whatever the ring did.)
 			level.sendParticles(ParticleTypes.ELECTRIC_SPARK, ring.x, ring.y, ring.z, 24, 0.3, 0.3, 0.3, 0.4);
 			Story.cue(s, Story.CUE_DUEL, "fierce", "", f.id);
 			s.timer("rush", Math.min(s.timers.getOrDefault("rush", 0), 60));
-			// Phase 28: her ring turns from now on, and her second throw (if any is left) comes soon.
-			ringGoes(s, f);
+			// Phase 28: her second throw (if any is left) comes soon. Phase 32: and the ring's mode
+			// (no longer the ring turning for good from now on).
+			if (!f.ringOn) {
+				s.timer("ring_rest", Math.min(s.timers.getOrDefault("ring_rest", 0), scaled(f, 40)));
+			}
 
 			if (f.thrown < THROWS_MAX) {
 				s.timer("throw", Math.min(s.timers.getOrDefault("throw", 0), THROW_FIERCE));
@@ -1032,22 +1177,219 @@ final class Finale {
 		}
 	}
 
-	/** Phase 23: a stroke into her guard: turned aside, blade on blade (strokes hammered at her are answered). */
-	private static void parried(StorySession s, Figure f, ServerPlayer player, Vec3 me, ServerLevel level, Vec3 corner) {
+	/**
+	 * Phase 23: a stroke into her guard: turned aside, blade on blade (strokes hammered at her are
+	 * answered). Phase 32: it wears her poise down (a full, heavy stroke more), and with none left
+	 * her guard breaks (an opening); quick strokes hammered at her are answered (a thrust, or a
+	 * shove with the Force when one is close), full strokes in a good rhythm are not; now and then
+	 * she gives a step with the parry.
+	 */
+	private static void parried(StorySession s, Figure f, ServerPlayer player, Vec3 me, ServerLevel level, Vec3 corner, boolean heavy) {
 		Vec3 contact = contact(f, me).add(corner);
-		level.sendParticles(ParticleTypes.ELECTRIC_SPARK, contact.x, contact.y, contact.z, 10, 0.08, 0.08, 0.08, 0.35);
-		level.playSound(null, contact.x, contact.y, contact.z, ShipInteriors.sound("saber.clash"), SoundSource.HOSTILE, 1.0F, 0.9F + player.getRandom().nextFloat() * 0.2F);
+		boolean worn = f.poise < 0.45F;
+		level.sendParticles(ParticleTypes.ELECTRIC_SPARK, contact.x, contact.y, contact.z, worn ? 16 : 10, 0.08, 0.08, 0.08, 0.35);
+		level.playSound(null, contact.x, contact.y, contact.z, ShipInteriors.sound("saber.clash"), SoundSource.HOSTILE, 1.0F,
+				worn ? 0.72F + player.getRandom().nextFloat() * 0.08F : 0.9F + player.getRandom().nextFloat() * 0.2F);
 		Story.cue(s, Story.CUE_DUEL, "parried", "", f.id, java.util.List.of(contact));
 		s.counters.merge("parried", 1, Integer::sum);
 
-		if (f.action == GUARD || f.action == RECOIL) {
-			f.react(Figure.PARRY, 6);
+		if (f.action != GUARD && f.action != RECOIL) {
+			return;
+		}
 
-			if (++f.parried >= PARRIES[phase(f)]) {
-				// Hammering at her guard: she answers at once, with a thrust.
+		if (wearPoise(s, f, heavy ? POISE_HEAVY : POISE_LIGHT, level, corner, me)) {
+			return;
+		}
+
+		f.react(Figure.PARRY, 6);
+
+		if (heavy) {
+			// A full stroke: she gives a step with it (no answer: she is busy holding it).
+			Hits.push(f, me, worn ? 0.22 : 0.14);
+			return;
+		}
+
+		if (++f.parried >= PARRIES[phase(f)]) {
+			// Hammering at her guard: she answers at once (Phase 32: a thrust, or with the player
+			// close a shove with the Force; not the same answer twice running).
+			double distance = Math.hypot(me.x - f.x, me.z - f.z);
+
+			if (distance < SHOVE_NEAR + 0.3 && !s.timer("shove") && f.moves[0] != MOVE_SHOVE && player.getRandom().nextFloat() < 0.4F) {
+				f.parried = 0;
+				shoveStarts(s, f, level, corner);
+			} else {
 				riposte(s, f, level);
 			}
+		} else if (player.getRandom().nextFloat() < 0.3F) {
+			// Now and then a step back with the parry.
+			Hits.push(f, me, 0.16);
 		}
+	}
+
+	/**
+	 * Phase 32: a stroke she turned aside wears her guard's poise down by that much (by the
+	 * difficulty). With none left her guard breaks: she reels (an opening; a little shorter than
+	 * after a combo). Returns whether it broke.
+	 */
+	private static boolean wearPoise(StorySession s, Figure f, float cost, ServerLevel level, Vec3 corner, Vec3 me) {
+		f.poise -= cost * POISE_BY[Math.min(POISE_BY.length - 1, s.difficulty().ordinal())];
+		f.poiseAt = s.time();
+
+		if (f.poise > 0.0F) {
+			return false;
+		}
+
+		f.poise = 1.0F;
+		f.parried = 0;
+		f.combo = 0;
+		f.burst = 0;
+		f.lunge = false;
+		poiseBreaks++;
+		s.counters.merge("boss_guard_broken", 1, Integer::sum);
+		Vec3 at = contact(f, me).add(corner);
+		level.sendParticles(ParticleTypes.ELECTRIC_SPARK, at.x, at.y, at.z, 30, 0.14, 0.14, 0.14, 0.5);
+		level.playSound(null, at.x, at.y, at.z, ShipInteriors.sound("story.clash_big"), SoundSource.HOSTILE, 1.2F, 0.7F);
+		Story.cue(s, Story.CUE_DUEL, "guard_down", "", f.id, java.util.List.of(at));
+		f.react(Figure.STUMBLE, 14);
+		Hits.push(f, me, 0.28);
+		act(f, OPEN_UP, STAGGER, opening(f, GUARD_BREAK_OPENING));
+		f.hits = 0;
+		return true;
+	}
+
+	/** Phase 32: her poise comes back once nobody has struck at her for a moment. */
+	private static void poiseBack(StorySession s, Figure f) {
+		if (f.poise < 1.0F && s.time() - f.poiseAt > POISE_REST) {
+			f.poise = Math.min(1.0F, f.poise + POISE_BACK);
+		}
+	}
+
+	private static int poiseBreaks;
+
+	/** Phase 32, for the tests: her guard broken by strokes, strokes at her side that hit, contacts of the ring's disc (hurt, blocked). */
+	static int[] defenceForTest() {
+		return new int[] {poiseBreaks, flankHits, discHits, discBlocks, overextended, spinChips, spinTurned};
+	}
+
+	private static int discHits;
+	private static int discBlocks;
+	private static int overextended;
+	private static int spinChips;
+	private static int spinTurned;
+
+	/**
+	 * Phase 32: where the ring's disc is in her ring's mode (plot space): its middle before her at
+	 * chest height, as the client holds it ({@link StoryFiguresPayload#DISC_AHEAD},
+	 * {@link StoryFiguresPayload#DISC_HEIGHT}); it stands upright, facing the way she faces.
+	 */
+	static Vec3 discMiddle(Figure f) {
+		Vec3 look = f.look();
+		return new Vec3(f.x + look.x * StoryFiguresPayload.DISC_AHEAD, f.y + StoryFiguresPayload.DISC_HEIGHT, f.z + look.z * StoryFiguresPayload.DISC_AHEAD);
+	}
+
+	/**
+	 * Phase 32: whether she holds the spinning disc before her now (the ring's mode, her staff in
+	 * her hand, standing on guard, circling, stepping back, after blades met, her hand out for the
+	 * push: as the client draws it then).
+	 */
+	static boolean discUp(Figure f) {
+		return f.ringOn && f.lit && !f.disarmed && f.throwFrom == null && f.react != Figure.STUMBLE && f.react != Figure.FALL
+				&& (f.action == GUARD || f.action == RECOIL || f.action == CLASHED || f.action == PUSH);
+	}
+
+	/**
+	 * Phase 32: whether the player's body (a column from their feet to their head, {@code 0.3}
+	 * round) touches the disc: within its blades' reach of its middle, and through its plane.
+	 */
+	static boolean inDisc(Figure f, Vec3 me) {
+		Vec3 middle = discMiddle(f);
+		Vec3 normal = f.look();
+		double radius = StoryFiguresPayload.DISC_RADIUS + 0.3;
+
+		for (double up = 0.1; up <= 1.7; up += 0.2) {
+			Vec3 p = me.add(0.0, up, 0.0).subtract(middle);
+			double across = p.x * normal.x + p.z * normal.z;
+
+			if (Math.abs(across) > 0.3 + 0.12) {
+				continue;
+			}
+
+			Vec3 inPlane = p.subtract(normal.x * across, 0.0, normal.z * across);
+
+			if (inPlane.length() <= radius) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	/**
+	 * Phase 32: each tick of her ring's mode: whoever walks into the spinning disc before her is
+	 * cut by it (less than a blow), at most every {@link #DISC_REHIT} of her ticks, and thrown back
+	 * out of it; a guard raised towards it holds it (stamina) instead. The disc no longer turns
+	 * through the player harmlessly.
+	 */
+	private static void discContact(StorySession s, Figure f, ServerPlayer player, Vec3 me, ServerLevel level, Vec3 corner, int phase) {
+		if (phase < 2 || !discUp(f) || !inDisc(f, me) || s.time() - f.discHitAt < Math.max(1, scaled(f, DISC_REHIT))) {
+			return;
+		}
+
+		if (SaberAbilities.evading(player)) {
+			return;
+		}
+
+		f.discHitAt = s.time();
+		Vec3 at = discMiddle(f).add(corner);
+		Vec3 out = new Vec3(me.x - f.x, 0.0, me.z - f.z);
+		out = out.lengthSqr() < 1.0E-4 ? f.look() : out.normalize();
+		Vec3 look = player.getLookAngle();
+		boolean facing = new Vec3(look.x, 0.0, look.z).normalize().dot(out.scale(-1.0)) > 0.35;
+		s.counters.merge("disc_contact", 1, Integer::sum);
+
+		if (guardTicks(s, player) >= 0 && facing) {
+			int held = strain(s, f, player, STRAIN_DISC, at, level, false);
+
+			if (held == SaberAbilities.GUARD_BROKEN) {
+				breaksThrough(s, f, player, me, level, corner, DISC_DAMAGE);
+				return;
+			}
+
+			discBlocks++;
+			level.sendParticles(ParticleTypes.ELECTRIC_SPARK, at.x, at.y, at.z, 12, 0.1, 0.1, 0.1, 0.4);
+			level.playSound(null, at.x, at.y, at.z, ShipInteriors.sound("saber.clash"), SoundSource.HOSTILE, 0.9F, 1.25F);
+			player.push(out.x * 0.45, 0.05, out.z * 0.45);
+			player.hurtMarked = true;
+			return;
+		}
+
+		discHits++;
+		s.counters.merge("disc_hurt", 1, Integer::sum);
+		s.counters.merge("duel_hurt", 1, Integer::sum);
+		hurt(player, level, DISC_DAMAGE * f.power);
+		player.push(out.x * 0.55, 0.2, out.z * 0.55);
+		player.hurtMarked = true;
+		level.playSound(null, at.x, at.y, at.z, ShipInteriors.sound("saber.hit"), SoundSource.HOSTILE, 0.9F, 1.1F);
+		level.sendParticles(ParticleTypes.ELECTRIC_SPARK, player.getX(), player.getY() + 1.1, player.getZ(), 10, 0.15, 0.2, 0.15, 0.3);
+		Story.cue(s, Story.CUE_DUEL, "hurt", "", Math.round(DISC_DAMAGE * f.power), java.util.List.of(f.position().add(corner)));
+	}
+
+	/**
+	 * Phase 32: a stroke into her spin: the whirling blades turn it aside and the spin goes on (the
+	 * player is thrown back a little; it wears her poise a little). Before, the blades clashed and
+	 * the spin was gone: striking at her was a way to stand in its circle unhurt.
+	 */
+	private static void spinTurnsAside(StorySession s, Figure f, ServerPlayer player, Vec3 me, ServerLevel level, Vec3 corner) {
+		spinTurned++;
+		s.counters.merge("spin_turned", 1, Integer::sum);
+		Vec3 contact = contact(f, me).add(corner);
+		level.sendParticles(ParticleTypes.ELECTRIC_SPARK, contact.x, contact.y, contact.z, 16, 0.1, 0.1, 0.1, 0.45);
+		level.playSound(null, contact.x, contact.y, contact.z, ShipInteriors.sound("saber.clash"), SoundSource.HOSTILE, 1.0F, 1.15F + player.getRandom().nextFloat() * 0.1F);
+		Vec3 back = new Vec3(me.x - f.x, 0.0, me.z - f.z);
+		back = back.lengthSqr() < 1.0E-4 ? f.look().scale(-1.0) : back.normalize();
+		player.push(back.x * 0.35, 0.08, back.z * 0.35);
+		player.hurtMarked = true;
+		Story.cue(s, Story.CUE_DUEL, "parried", "", f.id, java.util.List.of(contact));
 	}
 
 	/** Phase 23: her answer: a quick thrust (one blow; blocked or dodged it leaves her open as any other). */
@@ -1084,6 +1426,10 @@ final class Finale {
 		clashes++;
 		s.counters.merge("clashes", 1, Integer::sum);
 		Story.cue(s, Story.CUE_DUEL, "clash", "", f.id, java.util.List.of(contact));
+		// Phase 32: blades meeting wear her poise a little too (in the second phase).
+		if (phase(f) >= 2) {
+			wearPoise(s, f, POISE_CLASH, level, corner, me);
+		}
 	}
 
 	/** Phase 23: where the two blades meet (plot space): between them, at chest height. */
@@ -1101,7 +1447,7 @@ final class Finale {
 	private static final java.util.List<String> FIGHT_FLAGS = java.util.List.of("tmp.duel", BOSS_SCENE, BOSS_DONE, "tmp.boss_reveal", SCENE_PENDING,
 			"tmp.boss_fierce", "tmp.hint_guard_break", "tmp.hint_guard_strain");
 	/** Phase 31: the session's timers of a fight under way (her moves' pauses, the scene, the guard). */
-	private static final java.util.Set<String> FIGHT_TIMERS = java.util.Set.of("push", "leap", "rush", "throw", "slam", "lunge", "shove", "ring_min",
+	private static final java.util.Set<String> FIGHT_TIMERS = java.util.Set.of("push", "leap", "rush", "throw", "slam", "lunge", "shove", "ring_mode", "ring_rest",
 			"rear_answer", "guard_broken", "throw_back", "boss_mid", "boss_pending", "stroke");
 
 	/**
@@ -1156,6 +1502,8 @@ final class Finale {
 			return;
 		}
 
+		// Phase 32: lit already (in the film before the fight, at its ignition): no second ignition sound.
+		boolean wasLit = shadow.lit;
 		// Phase 31: always from a clean slate (also when the same figure fought before).
 		resetFight(s);
 		shadow.resetFight();
@@ -1172,7 +1520,11 @@ final class Finale {
 		s.timer("push", PUSH_EVERY);
 		s.timer("leap", LEAP_EVERY);
 		Chapter1.music(s, s.mission, s.step().id());
-		Story.cue(s, Story.CUE_SOUND, "", "saber.ignite", shadow.id);
+
+		if (!wasLit) {
+			Story.cue(s, Story.CUE_SOUND, "", "saber.ignite", shadow.id);
+		}
+
 		s.dirty = true;
 	}
 
@@ -1228,6 +1580,11 @@ final class Finale {
 
 		// Phase 29: nobody stands in her (or on her): pushed out, as against anyone.
 		bodyContact(f, player, me, distance);
+		// Phase 32: her guard's poise comes back once she is left alone a moment.
+		poiseBack(s, f);
+
+		// Phase 32: in the ring's mode its spinning disc before her cuts whoever walks into it.
+		discContact(s, f, player, me, level, corner, phase);
 
 		// Phase 23: thrown back by a hit, turning a stroke aside, reeling from a perfect parry.
 		boolean held = Hits.tick(f, level, corner);
@@ -1256,6 +1613,11 @@ final class Finale {
 				act(f, GUARD, 0, 0);
 				f.lunge = false;
 				f.cooldown = pause(f, phase);
+			} else if (f.action == RING_START) {
+				// Phase 32: struck while she spins the ring up: the switch is broken off (she tries again a little later).
+				act(f, GUARD, 0, 0);
+				f.cooldown = pause(f, phase);
+				s.timer("ring_rest", scaled(f, 60));
 			}
 
 			return;
@@ -1317,6 +1679,7 @@ final class Finale {
 				}
 			}
 			case LEAP -> leap(s, f, player, me, level, corner, phase);
+			case RING_START -> ringStartTick(s, f);
 			case THROW -> throwTick(s, f, player, me, level, corner);
 			case RUSH -> rushTick(s, f, player, me, level, corner);
 			case SLAM -> slamTick(s, f, player, me, level, corner, phase);
@@ -1535,7 +1898,7 @@ final class Finale {
 	}
 
 	/** Phase 29, for the tests: how often she chose each move (by its number: the actions, a lunge, a shove, a turn). */
-	private static final int[] MOVES_MADE = new int[16];
+	private static final int[] MOVES_MADE = new int[17];
 
 	static int[] movesForTest() {
 		return MOVES_MADE.clone();
@@ -1551,8 +1914,16 @@ final class Finale {
 		RandomSource random = player.getRandom();
 		boolean clear = Stealth.clear(level, corner.add(f.eye()), player.getEyePosition());
 
+		// Phase 32: the ring's mode runs out at a calm moment (never in the middle of a move): she
+		// lets the ring wind down and lowers her staff (an opening), then fights with her blades.
+		if (f.ringOn && !s.timer("ring_mode")) {
+			ringEnds(s, f);
+			return;
+		}
+
 		// Phase 28: her throw is due (once or twice a fight): she keeps off to throw from there.
-		boolean throwDue = throwDue(s, f, phase);
+		// (Phase 32: not in the ring's mode: the ring whirls before her then, her staff stays in her hand.)
+		boolean throwDue = throwDue(s, f, phase) && !f.ringOn;
 
 		// Phase 29: the player behind her for a moment (she noticed): she answers it, whatever else she meant to do.
 		if (f.behindTicks >= notice(s) && distance < BEHIND_NEAR && !s.timer("rear_answer")) {
@@ -1568,7 +1939,6 @@ final class Finale {
 
 		if (f.cooldown > 0) {
 			f.cooldown--;
-			ringRests(s, f);
 
 			if (throwDue && distance < THROW_BACK_TO - 0.3) {
 				Vec3 away = f.position().add(f.position().subtract(me).normalize().scale(1.5));
@@ -1580,9 +1950,11 @@ final class Finale {
 						f.strafe = -f.strafe;
 					}
 				}
-			} else if (distance > (throwDue ? THROW_TO - 1.5 : 3.0)) {
+			} else if (distance > (throwDue ? THROW_TO - 1.5 : f.ringOn ? DISC_KEEP + 1.0 : 3.0)) {
 				Stealth.step(f, me, Stealth.WALK * (phase >= 2 ? 1.6 : 1.3), level, corner);
-			} else if (distance < 1.6) {
+			} else if (distance < (f.ringOn ? DISC_KEEP : 1.6)) {
+				// (Phase 32: in the ring's mode she keeps the player just beyond her disc while she
+				// circles: it cuts who walks into it, she does not walk it into one standing still.)
 				Stealth.step(f, f.position().add(f.position().subtract(me).normalize()), Stealth.WALK, level, corner);
 			} else {
 				// Circling: a step to the side (Phase 29: now and then the other way, not round and round one way).
@@ -1598,6 +1970,13 @@ final class Finale {
 				}
 			}
 
+			return;
+		}
+
+		// Phase 32: the ring's mode, when it is due (in the second phase, now and then for a while):
+		// she spins the ring up before her, to be seen and heard, before it is dangerous.
+		if (ringDue(s, f) && distance < RING_SWITCH_NEAR) {
+			ringStarts(s, f);
 			return;
 		}
 
@@ -1623,7 +2002,11 @@ final class Finale {
 		// player fights (a guard held up all the time draws the push and the slam; one far off the
 		// leap, the lunge, the rush).
 		boolean turtle = guardTicks(s, player) >= TURTLE;
-		double[] weights = new double[15];
+		// Phase 32: in the second phase, in the ring's mode or not: the ring's moves (the spin, the
+		// rush) only while it turns; her slam and her lunge only with her blades as ever.
+		boolean ring = phase >= 2 && f.ringOn;
+		boolean blades = phase < 2 || !f.ringOn;
+		double[] weights = new double[MOVES_MADE.length];
 
 		if (!s.timer("push") && distance > 2.5 && distance < 8.0 && clear && (phase >= 2 || f.health <= RING_FROM)) {
 			weights[PUSH] = 1.4 * (turtle ? 2.4 : 1.0) * fresh(f, PUSH);
@@ -1635,19 +2018,19 @@ final class Finale {
 
 		// Phase 26: the ring's rush (not right after her leap or throw). Phase 27: in the first
 		// phase too, rarer, once she has lost some strength (one blade whirling), not right after a push.
-		if ((phase >= 2 || f.health <= RING_FROM) && !s.timer("rush") && distance > RUSH_FROM && distance < RUSH_TO && clear
+		if ((ring || phase < 2 && f.health <= RING_FROM) && !s.timer("rush") && distance > RUSH_FROM && distance < RUSH_TO && clear
 				&& since(s, f, "leap", LEAP_EVERY, 50) && since(s, f, "throw", THROW_EVERY, 60)
 				&& (phase >= 2 || since(s, f, "push", PUSH_EVERY_FIRST, 60))) {
 			weights[RUSH] = 1.3 * fresh(f, RUSH);
 		}
 
 		// Phase 26: she lunges in with a thrust from a few steps away (Phase 29: in the second phase too, less often).
-		if (!s.timer("lunge") && distance > LUNGE_FROM && distance < LUNGE_TO && clear) {
+		if (blades && !s.timer("lunge") && distance > LUNGE_FROM && distance < LUNGE_TO && clear) {
 			weights[MOVE_LUNGE] = (phase == 1 ? 1.6 : 0.8) * fresh(f, MOVE_LUNGE);
 		}
 
 		// Phase 29: her slam, from the last fifth of her first phase on, with the player before her at its reach.
-		if ((phase >= 2 || f.health <= SLAM_FROM) && !s.timer("slam") && distance > 1.2 && distance < SLAM_REACH - 0.4 && clear
+		if (blades && (phase >= 2 || f.health <= SLAM_FROM) && !s.timer("slam") && distance > 1.2 && distance < SLAM_REACH - 0.4 && clear
 				&& Math.abs(Mth.wrapDegrees(Crew.yaw(f.position(), me) - f.headYaw)) < 40.0F) {
 			weights[SLAM] = 1.3 * (turtle ? 2.8 : 1.0) * fresh(f, SLAM);
 		}
@@ -1655,6 +2038,9 @@ final class Finale {
 		if (distance <= BLOW_REACH - 0.4) {
 			// Close: her blade work first of all (the pressure).
 			weights[WINDUP] = (distance < 2.0 ? 3.6 : 3.0) * Math.max(0.55, fresh(f, WINDUP));
+		} else if (ring && distance <= SPIN_REACH - 0.3) {
+			// Phase 32: in the ring's mode her spin reaches further than a blow: she opens with it.
+			weights[WINDUP] = 2.6 * Math.max(0.55, fresh(f, WINDUP));
 		}
 
 		double total = 0.0;
@@ -1716,7 +2102,8 @@ final class Finale {
 			}
 			case SLAM -> slamStarts(s, f, level, corner);
 			default -> {
-				// A combo: one of her patterns (not the same twice running).
+				// A combo: one of her patterns (not the same twice running). (Phase 32: in the ring's
+				// mode from beyond a blow's reach, one that opens with her spin.)
 				int[][] patterns = patterns(f, phase);
 				int pick = random.nextInt(patterns.length);
 
@@ -1724,11 +2111,28 @@ final class Finale {
 					pick = (pick + 1) % patterns.length;
 				}
 
+				if (ring && distance > BLOW_REACH - 0.4 && patterns[pick][0] != SPIN) {
+					pick = spinOpener(patterns, pick, random);
+				}
+
 				f.pattern = pick;
 				f.combo = patterns[pick].length;
 				blowStarts(f, patterns[pick][0], scaled(f, WINDUPS[phase]), level, s);
 			}
 		}
+	}
+
+	/** Phase 32: one of her patterns (of the ring's mode) that opens with her spin (any other than {@code not} if there are two). */
+	private static int spinOpener(int[][] patterns, int not, RandomSource random) {
+		java.util.List<Integer> openers = new java.util.ArrayList<>();
+
+		for (int i = 0; i < patterns.length; i++) {
+			if (patterns[i][0] == SPIN) {
+				openers.add(i);
+			}
+		}
+
+		return openers.isEmpty() ? not : openers.get(random.nextInt(openers.size()));
 	}
 
 	/**
@@ -1793,32 +2197,67 @@ final class Finale {
 	}
 
 	/**
-	 * Phase 28: her ring is set going (a ring move of the second phase: the spin, the rush, the
-	 * throw; her last quarter): it keeps turning from now on, at least {@link #RING_MIN} ticks after
-	 * the last such move.
+	 * Phase 32: whether she switches into the ring's mode now: the second phase, her saber lit and in
+	 * her hand, not in the mode yet, its rest over. (Before, Phase 28: each ring move (the spin,
+	 * which came in most of her combos of the second phase, the rush, the throw) kept the ring
+	 * turning for at least 400 more ticks, and in her last quarter for good: it turned practically
+	 * the whole second phase, and that turning disc hurt nobody.)
 	 */
-	private static void ringGoes(StorySession s, Figure f) {
-		if (phase(f) < 2 || !f.lit) {
+	static boolean ringDue(StorySession s, Figure f) {
+		return phase(f) >= 2 && f.lit && !f.disarmed && !f.ringOn && f.throwFrom == null && !s.timer("ring_rest");
+	}
+
+	/** Phase 32: she spins the ring up before her: the switch into the ring's mode (seen and heard; nothing hurts yet). */
+	private static void ringStarts(StorySession s, Figure f) {
+		act(f, RING_START, 0, scaled(f, RING_UP));
+		f.react(Figure.RING_UP, f.timer);
+		f.combo = 0;
+		f.pattern = -1;
+		f.burst = 0;
+		f.lunge = false;
+		ringSwitches[0]++;
+		s.counters.merge("ring_modes", 1, Integer::sum);
+		remember(f, RING_START);
+		s.dirty = true;
+	}
+
+	/** Phase 32: each tick of the switch into the ring's mode: she stands facing the player while the ring spins up; then it turns. */
+	private static void ringStartTick(StorySession s, Figure f) {
+		f.speed = 0.0F;
+
+		if (--f.timer > 0) {
 			return;
 		}
 
-		if (!f.ringOn) {
-			f.ringOn = true;
-			ringStarted++;
-		}
-
-		s.timer("ring_min", RING_MIN);
+		f.ringOn = true;
+		ringStarted++;
+		s.timer("ring_mode", scaled(f, RING_MODE));
+		f.discHitAt = -1000L;
+		act(f, GUARD, 0, 0);
+		f.cooldown = scaled(f, 8);
+		s.dirty = true;
 	}
 
-	/** Phase 28: a calm moment (circling on guard, not in her last quarter, long after a ring move): the ring may stop. */
-	private static void ringRests(StorySession s, Figure f) {
-		if (f.ringOn && !fierce(f) && !s.timer("ring_min") && f.react == 0) {
-			f.ringOn = false;
-			ringStopped++;
-		}
+	/**
+	 * Phase 32: the ring's mode is over: she lets the ring wind down and lowers her staff (her guard
+	 * down meanwhile: an opening), then she fights with plain blade work again for a while.
+	 */
+	private static void ringEnds(StorySession s, Figure f) {
+		ringStops(f);
+		act(f, OPEN_UP, 0, opening(f, RING_DOWN));
+		f.react(Figure.RING_DOWN, f.timer);
+		f.hits = 0;
+		f.parried = 0;
+		f.combo = 0;
+		f.burst = 0;
+		s.timers.remove("ring_mode");
+		s.timer("ring_rest", scaled(f, fierce(f) ? RING_REST_FIERCE : RING_REST));
+		ringSwitches[1]++;
+		s.counters.merge("ring_mode_ends", 1, Integer::sum);
+		s.dirty = true;
 	}
 
-	/** Phase 28: the ring stops at once (the blade lock, her defeat, a new fight). */
+	/** Phase 28: the ring stops at once (the blade lock, her defeat, a new fight). Phase 32: the ring's mode with it. */
 	private static void ringStops(Figure f) {
 		if (f.ringOn) {
 			f.ringOn = false;
@@ -1826,8 +2265,33 @@ final class Finale {
 		}
 	}
 
-	/** Phase 26: her combos now (the last quarter of her strength has its own). */
+	/** Phase 32, for the tests: switches into the ring's mode begun, and the mode ended (its wind-down). */
+	private static final int[] ringSwitches = new int[2];
+
+	static int[] ringSwitchesForTest() {
+		return ringSwitches.clone();
+	}
+
+	/** Phase 32, for the tests: she switches into the ring's mode now (as when it is due). */
+	static void ringModeForTest(StorySession s, Figure f) {
+		s.timers.remove("ring_rest");
+		ringStarts(s, f);
+	}
+
+	/** Phase 32, for the tests: the ring's mode runs out now (she ends it at her next calm moment). */
+	static void ringModeEndsForTest(StorySession s) {
+		s.timers.remove("ring_mode");
+	}
+
+	/**
+	 * Phase 26: her combos now (the last quarter of her strength has its own). Phase 32: with the
+	 * spin only while the ring turns (the ring's mode).
+	 */
 	static int[][] patterns(Figure f, int phase) {
+		if (phase >= 2 && f.ringOn) {
+			return fierce(f) ? FIERCE_RING_PATTERNS : RING_PATTERNS;
+		}
+
 		return fierce(f) ? FIERCE_PATTERNS : PATTERNS[phase];
 	}
 
@@ -1877,7 +2341,6 @@ final class Finale {
 		if (kind == SPIN) {
 			ticks = Math.max(ticks, SPIN_WINDUP);
 			spins++;
-			ringGoes(s, f);
 			f.spinHitWindup = -1;
 			f.spinReached = false;
 			f.spinHurt = false;
@@ -1888,12 +2351,9 @@ final class Finale {
 		act(f, WINDUP, kind, ticks);
 		f.windup = ticks;
 		Vec3 at = f.position().add(Vec3.atLowerCornerOf(s.origin(f.ship)));
+		// (Phase 32: the spin's rising whirr, the warning before its circle, is the ring's own sound on
+		// the client: heard while the ring turns, and gone the moment it stops.)
 		level.playSound(null, at.x, at.y + 1.2, at.z, ShipInteriors.sound("saber.swing"), SoundSource.HOSTILE, 0.7F, kind == THRUST ? 1.1F : 0.8F);
-
-		if (kind == SPIN) {
-			// Phase 30: the ring spins up round the grip: its whirr rising is heard (the warning before the circle).
-			level.playSound(null, at.x, at.y + 1.3, at.z, ShipInteriors.sound("story.ring_spin"), SoundSource.HOSTILE, 1.0F, 1.0F);
-		}
 	}
 
 	/**
@@ -1942,7 +2402,17 @@ final class Finale {
 				Story.cue(s, Story.CUE_DUEL, "dodged", "", f.id);
 			}
 
-			if (f.combo > 0) {
+			if (evading && phase >= 2 && f.combo > 0 && distance <= reach + 0.8) {
+				// Phase 32: in the second phase a blow dodged right under it carries her on past the
+				// player: her combo is broken off and she is open a moment (a way through her defence).
+				overextended++;
+				s.counters.merge("overextended", 1, Integer::sum);
+				f.combo = 0;
+				f.burst = 0;
+				f.react(Figure.STUMBLE, 10);
+				act(f, OPEN_UP, STAGGER, opening(f, OVEREXTEND_OPENING));
+				f.hits = 0;
+			} else if (f.combo > 0) {
 				blowStarts(f, nextKind(f, phase, random), follow(f, phase) + random.nextInt(3) - 1, level, s);
 			} else {
 				act(f, OPEN_UP, STAGGER, opening(f, OPENINGS[phase] - (evading ? 0 : 6)));
@@ -2014,7 +2484,7 @@ final class Finale {
 
 		// Neither blocked nor dodged: it hurts.
 		s.counters.merge("duel_hurt", 1, Integer::sum);
-		player.hurtServer(level, level.damageSources().generic(), BLOWS[phase] * f.power);
+		hurt(player, level, BLOWS[phase] * f.power);
 		Vec3 push = new Vec3(me.x - f.x, 0.0, me.z - f.z).normalize().scale(0.6);
 		player.push(push.x, 0.25, push.z);
 		player.hurtMarked = true;
@@ -2104,6 +2574,14 @@ final class Finale {
 			boolean perfect = !again && guardTicks <= PERFECT && perfectReady(f, player);
 			int held = strain(s, f, player, perfect ? STRAIN_PERFECT : again ? STRAIN_SPIN * 0.5F : STRAIN_SPIN, at, level, !perfect && !again);
 
+			if (again && held != SaberAbilities.GUARD_BROKEN) {
+				// Phase 32: the blades come round again on a guard held up in the circle: some of it
+				// comes through (to stand in her spin is never safe, not even behind a guard).
+				spinChips++;
+				s.counters.merge("spin_chip", 1, Integer::sum);
+				hurt(player, level, BLOWS[phase] * SPIN_CHIP * f.power);
+			}
+
 			if (held == SaberAbilities.GUARD_BROKEN) {
 				breaksThrough(s, f, player, me, level, corner, BLOWS[phase] * BREAK_DAMAGE);
 				f.combo = 0;
@@ -2144,7 +2622,7 @@ final class Finale {
 		float damage = BLOWS[phase] * f.power * (again ? SPIN_AGAIN : 1.0F);
 		s.counters.merge("duel_hurt", 1, Integer::sum);
 		s.counters.merge("spin_hurt", 1, Integer::sum);
-		player.hurtServer(level, level.damageSources().generic(), damage);
+		hurt(player, level, damage);
 		player.push(out.x * 0.6, 0.25, out.z * 0.6);
 		player.hurtMarked = true;
 		level.playSound(null, at.x, at.y, at.z, ShipInteriors.sound("saber.hit"), SoundSource.HOSTILE, 1.0F, 0.9F);
@@ -2263,12 +2741,42 @@ final class Finale {
 	/** Phase 28: a blow (or the thrown staff, the rush) breaks through the guard: it hurts, weaker, and throws the player back. */
 	private static void breaksThrough(StorySession s, Figure f, ServerPlayer player, Vec3 me, ServerLevel level, Vec3 corner, float damage) {
 		s.counters.merge("duel_hurt", 1, Integer::sum);
-		player.hurtServer(level, level.damageSources().generic(), damage * f.power);
+		hurt(player, level, damage * f.power);
 		Vec3 push = new Vec3(me.x - f.x, 0.0, me.z - f.z);
 		push = push.lengthSqr() < 1.0E-4 ? f.look().scale(0.7) : push.normalize().scale(0.7);
 		player.push(push.x, 0.2, push.z);
 		player.hurtMarked = true;
 		Story.cue(s, Story.CUE_DUEL, "hurt", "", Math.round(damage * f.power), java.util.List.of(f.position().add(corner)));
+	}
+
+	/**
+	 * Phase 32: one of her attacks hurts the player: the damage she deals, whatever hurt them just
+	 * before. (Minecraft lets a hit within half a second of the one before through only by as much
+	 * as it is stronger: her blow right after a trooper's bolt, or the second blow of her spin after
+	 * its first, came through weakened or not at all. Her attacks keep their own pace instead: her
+	 * blows one at a time, her spin and the ring's disc again only after {@link #SPIN_REHIT} and
+	 * {@link #DISC_REHIT} of her own ticks.) Returns whether it hurt.
+	 */
+	static boolean hurt(ServerPlayer player, ServerLevel level, float damage) {
+		if (damage <= 0.0F) {
+			return false;
+		}
+
+		player.invulnerableTime = 0;
+		boolean done = player.hurtServer(level, level.damageSources().generic(), damage);
+
+		if (done) {
+			landed++;
+		}
+
+		return done;
+	}
+
+	/** Phase 32, for the tests: her attacks that really hurt the player (not swallowed). */
+	private static int landed;
+
+	static int landedForTest() {
+		return landed;
 	}
 
 	/** Phase 23: how long the player's guard has been up (ticks), or -1 when it is not. */
@@ -2321,7 +2829,6 @@ final class Finale {
 		f.flightHits = 0;
 		f.thrown++;
 		s.timers.remove("throw_back");
-		ringGoes(s, f);
 		act(f, THROW, 0, THROW_WIND);
 		f.windup = THROW_WIND;
 		f.throwFrom = null;
@@ -2333,8 +2840,8 @@ final class Finale {
 		s.counters.merge("throws", 1, Integer::sum);
 		Vec3 at = f.position().add(corner).add(0.0, 1.4, 0.0);
 		level.playSound(null, at.x, at.y, at.z, ShipInteriors.sound("saber.swing"), SoundSource.HOSTILE, 0.9F, 0.6F);
-		// Phase 26: the ring spins up as she draws it back (heard and seen: the warning, no words).
-		level.playSound(null, at.x, at.y, at.z, ShipInteriors.sound("story.ring_spin"), SoundSource.HOSTILE, 0.9F, 1.0F);
+		// (Phase 26: the ring spins up as she draws it back, heard and seen: the warning, no words.
+		// Phase 32: its whirr is the ring's own sound on the client, while it really turns.)
 	}
 
 	/**
@@ -2463,7 +2970,7 @@ final class Finale {
 
 		throwHits++;
 		s.counters.merge("throw_hit", 1, Integer::sum);
-		player.hurtServer(level, level.damageSources().generic(), THROW_DAMAGE * f.power);
+		hurt(player, level, THROW_DAMAGE * f.power);
 		Vec3 push = new Vec3(player.getX() - at.x, 0.0, player.getZ() - at.z);
 		push = push.lengthSqr() < 1.0E-4 ? Vec3.ZERO : push.normalize().scale(0.45);
 		player.push(push.x, 0.2, push.z);
@@ -2477,14 +2984,12 @@ final class Finale {
 
 	/** The ring spins up round the grip (its whirr rising, the blades blurring into a disc): the warning. */
 	private static void rushStarts(StorySession s, Figure f, ServerLevel level, Vec3 corner) {
-		ringGoes(s, f);
 		act(f, RUSH, 0, RUSH_TICKS);
 		f.windup = RUSH_WIND;
 		f.react(Figure.RING, RUSH_WIND + RUSH_TICKS);
 		s.timer("rush", scaled(f, fierce(f) ? RUSH_EVERY_FIERCE : phase(f) == 1 ? RUSH_EVERY_FIRST : RUSH_EVERY));
 		rushes++;
-		Vec3 at = f.position().add(corner).add(0.0, 1.3, 0.0);
-		level.playSound(null, at.x, at.y, at.z, ShipInteriors.sound("story.ring_spin"), SoundSource.HOSTILE, 1.0F, 1.0F);
+		// (Phase 32: the whirr rising is the ring's own sound on the client, with the ring as it turns.)
 	}
 
 	/** Each tick of the rush: spinning up in place, then driving at the player behind the disc. */
@@ -2503,8 +3008,9 @@ final class Finale {
 		boolean moved = Stealth.step(f, ahead, RUSH_SPEED, level, corner);
 		Vec3 at = f.position().add(corner).add(0.0, 1.3, 0.0);
 
-		if (f.timer % 5 == 0) {
-			level.playSound(null, at.x, at.y, at.z, ShipInteriors.sound("saber.swing"), SoundSource.HOSTILE, 0.7F, 1.45F);
+		// (Phase 32: with one blade, the ring locked, no whirling disc: her blade's own swish, less often.)
+		if (phase(f) >= 2 ? f.timer % 5 == 0 : f.timer % 8 == 0) {
+			level.playSound(null, at.x, at.y, at.z, ShipInteriors.sound("saber.swing"), SoundSource.HOSTILE, 0.7F, phase(f) >= 2 ? 1.45F : 1.0F);
 		}
 
 		Vec3 toMe = new Vec3(me.x - f.x, 0.0, me.z - f.z);
@@ -2575,7 +3081,7 @@ final class Finale {
 
 		rushHits++;
 		s.counters.merge("duel_hurt", 1, Integer::sum);
-		player.hurtServer(level, level.damageSources().generic(), BLOWS[2] * f.power);
+		hurt(player, level, BLOWS[2] * f.power);
 		player.push(back.x * 0.7, 0.25, back.z * 0.7);
 		player.hurtMarked = true;
 		level.playSound(null, at.x, at.y, at.z, ShipInteriors.sound("saber.hit"), SoundSource.HOSTILE, 1.0F, 0.85F);
@@ -2676,7 +3182,7 @@ final class Finale {
 		slams++;
 		s.counters.merge("slams", 1, Integer::sum);
 		Vec3 at = f.position().add(corner).add(0.0, 1.6, 0.0);
-		level.playSound(null, at.x, at.y, at.z, ShipInteriors.sound("story.ring_spin"), SoundSource.HOSTILE, 1.0F, 0.6F);
+		// (Phase 32: no longer the ring's whirr: the ring does not turn in her slam.)
 		level.playSound(null, at.x, at.y, at.z, ShipInteriors.sound("saber.swing"), SoundSource.HOSTILE, 0.9F, 0.5F);
 		Story.cue(s, Story.CUE_DUEL, "slam_wind", "", wind, java.util.List.of(at));
 	}
@@ -2797,7 +3303,7 @@ final class Finale {
 		s.counters.merge("slam_hit", 1, Integer::sum);
 		s.counters.merge("duel_hurt", 1, Integer::sum);
 		float damage = SLAM_DAMAGE * f.power;
-		player.hurtServer(level, level.damageSources().generic(), damage);
+		hurt(player, level, damage);
 		player.push(back.x * 0.9, 0.35, back.z * 0.9);
 		player.hurtMarked = true;
 		level.sendParticles(ParticleTypes.ELECTRIC_SPARK, player.getX(), player.getY() + 0.6, player.getZ(), 16, 0.2, 0.2, 0.2, 0.35);
@@ -2848,7 +3354,7 @@ final class Finale {
 
 		if (!guard) {
 			// (Phase 27: by the difficulty, as her other attacks.)
-			player.hurtServer(level, level.damageSources().generic(), damage);
+			hurt(player, level, damage);
 			Story.cue(s, Story.CUE_DUEL, "hurt", "", Math.round(damage), java.util.List.of(f.position().add(corner)));
 		}
 
@@ -3172,6 +3678,8 @@ final class Finale {
 		s.timer("rush", 95);
 		s.timer("leap", 130);
 		s.timer("throw", 175);
+		// Phase 32: her first switch into the ring's mode a little after the scene (before it, her blades).
+		s.timer("ring_rest", scaled(f, RING_FIRST));
 		s.dirty = true;
 	}
 
@@ -3239,6 +3747,8 @@ final class Finale {
 		s.timer("rush", 85);
 		s.timer("leap", 110);
 		s.timer("throw", 160);
+		// Phase 32: her first switch into the ring's mode a little after the lock.
+		s.timer("ring_rest", scaled(f, RING_FIRST));
 		s.dirty = true;
 	}
 

@@ -1650,6 +1650,14 @@
       }
     ]
   },
+  "story.ring_loop": {
+    "sounds": [
+      {
+        "name": "sabercraft:story/ring_loop",
+        "attenuation_distance": 24
+      }
+    ]
+  },
   "story.hack": {
     "sounds": [
       {

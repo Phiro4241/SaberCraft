@@ -65,8 +65,19 @@ final class CrewModels {
 	 */
 	record Gear(boolean lamp, int saber, boolean lit, float raise, float swing, boolean down, boolean skirt, int attack, float aim, float crouch, float lean,
 			float hand, float spin, int react, float reactP, boolean pistol, boolean unarmed, float twin, boolean inquisitor, float ring, float blur,
-			float flare) {
+			float flare, float disc) {
 		static final Gear NONE = new Gear(false, 0, false, 0.0F, 0.0F, false, false, 0, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F);
+
+		/**
+		 * Phase 26's gear (an Inquisitor's saber). Phase 32: {@code disc} (0..1) how far she holds the
+		 * spinning disc up before her (her ring's mode: where the server cuts with it).
+		 */
+		Gear(boolean lamp, int saber, boolean lit, float raise, float swing, boolean down, boolean skirt, int attack, float aim, float crouch, float lean,
+				float hand, float spin, int react, float reactP, boolean pistol, boolean unarmed, float twin, boolean inquisitor, float ring, float blur,
+				float flare) {
+			this(lamp, saber, lit, raise, swing, down, skirt, attack, aim, crouch, lean, hand, spin, react, reactP, pistol, unarmed, twin, inquisitor, ring, blur,
+					flare, 0.0F);
+		}
 
 		/**
 		 * Phase 24's gear (a saber staff's second blade). Phase 26: {@code inquisitor}: the saber is
@@ -115,6 +126,13 @@ final class CrewModels {
 	static final int RING = 13;
 	/** Phase 29: her slam winding up (as the server's {@code Figure.SLAM}): crouching, leaning back, the blade high. */
 	static final int SLAM = 14;
+	/**
+	 * Phase 32: the switch into her ring's mode (the ring spinning up, the disc raised before her) and
+	 * out of it (the ring winding down, the staff lowered: open a moment), as the server's
+	 * {@code Figure.RING_UP} and {@code Figure.RING_DOWN}.
+	 */
+	static final int RING_UP = 15;
+	static final int RING_DOWN = 16;
 	/** Phase 26: how much of the ring's rush is its spinning up (as the server's wind-up of 18 of its 42 ticks). */
 	static final float RING_WIND = 18.0F / 42.0F;
 
@@ -725,6 +743,13 @@ final class CrewModels {
 	 * (unless she holds it high). Elsewhere the blade's hold as it is (the ring's angle does the rest).
 	 */
 	static InquisitorSaber.Hold ringHold(float shoulder, Gear gear, InquisitorSaber.Hold hold) {
+		if (gear.disc() > 0.0F && gear.react() != RING) {
+			// Phase 32: her ring's mode: the disc held up before her, as before the rush (the grip at
+			// the player, the disc upright between them), where the server cuts with it
+			// (StoryFiguresPayload.DISC_AHEAD / DISC_HEIGHT); what she does besides goes from there.
+			hold = blend(hold, gear.disc(), new float[] {-0.04F, shoulder - 0.12F, 0.56F}, new float[] {0.0F, 0.12F, 1.0F}, new float[] {0.0F, 1.0F, 0.0F});
+		}
+
 		if (gear.blur() > 0.0F) {
 			// Phase 30: while the ring spins fast (its blades a disc round the grip) the grip comes
 			// level and a little up, so that the disc stands upright before her: tilted back with the
@@ -757,6 +782,14 @@ final class CrewModels {
 			c = new float[] {0.0F, shoulder - 0.02F, 0.52F};
 			a = new float[] {0.0F, 0.3F, 1.0F};
 			d = new float[] {-1.0F, 0.0F, 0.0F};
+		} else if (gear.react() == RING_DOWN) {
+			// Phase 32: out of the ring's mode: the staff lowered before her a moment as the ring winds
+			// down (her guard down: the opening), then back on guard.
+			float p = Mth.clamp(gear.reactP(), 0.0F, 1.0F);
+			k = Mth.clamp(Math.min(p * 5.0F, (1.0F - p) * 4.0F), 0.0F, 1.0F);
+			c = new float[] {-0.06F, shoulder - 0.42F, 0.4F};
+			a = new float[] {0.0F, -0.3F, 1.0F};
+			d = new float[] {0.0F, 1.0F, 0.0F};
 		} else if (gear.react() == THROW_WIND) {
 			float p = Mth.clamp(gear.reactP(), 0.0F, 1.0F);
 			k = Mth.clamp(p * 2.5F, 0.0F, 1.0F);
@@ -771,7 +804,13 @@ final class CrewModels {
 			return hold;
 		}
 
-		float e = k * k * (3.0F - 2.0F * k);
+		return blend(hold, k, c, a, d);
+	}
+
+	/** Phase 32: a hold eased that far (0..1, smoothly) towards the one given (its middle, its grip's way, its blades' way). */
+	private static InquisitorSaber.Hold blend(InquisitorSaber.Hold hold, float k, float[] c, float[] a, float[] d) {
+		float e = Mth.clamp(k, 0.0F, 1.0F);
+		e = e * e * (3.0F - 2.0F * e);
 		float[] hc = hold.c();
 		float[] ha = hold.a();
 		float[] hd = hold.d();

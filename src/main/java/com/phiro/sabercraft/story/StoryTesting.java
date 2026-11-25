@@ -392,6 +392,7 @@ public final class StoryTesting {
 			case Finale.RECOIL -> "recoil";
 			case Finale.ESCAPE -> "escape";
 			case Finale.CLASHED -> "clash";
+			case Finale.RING_START -> "ring_up";
 			default -> "guard";
 		};
 	}
@@ -1250,6 +1251,7 @@ public final class StoryTesting {
 			case Finale.MOVE_LUNGE -> "lunge";
 			case Finale.MOVE_SHOVE -> "shove";
 			case Finale.MOVE_TURN -> "turn";
+			case Finale.RING_START -> "ring";
 			default -> null;
 		};
 	}
@@ -1398,6 +1400,7 @@ public final class StoryTesting {
 			check(left, f.health >= 1.0F, "health " + f.health);
 			check(left, Finale.phase(f) == 1, "phase " + Finale.phase(f));
 			check(left, !f.ringOn, "ring on");
+			check(left, f.poise >= 1.0F && f.discHitAt == -1000L, "poise " + f.poise + "/disc " + f.discHitAt);
 			check(left, f.thrown == 0, "thrown " + f.thrown);
 			check(left, f.throwFrom == null && f.throwAge == 0, "staff out");
 			check(left, !f.lunge && !f.lockScene && !f.disarmed, "lunge/lock/disarmed");
@@ -1417,7 +1420,7 @@ public final class StoryTesting {
 
 		check(left, started == s.has("tmp.duel"), "tmp.duel " + s.has("tmp.duel"));
 
-		for (String timer : List.of("rush", "throw", "slam", "lunge", "shove", "ring_min", "rear_answer", "guard_broken", "throw_back", "boss_mid",
+		for (String timer : List.of("rush", "throw", "slam", "lunge", "shove", "ring_mode", "ring_rest", "rear_answer", "guard_broken", "throw_back", "boss_mid",
 				"boss_pending", "stroke")) {
 			check(left, !s.timers.containsKey(timer), "timer " + timer);
 		}
