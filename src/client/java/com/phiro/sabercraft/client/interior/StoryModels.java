@@ -40,6 +40,7 @@ final class StoryModels {
 	/** Phase 31: a duel begun again: nothing of the sabers' poses before (the staff, the ring) is kept. */
 	static void forgetSabers() {
 		SABERS.clear();
+		WHIRLS.clear();
 	}
 	private static long lastFrame;
 	private static boolean staffAway;
@@ -120,16 +121,108 @@ final class StoryModels {
 		// Phase 21: lit also before the fight (in the film), out once he flees.
 		boolean lit = saber && (fig.flags() & (StoryFiguresPayload.HOSTILE | StoryFiguresPayload.LIT)) != 0;
 		CrewModels.Gear gear = saber ? saber(fig, lit, dt, down, shadow, pose.reactP()) : rifle(fig, dt, down, pose.reactP());
+		float yaw = pose.yaw();
+
+		if (saber && shadow) {
+			// Phase 32: her spin: the spinning staff let go and guided round her by her outstretched
+			// hand, twice round while its circle is live, she turning with it; its blades sweep the
+			// whole red circle (where the server hits), to its rim.
+			float[] state0 = SABERS.get(fig.id());
+			float[] whirl = whirl(pose, lit && !down && state0 != null && state0[8] > 0.35F && (fig.flags() & StoryFiguresPayload.UNARMED) == 0, dt,
+					origin);
+
+			if (whirl != null) {
+				yaw = whirl[0];
+				head = 0.0F;
+
+				if (whirl[4] > 0.3F) {
+					gear = gear.whirling();
+					CrewModels.flyingStaff(b, whirl[1], whirl[2], whirl[3], yaw, state0 == null ? 0.0F : state0[9] * Mth.RAD_TO_DEG, RED);
+				}
+			}
+		}
 
 		if (saber && shadow) {
 			// Phase 32: her ring's whirr, exactly while it is drawn turning (both blades out, in her hand).
 			float[] state = SABERS.get(fig.id());
 			boolean turns = state != null && lit && !down && !staffAway && state[8] > 0.35F && (fig.flags() & StoryFiguresPayload.UNARMED) == 0;
-			float yaw = pose.yaw() * Mth.DEG_TO_RAD;
-			RingSound.heard(fig.id(), turns ? state[10] : 0.0F, origin.getX() + pose.x() - Mth.sin(yaw) * StoryFiguresPayload.DISC_AHEAD,
-					origin.getY() + pose.y() + StoryFiguresPayload.DISC_HEIGHT, origin.getZ() + pose.z() + Mth.cos(yaw) * StoryFiguresPayload.DISC_AHEAD);
+			float facing = yaw * Mth.DEG_TO_RAD;
+			RingSound.heard(fig.id(), turns ? state[10] : 0.0F, origin.getX() + pose.x() - Mth.sin(facing) * StoryFiguresPayload.DISC_AHEAD,
+					origin.getY() + pose.y() + StoryFiguresPayload.DISC_HEIGHT, origin.getZ() + pose.z() + Mth.cos(facing) * StoryFiguresPayload.DISC_AHEAD);
 		}
-		CrewModels.figure(b, crew, look, pose.x(), pose.y(), pose.z(), pose.yaw(), pose.walk(), t, seed, head, gear);
+		CrewModels.figure(b, crew, look, pose.x(), pose.y(), pose.z(), yaw, pose.walk(), t, seed, head, gear);
+	}
+
+	/**
+	 * Phase 32: her spin's whirl (per figure): how far round the staff has gone (radians from where
+	 * she faced as it began), her yaw then (degrees), the game time it was last drawn live, how long
+	 * since it ended (seconds; below 0 while it goes on), how far the staff is out (0..1).
+	 */
+	private static final Map<Integer, float[]> WHIRLS = new HashMap<>();
+	/** Phase 32: how far round her the staff flies in her spin (its middle), so that its blades reach the red circle's rim (less the player's half width). */
+	static final float WHIRL_RADIUS = (float) StoryFiguresPayload.SPIN_RADIUS - (InquisitorSaber.EMIT + InquisitorSaber.BLADE) - 0.3F;
+	/** Phase 32: at what height (over her feet) it flies round her, and how many times round while the circle is live. */
+	static final float WHIRL_HEIGHT = 1.15F;
+	static final float WHIRL_TURNS = 2.0F;
+	/** Phase 32: how fast it goes round (radians a second: its turns in the circle's live ticks), how quickly it flies out and comes back (seconds). */
+	static final float WHIRL_SPEED = WHIRL_TURNS * Mth.TWO_PI / (StoryFiguresPayload.SPIN_LIVE_TICKS / 20.0F);
+	static final float WHIRL_OUT = 0.08F;
+	static final float WHIRL_BACK = 0.2F;
+	private static int whirls;
+
+	/**
+	 * Phase 32: her spin's whirl now, or null: her yaw as drawn (she turns with the staff), where its
+	 * middle is (plot space), how far it is out. Live while the server says her spin's circle is
+	 * (its pace halved under the Focus, as hers); then it flies back to her hands, she turning back.
+	 */
+	private static float @org.jspecify.annotations.Nullable [] whirl(StoryClient.Pose pose, boolean can, float dt, net.minecraft.core.BlockPos origin) {
+		StoryFiguresPayload.Fig fig = pose.fig();
+		boolean live = can && (fig.flags() & StoryFiguresPayload.SPIN_LIVE) != 0;
+		Minecraft client = Minecraft.getInstance();
+		long now = client.level == null ? 0L : client.level.getGameTime();
+		float[] w = WHIRLS.get(fig.id());
+
+		if (live) {
+			if (w == null || w[3] >= 0.0F || now - (long) w[2] > 4L) {
+				w = new float[] {0.0F, pose.yaw(), now, -1.0F, 0.0F};
+				WHIRLS.put(fig.id(), w);
+				whirls++;
+			}
+
+			w[0] += dt * WHIRL_SPEED * (StoryClient.focusing() ? 0.5F : 1.0F);
+			w[2] = now;
+			w[4] = Math.min(1.0F, w[4] + dt / WHIRL_OUT);
+		} else if (w != null) {
+			w[3] = Math.max(0.0F, w[3]) + dt;
+			w[4] = Math.max(0.0F, 1.0F - w[3] / WHIRL_BACK);
+
+			if (w[3] >= WHIRL_BACK || !can) {
+				WHIRLS.remove(fig.id());
+				return null;
+			}
+		}
+
+		if (w == null) {
+			return null;
+		}
+
+		float round = w[1] + w[0] * Mth.RAD_TO_DEG;
+		float yaw = live ? round : round + Mth.wrapDegrees(pose.yaw() - round) * Mth.clamp(w[3] / WHIRL_BACK, 0.0F, 1.0F);
+		float out = w[4] * w[4] * (3.0F - 2.0F * w[4]);
+		float r = 0.55F + (WHIRL_RADIUS - 0.55F) * out;
+		float rad = yaw * Mth.DEG_TO_RAD;
+		return new float[] {yaw, (float) pose.x() - Mth.sin(rad) * r, (float) pose.y() + WHIRL_HEIGHT, (float) pose.z() + Mth.cos(rad) * r, out};
+	}
+
+	/** Phase 32, for the tests: her spin's whirls drawn (begun), and how far round the one of that figure has gone now (radians; -1 without one). */
+	public static float[] whirlForTest(int id) {
+		float[] w = WHIRLS.get(id);
+		return new float[] {whirls, w == null ? -1.0F : w[0], w == null ? 0.0F : w[4]};
+	}
+
+	/** Phase 32: the duel begun again: no whirl left over. */
+	static void forgetWhirls() {
+		WHIRLS.clear();
 	}
 
 	/**
@@ -189,7 +282,7 @@ final class StoryModels {
 	 */
 	private static CrewModels.Gear saber(StoryFiguresPayload.Fig fig, boolean lit, float dt, boolean down, boolean skirt, float reactP) {
 		// raise, swing, the kind last seen, its progress, the kind swung, crouch, lean, hand, aim
-		float[] state = SABERS.computeIfAbsent(fig.id(), id -> new float[14]);
+		float[] state = SABERS.computeIfAbsent(fig.id(), id -> new float[15]);
 		int kind = fig.windup() >> 5;
 		float progress = (fig.windup() & 31) / 31.0F;
 		int lastKind = (int) state[2];
@@ -212,12 +305,23 @@ final class StoryModels {
 		state[2] = kind;
 		state[3] = progress;
 
+		if (blowKind || kind == CrewModels.STAGGER || kind == CrewModels.CROUCH) {
+			state[14] = kind;
+		}
+
 		if (!lit) {
 			state[0] = 0.0F;
 			state[1] = 0.0F;
 		}
 
 		int attack = state[1] > 0.05F ? (int) state[4] : kind;
+
+		// Phase 32: knocked aside or crouched and let go of: the blade comes back to guard from where
+		// it was (low and out, over the shoulder), not first flicked up to a blow's wind-up.
+		if (!blowKind && state[1] <= 0.05F && state[0] > 0.02F && kind != CrewModels.STAGGER && kind != CrewModels.CROUCH
+				&& ((int) state[14] == CrewModels.STAGGER || (int) state[14] == CrewModels.CROUCH)) {
+			attack = (int) state[14];
+		}
 		float spin = kind == CrewModels.SPIN ? progress : 0.0F;
 		int react = fig.reactKind();
 
@@ -238,7 +342,9 @@ final class StoryModels {
 		float discGoal = !lit || down || state[8] <= 0.35F ? 0.0F
 				: (fig.flags() & StoryFiguresPayload.DISC) != 0 ? 1.0F : react == CrewModels.RING_UP ? Mth.clamp(reactP * 1.4F, 0.0F, 1.0F) : 0.0F;
 		state[13] = approach(state[13], discGoal, dt * (discGoal > state[13] ? 5.0F : 3.5F));
-		return new CrewModels.Gear((fig.flags() & StoryFiguresPayload.LAMP) != 0, RED, lit, state[0], state[1], down, skirt, attack, 0.0F, state[5],
+		// (Phase 32: a throw at the legs is let go low: the hold's aim says so, see CrewModels.ringHold.)
+		float throwLow = (fig.flags() & StoryFiguresPayload.THROW_LOW) != 0 && (react == CrewModels.THROW_WIND || react == CrewModels.THROWN) ? 1.0F : 0.0F;
+		return new CrewModels.Gear((fig.flags() & StoryFiguresPayload.LAMP) != 0, RED, lit, state[0], state[1], down, skirt, attack, throwLow, state[5],
 				state[6], state[7], spin, react, reactP, false, (fig.flags() & StoryFiguresPayload.UNARMED) != 0, state[8], skirt, state[9], blur,
 				state[11], state[13]);
 	}
@@ -254,6 +360,12 @@ final class StoryModels {
 	 */
 	/** Phase 28: how fast the ring turns while it keeps turning (a share of its fastest; Phase 32: in her ring's mode). */
 	static final float RING_CRUISE = 0.55F;
+	/**
+	 * Phase 32: how fast the ring turns in her ring's mode while she strikes with a blade (radians a
+	 * second: under the blur, the blades seen; still heard), and how fast it is slowed to that.
+	 */
+	static final float RING_BLOW = 4.5F;
+	static final float RING_BRAKE = 45.0F;
 
 	/** Phase 28, for the tests: how fast that figure's ring turns now (radians a second; 0 when unknown). */
 	public static float ringSpeedForTest(int id) {
@@ -275,9 +387,14 @@ final class StoryModels {
 		// (Phase 32: her ring's mode, for a while now and then in the second phase, not for good.)
 		boolean turning = (fig.flags() & StoryFiguresPayload.RING_SPIN) != 0;
 
+		// Phase 32: a blade's blow in her ring's mode (wound up, or falling): the ring slows to a turn
+		// the blades are seen in (under its blur), so that the blow is seen struck with a blade, where
+		// it hits, and not with the disc; it spins up again afterwards.
+		boolean blade = kind >= CrewModels.OVERHEAD && kind <= CrewModels.THRUST || state[1] > 0.05F;
+
 		if (inquisitor && both) {
 			if (turning) {
-				goal = InquisitorSaber.SPIN_FAST * RING_CRUISE;
+				goal = blade ? RING_BLOW : InquisitorSaber.SPIN_FAST * RING_CRUISE;
 			}
 
 			if (kind == CrewModels.SPIN) {
@@ -309,7 +426,7 @@ final class StoryModels {
 		if (goal > speed) {
 			speed = Math.min(goal, speed + 34.0F * dt);
 		} else {
-			speed = Math.max(goal, speed - 16.0F * dt);
+			speed = Math.max(goal, speed - (blade && turning ? RING_BRAKE : 16.0F) * dt);
 		}
 
 		state[10] = speed;
@@ -418,11 +535,13 @@ final class StoryModels {
 		b.ring(x, y + 0.004F, z, r - 0.14F, r, 64, true);
 		b.layer(Layer.HOLO).fullBright().colourAlpha(0x70000000 | 0x200404);
 		b.ring(x, y + 0.003F, z, r, r + 0.05F, 64, true);
-		// A sweep going round with the blades (two, as the ring has two).
+		// A sweep going round with the blades (two, as the ring has two). (Phase 32: one, under her
+		// staff as it flies round her, trailing it.)
 		b.layer(Layer.GLOW).fullBright().fit(InteriorAtlas.WHITE);
-		float turn = t * 14.0F;
+		float[] whirl = WHIRLS.get(fig.id());
+		float turn = whirl == null ? t * 14.0F : (whirl[1] + whirl[0] * Mth.RAD_TO_DEG) * Mth.DEG_TO_RAD + Mth.HALF_PI;
 
-		for (int blade = 0; blade < 2; blade++) {
+		for (int blade = 0; blade < (whirl == null ? 2 : 1); blade++) {
 			for (int i = 0; i < 6; i++) {
 				float a0 = turn + blade * Mth.PI - i * 0.09F;
 				float a1 = a0 - 0.09F;
@@ -451,7 +570,7 @@ final class StoryModels {
 	 * fall and the comlink.
 	 */
 	private static CrewModels.Gear rifle(StoryFiguresPayload.Fig fig, float dt, boolean down, float reactP) {
-		float[] state = SABERS.computeIfAbsent(fig.id(), id -> new float[14]);
+		float[] state = SABERS.computeIfAbsent(fig.id(), id -> new float[15]);
 		state[8] = approach(state[8], fig.windup() > 0 && !down ? 1.0F : 0.0F, dt * 8.0F);
 		int react = fig.reactKind();
 		// The old jolt only where no reaction of the server shows the hit.

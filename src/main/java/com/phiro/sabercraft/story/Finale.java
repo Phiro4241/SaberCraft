@@ -1290,11 +1290,25 @@ final class Finale {
 	/**
 	 * Phase 32: whether she holds the spinning disc before her now (the ring's mode, her staff in
 	 * her hand, standing on guard, circling, stepping back, after blades met, her hand out for the
-	 * push: as the client draws it then).
+	 * push: as the client draws it then; and as the ring spins up before her for a spin or for the
+	 * ring's mode).
 	 */
 	static boolean discUp(Figure f) {
-		return f.ringOn && f.lit && !f.disarmed && f.throwFrom == null && f.react != Figure.STUMBLE && f.react != Figure.FALL
-				&& (f.action == GUARD || f.action == RECOIL || f.action == CLASHED || f.action == PUSH);
+		if (!f.lit || f.disarmed || f.throwFrom != null || f.react == Figure.STUMBLE || f.react == Figure.FALL || phase(f) < 2) {
+			return false;
+		}
+
+		// (Also as her spin's ring spins up before her, and in the second half of her switch into the
+		// ring's mode: its blades whirl there already, to be seen; they cut as well.)
+		if (f.action == WINDUP && f.attack == SPIN) {
+			return f.windup > SPIN_LIVE;
+		}
+
+		if (f.action == RING_START) {
+			return f.timer <= RING_UP / 2;
+		}
+
+		return f.ringOn && (f.action == GUARD || f.action == RECOIL || f.action == CLASHED || f.action == PUSH);
 	}
 
 	/**
@@ -2864,7 +2878,9 @@ final class Finale {
 			// Let go.
 			Vec3 look = f.look();
 			// (Phase 29: thrown low from low down, skimming at shin height: a jump clears it.)
-			Vec3 start = f.position().add(corner).add(0.0, f.throwLow ? 0.6 : 1.45, 0.0).add(look.scale(0.35)).add(new Vec3(-look.z, 0.0, look.x).scale(-0.3));
+			// (Phase 32: at her right, where the staff is drawn as she lets go; it was at her left.)
+			Vec3 right = new Vec3(-look.z, 0.0, look.x);
+			Vec3 start = f.position().add(corner).add(0.0, f.throwLow ? 0.6 : 1.45, 0.0).add(look.scale(0.35)).add(right.scale(0.3));
 			Vec3 target = player.position().add(0.0, f.throwLow ? 0.25 : 1.0, 0.0);
 			Vec3 dir = target.subtract(start).normalize();
 			// (Phase 29: a low throw skims on level past the player, not down into the floor.)
@@ -2880,7 +2896,8 @@ final class Finale {
 			int out = Mth.clamp((int) Math.round(start.distanceTo(far) / 0.7), 8, 20);
 			f.throwFrom = start;
 			f.throwFar = far;
-			f.throwHand = f.position().add(corner).add(0.0, 1.4, 0.0).add(look.scale(0.45));
+			// (Phase 32: back into her right hand as it is drawn out after the staff.)
+			f.throwHand = f.position().add(corner).add(0.0, 1.38, 0.0).add(look.scale(0.6)).add(right.scale(0.14));
 			f.throwOut = out;
 			f.throwBack = out + 2;
 			f.throwAge = 0;

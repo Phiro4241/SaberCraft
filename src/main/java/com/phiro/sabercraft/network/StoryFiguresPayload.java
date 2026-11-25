@@ -55,6 +55,11 @@ public record StoryFiguresPayload(BlockPos origin, long time, List<Fig> figures)
 	 * upright and facing the way she faces, its blades {@link #DISC_RADIUS} round it.
 	 */
 	public static final int DISC = 4096;
+	/**
+	 * Phase 32: her throw (drawn back or in flight) is the low one, at the legs: she lets go of the
+	 * staff low at her right, where the server starts its flight, not at the chest.
+	 */
+	public static final int THROW_LOW = 8192;
 	public static final double DISC_AHEAD = 0.62;
 	public static final double DISC_HEIGHT = 1.2;
 	public static final double DISC_RADIUS = 1.15;

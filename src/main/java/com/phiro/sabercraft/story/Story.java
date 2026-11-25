@@ -1901,7 +1901,8 @@ public final class Story {
 					| (Finale.disarmed(f) ? StoryFiguresPayload.UNARMED : 0) | (f.ringOn && f.saber && f.lit ? StoryFiguresPayload.RING_SPIN : 0)
 					| (Finale.spinLive(f) ? StoryFiguresPayload.SPIN_LIVE : 0) | (f.saber && Finale.phase(f) >= 2 ? StoryFiguresPayload.TWIN : 0)
 					| (session.chapter.takedownReady(session, f, me) ? StoryFiguresPayload.TAKEDOWN : 0)
-					| (f.saber && Finale.discUp(f) ? StoryFiguresPayload.DISC : 0);
+					| (f.saber && Finale.discUp(f) ? StoryFiguresPayload.DISC : 0)
+					| (f.saber && f.action == Finale.THROW && f.throwLow ? StoryFiguresPayload.THROW_LOW : 0);
 			list.add(new StoryFiguresPayload.Fig(f.id, f.kind(), f.pose(), f.speaker, (float) f.x, (float) f.y, (float) f.z, f.yaw, f.headYaw, f.speed, f.stage,
 					Math.round(f.suspicion * 255.0F), flags, Math.round(Math.max(0.0F, f.health) * 255.0F), Finale.shown(f), f.reactShown()));
 		}

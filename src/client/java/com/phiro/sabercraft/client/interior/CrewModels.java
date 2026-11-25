@@ -68,6 +68,12 @@ final class CrewModels {
 			float flare, float disc) {
 		static final Gear NONE = new Gear(false, 0, false, 0.0F, 0.0F, false, false, 0, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F);
 
+		/** Phase 32: the same, her staff away from her hands, guided round her by her outstretched hand (her spin's whirl). */
+		Gear whirling() {
+			return new Gear(this.lamp, this.saber, this.lit, 0.0F, 0.0F, this.down, this.skirt, 0, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, THROWN, 0.3F, false,
+					this.unarmed, Math.max(this.twin, 0.01F), this.inquisitor, this.ring, this.blur, this.flare, 0.0F);
+		}
+
 		/**
 		 * Phase 26's gear (an Inquisitor's saber). Phase 32: {@code disc} (0..1) how far she holds the
 		 * spinning disc up before her (her ring's mode: where the server cuts with it).
@@ -331,10 +337,16 @@ final class CrewModels {
 
 		if (gear.inquisitor() && !thrown && (staff != null || hilt != null)) {
 			ring = ringHold(shoulder, gear, staff != null ? InquisitorSaber.centred(staff) : InquisitorSaber.fromEmitter(hilt));
+			// (Phase 32: to a new hold in a quick motion, not in one frame.)
+			ring = InquisitorSaber.follow(seed, t, ring);
 			// (Phase 30: against her body as drawn: her torso leaning over her hips as it is, the robe
 			// and legs below it, her head turned as it is drawn below; eased in and out, see steady.)
 			float headYaw = Float.isNaN(headTurn) || gear.down() ? glance : headTurn;
-			ring = InquisitorSaber.steady(seed, t, ring, gear.ring(), second > 0.0F, gear.blur(), Lean.of(tilt(gear, reactLean), reactRoll, headYaw));
+			Lean lean = Lean.of(tilt(gear, reactLean), reactRoll, headYaw);
+			ring = InquisitorSaber.steady(seed, t, ring, gear.ring(), second > 0.0F, gear.blur(), lean);
+			// (Phase 32: and in her fist: a grip out of her arm's reach is drawn in to it.)
+			ring = InquisitorSaber.reach(ring, new float[] {-(HALF_W + LIMB * 0.9F), shoulder, 0.0F}, UPPER + FORE - 0.04F, gear.ring(), second > 0.0F,
+					gear.blur() >= InquisitorSaber.DISC_SOLID, lean);
 		}
 
 		float fling = gear.down() ? 0.0F : reactFling(gear);
@@ -798,6 +810,18 @@ final class CrewModels {
 			c = new float[] {-0.4F, shoulder + 0.63F, -0.06F};
 			a = new float[] {-0.15F, 1.0F, 0.1F};
 			d = new float[] {0.0F, 0.0F, 1.0F};
+			// Phase 32: the throw itself, in the wind-up's last fifth: brought forward and down to
+			// where she lets go (at her right, before her, as the server starts its flight: high at
+			// the chest, or low at the shins for a throw at the legs, gear.aim() 1), flat as it flies.
+			float e = Mth.clamp((p - 0.8F) / 0.2F, 0.0F, 1.0F);
+
+			if (e > 0.0F) {
+				e = e * e * (3.0F - 2.0F * e);
+				float[] at = gear.aim() > 0.5F ? THROW_LOW_AT : THROW_HIGH_AT;
+				c = new float[] {Mth.lerp(e, c[0], at[0]), Mth.lerp(e, c[1], shoulder + at[1]), Mth.lerp(e, c[2], at[2])};
+				a = new float[] {Mth.lerp(e, a[0], 0.0F), Mth.lerp(e, a[1], 1.0F), Mth.lerp(e, a[2], 0.25F)};
+				d = new float[] {Mth.lerp(e, d[0], -1.0F), Mth.lerp(e, d[1], 0.0F), Mth.lerp(e, d[2], 0.0F)};
+			}
 		}
 
 		if (k <= 0.0F || c == null) {
@@ -820,6 +844,14 @@ final class CrewModels {
 				new float[] {Mth.lerp(e, ha[0], an[0]), Mth.lerp(e, ha[1], an[1]), Mth.lerp(e, ha[2], an[2])},
 				new float[] {Mth.lerp(e, hd[0], dn[0]), Mth.lerp(e, hd[1], dn[1]), Mth.lerp(e, hd[2], dn[2])});
 	}
+
+	/**
+	 * Phase 32: where she lets go of her staff in the throw (body space; the height over her
+	 * shoulder): at her right and before her, at the chest or (a throw at the legs) at the shins, as
+	 * the server's flight begins (Finale.throwTick).
+	 */
+	static final float[] THROW_HIGH_AT = {-0.3F, 0.13F, 0.35F};
+	static final float[] THROW_LOW_AT = {-0.3F, -0.72F, 0.35F};
 
 	/** Phase 30: the spinning disc stood upright: how much of the grip's upward tilt stays, and how far it is raised (blocks). */
 	static final float DISC_UPRIGHT = 0.2F;

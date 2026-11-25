@@ -1125,6 +1125,11 @@ static final int CHECKPOINT_TICKS = 60;
 		return focusOn;
 	}
 
+	/** Phase 32: whether the Focus slows the fight now (her spin's whirl is drawn at its pace). */
+	public static boolean focusing() {
+		return focusOn;
+	}
+
 	/** Phase 21: whether the meter came lately (only while fighting). */
 	static boolean meterShown() {
 		return meterAge < 20 && focusMeter >= 0;
