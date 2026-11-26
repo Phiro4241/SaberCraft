@@ -91,6 +91,8 @@ public class SaberCraftClient implements ClientModInitializer {
 		// Phase 7: the optional music; your own files are read again on every join.
 		ClientTickEvents.END_CLIENT_TICK.register(SaberMusic::tick);
 		ClientTickEvents.END_CLIENT_TICK.register(PlanetSky::tick);
+		// Phase 33: the player's name for the story's texts (they may be made on other threads).
+		ClientTickEvents.START_CLIENT_TICK.register(com.phiro.sabercraft.client.lang.SaberLanguage::tick);
 		ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> {
 			UserMusic.scan();
 			StarWarsMusic.scan();

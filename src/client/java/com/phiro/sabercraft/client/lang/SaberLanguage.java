@@ -141,19 +141,31 @@ public final class SaberLanguage {
 	 */
 	public static final String PLAYER = "{player}";
 
-	/** Phase 33: the name put in for {@link #PLAYER}: the player's Minecraft name (the account's before a world is joined). */
-	public static String playerName() {
-		Minecraft client = Minecraft.getInstance();
+	/**
+	 * Phase 33: the name put in for {@link #PLAYER}, as the client last saw it ({@link #tick}).
+	 * Texts are also made on other threads (the integrated server, tests), which must not ask the
+	 * client; they read this copy.
+	 */
+	private static volatile String name = "";
 
-		if (client != null && client.player != null) {
-			String name = client.player.getGameProfile().name();
+	/** Phase 33: each client tick: the player's Minecraft name (the account's before a world is joined). */
+	public static void tick(Minecraft client) {
+		String now = "";
 
-			if (name != null && !name.isBlank()) {
-				return name;
-			}
+		if (client.player != null) {
+			now = client.player.getGameProfile().name();
 		}
 
-		return client != null && client.getUser() != null ? client.getUser().getName() : "";
+		if ((now == null || now.isBlank()) && client.getUser() != null) {
+			now = client.getUser().getName();
+		}
+
+		name = now == null ? "" : now;
+	}
+
+	/** Phase 33: the name put in for {@link #PLAYER}: the player's Minecraft name (the account's before a world is joined). */
+	public static String playerName() {
+		return name;
 	}
 
 	/** Phase 33: the text with the player's name put in (for the layer, and for tests with any name). */
