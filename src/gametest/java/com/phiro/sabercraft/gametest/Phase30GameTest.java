@@ -50,7 +50,7 @@ import com.phiro.sabercraft.story.StoryTesting;
 
 /**
  * Phase 30: the last small fixes after Phiro's playtest of Phase 29. The parts a test can play in
- * the real game (the feel stays for the manual test list in {@code docs/phase-30-status.md}):
+ * the real game (the feel stays for the manual test list in {@code docs/development/phase-30-status.md}):
  *
  * <ol>
  * <li>Her spin in the second phase: the red circle on the floor is exactly where it hits; one in
@@ -435,7 +435,8 @@ public class Phase30GameTest implements FabricClientGameTest {
 
 		SaberCraft.LOGGER.info("PHASE30 SHOTS: {} in 20 s at ticks {} (least gap {}; between shots {}..{}, a second shot after {}, between troopers {})", last - first, at,
 				least, timing[0], timing[0] + timing[1] - 1, timing[2], timing[3]);
-		check(timing[0] == 18 && timing[1] == 18, "the shot cooldown is not the new one (SHOT_MIN 18, SHOT_RANDOM 18): " + timing[0] + " + " + timing[1]);
+		// (Phase 33: they shoot a little more often again: every 16 to 27 ticks.)
+		check(timing[0] == 16 && timing[1] == 12, "the shot cooldown is not the new one (SHOT_MIN 16, SHOT_RANDOM 12): " + timing[0] + " + " + timing[1]);
 		check(last - first >= 5, "the finale's troopers hardly shoot (" + (last - first) + " bolts in 20 seconds)");
 		check(together == 0, "two bolts fired in the same moment (" + together + ")");
 		check(at.size() < 2 || least >= timing[3] - 1, "two bolts closer together than the fair gap (" + least + " ticks)");

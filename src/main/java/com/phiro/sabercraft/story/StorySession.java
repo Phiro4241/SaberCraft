@@ -137,6 +137,15 @@ public final class StorySession {
 	long lastStroke = -1000L;
 	/** Phase 26: when a trooper of the finale last fired (two never fire within a few ticks of each other). */
 	long lastVolley = -1000L;
+	/**
+	 * Phase 33: where the player was last tick in the fight (plot space) and the way they move
+	 * per tick, smoothed (the finale's troopers aim where they will be); when a trooper last fired or
+	 * shouted, and where he stood (guards at their posts nearby turn towards the player).
+	 */
+	@org.jspecify.annotations.Nullable Vec3 aimFrom;
+	Vec3 aimWay = Vec3.ZERO;
+	long gunfireAt = -1000L;
+	@org.jspecify.annotations.Nullable Vec3 gunfireFrom;
 	/** Phase 26: where the player is held during the boss's blade lock scene (world space), or null. */
 	@org.jspecify.annotations.Nullable Vec3 sceneAt;
 	/** Phase 23: where the Schattenklinge's saber lies after the duel (plot space), or null. */

@@ -820,7 +820,9 @@ public final class ShipInteriors {
 				return;
 			}
 
-			if (moved > SLOW_LIFT_MOVE) {
+			// (Phase 33: a hit's push (a blaster bolt) does not count as stepping off: one who stands
+			// on it under fire is taken all the same, as long as they stay on its pad.)
+			if (moved > SLOW_LIFT_MOVE && player.hurtTime == 0) {
 				aboard.zoneTicks = Math.max(0, aboard.zoneTicks - 2);
 				liftShown(player, aboard, aboard.zoneTicks > 0 ? aboard.zoneTicks : -1, lift, local);
 				return;

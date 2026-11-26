@@ -49,7 +49,7 @@ import com.phiro.sabercraft.story.StoryTesting;
 
 /**
  * Phase 31: the last fixes before Phiro's final test. What a test can play in the real game (the
- * feel stays for the manual list in {@code docs/phase-31-status.md}):
+ * feel stays for the manual list in {@code docs/development/phase-31-status.md}):
  *
  * <ol>
  * <li>The boss: caught in her second phase, the fight begun again is her first phase in every

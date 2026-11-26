@@ -133,6 +133,46 @@ public final class SaberLanguage {
 		return tables.getOrDefault(code, Map.of()).containsKey(key);
 	}
 
+	/**
+	 * Phase 33: where a text of the mod names the player (the story's people speak to them, the
+	 * name over their own lines in a dialog), it holds this mark, and the layer puts the player's
+	 * own Minecraft name in its place. Each client fills in its own player, so in a game of several
+	 * everyone reads their own name; the server only ever sends the text's key.
+	 */
+	public static final String PLAYER = "{player}";
+
+	/**
+	 * Phase 33: the name put in for {@link #PLAYER}, as the client last saw it ({@link #tick}).
+	 * Texts are also made on other threads (the integrated server, tests), which must not ask the
+	 * client; they read this copy.
+	 */
+	private static volatile String name = "";
+
+	/** Phase 33: each client tick: the player's Minecraft name (the account's before a world is joined). */
+	public static void tick(Minecraft client) {
+		String now = "";
+
+		if (client.player != null) {
+			now = client.player.getGameProfile().name();
+		}
+
+		if ((now == null || now.isBlank()) && client.getUser() != null) {
+			now = client.getUser().getName();
+		}
+
+		name = now == null ? "" : now;
+	}
+
+	/** Phase 33: the name put in for {@link #PLAYER}: the player's Minecraft name (the account's before a world is joined). */
+	public static String playerName() {
+		return name;
+	}
+
+	/** Phase 33: the text with the player's name put in (for the layer, and for tests with any name). */
+	public static String named(String text, String name) {
+		return text.indexOf('{') >= 0 && text.contains(PLAYER) ? text.replace(PLAYER, name) : text;
+	}
+
 	/** Minecraft's language with the mod's texts answered in the chosen language. */
 	static final class Layer extends Language {
 		final Language base;
@@ -146,7 +186,13 @@ public final class SaberLanguage {
 		@Override
 		public String getOrDefault(String key, String fallback) {
 			String text = this.own.get(key);
-			return text != null ? text : this.base.getOrDefault(key, fallback);
+
+			if (text == null) {
+				text = this.base.getOrDefault(key, fallback);
+			}
+
+			// (Also with the language on automatic: the mod's texts come from Minecraft's language then.)
+			return text != null && key.startsWith(SaberCraft.MOD_ID + ".") ? named(text, playerName()) : text;
 		}
 
 		@Override

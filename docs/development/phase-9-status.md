@@ -106,7 +106,7 @@ Beide Modi bleiben: **SaberCraft** (eingebaut, unverändert) und **Star Wars** (
 - **Menü:** zeigt hinter dem laufenden Titel, woher er kommt („(Planet Hoth)“, „(als Yoda)“, „(Thema Vader)“, „(allgemein)“), die Zahl der Dateien jeder Situation und welche Planeten und Charaktere eigene Dateien haben.
 - Die `README.txt` im Musikordner wird mit der neuen Anleitung neu geschrieben, wenn sie noch aus Phase 8 stammt. Eine vorhandene `mapping.json` wird nie überschrieben.
 
-**Genaue Anleitung:** [eigene-musik.md](eigene-musik.md).
+**Genaue Anleitung:** [eigene-musik.md](../eigene-musik.md).
 
 ![Musikmenü mit Planet- und Charakterdateien](images/phase9/menue_musik.png)
 

@@ -51,7 +51,7 @@ import com.phiro.sabercraft.story.StoryTesting;
 /**
  * Phase 27: the story understandable, friendly and reliable, after Phiro's playtest with two
  * testers. The parts a test can play in the real game (the feel stays for the manual test list in
- * {@code docs/phase-27-status.md}):
+ * {@code docs/development/phase-27-status.md}):
  *
  * <ol>
  * <li>The menu key is I (no longer V, Simple Voice Chat's), moved once for a player who had V (10).</li>

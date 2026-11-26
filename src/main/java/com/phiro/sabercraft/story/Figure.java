@@ -126,6 +126,12 @@ public final class Figure {
 	 * step aside while waiting for the next shot (-1 or 1) and until when (game time).
 	 */
 	public int burst;
+	/**
+	 * Phase 33: a fighter of the finale saw the player last tick; caught sight of them anew (the
+	 * next shot is a snap shot, less often a good one).
+	 */
+	public boolean sighted;
+	public boolean snap;
 	public int strafe = 1;
 	public long strafeUntil;
 	/** Phase 21: how often a droid's noise drew them already (each time they believe it less). */

@@ -508,6 +508,31 @@ public final class StoryTesting {
 		return Finale.shotsForTest();
 	}
 
+	/** Phase 33: shots a trooper held back because his muzzle's line to the player was blocked. */
+	/** Phase 33: the troopers' shots meant to fly past the player, since the game started. */
+	/** Phase 33: nobody fires for so many ticks (or until the next step). */
+	public static void holdFire(StorySession s, int ticks) {
+		s.timer(Finale.HOLD_FIRE, ticks);
+	}
+
+	public static int misses() {
+		return Finale.missesForTest();
+	}
+
+	public static int heldBack() {
+		return Finale.heldBackForTest();
+	}
+
+	/** Phase 33: whether the line between two points (world space) is free, as the story's people see. */
+	public static boolean clear(net.minecraft.server.level.ServerLevel level, Vec3 from, Vec3 to) {
+		return Stealth.clear(level, from, to);
+	}
+
+	/** Phase 33: the music the story chose last (sent to the client). */
+	public static @Nullable String music(StorySession s) {
+		return s.music;
+	}
+
 	/**
 	 * Phase 23: the player's file at that step of that mission (every mission before it played),
 	 * as a checkpoint there saves it. Out of the story only.

@@ -49,7 +49,7 @@ import com.phiro.sabercraft.story.StoryTesting;
 /**
  * Phase 32: the boss fight made sound again, and the last corrections before Phiro's final test.
  * What a test can play in the real game (the feel stays for the manual list in
- * {@code docs/phase-32-status.md}); the numbers are Phiro's 15 points:
+ * {@code docs/development/phase-32-status.md}); the numbers are Phiro's 15 points:
  *
  * <ol>
  * <li>Her ring's whirr: never in her plain blade work, exactly one loop while the ring turns, gone

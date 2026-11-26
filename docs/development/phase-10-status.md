@@ -85,7 +85,7 @@ Die Werte stehen im Tooltip und in der Beschreibung des Griffs im Menü.
 
 **Clash:** Trifft ein Schlag auf eine Abwehr oder Parade, sprühen die Funken an der Stelle, wo die Klingen sich treffen, in beiden Farben, und beide Klingen leuchten kurz auf.
 
-**Eigene Profile:** JSON-Dateien in `config/sabercraft/profiles/` (Name, Skin, Basis-Charakter, Griff, Farbe, Stil, Seite, Größe). Anleitung: [custom-profiles.md](custom-profiles.md).
+**Eigene Profile:** JSON-Dateien in `config/sabercraft/profiles/` (Name, Skin, Basis-Charakter, Griff, Farbe, Stil, Seite, Größe). Anleitung: [custom-profiles.md](../custom-profiles.md).
 
 ## 7. Musik-Situationen und Planeten-Klänge
 

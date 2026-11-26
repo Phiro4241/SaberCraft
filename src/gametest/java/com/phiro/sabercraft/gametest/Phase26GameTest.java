@@ -69,7 +69,7 @@ import com.phiro.sabercraft.story.StoryTesting;
 
 /**
  * Phase 26: the story's polish after Phiro's playthrough of Phase 25, the parts a test can play
- * (how it looks and sounds in motion stays for the manual test, see {@code docs/phase-26-status.md}).
+ * (how it looks and sounds in motion stays for the manual test, see {@code docs/development/phase-26-status.md}).
  *
  * <ol>
  * <li>A crawl way's hatch shut from close by with the use key held stays shut; let go and pressed

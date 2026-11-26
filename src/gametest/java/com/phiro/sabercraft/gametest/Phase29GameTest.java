@@ -49,7 +49,7 @@ import com.phiro.sabercraft.story.StoryTesting;
 /**
  * Phase 29: the boss fight harder and fairer, the film cameras clean, after Phiro's playtest. The
  * parts a test can play in the real game (the feel stays for the manual test list in
- * {@code docs/phase-29-status.md}):
+ * {@code docs/development/phase-29-status.md}):
  *
  * <ol>
  * <li>Under the crosshair the cover and the toolbox show their words, never a key (2).</li>

@@ -86,7 +86,7 @@ X-Wing, TIE Fighter und TIE Interceptor fliegen wie vorher. Neu für alle Schiff
 ## 6. Droiden
 
 - **Limit:** standardmäßig 2 gleichzeitig (vorher 4), einstellbar 1 bis 8 (`droid_limit`). Bestehende Server-Configs mit dem alten Standard 4 werden einmalig auf 2 umgestellt (neues Feld `config_version`). Wer danach bewusst wieder 4 einträgt, behält 4.
-- **Werte pro Droide** in `abilities.json` unter `droid_balance`: Abklingzeit, Reichweite, Schaden und eine droidenspezifische Stärke. Tabelle und Beispiel: [configuration.md](configuration.md#droid_balance). `droid_cooldown` bleibt als Gesamtfaktor.
+- **Werte pro Droide** in `abilities.json` unter `droid_balance`: Abklingzeit, Reichweite, Schaden und eine droidenspezifische Stärke. Tabelle und Beispiel: [configuration.md](../configuration.md#droid_balance). `droid_cooldown` bleibt als Gesamtfaktor.
 - **Abgeschwächt:** längere Abklingzeiten (B1 von 5 auf 12 s, Chopper 15 → 18 s, K-2SO 10 → 14 s, BB-8 20 → 25 s, Sonde 30 → 40 s, Maus 10 → 12 s), weniger Schaden (Chopper 4 → 3), kleinere Reichweiten (BB-8 24 → 20, K-2SO 6 → 5, Sonde 16 → 12, Maus 12 → 10), R2-D2 repariert 20 % statt 25 %.
 - **Rollen:** Unterstützung (R2-D2, Maus), Information (C-3PO, BB-8, Sonde), Kampf (Chopper, B1, K-2SO).
 - **Nicht zu stark zusammen:** Nach der Fähigkeit eines Kampfdroiden warten die anderen Kampfdroiden desselben Spielers 3 Sekunden (`droid_combat_shared_cooldown_seconds`). Ihr Schaden sinkt pro weiterem Kampfdroiden (`droid_group_penalty` 0,25: zwei Kampfdroiden treffen mit je 80 %).
