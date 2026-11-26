@@ -70,7 +70,7 @@ Models, textures, sounds and music are **not** drawn or recorded by hand. They a
 ```bash
 python3 tools/gen_hilts.py      # hilt models, textures and item model
 python3 tools/synth_sounds.py   # all sound effects
-python3 tools/gen_banner.py     # docs/media/banner.png and social-preview.png from the README screenshots
+python3 tools/gen_banner.py     # docs/media/sabercraft-banner.png and sabercraft-social-preview.png from the README screenshots
 ```
 
 If you change an asset, change its generator and commit both. **Do not add assets you did not make yourself**: no ripped film sounds or music, no textures or models from other mods or packs, no official artwork or logos.

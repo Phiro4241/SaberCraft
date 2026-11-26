@@ -1,14 +1,15 @@
-"""Draws the README banner docs/media/banner.png (1280x400) and the GitHub social preview
-docs/media/social-preview.png (1280x640, the size GitHub asks for).
+"""Draws the README banner docs/media/sabercraft-banner.png (1600x500) and the GitHub social preview
+docs/media/sabercraft-social-preview.png (1280x640, the size GitHub asks for).
 
-Both are put together from real in-game screenshots in docs/media/screenshots/ (taken by
-MediaGameTest, see docs/media/README.md), the mod icon (tools/gen_icon.py) and the title. The
-screenshots sit in slanted panels, separated by thin glowing blade lines; nothing in the pictures is
-painted or generated, only cropped, darkened and arranged. The text uses DejaVu Sans, which ships with
-most Linux systems. Run it with ``python3 tools/gen_banner.py`` (needs numpy and Pillow).
+Both show the mod icon, the title and a grid of real in-game screenshots from docs/media/screenshots/
+(taken by MediaGameTest, see docs/media/README.md): the lightsabers, four of the starships and the story.
+The screenshots are only cropped, scaled and labelled; nothing in them is painted or generated. The text
+uses DejaVu Sans, which ships with most Linux systems. Run it with ``python3 tools/gen_banner.py``
+(needs numpy and Pillow).
 """
 
 import os
+import random
 
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
@@ -16,169 +17,187 @@ from PIL import Image, ImageDraw, ImageFilter, ImageFont
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SHOTS = os.path.join(ROOT, "docs", "media", "screenshots")
 ICON = os.path.join(ROOT, "src", "main", "resources", "assets", "sabercraft", "icon.png")
-OUT = os.path.join(ROOT, "docs", "media", "banner.png")
-SOCIAL = os.path.join(ROOT, "docs", "media", "social-preview.png")
+BANNER = os.path.join(ROOT, "docs", "media", "sabercraft-banner.png")
+SOCIAL = os.path.join(ROOT, "docs", "media", "sabercraft-social-preview.png")
 FONT_BOLD = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
 FONT = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
 
-W = 1280
-BLUE, RED, GREEN, PURPLE = (60, 140, 255), (255, 50, 50), (60, 230, 90), (190, 90, 255)
+BG_TOP, BG_BOTTOM = (8, 10, 26), (16, 10, 34)
+TEXT, MUTED, FAINT = (240, 244, 255), (196, 206, 232), (150, 160, 192)
+BLUE, RED, GREEN, PURPLE, YELLOW = (70, 150, 255), (255, 70, 70), (70, 225, 110), (185, 100, 255), (255, 205, 70)
 
-# Each panel: the screenshot and the point of it to keep in view (0..1 across, 0..1 down).
-BANNER_PANELS = (
-    ("hero-saber.jpg", 0.50, 0.45),
-    ("ships-fleet.jpg", 0.48, 0.58),
-    ("story-duel.jpg", 0.42, 0.50),
+# Each tile: screenshot, label, accent color, the point of the picture to keep in view (0..1) and how
+# far to zoom in on it (1 = the whole height of the picture).
+TILES = (
+    ("hero-saber.jpg", "Lightsabers", RED, 0.47, 0.52, 1.15),
+    ("ship-xwing.jpg", "X-Wing", BLUE, 0.47, 0.60, 1.2),
+    ("ship-tie-interceptor.jpg", "TIE Interceptor", RED, 0.47, 0.56, 1.8),
+    ("story-duel.jpg", "Story: Nightshade", PURPLE, 0.46, 0.46, 1.0),
+    ("ship-falcon.jpg", "Millennium Falcon", YELLOW, 0.47, 0.52, 1.35),
+    ("ship-star-destroyer.jpg", "Star Destroyer", GREEN, 0.45, 0.52, 1.0),
 )
-SOCIAL_PANELS = BANNER_PANELS
-# Parts of a screenshot that never go into a panel, as (left, top, right, bottom) in 0..1: the black
+# Parts of a screenshot that never go into a tile, as (left, top, right, bottom) in 0..1: the black
 # bars and the subtitle of a cutscene.
 SOURCE_BOX = {"story-duel.jpg": (0.0, 0.12, 1.0, 0.90)}
+CHIPS = ("15 fighting styles", "5 starships", "6 story missions")
 
 
-def cover(path, size, fx, fy):
-    """The screenshot scaled to fill size, cropped around the point (fx, fy)."""
-    img = Image.open(path).convert("RGB")
-    box = SOURCE_BOX.get(os.path.basename(path))
+def font(size, bold=False):
+    return ImageFont.truetype(FONT_BOLD if bold else FONT, size)
+
+
+def background(size, stars, keep_clear):
+    """Dark space gradient with a few faint stars, none inside keep_clear (the text)."""
+    w, h = size
+    t = np.linspace(0, 1, h, dtype=np.float32)[:, None, None]
+    grad = np.array(BG_TOP, np.float32) * (1 - t) + np.array(BG_BOTTOM, np.float32) * t
+    img = Image.fromarray(np.repeat(grad, w, axis=1).astype(np.uint8), "RGB").convert("RGBA")
+    layer = Image.new("RGBA", size, (0, 0, 0, 0))
+    draw = ImageDraw.Draw(layer)
+    rng = random.Random(7)
+    for _ in range(stars):
+        x, y = rng.uniform(0, w), rng.uniform(0, h)
+        r = rng.choice((0.6, 0.8, 1.0, 1.4))
+        a = rng.randint(50, 150)
+        if keep_clear[0] <= x <= keep_clear[2] and keep_clear[1] <= y <= keep_clear[3]:
+            continue
+        draw.ellipse([x - r, y - r, x + r, y + r], fill=(220, 230, 255, a))
+    # A soft blue glow behind the title.
+    glow = Image.new("RGBA", size, (0, 0, 0, 0))
+    ImageDraw.Draw(glow).ellipse([-w * 0.15, -h * 0.3, w * 0.45, h * 1.1], fill=(40, 70, 160, 60))
+    img = Image.alpha_composite(img, glow.filter(ImageFilter.GaussianBlur(min(w, h) // 4)))
+    return Image.alpha_composite(img, layer)
+
+
+def cover(name, size, fx, fy, zoom=1.0):
+    """The screenshot scaled to fill size, cropped around the point (fx, fy), zoomed in by zoom."""
+    img = Image.open(os.path.join(SHOTS, name)).convert("RGB")
+    box = SOURCE_BOX.get(name)
     if box:
         img = img.crop((round(box[0] * img.width), round(box[1] * img.height),
                         round(box[2] * img.width), round(box[3] * img.height)))
     w, h = size
-    scale = max(w / img.width, h / img.height)
+    scale = max(w / img.width, h / img.height) * zoom
     img = img.resize((round(img.width * scale), round(img.height * scale)), Image.LANCZOS)
     x = min(max(round(fx * img.width - w / 2), 0), img.width - w)
     y = min(max(round(fy * img.height - h / 2), 0), img.height - h)
     return img.crop((x, y, x + w, y + h))
 
 
-def blade(size, start, end, color, width):
-    """A glowing blade line: wide colored halo, narrower bloom, white core."""
-    layer = Image.new("RGBA", size, (0, 0, 0, 0))
-    for blur, w, alpha, c in ((14, width * 6, 110, color), (5, width * 3, 190, color), (1, width, 255, (255, 255, 255))):
-        part = Image.new("RGBA", size, (0, 0, 0, 0))
-        ImageDraw.Draw(part).line([start, end], fill=c + (alpha,), width=w)
-        layer = Image.alpha_composite(layer, part.filter(ImageFilter.GaussianBlur(blur)))
-    return layer
-
-
-def panels(size, shots, x0, slant, colors):
-    """Slanted panels from x0 to the right edge, each filled with one screenshot."""
+def tile(name, label, color, fx, fy, zoom, size, label_size, radius):
+    """One screenshot with rounded corners, a dark foot and its label behind an accent bar."""
     w, h = size
-    canvas = Image.new("RGBA", size, (6, 8, 20, 255))
-    n = len(shots)
-    step = (w - x0 + slant) / n
-    edges = [x0 + i * step for i in range(n + 1)]
-    for i, (name, fx, fy) in enumerate(shots):
-        left, right = edges[i], edges[i + 1]
-        # The panel's box: from the bottom of its left edge to the top of its right edge.
-        bx0 = int(left - slant)
-        box_w = int(right + 1) - bx0
-        shot = cover(os.path.join(SHOTS, name), (box_w, h), fx, fy).convert("RGBA")
-        mask = Image.new("L", (box_w, h), 0)
-        # Both edges lean the same way: (x, 0) at the top, (x - slant, h) at the bottom.
-        ImageDraw.Draw(mask).polygon(
-            [(left - bx0, 0), (right - bx0, 0), (right - slant - bx0, h), (left - slant - bx0, h)], fill=255)
-        canvas.paste(shot, (bx0, 0), mask)
-    for i in range(1, n):
-        x = edges[i]
-        canvas = Image.alpha_composite(canvas, blade(size, (x, -4), (x - slant, h + 4), colors[(i - 1) % len(colors)], 3))
-    return canvas, edges
+    img = cover(name, size, fx, fy, zoom).convert("RGBA")
+    foot = int(h * 0.42)
+    t = np.clip((np.arange(h, dtype=np.float32) - (h - foot)) / foot, 0, 1)
+    alpha = (t ** 1.6 * 215).astype(np.uint8)
+    shade = Image.new("RGBA", size, (4, 6, 16, 255))
+    shade.putalpha(Image.fromarray(np.tile(alpha[:, None], (1, w)), "L"))
+    img = Image.alpha_composite(img, shade)
+    draw = ImageDraw.Draw(img)
+    pad = max(10, label_size * 2 // 3)
+    bar_h = label_size + 4
+    y = h - pad - bar_h
+    draw.rounded_rectangle([pad, y, pad + 4, y + bar_h], 2, fill=color + (255,))
+    draw.text((pad + 12, y + bar_h / 2), label, font=font(label_size, True), fill=TEXT + (255,), anchor="lm")
+    mask = Image.new("L", size, 0)
+    ImageDraw.Draw(mask).rounded_rectangle([0, 0, w - 1, h - 1], radius, fill=255)
+    out = Image.new("RGBA", size, (0, 0, 0, 0))
+    out.paste(img, (0, 0), mask)
+    ImageDraw.Draw(out).rounded_rectangle([0, 0, w - 1, h - 1], radius, outline=(255, 255, 255, 46), width=1)
+    return out
 
 
-def shade_left(img, x_solid, x_clear, strength=1.0):
-    """Darkens the left part of img so text stays readable: solid until x_solid, clear from x_clear."""
-    w, h = img.size
-    x = np.arange(w, dtype=np.float32)
-    t = np.clip((x_clear - x) / max(x_clear - x_solid, 1), 0, 1)
-    alpha = (t ** 1.4 * 235 * strength).astype(np.uint8)
-    mask = Image.fromarray(np.tile(alpha, (h, 1)), "L")
-    dark = Image.new("RGBA", img.size, (6, 8, 20, 255))
-    dark.putalpha(mask)
-    return Image.alpha_composite(img, dark)
-
-
-def shade_band(img, y0, y1, fade, strength=0.82):
-    """A dark horizontal band from y0 to y1, fading out over fade pixels above and below."""
-    w, h = img.size
-    y = np.arange(h, dtype=np.float32)
-    t = np.clip(np.minimum((y - (y0 - fade)) / fade, ((y1 + fade) - y) / fade), 0, 1)
-    alpha = (t * 255 * strength).astype(np.uint8)
-    mask = Image.fromarray(np.tile(alpha[:, None], (1, w)), "L")
-    dark = Image.new("RGBA", img.size, (6, 8, 20, 255))
-    dark.putalpha(mask)
-    return Image.alpha_composite(img, dark)
-
-
-def vignette(img, strength=0.45):
-    w, h = img.size
-    y, x = np.mgrid[0:h, 0:w].astype(np.float32)
-    d = np.sqrt(((x - w / 2) / (w / 2)) ** 2 + ((y - h / 2) / (h / 2)) ** 2)
-    alpha = (np.clip(d - 0.6, 0, 1) ** 1.5 * 255 * strength).astype(np.uint8)
-    dark = Image.new("RGBA", img.size, (0, 0, 0, 255))
-    dark.putalpha(Image.fromarray(alpha, "L"))
-    return Image.alpha_composite(img, dark)
+def grid(canvas, box, cols, rows, gap, label_size, radius):
+    x0, y0, x1, y1 = box
+    tw = (x1 - x0 - gap * (cols - 1)) // cols
+    th = (y1 - y0 - gap * (rows - 1)) // rows
+    shadow = Image.new("RGBA", canvas.size, (0, 0, 0, 0))
+    sd = ImageDraw.Draw(shadow)
+    for i in range(cols * rows):
+        x, y = x0 + (i % cols) * (tw + gap), y0 + (i // cols) * (th + gap)
+        sd.rounded_rectangle([x + 4, y + 6, x + tw + 4, y + th + 6], radius, fill=(0, 0, 0, 150))
+    canvas = Image.alpha_composite(canvas, shadow.filter(ImageFilter.GaussianBlur(8)))
+    for i, (name, label, color, fx, fy, zoom) in enumerate(TILES[:cols * rows]):
+        x, y = x0 + (i % cols) * (tw + gap), y0 + (i // cols) * (th + gap)
+        canvas.alpha_composite(tile(name, label, color, fx, fy, zoom, (tw, th), label_size, radius), (x, y))
+    return canvas
 
 
 def icon_at(img, size, pos):
     icon = Image.open(ICON).convert("RGBA").resize((size, size), Image.LANCZOS)
     shadow = Image.new("RGBA", img.size, (0, 0, 0, 0))
     r = size * 2 // 11
-    ImageDraw.Draw(shadow).rounded_rectangle([pos[0] + 6, pos[1] + 8, pos[0] + size + 6, pos[1] + size + 8], r, fill=(0, 0, 0, 170))
+    ImageDraw.Draw(shadow).rounded_rectangle([pos[0] + 5, pos[1] + 8, pos[0] + size + 5, pos[1] + size + 8], r,
+                                             fill=(0, 0, 0, 170))
     img = Image.alpha_composite(img, shadow.filter(ImageFilter.GaussianBlur(10)))
     img.alpha_composite(icon, pos)
     return img
 
 
-def title(img, pos, size):
-    font = ImageFont.truetype(FONT_BOLD, size)
+def title(img, pos, size, anchor="lm"):
+    f = font(size, True)
     glow = Image.new("RGBA", img.size, (0, 0, 0, 0))
-    ImageDraw.Draw(glow).text(pos, "SaberCraft", font=font, fill=(140, 190, 255, 190))
-    img = Image.alpha_composite(img, glow.filter(ImageFilter.GaussianBlur(10)))
-    ImageDraw.Draw(img).text(pos, "SaberCraft", font=font, fill=(245, 248, 255, 255))
+    ImageDraw.Draw(glow).text(pos, "SaberCraft", font=f, fill=(120, 175, 255, 170), anchor=anchor)
+    img = Image.alpha_composite(img, glow.filter(ImageFilter.GaussianBlur(size // 8)))
+    ImageDraw.Draw(img).text(pos, "SaberCraft", font=f, fill=TEXT + (255,), anchor=anchor)
     return img
 
 
-def text(img, pos, line, size, fill=(220, 228, 245, 255), anchor="la"):
-    ImageDraw.Draw(img).text(pos, line, font=ImageFont.truetype(FONT, size), fill=fill, anchor=anchor)
+def text(img, pos, line, size, fill, bold=False, anchor="la"):
+    ImageDraw.Draw(img).text(pos, line, font=font(size, bold), fill=fill + (255,), anchor=anchor)
     return img
+
+
+def chips(img, pos, size, gap):
+    """Small rounded labels with the key numbers."""
+    layer = Image.new("RGBA", img.size, (0, 0, 0, 0))
+    draw = ImageDraw.Draw(layer)
+    f = font(size)
+    x, y = pos
+    h = size + size * 9 // 10
+    for i, label in enumerate(CHIPS):
+        w = draw.textlength(label, font=f) + size * 1.4
+        color = (BLUE, RED, PURPLE)[i % 3]
+        draw.rounded_rectangle([x, y, x + w, y + h], h // 2, fill=color + (40,), outline=color + (190,), width=2)
+        draw.text((x + w / 2, y + h / 2), label, font=f, fill=TEXT + (255,), anchor="mm")
+        x += w + gap
+    return Image.alpha_composite(img, layer)
 
 
 def banner():
-    h = 400
-    img, _ = panels((W, h), BANNER_PANELS, 700, 70, (BLUE, RED))
-    img = shade_left(img, 640, 840)
-    img = vignette(img, 0.35)
-    img = icon_at(img, 120, (50, 56))
-    img = title(img, (192, 62), 80)
-    img = text(img, (54, 206), "Lightsabers, starships and a story campaign", 26)
-    img = text(img, (54, 244), "for Minecraft Java 26.2 · Fabric", 26)
-    img = text(img, (54, 334), "Unofficial fan project · in-game screenshots", 18, (165, 175, 205, 255))
+    w, h = 1600, 500
+    img = background((w, h), 140, (40, 60, 800, 480))
+    img = grid(img, (812, 28, w - 28, h - 28), 3, 2, 10, 17, 12)
+    img = icon_at(img, 124, (64, 82))
+    img = title(img, (210, 146), 86)
+    img = text(img, (68, 248), "Lightsabers, starships and a story campaign", 30, TEXT)
+    img = text(img, (68, 292), "for Minecraft Java 26.2 · Fabric", 26, MUTED)
+    img = chips(img, (68, 356), 18, 12)
+    img = text(img, (68, 444), "Unofficial fan project · in-game screenshots", 17, FAINT)
     return img.convert("RGB")
 
 
 def social():
-    h = 640
-    img, _ = panels((W, h), SOCIAL_PANELS, 0, 110, (BLUE, RED))
-    img = vignette(img, 0.5)
-    img = shade_band(img, 236, 446, 90)
-    icon = 150
-    font = ImageFont.truetype(FONT_BOLD, 104)
-    tw = ImageDraw.Draw(img).textlength("SaberCraft", font=font)
-    x = round((W - (icon + 34 + tw)) / 2)
-    img = icon_at(img, icon, (x, 252))
-    img = title(img, (x + icon + 34, 250), 104)
-    img = text(img, (W // 2, 410), "Lightsabers · starships · a story campaign · Minecraft 26.2 (Fabric)", 30,
-               anchor="mm")
-    img = text(img, (W // 2, 604), "Unofficial fan project · in-game screenshots", 20, (190, 198, 222, 255), anchor="mm")
+    w, h = 1280, 640
+    img = background((w, h), 120, (30, 70, 650, 625))
+    img = grid(img, (668, 32, w - 32, h - 32), 2, 3, 10, 16, 12)
+    img = icon_at(img, 120, (56, 90))
+    img = title(img, (52, 296), 86)
+    img = text(img, (58, 372), "Lightsabers, starships and", 30, TEXT)
+    img = text(img, (58, 412), "a story campaign", 30, TEXT)
+    img = text(img, (58, 462), "Minecraft Java 26.2 · Fabric", 24, MUTED)
+    img = chips(img, (58, 516), 16, 10)
+    img = text(img, (58, 596), "Unofficial fan project · in-game screenshots", 16, FAINT)
     return img.convert("RGB")
 
 
 def main():
-    os.makedirs(os.path.dirname(OUT), exist_ok=True)
-    banner().save(OUT, optimize=True)
-    print("wrote", OUT)
+    os.makedirs(os.path.dirname(BANNER), exist_ok=True)
+    banner().save(BANNER, optimize=True)
+    print("wrote", BANNER, os.path.getsize(BANNER) // 1024, "KB")
     social().save(SOCIAL, optimize=True)
-    print("wrote", SOCIAL)
+    print("wrote", SOCIAL, os.path.getsize(SOCIAL) // 1024, "KB")
 
 
 if __name__ == "__main__":
