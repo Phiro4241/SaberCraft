@@ -1,4 +1,4 @@
-![SaberCraft](https://raw.githubusercontent.com/Phiro4241/SaberCraft/main/docs/media/banner.png)
+![SaberCraft](https://raw.githubusercontent.com/Phiro4241/SaberCraft/main/docs/media/sabercraft-banner.png)
 
 **SaberCraft brings the lightsaber to Minecraft, and builds a galaxy around it.** Ignite a blade that hums, glows and clashes like in the films, fight with fifteen styles and the Force, call your droids, climb into an X-Wing or walk the corridors of a Star Destroyer. And when you are ready, slip aboard the *Tenebris* in **"Nightshade"**, a six-mission stealth story that ends with a lightsaber duel.
 
@@ -54,4 +54,4 @@ In single player everything works with the mod installed once. On a server, inst
 ## Links
 
 - Source code, all controls, commands and settings, bug reports: [GitHub](https://github.com/Phiro4241/SaberCraft)
-- Support the project (voluntary, unlocks nothing): [Patreon](PATREON_URL_EINTRAGEN)
+- Support the project (voluntary, unlocks nothing): [Patreon](https://patreon.com/Phiro4241?utm_medium=unknown&utm_source=join_link&utm_campaign=creatorshare_creator&utm_content=copyLink)

@@ -4,8 +4,8 @@ Images used by the main [README](../../README.md), the GitHub page and the Modri
 
 ```
 docs/media/
-├── banner.png          README banner, made by tools/gen_banner.py from three screenshots below
-├── social-preview.png  1280×640 image for GitHub's social preview, same script
+├── sabercraft-banner.png          README banner (1600×500), made by tools/gen_banner.py from six screenshots below
+├── sabercraft-social-preview.png  1280×640 image for GitHub's social preview, same script
 └── screenshots/        the README screenshots (JPG)
 ```
 

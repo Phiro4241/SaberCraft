@@ -14,7 +14,7 @@ Die Modrinth-Webseiten (modrinth.com, support.modrinth.com, docs.modrinth.com) s
 
 1. **Den Pull Request dieser Phase prüfen und mergen.** Die Bilder in der Modrinth-Beschreibung werden direkt von GitHub geladen (`main`-Zweig) und erscheinen erst, wenn die neuen Bilder dort liegen.
 2. **Über die KI-Offenlegung entscheiden (wichtig).** Seit August 2026 gilt auf Modrinth *(geprüft)*: Wer generative KI verwendet hat, muss in den Projekteinstellungen unter **Disclosures** die Angabe **„Contains AI-generated content“** einschalten, auch dann, wenn ein wesentlicher Teil des Codes KI-Ausgabe ist. Projekte, die **ganz oder fast ganz mit generativer KI und mit wenig menschlichem Beitrag über Prompts und Testen hinaus** entstanden sind, dürfen laut Modrinths Support-Artikel **nicht öffentlich veröffentlicht werden**, und überwiegend KI-erzeugte Bilder sind auf Projektseiten nicht erlaubt. SaberCraft wurde unter deiner Leitung weitgehend mit einem KI-Assistenten programmiert, auch die Skripte, die Modelle, Texturen, Klänge und Musik erzeugen. Die Screenshots sind echte Bilder aus dem Spiel, keine Bilder aus einem KI-Bildgenerator. **Es ist realistisch möglich, dass Modrinth das Projekt deshalb ablehnt oder nicht in der Suche zeigt.** Die Angabe muss trotzdem ehrlich sein; einen Textvorschlag findest du unten. Lies vorher selbst: [AI policy and disclosures](https://modrinth.com/news/article/ai-policy-and-disclosures/), [Disclosure and Usage of AI](https://support.modrinth.com/en/articles/16551575-disclosure-and-usage-of-ai), [Content Rules](https://modrinth.com/legal/rules).
-3. **Patreon-Adresse bereithalten** (oder den Link weglassen). Ich konnte sie nicht prüfen; in der Beschreibung steht der Platzhalter `PATREON_URL_EINTRAGEN`.
+3. **Patreon-Link:** steht schon in der Beschreibung: `https://patreon.com/Phiro4241?utm_medium=unknown&utm_source=join_link&utm_campaign=creatorshare_creator&utm_content=copyLink` (von Phiro angegeben).
 
 ## Das Upload-Paket
 
@@ -31,7 +31,7 @@ Die Modrinth-Webseiten (modrinth.com, support.modrinth.com, docs.modrinth.com) s
 | `04-version/angaben.md` | alle Felder der Version auf einen Blick | unten |
 | `05-ki-offenlegung.txt` | Text für eine Freitext-Angabe zur KI | unten |
 | `06-lizenz/LICENSE.txt` | der Lizenztext (MIT), nur zur Info: auf Modrinth wird die Lizenz ausgewählt, nicht hochgeladen | `LICENSE` |
-| `07-github/` | Beschreibung, Topics und Social-Preview-Bild für die GitHub-Seite (kein Modrinth-Feld) | `docs/release/github.md`, `docs/media/social-preview.png` |
+| `07-github/` | Beschreibung, Topics und Social-Preview-Bild für die GitHub-Seite (kein Modrinth-Feld) | `docs/release/github.md`, `docs/media/sabercraft-social-preview.png` |
 
 Das ganze Paket gibt es zusätzlich als **`modrinth-upload.zip`** zum Herunterladen. **Auf Modrinth wird nie die ZIP hochgeladen**, sondern jede Datei einzeln an ihrer Stelle: die JAR bei der Version, das Icon und die Bilder in den Einstellungen, die Texte per Kopieren und Einfügen.
 
@@ -60,7 +60,7 @@ Das ganze Paket gibt es zusätzlich als **`modrinth-upload.zip`** zum Herunterla
 - Vorschlag aus Modrinths Kategorienliste *(geprüft über die API)*: **Adventure**, **Equipment**, **Transportation**; zusätzlich passend: **Game Mechanics**, **Mobs**. Erlaubt das Formular weniger, nimm die ersten drei.
 
 **Beschreibung (Description)**
-- Den ganzen Inhalt von `02-projekt/beschreibung.md` einfügen. Vorher `PATREON_URL_EINTRAGEN` durch deine geprüfte Patreon-Adresse ersetzen oder die letzte Zeile löschen.
+- Den ganzen Inhalt von `02-projekt/beschreibung.md` einfügen (der Patreon-Link ist schon drin).
 - Die Beschreibung ist auf Englisch; Modrinth verlangt eine englische Fassung *(geprüft, Inhaltsregeln)*.
 
 **Lizenz (License)**
@@ -71,7 +71,7 @@ Das ganze Paket gibt es zusätzlich als **`modrinth-upload.zip`** zum Herunterla
 - Issues: `https://github.com/Phiro4241/SaberCraft/issues`
 - Wiki: leer lassen (oder `https://github.com/Phiro4241/SaberCraft#readme`)
 - Discord: leer lassen
-- Spenden: **Patreon** *(als Plattform geprüft)* mit deiner Adresse, erst wenn sie geprüft ist. Modrinth verlangt, dass alles Beworbene frei verfügbar ist; das ist bei SaberCraft so.
+- Spenden: **Patreon** *(als Plattform geprüft)* mit `https://patreon.com/Phiro4241?utm_medium=unknown&utm_source=join_link&utm_campaign=creatorshare_creator&utm_content=copyLink`. Modrinth verlangt, dass alles Beworbene frei verfügbar ist; das ist bei SaberCraft so.
 
 **Galerie (Gallery)** *(geprüft: in den Projekteinstellungen)*
 - Die Bilder aus `03-galerie/` in der Reihenfolge der Nummern hochladen, Titel und Beschreibung aus `galerie-titel.md` übernehmen, **Bild 01 als hervorgehobenes Bild (Featured)** markieren.
@@ -131,7 +131,7 @@ Modrinth kann Versionsnummer, Loader und Spielversion aus der Datei vorschlagen;
 
 - [ ] PR gemergt (Bilder in der Beschreibung laden)
 - [ ] Entscheidung zur KI-Offenlegung getroffen, Modrinths Regeln selbst gelesen
-- [ ] Patreon-Adresse geprüft und eingesetzt (oder Zeile gelöscht)
+- [ ] Patreon-Link bei den Spendenlinks eingetragen (in der Beschreibung steht er schon)
 - [ ] Projekt angelegt: Name, Adresse `sabercraft`, Summary aus `02-projekt/zusammenfassung.txt`
 - [ ] Icon, Kategorien, Beschreibung, Lizenz MIT, Links
 - [ ] Galerie: 10 Bilder, Bild 01 hervorgehoben

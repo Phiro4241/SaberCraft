@@ -9,8 +9,8 @@ Die alten Bilder (X-Wing allein, Droiden-Menü, Hangar-Menü mit gesperrten Schi
 | Datei | Zeigt | Verwendet in |
 | --- | --- | --- |
 | `src/main/resources/assets/sabercraft/icon.png` | Mod-Icon 512×512: zwei gekreuzte Klingen vor einem Planeten | Modrinth-Icon, ModDB-Icon, Mod-Menü |
-| `docs/media/banner.png` | Banner 1280×400: Icon, Titel, drei Spielbilder (Vader, Schiffe, Duell) | README oben, ModDB-Header |
-| `docs/media/social-preview.png` | 1280×640, dieselben drei Bilder mit Titel | GitHub → Settings → Social preview |
+| `docs/media/sabercraft-banner.png` | Banner 1600×500: Icon, Titel, Untertitel, sechs beschriftete Spielbilder (Lichtschwert, X-Wing, TIE Interceptor, Story-Duell, Millennium Falcon, Sternzerstörer) | README oben (EN und DE), Modrinth-Beschreibung, ModDB-Header |
+| `docs/media/sabercraft-social-preview.png` | 1280×640, gleicher Aufbau wie das Banner | GitHub → Settings → Social preview |
 
 ## Screenshots (`docs/media/screenshots/`)
 

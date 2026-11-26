@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/media/banner.png" alt="SaberCraft: Lichtschwerter, Raumschiffe und eine Story-Kampagne für Minecraft" width="100%">
+  <img src="docs/media/sabercraft-banner.png" alt="SaberCraft: Lichtschwerter, Raumschiffe und eine Story-Kampagne für Minecraft. Spielbilder von einem Lichtschwert, einem X-Wing, einem TIE Interceptor, dem Story-Duell, dem Millennium Falcon und einem Sternzerstörer" width="100%">
 </p>
 
 <p align="center">
@@ -251,8 +251,7 @@ Einen Fehler gefunden? Bitte öffne ein [Issue](https://github.com/Phiro4241/Sab
 
 SaberCraft ist kostenlos und bleibt es; jede Funktion ist für alle da. Wer die Entwicklung unterstützen möchte, kann das freiwillig auf Patreon tun (Ersteller: **Phiro**).
 
-<!-- PATREON-LINK-PLATZHALTER (Phiro): vor der Veröffentlichung die geprüfte Patreon-Adresse hier eintragen, z. B. [Phiro auf Patreon unterstützen](https://www.patreon.com/...) -->
-> **Patreon:** *Der Link folgt hier.*
+**[SaberCraft auf Patreon unterstützen](https://patreon.com/Phiro4241?utm_medium=unknown&utm_source=join_link&utm_campaign=creatorshare_creator&utm_content=copyLink)**: freiwillig, es schaltet nichts in der Mod frei.
 
 **Downloads** gibt es auf der [Release-Seite](https://github.com/Phiro4241/SaberCraft/releases) und auf Modrinth, sobald die erste Version veröffentlicht ist. Bis dahin kannst du die Mod selbst bauen:
 

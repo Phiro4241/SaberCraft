@@ -99,3 +99,13 @@ Not tested: two real clients with different names on one server at once (the tes
 3. The lab's music the moment you step in; the saber film; the switch to the escape.
 4. Mira's briefing, Kestrel's lines and radio messages: your own name. If possible, on a server with a second player.
 5. The boss fight as in Phase 32 (unchanged).
+
+## 7. After the merge of #38
+
+Phiro still saw the old banner (the README pointed at the same file name, `docs/media/banner.png`, so a cached copy could show the old X-Wing design) and gave the real Patreon link. In a follow-up pull request:
+
+- New banner `docs/media/sabercraft-banner.png` (1600 x 500) and social preview `docs/media/sabercraft-social-preview.png` (1280 x 640), both from `tools/gen_banner.py`: icon, title, tagline, three key numbers and six labelled in-game pictures (a lightsaber, X-Wing, TIE Interceptor, the story duel, Millennium Falcon, Star Destroyer). The old `banner.png` and `social-preview.png` are deleted, so no page can show them any more. Both READMEs and the Modrinth description point at the new file.
+- The Patreon link replaces every placeholder: both READMEs, the Modrinth and ModDB descriptions, the guides, and a new `.github/FUNDING.yml` (the "Sponsor" button, once Sponsorships is switched on).
+- `docs/release/github-release-0.1.0.md`: the bilingual text for the GitHub release v0.1.0. The release itself has to be created by Phiro on GitHub: the GitHub access available here cannot create releases or tags or upload release files.
+
+The game code is unchanged (the JAR is byte for byte the one tested for #38).

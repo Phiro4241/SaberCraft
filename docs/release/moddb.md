@@ -92,19 +92,19 @@ SaberCraft was developed with extensive help from an AI coding assistant, direct
 LINKS
 
 Source code, all controls, commands and settings, bug reports: https://github.com/Phiro4241/SaberCraft
-Support the project (voluntary, unlocks nothing): PATREON_URL_EINTRAGEN
+Support the project (voluntary, unlocks nothing): https://patreon.com/Phiro4241?utm_medium=unknown&utm_source=join_link&utm_campaign=creatorshare_creator&utm_content=copyLink
 
 License: MIT (source code and the mod's own assets). Star Wars and all related names are trademarks of their owners; the license grants no rights to them.
 ```
 
-Vor dem Einfügen `PATREON_URL_EINTRAGEN` durch die geprüfte URL ersetzen oder die Zeile löschen.
+Der Patreon-Link ist Phiros eigener Link (von Phiro am 26.11.2026 angegeben). ModDB macht Adressen im Text meist selbst klickbar; falls nicht, den Link im Editor als Link setzen.
 
 ## Bilder
 
 | Verwendung | Datei | Hinweis |
 | --- | --- | --- |
 | Icon / Logo | `src/main/resources/assets/sabercraft/icon.png` | 512×512; ModDB skaliert selbst |
-| Header / Profilbild | `docs/media/banner.png` | breites Banner |
+| Header / Profilbild | `docs/media/sabercraft-banner.png` | breites Banner (1600×500) |
 | Galerie | die zehn Bilder aus [`modrinth.md`](modrinth.md#galerie-titel-und-beschreibungen) (im Upload-Paket in `03-galerie/`), gern zusätzlich weitere aus `docs/media/screenshots/` | Titel auf Englisch, je ein Satz Beschreibung |
 
 Mehr dazu in [`screenshots.md`](screenshots.md).

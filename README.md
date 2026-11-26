@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/media/banner.png" alt="SaberCraft: lightsabers, starships and a story campaign for Minecraft" width="100%">
+  <img src="docs/media/sabercraft-banner.png" alt="SaberCraft: lightsabers, starships and a story campaign for Minecraft. In-game pictures of a lightsaber, an X-Wing, a TIE Interceptor, the story duel, the Millennium Falcon and a Star Destroyer" width="100%">
 </p>
 
 <p align="center">
@@ -251,8 +251,7 @@ Found a bug? Please open an [issue](https://github.com/Phiro4241/SaberCraft/issu
 
 SaberCraft is free and stays free; every feature is for everyone. If you would like to support its development, you can do so voluntarily on Patreon (creator: **Phiro**).
 
-<!-- PATREON LINK PLACEHOLDER (Phiro): insert the verified Patreon page URL here before publishing, e.g. [Support Phiro on Patreon](https://www.patreon.com/...) -->
-> **Patreon:** *the link will be added here.*
+**[Support SaberCraft on Patreon](https://patreon.com/Phiro4241?utm_medium=unknown&utm_source=join_link&utm_campaign=creatorshare_creator&utm_content=copyLink)**: voluntary, it unlocks nothing in the mod.
 
 **Downloads** will be on the [Releases page](https://github.com/Phiro4241/SaberCraft/releases) and on Modrinth once the first version is published. Until then you can build the mod yourself:
 
