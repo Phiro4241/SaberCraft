@@ -54,7 +54,8 @@
 			"com.phiro.sabercraft.gametest.Phase28GameTest",
 			"com.phiro.sabercraft.gametest.Phase29GameTest",
 			"com.phiro.sabercraft.gametest.Phase30GameTest",
-			"com.phiro.sabercraft.gametest.Phase31GameTest"
+			"com.phiro.sabercraft.gametest.Phase31GameTest",
+			"com.phiro.sabercraft.gametest.Phase32GameTest"
 		]
 	},
 	"depends": {

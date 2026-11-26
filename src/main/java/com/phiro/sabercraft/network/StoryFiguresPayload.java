@@ -48,6 +48,21 @@ public record StoryFiguresPayload(BlockPos origin, long time, List<Fig> figures)
 	 * unaware): the use key on them says so under the crosshair.
 	 */
 	public static final int TAKEDOWN = 2048;
+	/**
+	 * Phase 32: in her ring's mode she holds the spinning disc up before her (on guard, circling,
+	 * stepping back): it cuts whoever walks into it. The client holds it exactly where the server
+	 * cuts with it: its middle {@link #DISC_AHEAD} before her, {@link #DISC_HEIGHT} over her feet,
+	 * upright and facing the way she faces, its blades {@link #DISC_RADIUS} round it.
+	 */
+	public static final int DISC = 4096;
+	/**
+	 * Phase 32: her throw (drawn back or in flight) is the low one, at the legs: she lets go of the
+	 * staff low at her right, where the server starts its flight, not at the chest.
+	 */
+	public static final int THROW_LOW = 8192;
+	public static final double DISC_AHEAD = 0.62;
+	public static final double DISC_HEIGHT = 1.2;
+	public static final double DISC_RADIUS = 1.15;
 	public static final double SPIN_RADIUS = 3.5;
 	/**
 	 * Phase 30: her spin's two parts (ticks of her wind-up): the ring spinning up round the grip

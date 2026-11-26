@@ -1011,12 +1011,12 @@ public final class StoryHud implements HudElement {
 
 		int age = StoryClient.endAge();
 
-		if (age > 360) {
+		if (age > END_TICKS) {
 			StoryClient.dismissEnd();
 			return;
 		}
 
-		float fade = Mth.clamp(Math.min(age / 30.0F, (360 - age) / 40.0F), 0.0F, 1.0F);
+		float fade = Mth.clamp(Math.min(age / 30.0F, (END_TICKS - age) / 40.0F), 0.0F, 1.0F);
 		int alpha = Math.round(fade * 255);
 		graphics.fill(0, 0, width, height, Math.round(fade * 200) << 24);
 		Component big = Component.translatable("sabercraft.story.hud.end_title");
@@ -1031,6 +1031,69 @@ public final class StoryHud implements HudElement {
 			graphics.text(font, line, width / 2 - font.width(line) / 2, y, alpha << 24 | 0xC8C0B0);
 			y += 11;
 		}
+
+		// Phase 32: who made it, a small credit in the mission cards' style (their gold, a gold rule
+		// over it), in wide capitals, coming in a little after the text and fading out with it.
+		float credit = Mth.clamp(Math.min((age - CREDIT_FROM) / 30.0F, (END_TICKS - age) / 40.0F), 0.0F, 1.0F);
+
+		if (age < CREDIT_FROM) {
+			creditAge = -1;
+		}
+
+		if (credit > 0.0F) {
+			String text = Component.translatable("sabercraft.story.hud.end_credit").getString().toUpperCase(java.util.Locale.ROOT);
+			int track = 2;
+			int wide = 0;
+
+			for (int i = 0; i < text.length(); i++) {
+				wide += font.width(String.valueOf(text.charAt(i))) + (i < text.length() - 1 ? track : 0);
+			}
+
+			int a = Math.round(credit * 255);
+			int top = y + 14;
+			int rule = Math.round((wide / 2.0F + 6) * credit);
+			graphics.fill(width / 2 - rule, top - 5, width / 2 + rule, top - 4, a / 2 << 24 | CREDIT_COLOUR);
+			graphics.pose().pushMatrix();
+			graphics.pose().translate(width / 2.0F, top);
+			int x = -wide / 2;
+
+			for (int i = 0; i < text.length(); i++) {
+				String letter = String.valueOf(text.charAt(i));
+				graphics.text(font, letter, x, 0, a << 24 | CREDIT_COLOUR);
+				x += font.width(letter) + track;
+			}
+
+			graphics.pose().popMatrix();
+			creditShown = true;
+
+			if (creditAge < 0) {
+				creditAge = age;
+			}
+		}
+	}
+
+	/**
+	 * Phase 32: how long the chapter's end shows (ticks; it was 360: a little shorter, still time
+	 * to read it), from when the credit comes in, and its colour (the mission cards' gold).
+	 */
+	static final int END_TICKS = 300;
+	static final int CREDIT_FROM = 60;
+	static final int CREDIT_COLOUR = 0xE8C46A;
+	private static boolean creditShown;
+	private static int creditAge = -1;
+
+	/** Phase 32, for the tests: at which age of the chapter's end its credit was first drawn (-1: not yet). */
+	public static int creditAgeForTest() {
+		return creditAge;
+	}
+
+	/** Phase 32, for the tests: how long the chapter's end shows (ticks), and whether its credit has been drawn. */
+	public static int endTicksForTest() {
+		return END_TICKS;
+	}
+
+	public static boolean creditShownForTest() {
+		return creditShown;
 	}
 
 	// --- Helpers -------------------------------------------------------------------------------------

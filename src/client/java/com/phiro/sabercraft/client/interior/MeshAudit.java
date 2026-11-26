@@ -1271,6 +1271,55 @@ public final class MeshAudit {
 		return found;
 	}
 
+	/**
+	 * Phase 32: her throw's release as drawn, high and low (the wind-up's last tenth, her ring
+	 * spinning, at 12 angles): {touching poses, the most her hand falls short of the grip, how far the
+	 * drawn middle of the ring is from where the server lets the staff go, how deep its spinning
+	 * disc reaches under her feet (0: not at all)} per throw, high first. Held flat at the shins,
+	 * the low one went through her legs and was drawn pushed a block out.
+	 */
+	public static float[][] throwRelease() {
+		float shoulder = CrewModels.BODY - 0.06F;
+		float[][] out = new float[2][4];
+
+		for (int low = 0; low <= 1; low++) {
+			float[] at = low == 1 ? CrewModels.THROW_LOW_AT : CrewModels.THROW_HIGH_AT;
+
+			for (float p : new float[] {0.9F, 0.95F, 1.0F}) {
+				for (int i = 0; i < 12; i++) {
+					float angle = Mth.TWO_PI * i / 12.0F;
+					CrewModels.Gear gear = new CrewModels.Gear(false, 0xFFFF2020, true, 0.0F, 0.0F, false, true, 0, low, 0.0F, 0.0F, 0.0F, 0.0F,
+							CrewModels.THROW_WIND, p, false, false, 1.0F, true, angle, 1.0F, 0.0F, 0.0F);
+					float[] hilt = CrewModels.saberHold(shoulder, gear);
+					float[] staff = CrewModels.staffHold(shoulder, gear, hilt);
+					InquisitorSaber.Hold held = CrewModels.ringHold(shoulder, gear, InquisitorSaber.centred(staff));
+					CrewModels.Lean bent = CrewModels.Lean.of(gear, 0.0F, 0.0F, 0);
+					InquisitorSaber.Hold clear = InquisitorSaber.clear(held, angle, true, true, bent);
+
+					if (touches(clear, true, angle, 1.0F, bent) != null) {
+						out[low][0]++;
+					}
+
+					out[low][1] = Math.max(out[low][1], handsOff(clear, gear, shoulder));
+					// The disc's lowest point (its plane at right angles to the grip; her feet at -LEG).
+					float[] ga = clear.a();
+					float lowest = clear.c()[1] - (InquisitorSaber.EMIT + InquisitorSaber.BLADE) * Mth.sqrt(Math.max(0.0F, 1.0F - ga[1] * ga[1]));
+					out[low][3] = Math.max(out[low][3], -CrewModels.LEG - lowest);
+
+					if (p == 1.0F) {
+						float[] c = clear.c();
+						float dx = c[0] - at[0];
+						float dy = c[1] - (shoulder + at[1]);
+						float dz = c[2] - at[2];
+						out[low][2] = Math.max(out[low][2], Mth.sqrt(dx * dx + dy * dy + dz * dz));
+					}
+				}
+			}
+		}
+
+		return out;
+	}
+
 	/** Phase 30: the head turns the poses are looked at with, in turn (degrees). */
 	private static final float[] HEAD_TURNS = {0.0F, -75.0F, -40.0F, -15.0F, 15.0F, 40.0F, 75.0F};
 

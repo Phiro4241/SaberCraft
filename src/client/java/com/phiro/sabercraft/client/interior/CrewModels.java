@@ -65,8 +65,25 @@ final class CrewModels {
 	 */
 	record Gear(boolean lamp, int saber, boolean lit, float raise, float swing, boolean down, boolean skirt, int attack, float aim, float crouch, float lean,
 			float hand, float spin, int react, float reactP, boolean pistol, boolean unarmed, float twin, boolean inquisitor, float ring, float blur,
-			float flare) {
+			float flare, float disc) {
 		static final Gear NONE = new Gear(false, 0, false, 0.0F, 0.0F, false, false, 0, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F);
+
+		/** Phase 32: the same, her staff away from her hands, guided round her by her outstretched hand (her spin's whirl). */
+		Gear whirling() {
+			return new Gear(this.lamp, this.saber, this.lit, 0.0F, 0.0F, this.down, this.skirt, 0, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, THROWN, 0.3F, false,
+					this.unarmed, Math.max(this.twin, 0.01F), this.inquisitor, this.ring, this.blur, this.flare, 0.0F);
+		}
+
+		/**
+		 * Phase 26's gear (an Inquisitor's saber). Phase 32: {@code disc} (0..1) how far she holds the
+		 * spinning disc up before her (her ring's mode: where the server cuts with it).
+		 */
+		Gear(boolean lamp, int saber, boolean lit, float raise, float swing, boolean down, boolean skirt, int attack, float aim, float crouch, float lean,
+				float hand, float spin, int react, float reactP, boolean pistol, boolean unarmed, float twin, boolean inquisitor, float ring, float blur,
+				float flare) {
+			this(lamp, saber, lit, raise, swing, down, skirt, attack, aim, crouch, lean, hand, spin, react, reactP, pistol, unarmed, twin, inquisitor, ring, blur,
+					flare, 0.0F);
+		}
 
 		/**
 		 * Phase 24's gear (a saber staff's second blade). Phase 26: {@code inquisitor}: the saber is
@@ -115,6 +132,13 @@ final class CrewModels {
 	static final int RING = 13;
 	/** Phase 29: her slam winding up (as the server's {@code Figure.SLAM}): crouching, leaning back, the blade high. */
 	static final int SLAM = 14;
+	/**
+	 * Phase 32: the switch into her ring's mode (the ring spinning up, the disc raised before her) and
+	 * out of it (the ring winding down, the staff lowered: open a moment), as the server's
+	 * {@code Figure.RING_UP} and {@code Figure.RING_DOWN}.
+	 */
+	static final int RING_UP = 15;
+	static final int RING_DOWN = 16;
 	/** Phase 26: how much of the ring's rush is its spinning up (as the server's wind-up of 18 of its 42 ticks). */
 	static final float RING_WIND = 18.0F / 42.0F;
 
@@ -304,6 +328,11 @@ final class CrewModels {
 
 		if (thrown) {
 			hilt = null;
+
+			if (gear.inquisitor()) {
+				// (Phase 32: caught back, it is taken up from her outstretched hand.)
+				InquisitorSaber.caught(seed, t, new float[] {-0.14F, shoulder + 0.06F, 0.6F});
+			}
 		}
 
 		// Phase 26: her Inquisitor's saber: the ring where the single blade's emitter was, or in the
@@ -313,10 +342,16 @@ final class CrewModels {
 
 		if (gear.inquisitor() && !thrown && (staff != null || hilt != null)) {
 			ring = ringHold(shoulder, gear, staff != null ? InquisitorSaber.centred(staff) : InquisitorSaber.fromEmitter(hilt));
+			// (Phase 32: to a new hold in a quick motion, not in one frame.)
+			ring = InquisitorSaber.follow(seed, t, ring);
 			// (Phase 30: against her body as drawn: her torso leaning over her hips as it is, the robe
 			// and legs below it, her head turned as it is drawn below; eased in and out, see steady.)
 			float headYaw = Float.isNaN(headTurn) || gear.down() ? glance : headTurn;
-			ring = InquisitorSaber.steady(seed, t, ring, gear.ring(), second > 0.0F, gear.blur(), Lean.of(tilt(gear, reactLean), reactRoll, headYaw));
+			Lean lean = Lean.of(tilt(gear, reactLean), reactRoll, headYaw);
+			ring = InquisitorSaber.steady(seed, t, ring, gear.ring(), second > 0.0F, gear.blur(), lean);
+			// (Phase 32: and in her fist: a grip out of her arm's reach is drawn in to it.)
+			ring = InquisitorSaber.reach(ring, new float[] {-(HALF_W + LIMB * 0.9F), shoulder, 0.0F}, UPPER + FORE - 0.04F, gear.ring(), second > 0.0F,
+					gear.blur() >= InquisitorSaber.DISC_SOLID, lean);
 		}
 
 		float fling = gear.down() ? 0.0F : reactFling(gear);
@@ -725,6 +760,15 @@ final class CrewModels {
 	 * (unless she holds it high). Elsewhere the blade's hold as it is (the ring's angle does the rest).
 	 */
 	static InquisitorSaber.Hold ringHold(float shoulder, Gear gear, InquisitorSaber.Hold hold) {
+		if (gear.disc() > 0.0F && gear.react() != RING) {
+			// Phase 32: her ring's mode: the disc held up before her, as before the rush (the grip at
+			// the player, the disc upright between them), where the server cuts with it
+			// (StoryFiguresPayload.DISC_AHEAD / DISC_HEIGHT); what she does besides goes from there.
+			hold = blend(hold, gear.disc(), new float[] {-0.04F, (float) com.phiro.sabercraft.network.StoryFiguresPayload.DISC_HEIGHT - LEG,
+					(float) com.phiro.sabercraft.network.StoryFiguresPayload.DISC_AHEAD},
+					new float[] {0.0F, 0.12F, 1.0F}, new float[] {0.0F, 1.0F, 0.0F});
+		}
+
 		if (gear.blur() > 0.0F) {
 			// Phase 30: while the ring spins fast (its blades a disc round the grip) the grip comes
 			// level and a little up, so that the disc stands upright before her: tilted back with the
@@ -735,7 +779,9 @@ final class CrewModels {
 			float u = Mth.clamp(gear.blur() * 4.0F, 0.0F, 1.0F) * Mth.clamp((shoulder + DISC_HIGH - hold.c()[1]) / DISC_FADE, 0.0F, 1.0F);
 			float[] hc = hold.c();
 			float[] ha = hold.a();
-			hold = InquisitorSaber.of(new float[] {hc[0], hc[1] + DISC_RAISE * u, hc[2]}, norm(ha[0], ha[1] * Mth.lerp(u, 1.0F, DISC_UPRIGHT), ha[2]),
+			// (Phase 32: not raised in her ring's mode: held there where the server cuts with it.)
+			hold = InquisitorSaber.of(new float[] {hc[0], hc[1] + DISC_RAISE * u * (1.0F - Mth.clamp(gear.disc(), 0.0F, 1.0F)), hc[2]},
+					norm(ha[0], ha[1] * Mth.lerp(u, 1.0F, DISC_UPRIGHT), ha[2]),
 					hold.d());
 		}
 
@@ -757,6 +803,14 @@ final class CrewModels {
 			c = new float[] {0.0F, shoulder - 0.02F, 0.52F};
 			a = new float[] {0.0F, 0.3F, 1.0F};
 			d = new float[] {-1.0F, 0.0F, 0.0F};
+		} else if (gear.react() == RING_DOWN) {
+			// Phase 32: out of the ring's mode: the staff lowered before her a moment as the ring winds
+			// down (her guard down: the opening), then back on guard.
+			float p = Mth.clamp(gear.reactP(), 0.0F, 1.0F);
+			k = Mth.clamp(Math.min(p * 5.0F, (1.0F - p) * 4.0F), 0.0F, 1.0F);
+			c = new float[] {-0.06F, shoulder - 0.42F, 0.4F};
+			a = new float[] {0.0F, -0.3F, 1.0F};
+			d = new float[] {0.0F, 1.0F, 0.0F};
 		} else if (gear.react() == THROW_WIND) {
 			float p = Mth.clamp(gear.reactP(), 0.0F, 1.0F);
 			k = Mth.clamp(p * 2.5F, 0.0F, 1.0F);
@@ -765,13 +819,36 @@ final class CrewModels {
 			c = new float[] {-0.4F, shoulder + 0.63F, -0.06F};
 			a = new float[] {-0.15F, 1.0F, 0.1F};
 			d = new float[] {0.0F, 0.0F, 1.0F};
+			// Phase 32: the throw itself, in the wind-up's last fifth: brought to where she lets go
+			// (at her right, as the server starts its flight: over her head and forward, or low at
+			// the shins for a throw at the legs, gear.aim() 1), flat as it flies.
+			float e = Mth.clamp((p - 0.8F) / 0.2F, 0.0F, 1.0F);
+
+			if (e > 0.0F) {
+				e = e * e * (3.0F - 2.0F * e);
+				boolean low = gear.aim() > 0.5F;
+				float[] at = low ? THROW_LOW_AT : THROW_HIGH_AT;
+				// (Low: the grip out to her right, the disc upright beside her hip, clear of her legs:
+				// held flat at the shins it went through them and was pushed a block out of her hand.)
+				float[] ta = low ? THROW_LOW_GRIP : new float[] {0.0F, 1.0F, 0.25F};
+				float[] td = low ? new float[] {0.0F, 1.0F, 0.0F} : new float[] {-1.0F, 0.0F, 0.0F};
+				c = new float[] {Mth.lerp(e, c[0], at[0]), Mth.lerp(e, c[1], shoulder + at[1]), Mth.lerp(e, c[2], at[2])};
+				a = new float[] {Mth.lerp(e, a[0], ta[0]), Mth.lerp(e, a[1], ta[1]), Mth.lerp(e, a[2], ta[2])};
+				d = new float[] {Mth.lerp(e, d[0], td[0]), Mth.lerp(e, d[1], td[1]), Mth.lerp(e, d[2], td[2])};
+			}
 		}
 
 		if (k <= 0.0F || c == null) {
 			return hold;
 		}
 
-		float e = k * k * (3.0F - 2.0F * k);
+		return blend(hold, k, c, a, d);
+	}
+
+	/** Phase 32: a hold eased that far (0..1, smoothly) towards the one given (its middle, its grip's way, its blades' way). */
+	private static InquisitorSaber.Hold blend(InquisitorSaber.Hold hold, float k, float[] c, float[] a, float[] d) {
+		float e = Mth.clamp(k, 0.0F, 1.0F);
+		e = e * e * (3.0F - 2.0F * e);
 		float[] hc = hold.c();
 		float[] ha = hold.a();
 		float[] hd = hold.d();
@@ -781,6 +858,18 @@ final class CrewModels {
 				new float[] {Mth.lerp(e, ha[0], an[0]), Mth.lerp(e, ha[1], an[1]), Mth.lerp(e, ha[2], an[2])},
 				new float[] {Mth.lerp(e, hd[0], dn[0]), Mth.lerp(e, hd[1], dn[1]), Mth.lerp(e, hd[2], dn[2])});
 	}
+
+	/**
+	 * Phase 32: where she lets go of her staff in the throw (body space; the height over her
+	 * shoulder): at her right, as the server's flight begins (Finale.throwTick): over her head and a
+	 * little before it (an overhand throw from the wind-up: the flat disc clears her head, the grip
+	 * within her arm's reach), or for a throw at the legs beside her right hip, the disc upright out at
+	 * her side, clear of the floor (Finale.THROW_LOW, THROW_LOW_SIDE, THROW_LOW_AHEAD: 1.15 over her
+	 * feet, the shoulder 1.32).
+	 */
+	static final float[] THROW_HIGH_AT = {-0.3F, 0.55F, 0.22F};
+	static final float[] THROW_LOW_AT = {-0.55F, -0.17F, 0.3F};
+	static final float[] THROW_LOW_GRIP = {-1.0F, 0.0F, 0.15F};
 
 	/** Phase 30: the spinning disc stood upright: how much of the grip's upward tilt stays, and how far it is raised (blocks). */
 	static final float DISC_UPRIGHT = 0.2F;
@@ -950,14 +1039,15 @@ final class CrewModels {
 	 * Phase 25: the thrown saber staff in flight (plot space): spinning flat round its middle as it
 	 * flies, both blades lit.
 	 */
-	static void flyingStaff(MeshBuilder b, float x, float y, float z, float yaw, float spin, int colour) {
-		// Phase 26: her saber is an Inquisitor's: the ring spinning flat in flight.
+	static void flyingStaff(MeshBuilder b, float x, float y, float z, float yaw, float spin, float roll, int colour) {
+		// Phase 26: her saber is an Inquisitor's: the ring spinning flat in flight (Phase 32: a low
+		// throw tipped up on its edge as it leaves her hand, laid flat in its first ticks).
 		if (INQUISITOR) {
-			InquisitorSaber.flying(b, x, y, z, yaw, spin, colour);
+			InquisitorSaber.flying(b, x, y, z, yaw, spin, roll, colour);
 			return;
 		}
 
-		b.push().translate(x, y, z).rotateY(-yaw).rotateX(80.0F).rotateZ(spin);
+		b.push().translate(x, y, z).rotateY(-yaw).rotateZ(roll).rotateX(80.0F).rotateZ(spin);
 		staffHilt(b);
 		blade(b, STAFF_HALF, STAFF_HALF + STAFF_BLADE, colour);
 		blade(b, -STAFF_HALF, -STAFF_HALF - STAFF_BLADE, colour);

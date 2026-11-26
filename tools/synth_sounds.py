@@ -1701,6 +1701,26 @@ def story_ring_spin(rng, seconds=1.15):
     return normalize(lowpass(out + whirr + hum, 6000) * fade, 0.5)
 
 
+def story_ring_loop(rng, seconds=1.0):
+    """Phase 32: an Inquisitor's ring turning (a seamless loop, played by the client only while the
+    ring really turns, faster and louder with it): the bearing's steady whirr, the blades' hum
+    sweeping past twice a turn (a wah at 8 per second at pitch 1.0, the ring at full speed), a
+    soft rush of air. Every frequency sits on the 1 Hz grid of the one-second loop: no seam."""
+    t = t_axis(seconds)
+    passes = 8.0
+    wah = 0.5 + 0.5 * np.cos(2 * np.pi * passes * t)
+    whirr = (np.sin(2 * np.pi * 410.0 * t) + 0.35 * np.sin(2 * np.pi * 820.0 * t + 0.6)) * (0.8 + 0.2 * wah) * 0.18
+    hum = hum_tone(t, 74.0 + 2.0 * np.cos(2 * np.pi * passes * t), partials=DARK_VOICE.partials) * (0.35 + 0.65 * wah) * 0.32
+    air = periodic_noise(seconds, 300, 2400, rng) * (0.25 + 0.75 * wah ** 2) * 0.22
+    return normalize(soft_clip((whirr + hum + air) / 1.4, 1.6), 0.45)
+
+
+def phase32():
+    """Phase 32: the ring's turning as a loop (the client plays it with the ring as drawn). Own random stream."""
+    rng = np.random.default_rng(1977_32)
+    write_ogg("ring_loop", story_ring_loop(rng), STORY_OUT)
+
+
 def story_hack(rng, seconds=1.3):
     """An emergency release pulled: a lever's ratchet clicking under strain, a groan of metal, the
     catch letting go with a heavy clunk."""
@@ -1979,6 +1999,10 @@ def atmosphere():
 
 
 def main():
+    if "--phase32" in sys.argv:
+        phase32()
+        return
+
     if "--ambient" in sys.argv:
         ambient()
         return

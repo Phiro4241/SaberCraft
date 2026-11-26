@@ -470,6 +470,25 @@ public class Phase29GameTest implements FabricClientGameTest {
 
 		SaberCraft.LOGGER.info("PHASE29 FIGHT DOORS: {} doors by the arena: {}", near.size(), near.stream().map(i -> "(" + doors.get(i).x0() + "," + doors.get(i).z0() + ")").toList());
 		check(!near.isEmpty(), "no door by the duel's arena (the test looks at the wrong place)");
+		// (Phase 32: the hangar is sealed in the duel; the doors' own fight rules are tested here with
+		// the seal lifted, as in a fight elsewhere, so that nothing of them passes by the seal alone.)
+		StoryTesting.unsealHangar(true);
+
+		try {
+			this.fightDoorsAtArena(arena, doors, near);
+		} finally {
+			StoryTesting.unsealHangar(false);
+		}
+
+		// Phase 32: with the seal (the duel as played) the hangar's door stays shut for the player walking at it.
+		InteriorPlan.Door sealed = doors.get(near.stream().min((a, b) -> Double.compare(this.doorDistance(doors.get(a), arena), this.doorDistance(doors.get(b), arena))).get());
+		check(!this.walkThrough(sealed, arena), "in the duel the hangar's door opens for the player walking at it (it is sealed in the duel)");
+	}
+
+	/** Phase 29: the fight beside the arena's doors (no flapping) and a walk through the nearest (it opens). */
+	private void fightDoorsAtArena(Vec3 arena, List<InteriorPlan.Door> doors, List<Integer> near) {
+		check(this.on(s -> near.stream().anyMatch(i -> !Story.locked(this.session(s).destroyer, doors.get(i).x0(), doors.get(i).y0(), doors.get(i).z0()))),
+				"the doors by the arena are all locked (the checks below could not fail)");
 		// She circles on guard right before the hangar's door, the player steps about beside it (never towards it).
 		this.server.runOnServer(s -> {
 			Figure f = this.her(s);
@@ -520,6 +539,11 @@ public class Phase29GameTest implements FabricClientGameTest {
 		check(total == 0, "in the duel the doors by the arena open " + total + " times while the two only fight beside them (flapping)");
 		// The player walks through the hangar's door: it opens, also in the fight.
 		InteriorPlan.Door door = doors.get(near.stream().min((a, b) -> Double.compare(this.doorDistance(doors.get(a), arena), this.doorDistance(doors.get(b), arena))).get());
+		check(this.walkThrough(door, arena), "in the duel the door by the arena does not open for the player walking through it");
+	}
+
+	/** Phase 29: whether that door opens for the player walking at it from 3 blocks off (on the arena's side). */
+	private boolean walkThrough(InteriorPlan.Door door, Vec3 arena) {
 		Vec3 middle = new Vec3((door.x0() + door.x1() + 1) / 2.0, H, (door.z0() + door.z1() + 1) / 2.0);
 		Vec3 start = door.alongX() ? middle.add(middle.x > arena.x ? -3.0 : 3.0, 0.0, 0.0) : middle.add(0.0, 0.0, middle.z > arena.z ? -3.0 : 3.0);
 		this.server.runOnServer(s -> {
@@ -536,7 +560,8 @@ public class Phase29GameTest implements FabricClientGameTest {
 		}
 
 		this.context.getInput().releaseKey(options -> options.keyUp);
-		check(opened, "in the duel the door by the arena does not open for the player walking through it");
+		this.context.waitTicks(10);
+		return opened;
 	}
 
 	private void fightDoor(List<String> wrong, String who, InteriorPlan.Door door, Vec3 at, @Nullable Vec3 was, @Nullable Vec3 older, boolean expected) {

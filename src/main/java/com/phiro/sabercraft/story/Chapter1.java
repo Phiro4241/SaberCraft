@@ -1088,11 +1088,12 @@ public final class Chapter1 implements Chapter {
 			list.add(point("terminal", 17.0, H + 0.8, -1.7, 19.0, H + 1.5, -1.0, false));
 
 			// Phase 28: the side way's cover (while shut) and the toolbox (while the screwdriver is in it).
-			if (!s.has(COVER_OPEN)) {
+			// (Phase 32: not in the duel: the hangar is sealed, nobody unscrews a way out of it then.)
+			if (!s.has(COVER_OPEN) && !hangarSealed(s)) {
 				list.add(point("vent_cover", VENT_COVER.getX(), H, VENT_COVER.getZ(), VENT_COVER.getX() + 1.0, H + 1.0, VENT_COVER.getZ() + 1.0, false));
 			}
 
-			if (!s.has(DRIVER)) {
+			if (!s.has(DRIVER) && !hangarSealed(s)) {
 				list.add(point("toolbox", TOOLBOX.getX() + 0.1, H, TOOLBOX.getZ() + 0.15, TOOLBOX.getX() + 0.9, H + 0.75, TOOLBOX.getZ() + 0.85, false));
 			}
 		}
@@ -1143,8 +1144,17 @@ public final class Chapter1 implements Chapter {
 			case "saber" -> s.talk("m6_saber", null);
 			case "service_release", "service_door" -> Scenes.release(s);
 			case "service_lock" -> Scenes.bolt(s);
-			case "toolbox" -> unwatched(s, "m2_toolbox");
-			case "vent_cover" -> coverUsed(s);
+			case "toolbox" -> {
+				// (Phase 32: not in the sealed hangar's duel: the point is not offered then either.)
+				if (!hangarSealed(s)) {
+					unwatched(s, "m2_toolbox");
+				}
+			}
+			case "vent_cover" -> {
+				if (!hangarSealed(s)) {
+					coverUsed(s);
+				}
+			}
 			default -> {
 			}
 		}
@@ -1710,6 +1720,12 @@ public final class Chapter1 implements Chapter {
 				// Phase 28: the droids wait in the corridor behind the hangar's door while the two
 				// fight (one followed the player round the arena and through the films' shots).
 				droidsAside(s);
+				// Phase 32: the hangar is sealed: an open hatch shuts (not onto anyone in it).
+				ServerLevel sealed = interiors(s);
+
+				if (sealed != null) {
+					com.phiro.sabercraft.interior.Vents.closeAll(sealed, s.destroyer);
+				}
 			}
 			case "m6.epilogue" -> {
 				if (s.has(CHAPTER_DONE)) {
@@ -2262,11 +2278,22 @@ public final class Chapter1 implements Chapter {
 			case "m6.escape2" -> {
 				Vec3 me = s.local(D);
 
-				if (D.equals(s.here) && me.z < DestroyerInterior.HANGAR_Z1 - 0.5 && me.y > H - 1.0 && me.y < H + 3.0) {
+				// (Phase 32: in the hangar itself, clear of its door: it is sealed then. Before, any place
+				// south of the door's line counted, the crawl way and the flight control room too.)
+				// (And clear of the west wall's door to the flight control room and of the crawl way's
+				// hatch in it: standing in either, the step began with the player half out of the hangar.)
+				if (D.equals(s.here) && me.z < DestroyerInterior.HANGAR_Z1 - 1.2 && me.x > DestroyerInterior.HANGAR_X0 + 2.2 && me.y > H - 1.0 && me.y < H + 3.0
+						&& inHangar(me)) {
 					s.complete();
 				}
 			}
-			case "m6.duel" -> duelTick(s, player);
+			case "m6.duel" -> {
+				if (hangarSealed(s)) {
+					keepSealed(s, player);
+				}
+
+				duelTick(s, player);
+			}
 			case "m6.jump" -> {
 				if (s.has("tmp.jump_go") && s.dialog == null && !s.has("tmp.jumping")) {
 					// Phase 24: the escape seen from outside (the Tenebris goes up behind the Falcon);
@@ -4120,6 +4147,12 @@ public final class Chapter1 implements Chapter {
 			Story.cue(s, Story.CUE_FADE, "", "", 20);
 			Story.place(s, F, FALCON_ENTRY, 90.0F);
 			s.complete();
+		} else if (hangarSealed(s) && D.equals(s.here)) {
+			// (Phase 32: once in the duel, not each time the fight crosses the field.)
+			if (!s.has("tmp.no_way_told")) {
+				s.set("tmp.no_way_told");
+				s.hint("sabercraft.story.hint.no_way");
+			}
 		} else {
 			s.hint(F.equals(s.here) ? "sabercraft.story.hint.stay_falcon" : "sabercraft.story.hint.no_way");
 		}
@@ -4284,7 +4317,8 @@ public final class Chapter1 implements Chapter {
 				return "sabercraft.story.obj.m5.escape_bolt";
 			}
 
-			return s.has("tmp.release") ? "sabercraft.story.obj.m5.escape_releasing" : "sabercraft.story.obj.m5.escape_release";
+			// Phase 32: no "it is unlocking" objective while the release runs (the bar shows it).
+			return "sabercraft.story.obj.m5.escape_release";
 		}
 
 		if (step.id().equals("m5.route") && !s.has("trust.hale") && (s.has("know.hale_trap") || s.has("hatch.f"))) {
@@ -4311,6 +4345,16 @@ public final class Chapter1 implements Chapter {
 		}
 
 		int m = s.mission;
+
+		// Phase 32: the hangar's doors in the duel: sealed (never shut onto the player in the doorway).
+		if (hangarSealed(s) && hangarDoor(x, y, z)) {
+			if (inDoorway(s, x, y, z)) {
+				return false;
+			}
+
+			// (Its lock is heard from refused(), when someone comes to it: not on each path search.)
+			return true;
+		}
 
 		if (x == DestroyerInterior.CX + 4 && y == H && z == -14) {
 			// The armory: the security desk opens it (Phase 20: Hale bolts it while he talks).
@@ -4629,7 +4673,185 @@ public final class Chapter1 implements Chapter {
 	static final Vec3 DUEL_WAIT_R2 = new Vec3(42.3, H, -12.9);
 
 	static boolean droidsWait(StorySession s) {
-		return s.at("m6.duel") && !s.has("gone.shadow");
+		return hangarSealed(s);
+	}
+
+	/**
+	 * Phase 32: the hangar is sealed for the duel (Phiro: the whole fight is fought in it): from the
+	 * duel's step until she has fled (also after being caught and put back, and after a restart
+	 * there), its two doors stay shut, their lamps red, and its crawl way's hatch stays bolted.
+	 * Nothing is placed for it: the doors and hatches are only kept shut, so everything is as ever
+	 * once the step is over or the story is left.
+	 */
+	public static boolean hangarSealed(StorySession s) {
+		return !unsealedForTest && s.at("m6.duel") && !s.has("gone.shadow");
+	}
+
+	/** Phase 32, for the tests: the seal lifted (the doors' fight rules tested beside the duel's arena, Phase 29). */
+	static boolean unsealedForTest;
+
+	/** Phase 32: the client's flag for it (derived each time, never saved): the doors' lamps red. */
+	public static final String HANGAR_SEALED = "hangar.sealed";
+	/** Phase 32: the hangar's main door and the door to the flight control room (their index in DestroyerInterior.DOORS). */
+	static final int[] HANGAR_DOORS = {3, 4};
+	private static int sealedRefusals;
+	private static int sealedReturns;
+
+	/** Phase 32, for the tests: a sealed door or hatch refused the player; the player set back into the hangar. */
+	static int[] sealedForTest() {
+		return new int[] {sealedRefusals, sealedReturns};
+	}
+
+	/** Phase 32: whether that door cell is the first cell of one of the hangar's doors. */
+	static boolean hangarDoor(int x, int y, int z) {
+		for (int index : HANGAR_DOORS) {
+			com.phiro.sabercraft.interior.InteriorPlan.Door door = DestroyerInterior.DOORS.get(index);
+
+			if (door.x0() == x && door.y0() == y && door.z0() == z) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	/** Phase 32: whether the player stands in that door's opening (it is never shut onto them). */
+	private static boolean inDoorway(StorySession s, int x, int y, int z) {
+		ServerPlayer player = s.player();
+
+		if (player == null || !D.equals(s.here)) {
+			return false;
+		}
+
+		for (int index : HANGAR_DOORS) {
+			com.phiro.sabercraft.interior.InteriorPlan.Door door = DestroyerInterior.DOORS.get(index);
+
+			if (door.x0() == x && door.y0() == y && door.z0() == z) {
+				AABB cells = new AABB(door.x0(), door.y0(), door.z0(), door.x1() + 1.0, door.y1() + 1.0, door.z1() + 1.0);
+				return player.getBoundingBox().move(Vec3.atLowerCornerOf(s.origin(D)).scale(-1.0)).intersects(cells);
+			}
+		}
+
+		return false;
+	}
+
+	@Override
+	public void refused(StorySession s, String ship, int x, int y, int z) {
+		if (D.equals(ship) && hangarSealed(s) && hangarDoor(x, y, z)) {
+			sealedDoor(s, x, y, z);
+		}
+	}
+
+	/**
+	 * Phase 32: the player at a sealed door (pressing against it, anywhere along it): its lock is
+	 * heard (now and then, not every tick). No words: the red lamp and the lock say it.
+	 */
+	private static void sealedDoor(StorySession s, int x, int y, int z) {
+		if (!D.equals(s.here) || s.timer("sealed_door")) {
+			return;
+		}
+
+		for (int index : HANGAR_DOORS) {
+			com.phiro.sabercraft.interior.InteriorPlan.Door door = DestroyerInterior.DOORS.get(index);
+
+			if (door.x0() == x && door.y0() == y && door.z0() == z) {
+				// (Measured from the door itself, its whole width: from its middle the lock was not heard
+				// at the ends of the wide main door.)
+				Vec3 me = s.local(D);
+				double nearX = Mth.clamp(me.x, door.x0(), door.x1() + 1.0);
+				double nearZ = Mth.clamp(me.z, door.z0(), door.z1() + 1.0);
+
+				if (Math.hypot(me.x - nearX, me.z - nearZ) < SEALED_NEAR) {
+					s.timer("sealed_door", 40);
+					sealedRefusals++;
+					Story.cue(s, Story.CUE_SOUND, "", "story.door_lock", 0);
+				}
+
+				return;
+			}
+		}
+	}
+
+	/** Phase 32: how near a sealed door one has to come for its lock to be heard (from the door, blocks). */
+	static final double SEALED_NEAR = 1.2;
+
+	/** Phase 32: a sealed hatch tried from the hangar: its lock is heard, nothing is said. */
+	public static void sealedHatch(StorySession s) {
+		if (!s.timer("sealed_door")) {
+			s.timer("sealed_door", 40);
+			Story.cue(s, Story.CUE_SOUND, "", "story.door_lock", 0);
+		}
+
+		sealedRefusals++;
+	}
+
+	/**
+	 * Phase 32: while the hangar is sealed (every tick of the duel): its crawl way's hatch is kept
+	 * shut (opened before, it shuts once nobody is in it), and should the player be out of the
+	 * hangar after all (an old saved game, a way not thought of) they are set back into it at its
+	 * entrance. Not in a film (the camera is elsewhere then).
+	 */
+	private static void keepSealed(StorySession s, ServerPlayer player) {
+		ServerLevel level = interiors(s);
+
+		if (level == null || !D.equals(s.here)) {
+			return;
+		}
+
+		if (s.time() % 20 == 0) {
+			com.phiro.sabercraft.interior.Vents.shut(level, s.destroyer.offset(DestroyerInterior.HANGAR_HATCH));
+		}
+
+		if (s.has("tmp.film")) {
+			s.timers.remove("outside_hangar");
+			s.timers.remove("her_outside");
+			return;
+		}
+
+		// (She too: the doors are walls for her then, she cannot be out of it; put out of it all the
+		// same, she is back in the hangar's middle a moment later and comes on.)
+		Figure her = s.figure("shadow");
+
+		if (her != null && her.mode != Figure.DOWN && !inHangar(her.position())) {
+			if (!s.timers.containsKey("her_outside")) {
+				s.timer("her_outside", OUTSIDE_TICKS);
+			} else if (!s.timer("her_outside")) {
+				s.timers.remove("her_outside");
+				her.x = 40.5;
+				her.y = H;
+				her.z = -28.5;
+				her.target = null;
+				sealedReturns++;
+			}
+		} else {
+			s.timers.remove("her_outside");
+		}
+
+		Vec3 me = s.local(D);
+
+		if (inHangar(me)) {
+			s.timers.remove("outside_hangar");
+			return;
+		}
+
+		if (!s.timers.containsKey("outside_hangar")) {
+			s.timer("outside_hangar", OUTSIDE_TICKS);
+		} else if (!s.timer("outside_hangar")) {
+			s.timers.remove("outside_hangar");
+			sealedReturns++;
+			// (A fade that keeps the duel as it is on the client: her second phase, her ring, the Focus.)
+			Story.cue(s, Story.CUE_FADE, Story.FADE_KEEPS_DUEL, "", 20);
+			Story.place(s, D, new Vec3(40.5, H, -18.5), 180.0F);
+		}
+	}
+
+	/** Phase 32: how long one may be out of the sealed hangar before being set back (ticks). */
+	static final int OUTSIDE_TICKS = 10;
+
+	/** Phase 32: whether a place (plot space, the feet) is in the hangar itself (not in its crawl way, nor the flight control room, nor the corridor). */
+	static boolean inHangar(Vec3 me) {
+		return me.x > DestroyerInterior.HANGAR_X0 + 0.5 && me.x < DestroyerInterior.HANGAR_X1 && me.z > DestroyerInterior.HANGAR_Z0
+				&& me.z < DestroyerInterior.HANGAR_Z1 && me.y > DestroyerInterior.HANGAR - 0.5 && me.y < DestroyerInterior.HANGAR_TOP && !inVent(me);
 	}
 
 	/** Phase 28: where that droid waits during the duel (plot space). */

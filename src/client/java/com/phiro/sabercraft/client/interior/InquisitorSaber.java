@@ -183,10 +183,107 @@ final class InquisitorSaber {
 	/** Phase 31: a duel begun again: the ring's last positions are forgotten. */
 	static void forget() {
 		MOVED.clear();
+		FOLLOWED.clear();
 	}
-	/** Phase 30: how fast the saber may go out to where it is clear and back in towards her (blocks a second). */
+	/**
+	 * Phase 30: how fast the saber may go out to where it is clear and back in towards her (blocks a
+	 * second). (Phase 32: back in faster: at 0.6 it lingered up to a block out from her hands for
+	 * most of a second after a throw's wind-up or a thrust, as if she did not hold it.)
+	 */
 	static final float OUT_SPEED = 4.0F;
-	static final float IN_SPEED = 0.6F;
+	static final float IN_SPEED = 2.4F;
+
+	/**
+	 * Phase 32: how fast her saber's hold may move and turn as drawn (blocks, radians a second): a
+	 * new pose (a blow falling, a blow of another kind wound up, the end of an opening) is gone to
+	 * in a quick motion, not in one frame (it jumped up to a block and a half between two frames).
+	 */
+	static final float FOLLOW_MOVE = 7.0F;
+	static final float FOLLOW_TURN = 18.0F;
+	private static final java.util.Map<Integer, float[]> FOLLOWED = new java.util.HashMap<>();
+
+	/**
+	 * Phase 32: the hold as drawn frame by frame (figure {@code seed}, time {@code t} in seconds):
+	 * towards the one wanted now at most {@link #FOLLOW_MOVE} and {@link #FOLLOW_TURN} a second. A
+	 * gap in the frames (or the time going back) takes the wanted hold at once.
+	 */
+	static Hold follow(int seed, float t, Hold hold) {
+		float[] last = FOLLOWED.get(seed);
+		Hold out = hold;
+
+		if (last != null && t >= last[0] && t - last[0] < 0.25F) {
+			float dt = t - last[0];
+			float[] c = toward(new float[] {last[1], last[2], last[3]}, hold.c(), FOLLOW_MOVE * dt);
+			float[] a = turnToward(new float[] {last[4], last[5], last[6]}, hold.a(), FOLLOW_TURN * dt);
+			float[] d = turnToward(new float[] {last[7], last[8], last[9]}, hold.d(), FOLLOW_TURN * dt);
+			out = of(c, a, d);
+		}
+
+		FOLLOWED.put(seed, new float[] {t, out.c()[0], out.c()[1], out.c()[2], out.a()[0], out.a()[1], out.a()[2], out.d()[0], out.d()[1], out.d()[2]});
+		return out;
+	}
+
+	/**
+	 * Phase 32: while the staff is away from her hands (thrown, or guided round her in her spin's
+	 * whirl): where it comes back into her right hand, held out after it, the grip forward (body
+	 * space), kept as the hold last drawn; so that the hold she takes up again goes there from her
+	 * hand in a quick motion, not in one frame from wherever it was before she let go.
+	 */
+	static void caught(int seed, float t, float[] hand) {
+		float[] a = CrewModels.norm(0.0F, 0.12F, 1.0F);
+		Hold caught = of(new float[] {hand[0] + a[0] * HAND, hand[1] + a[1] * HAND, hand[2] + a[2] * HAND}, a, new float[] {0.0F, 1.0F, 0.0F});
+		FOLLOWED.put(seed, new float[] {t, caught.c()[0], caught.c()[1], caught.c()[2], caught.a()[0], caught.a()[1], caught.a()[2], caught.d()[0],
+				caught.d()[1], caught.d()[2]});
+		MOVED.remove(seed);
+	}
+
+	private static float[] toward(float[] from, float[] to, float most) {
+		float dx = to[0] - from[0];
+		float dy = to[1] - from[1];
+		float dz = to[2] - from[2];
+		float l = Mth.sqrt(dx * dx + dy * dy + dz * dz);
+
+		if (l <= most || l < 1.0E-5F) {
+			return to.clone();
+		}
+
+		float k = most / l;
+		return new float[] {from[0] + dx * k, from[1] + dy * k, from[2] + dz * k};
+	}
+
+	/** A direction turned towards another by at most that angle (radians). */
+	private static float[] turnToward(float[] from, float[] to, float most) {
+		float cos = Mth.clamp(dot(from, to), -1.0F, 1.0F);
+		float angle = (float) Math.acos(cos);
+
+		if (angle <= most || angle < 1.0E-4F) {
+			return CrewModels.norm(to[0], to[1], to[2]);
+		}
+
+		float k = most / angle;
+		return CrewModels.norm(Mth.lerp(k, from[0], to[0]), Mth.lerp(k, from[1], to[1]), Mth.lerp(k, from[2], to[2]));
+	}
+
+	/**
+	 * Phase 32: her right fist on the grip: a hold whose grip is beyond her arm's reach (the hand
+	 * stopped short of it, the saber floating before her hand) is drawn in towards her shoulder by
+	 * as much as it is out of reach, if it stays clear of her body that way.
+	 */
+	static Hold reach(Hold hold, float[] shoulder, float most, float angle, boolean second, boolean spinning, CrewModels.Lean lean) {
+		float[] grip = hold.grip(HAND);
+		float dx = grip[0] - shoulder[0];
+		float dy = grip[1] - shoulder[1];
+		float dz = grip[2] - shoulder[2];
+		float l = Mth.sqrt(dx * dx + dy * dy + dz * dz);
+
+		if (l <= most) {
+			return hold;
+		}
+
+		float k = (l - most) / l;
+		Hold in = hold.moved(-dx * k, -dy * k, -dz * k);
+		return in(in, angle, second, spinning, lean) ? hold : in;
+	}
 
 	/**
 	 * Phase 30: {@link #clear} as she is drawn frame by frame (figure {@code seed}, time {@code t} in
@@ -536,8 +633,8 @@ final class InquisitorSaber {
 	 * In flight (thrown, plot space): the ring spinning flat with both blades lit (a disc of light),
 	 * its grip upright through the middle.
 	 */
-	static void flying(MeshBuilder b, float x, float y, float z, float yaw, float spin, int colour) {
-		b.push().translate(x, y, z).rotateY(-yaw).rotateX(-12.0F);
+	static void flying(MeshBuilder b, float x, float y, float z, float yaw, float spin, float roll, int colour) {
+		b.push().translate(x, y, z).rotateY(-yaw).rotateZ(roll).rotateX(-12.0F);
 		hilt(b, spin * Mth.DEG_TO_RAD);
 		b.rotateY(-spin);
 		blade(b, EMIT, EMIT + BLADE, colour, 0.0F);

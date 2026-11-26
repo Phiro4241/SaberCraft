@@ -145,7 +145,11 @@ public final class StoryCinema {
 			return;
 		}
 
+		// Phase 32: a film begun while another still ran keeps what the HUD was before the first.
+		boolean running = film != null;
 		film = name;
+		// Phase 32: her ring's whirr stops with the fight's picture.
+		com.phiro.sabercraft.client.interior.RingSound.stopAll();
 		int most = switch (name) {
 			case "duel" -> DuelFilm.LENGTH;
 			case "duel_end" -> DuelFilm.END_LENGTH;
@@ -166,9 +170,11 @@ public final class StoryCinema {
 		double x = Math.floor(client.player.getX() / 1024.0) * 1024.0 + 512.0;
 		double z = Math.floor(client.player.getZ() / 1024.0) * 1024.0 + 512.0;
 		anchor = new Vec3(x, 140.0, z);
-		hudWasHidden = client.gui.hud.isHidden();
+		if (!running) {
+			hudWasHidden = client.gui.hud.isHidden();
+		}
 
-		if (!hudWasHidden) {
+		if (!client.gui.hud.isHidden()) {
 			client.gui.hud.toggle();
 		}
 
@@ -354,6 +360,15 @@ public final class StoryCinema {
 	/** Whether a film runs now. */
 	public static boolean active() {
 		return film != null;
+	}
+
+	/**
+	 * Phase 32: whether the game's own lines on the HUD (the stamina, the cooldowns) stay hidden:
+	 * a film runs or its screen is still open. (Drawn after the screen, they came through a film's
+	 * black bars before, at the bottom where its words are.)
+	 */
+	public static boolean hidesHud() {
+		return film != null || isFilmScreen(Minecraft.getInstance().gui.screen());
 	}
 
 	/**

@@ -1231,6 +1231,28 @@ public final class SaberAbilities {
 	}
 
 	/**
+	 * Phase 32: the opponent is open after the player held out (the story's boss staggers): stamina
+	 * starts to come back at once, not only after the strict guard's wait (while the guard is held up
+	 * none comes back, as ever).
+	 */
+	public static void breather(ServerPlayer player) {
+		State state = STATES.get(player.getUUID());
+
+		if (state == null || !AbilityConfig.get().staminaEnabled) {
+			return;
+		}
+
+		long now = player.level().getGameTime();
+		state.regenFrom = Math.min(state.regenFrom, now);
+		state.staminaUsedAt = Math.min(state.staminaUsedAt, now - AbilityConfig.get().staminaRegenDelay);
+
+		// (A guard still up counts as raised just now: lowered soon, the wait is a short one.)
+		if (state.blockStart >= 0) {
+			state.blockStart = now;
+		}
+	}
+
+	/**
 	 * Phase 28: no stamina comes back for now (the story's boss duel: a block held with the use key
 	 * counts as the guard, which gets none back while it is up).
 	 */

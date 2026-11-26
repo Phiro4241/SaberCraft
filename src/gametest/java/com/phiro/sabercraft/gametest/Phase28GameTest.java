@@ -974,15 +974,18 @@ public class Phase28GameTest implements FabricClientGameTest {
 		check(thrown >= 1 && thrown <= StoryTesting.throwsMax(), "she throws her staff " + thrown + " times in 70 s of her second phase (once or twice wanted)");
 		check(!throwsAt.isEmpty() && throwsAt.get(0) <= 40, "her first throw comes late (" + throwsAt + " s)");
 		check(firstOn >= 0, "her ring never turns in the second phase");
-		check(samples == 0 || onSamples >= samples * 0.7, "her ring stops too often (on in " + onSamples + " of " + samples + " samples)");
-		check(offs <= 3, "her ring keeps switching on and off (" + offs + " times off in 70 s)");
+		// (Phase 32: her ring's mode comes and goes, for a while each time, not for good: Phiro, Phase 32.)
+		check(samples == 0 || onSamples >= samples * 0.15, "her ring's mode hardly comes (on in " + onSamples + " of " + samples + " samples)");
+		check(samples == 0 || onSamples <= samples * 0.75, "her ring turns nearly all the time (on in " + onSamples + " of " + samples + " samples)");
+		check(offs <= 4, "her ring keeps switching on and off (" + offs + " times off in 70 s)");
 		check(spinning == 0 || spinningSeen >= spinning * 0.9, "the client does not turn her ring while it is on (" + spinningSeen + " of " + spinning + ")");
 		this.facing();
 		this.context.takeScreenshot("phase28_ring");
 
 		// Phase 28: out of her sight round a corner (she in the passage north of the hangar, the
 		// player in the hangar beside its door) she comes the way round, no longer standing at the
-		// wall between for the rest of the fight.
+		// wall between for the rest of the fight. (Phase 32: the hangar is sealed in the duel: put
+		// out of it she is back in it a moment later, and comes on to the player.)
 		this.server.runOnServer(s -> {
 			StorySession session = this.session(s);
 			Figure f = session.figure("shadow");

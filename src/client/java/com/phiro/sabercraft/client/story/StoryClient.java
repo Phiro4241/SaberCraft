@@ -361,6 +361,8 @@ static final int CHECKPOINT_TICKS = 60;
 		clearDuelProps();
 		StoryCinema.stopIf(client, "boss_mid");
 		com.phiro.sabercraft.client.interior.MeshAudit.forgetDuel();
+		// Phase 32: her ring's whirr ends with the fight (a reset, a capture, the story left).
+		com.phiro.sabercraft.client.interior.RingSound.stopAll();
 		duelResets++;
 	}
 
@@ -524,7 +526,11 @@ static final int CHECKPOINT_TICKS = 60;
 				EFFECTS.clear();
 				// Phase 28: and her saber on the floor, her staff in flight (back at a checkpoint).
 				// (Phase 31: and everything else of the duel: her second phase, the Focus, the lock.)
-				resetDuel(client);
+				// (Phase 32: not for the black moment of being set back into the sealed hangar: the
+				// duel goes on as it was.)
+				if (!com.phiro.sabercraft.story.Story.FADE_KEEPS_DUEL.equals(payload.who())) {
+					resetDuel(client);
+				}
 			}
 			case CUE_SOUND -> sound(client, payload.text(), 0.9F, 1.0F, figure(payload.value()));
 			case CUE_MUSIC -> music = payload.text().isEmpty() ? null : payload.text();
@@ -1013,8 +1019,8 @@ static final int CHECKPOINT_TICKS = 60;
 	}
 
 	/**
-	 * Phase 25: her thrown saber staff (plot space of that ship): {x, y, z, yaw, spin} while it
-	 * flies, or null.
+	 * Phase 25: her thrown saber staff (plot space of that ship): {x, y, z, yaw, spin, roll} while it
+	 * flies, or null (Phase 32: roll, degrees, how far it is still tipped up on its edge).
 	 */
 	public static float @Nullable [] flyingStaff(BlockPos origin, float partial) {
 		Vec3 from = throwFrom;
@@ -1031,9 +1037,20 @@ static final int CHECKPOINT_TICKS = 60;
 			return null;
 		}
 
+		// Phase 32: back into her hand where it is drawn now (as the server reckons it each tick; by
+		// her body's way, as her arms are drawn).
+		for (Pose pose : figures(origin, partial)) {
+			if ("shadow".equals(pose.fig().kind())) {
+				hand = StaffThrow.hand(new Vec3(origin.getX() + pose.x(), origin.getY() + pose.y(), origin.getZ() + pose.z()), pose.yaw());
+				break;
+			}
+		}
+
 		Vec3 at = StaffThrow.at(from, far, hand, throwOut, throwBack, t);
 		float yaw = StaffThrow.yaw(from, far, hand, throwOut, throwBack, t);
-		return new float[] {(float) (at.x - origin.getX()), (float) (at.y - origin.getY()), (float) (at.z - origin.getZ()), yaw, t * StaffThrow.SPIN};
+		// Phase 32: a low throw is let go upright beside her hip and lies down flat in its first ticks.
+		float roll = StaffThrow.low(from, hand) ? 90.0F * (1.0F - Mth.clamp(t / StaffThrow.LAY_FLAT, 0.0F, 1.0F)) : 0.0F;
+		return new float[] {(float) (at.x - origin.getX()), (float) (at.y - origin.getY()), (float) (at.z - origin.getZ()), yaw, t * StaffThrow.SPIN, roll};
 	}
 
 	/** Only for tests: how many throws of her staff were seen, and whether one flies now. */
@@ -1120,6 +1137,11 @@ static final int CHECKPOINT_TICKS = 60;
 	}
 
 	static boolean focusOn() {
+		return focusOn;
+	}
+
+	/** Phase 32: whether the Focus slows the fight now (her spin's whirl is drawn at its pace). */
+	public static boolean focusing() {
 		return focusOn;
 	}
 
@@ -1716,6 +1738,15 @@ static final int CHECKPOINT_TICKS = 60;
 
 	static void dismissEnd() {
 		ended = false;
+	}
+
+	/** Phase 32, for the tests: whether the chapter's end shows, and since how many ticks. */
+	public static boolean endedForTest() {
+		return ended;
+	}
+
+	public static int endAgeForTest() {
+		return endAge;
 	}
 
 	/** Sends an action to the server (if it has the story). */

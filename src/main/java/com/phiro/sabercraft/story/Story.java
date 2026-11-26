@@ -66,6 +66,12 @@ public final class Story {
 	public static final byte CUE_RADIO = 0;
 	public static final byte CUE_HINT = 1;
 	public static final byte CUE_FADE = 2;
+	/**
+	 * Phase 32: a fade's {@code who} for a black moment in the middle of the duel (the player set back
+	 * into the sealed hangar): the client keeps the duel as it is. Any other fade resets it on the
+	 * client (Phase 31): after it, she was drawn in her first phase with the server in her second.
+	 */
+	public static final String FADE_KEEPS_DUEL = "keep_duel";
 	public static final byte CUE_SOUND = 3;
 	public static final byte CUE_MUSIC = 4;
 	public static final byte CUE_SCAN = 5;
@@ -604,6 +610,15 @@ public final class Story {
 		return session != null && session.fighting && origin.equals(session.here != null ? session.origin(session.here) : null);
 	}
 
+	/** Phase 32: that door of a plot was wanted (someone at it) and stayed shut, locked by the story. */
+	public static void refused(BlockPos origin, int x, int y, int z) {
+		StorySession session = at(origin);
+
+		if (session != null) {
+			session.chapter.refused(session, origin.equals(session.falcon) ? FALCON : DESTROYER, x, y, z);
+		}
+	}
+
 	/** Whether that door of a plot is locked by a story. */
 	public static boolean locked(BlockPos origin, int x, int y, int z) {
 		StorySession session = at(origin);
@@ -637,6 +652,20 @@ public final class Story {
 
 		String ship = origin.equals(session.falcon) ? FALCON : DESTROYER;
 		String why = null;
+
+		// Phase 32: the hangar sealed for the duel: no hatch opens from a room into a crawl way (out of
+		// one, yes: nobody is shut in). Its lock is heard; nothing is said.
+		if (room != null && DESTROYER.equals(ship) && Chapter1.hangarSealed(session)) {
+			Vec3 from = player.position().subtract(Vec3.atCenterOf(origin.offset(cell)));
+
+			if (from.x * room.getStepX() + from.z * room.getStepZ() > 0.0) {
+				if (session.player.equals(player.getUUID())) {
+					Chapter1.sealedHatch(session);
+				}
+
+				return true;
+			}
+		}
 
 		// Phase 26: a crawl way the story means as the way out of a chase (the reactor's maintenance
 		// chamber) opens with the hunters behind one: that is what it is for.
@@ -825,7 +854,10 @@ public final class Story {
 				keepDroidsNear(session, player);
 			}
 
-			if (server.getTickCount() % 2 == 0) {
+			// (Phase 32: every tick in a fight: her wind-ups and turns are seen as they are, not a
+			// tick or two late in steps of two.)
+			// (Under the Focus she moves every other tick only: every other tick then, each with a step.)
+			if (server.getTickCount() % 2 == 0 || session.fighting && !Finale.slowed(session)) {
 				sendFigures(session, player);
 			}
 
@@ -1843,6 +1875,11 @@ public final class Story {
 				known.add(Chapter1.FALCON_WAITING);
 			}
 
+			// Phase 32: the hangar sealed for the duel (its doors' lamps red).
+			if (Chapter1.hangarSealed(session)) {
+				known.add(Chapter1.HANGAR_SEALED);
+			}
+
 			// Phase 22: after the chapter no objective is left: the client shows that it is over.
 			objective = session.has(Chapter1.CHAPTER_DONE) ? "sabercraft.story.obj.chapter_done"
 					: session.chapter instanceof Chapter1 ? Chapter1.objective(session, step) : step.objective();
@@ -1900,7 +1937,9 @@ public final class Story {
 					| (Combat.pistol(f) && f.observer && (f.mode == Figure.CHASE || f.mode == Figure.FIGHT) && f.react != Figure.COMLINK ? StoryFiguresPayload.ARMED : 0)
 					| (Finale.disarmed(f) ? StoryFiguresPayload.UNARMED : 0) | (f.ringOn && f.saber && f.lit ? StoryFiguresPayload.RING_SPIN : 0)
 					| (Finale.spinLive(f) ? StoryFiguresPayload.SPIN_LIVE : 0) | (f.saber && Finale.phase(f) >= 2 ? StoryFiguresPayload.TWIN : 0)
-					| (session.chapter.takedownReady(session, f, me) ? StoryFiguresPayload.TAKEDOWN : 0);
+					| (session.chapter.takedownReady(session, f, me) ? StoryFiguresPayload.TAKEDOWN : 0)
+					| (f.saber && Finale.discUp(f) ? StoryFiguresPayload.DISC : 0)
+					| (f.saber && f.action == Finale.THROW && f.throwLow ? StoryFiguresPayload.THROW_LOW : 0);
 			list.add(new StoryFiguresPayload.Fig(f.id, f.kind(), f.pose(), f.speaker, (float) f.x, (float) f.y, (float) f.z, f.yaw, f.headYaw, f.speed, f.stage,
 					Math.round(f.suspicion * 255.0F), flags, Math.round(Math.max(0.0F, f.health) * 255.0F), Finale.shown(f), f.reactShown()));
 		}

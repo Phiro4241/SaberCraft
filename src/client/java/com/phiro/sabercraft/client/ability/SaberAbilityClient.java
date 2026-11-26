@@ -160,6 +160,11 @@ public final class SaberAbilityClient {
 		return stamina;
 	}
 
+	/** Phase 32, for the tests: lines the ability HUD drew (the stamina, a cooldown), summed over frames. */
+	public static int hudLinesForTest() {
+		return AbilityHud.drawn;
+	}
+
 	/** Most stamina, 0 if the server has none (turned off, or no SaberCraft on the server). */
 	public static float maxStamina() {
 		return settings.staminaMax();

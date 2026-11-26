@@ -46,14 +46,38 @@ public final class StaffThrow {
 		return far.lerp(hand, e).add(0.0, -Math.sin(u * Math.PI) * 0.15, 0.0);
 	}
 
+	/**
+	 * Phase 32: her right hand as it is drawn out after the thrown staff (world space, from her feet
+	 * and the way her body faces), where the staff comes back to: worked out anew each tick on the server
+	 * and each frame on the client, so it lands in her hand however she has turned meanwhile (it went
+	 * back to where her hand had been as she let go).
+	 */
+	public static Vec3 hand(Vec3 feet, float bodyYaw) {
+		Vec3 look = facing(bodyYaw);
+		Vec3 right = new Vec3(-look.z, 0.0, look.x);
+		return feet.add(0.0, 1.38, 0.0).add(look.scale(0.6)).add(right.scale(0.14));
+	}
+
+	/** Phase 32: the way her body faces at that yaw (degrees, as the game's): her arms are drawn by it, not by her head's. */
+	public static Vec3 facing(float bodyYaw) {
+		float rad = bodyYaw * Mth.DEG_TO_RAD;
+		return new Vec3(-Mth.sin(rad), 0.0, Mth.cos(rad));
+	}
+
+	/** Phase 32: ticks a low throw takes to lie flat in flight (let go upright beside her hip). */
+	public static final float LAY_FLAT = 5.0F;
+
 	private static float smooth(float x) {
 		float c = Mth.clamp(x, 0.0F, 1.0F);
 		return c * c * (3.0F - 2.0F * c);
 	}
 
-	/** Phase 29: whether a throw is the low one: let go well below the hand it comes back to (the high one at the hand's height). */
+	/**
+	 * Phase 29: whether a throw is the low one: let go well below the hand it comes back to (the high
+	 * one at the hand's height; Phase 32: over her head, the low one beside her hip, below the hand).
+	 */
 	public static boolean low(Vec3 start, Vec3 hand) {
-		return hand.y - start.y > 0.5;
+		return hand.y - start.y > 0.12;
 	}
 
 	/** Which way it flies at {@code t} (yaw, degrees, as the game's), for drawing. */
