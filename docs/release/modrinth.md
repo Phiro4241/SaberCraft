@@ -1,141 +1,141 @@
-# Modrinth: Projektseite (vorbereitet, nicht veröffentlicht)
+# SaberCraft auf Modrinth veröffentlichen: Schritt für Schritt
 
-Alles, was beim Anlegen des Projekts auf [modrinth.com](https://modrinth.com) eingetragen wird. **Nicht einreichen, bevor Phiro die offenen Punkte unten geklärt hat.**
+Diese Anleitung ist für den eigenen Upload gedacht, auch wenn du noch nie etwas auf Modrinth veröffentlicht hast. **Nichts davon ist bisher gemacht:** kein Projekt, keine Datei, keine Version auf Modrinth. Alle Dateien liegen fertig im Upload-Paket (Ordner `modrinth-upload` in den Projektdateien, Aufbau siehe unten); ihre Quellen stehen hier im Repository.
 
-> **Stand der Regeln.** Die Modrinth-Seiten selbst konnte ich aus meiner Umgebung nicht öffnen; die Regeln unten stammen aus Suchergebnissen vom 26.11.2026 und müssen vor dem Einreichen auf den Originalseiten nachgelesen werden: [Content Rules](https://modrinth.com/legal/rules), [AI policy and disclosures](https://modrinth.com/news/article/ai-policy-and-disclosures/), [Project review times](https://support.modrinth.com/en/articles/8793355-project-review-times).
+## Was geprüft ist und was nicht
 
-## Wichtig vor dem Einreichen
+Die Modrinth-Webseiten (modrinth.com, support.modrinth.com, docs.modrinth.com) sind aus meiner Arbeitsumgebung gesperrt. Geprüft habe ich deshalb so:
 
-1. **KI-Offenlegung (Pflicht seit August 2026).** Modrinth verlangt, dass generative KI im Tab **Disclosures** angegeben wird. Ein Projekt, das vollständig oder überwiegend von generativer KI erstellt wurde, kann Modrinth ablehnen oder aus der Suche nehmen; auch ein Konzept, das aus KI-Ausgaben entstanden ist, soll offengelegt werden. SaberCraft wurde unter Phiros Leitung weitgehend mit einem KI-Assistenten programmiert, einschließlich der Skripte, die Modelle, Texturen, Klänge und Musik erzeugen. Es wurden keine Bild- oder Musikgeneratoren verwendet; die Assets entstehen prozedural aus Code. Das muss ehrlich angegeben werden. **Es ist möglich, dass Modrinth das Projekt deshalb ablehnt.** Vorschlag für die Offenlegung siehe unten.
-2. **Patreon-Link** erst eintragen, wenn die URL geprüft ist ([`patreon.md`](patreon.md)). Modrinth erlaubt Spendenlinks, verlangt aber, dass alles, was auf der Seite beworben wird, frei verfügbar ist (keine Bezahlschranke). Das ist bei SaberCraft so.
-3. **Star-Wars-Namen.** Das Projekt ist eine inoffizielle Fan-Mod. Titel und Zusammenfassung nennen deshalb keine Marke; die Beschreibung sagt klar, dass es keine offizielle Mod ist und keine Filmmusik, Filmsounds oder Filmbilder enthält.
+- **Direkt über die offizielle Modrinth-API (api.modrinth.com), am 26.11.2026:** die Kategorien für Mods, die Loader, dass **26.2** als Release-Version geführt wird, dass die Lizenz **MIT** in Modrinths Liste steht, dass **Patreon** als Spendenplattform angeboten wird, dass die Adresse **`sabercraft`** noch frei ist, und dass **Fabric API** (Projekt `fabric-api`) eine Version **0.161.0+26.2** für 26.2 hat.
+- **Über Suchergebnisse aus Modrinths eigenen Seiten** (Support-Artikel, Neuigkeiten, Inhaltsregeln, API-Dokumentation): dass man ein Projekt über das Menü unter dem eigenen Profilbild mit **„Create a project“** anlegt; dass Beschreibung, Galerie, Versionen und die Veröffentlichungs-Checkliste in den **Projekteinstellungen** liegen; dass es dort einen Reiter **„Disclosures“** mit der Angabe **„Contains AI-generated content“** gibt; dass die Umgebung (Client/Server) **bei der Version** angegeben wird; dass ein Projekt zur Prüfung eingereicht wird und Moderatoren es prüfen. Diese Stellen sind unten mit *(geprüft)* markiert.
+- **Nicht geprüft** sind die genauen Beschriftungen der übrigen Felder und Knöpfe. Wo ich sie nicht belegen kann, beschreibe ich, **was** einzutragen ist, nicht wie der Knopf heißt. Wenn das Formular etwas anders aussieht, gilt das Formular.
 
-## Projekt anlegen
+## Bevor du anfängst
+
+1. **Den Pull Request dieser Phase prüfen und mergen.** Die Bilder in der Modrinth-Beschreibung werden direkt von GitHub geladen (`main`-Zweig) und erscheinen erst, wenn die neuen Bilder dort liegen.
+2. **Über die KI-Offenlegung entscheiden (wichtig).** Seit August 2026 gilt auf Modrinth *(geprüft)*: Wer generative KI verwendet hat, muss in den Projekteinstellungen unter **Disclosures** die Angabe **„Contains AI-generated content“** einschalten, auch dann, wenn ein wesentlicher Teil des Codes KI-Ausgabe ist. Projekte, die **ganz oder fast ganz mit generativer KI und mit wenig menschlichem Beitrag über Prompts und Testen hinaus** entstanden sind, dürfen laut Modrinths Support-Artikel **nicht öffentlich veröffentlicht werden**, und überwiegend KI-erzeugte Bilder sind auf Projektseiten nicht erlaubt. SaberCraft wurde unter deiner Leitung weitgehend mit einem KI-Assistenten programmiert, auch die Skripte, die Modelle, Texturen, Klänge und Musik erzeugen. Die Screenshots sind echte Bilder aus dem Spiel, keine Bilder aus einem KI-Bildgenerator. **Es ist realistisch möglich, dass Modrinth das Projekt deshalb ablehnt oder nicht in der Suche zeigt.** Die Angabe muss trotzdem ehrlich sein; einen Textvorschlag findest du unten. Lies vorher selbst: [AI policy and disclosures](https://modrinth.com/news/article/ai-policy-and-disclosures/), [Disclosure and Usage of AI](https://support.modrinth.com/en/articles/16551575-disclosure-and-usage-of-ai), [Content Rules](https://modrinth.com/legal/rules).
+3. **Patreon-Adresse bereithalten** (oder den Link weglassen). Ich konnte sie nicht prüfen; in der Beschreibung steht der Platzhalter `PATREON_URL_EINTRAGEN`.
+
+## Das Upload-Paket
+
+| Datei im Paket | Wofür | Quelle im Repository |
+| --- | --- | --- |
+| `00-ANLEITUNG-Modrinth-Upload.md` | diese Anleitung | `docs/release/modrinth.md` |
+| `01-mod-datei/sabercraft-0.1.0.jar` | die Datei der Version | gebaut mit `./gradlew build` |
+| `02-projekt/icon-512.png` | Projekt-Icon | `src/main/resources/assets/sabercraft/icon.png` |
+| `02-projekt/zusammenfassung.txt` | Summary (Kurzbeschreibung) | unten |
+| `02-projekt/beschreibung.md` | Description (Beschreibung, Markdown) | `docs/release/modrinth-description.md` |
+| `03-galerie/01-…jpg` bis `10-…jpg` | Galerie-Bilder | `docs/media/screenshots/` |
+| `03-galerie/galerie-titel.md` | Titel und Beschreibung jedes Bildes | unten |
+| `04-version/changelog-0.1.0.md` | Changelog der Version | `docs/release/release-notes-0.1.0.md` |
+| `04-version/angaben.md` | alle Felder der Version auf einen Blick | unten |
+| `05-ki-offenlegung.txt` | Text für eine Freitext-Angabe zur KI | unten |
+| `06-lizenz/LICENSE.txt` | der Lizenztext (MIT), nur zur Info: auf Modrinth wird die Lizenz ausgewählt, nicht hochgeladen | `LICENSE` |
+| `07-github/` | Beschreibung, Topics und Social-Preview-Bild für die GitHub-Seite (kein Modrinth-Feld) | `docs/release/github.md`, `docs/media/social-preview.png` |
+
+Das ganze Paket gibt es zusätzlich als **`modrinth-upload.zip`** zum Herunterladen. **Auf Modrinth wird nie die ZIP hochgeladen**, sondern jede Datei einzeln an ihrer Stelle: die JAR bei der Version, das Icon und die Bilder in den Einstellungen, die Texte per Kopieren und Einfügen.
+
+## Schritt 1: Projekt anlegen
+
+1. Auf [modrinth.com](https://modrinth.com) anmelden.
+2. Oben rechts auf dein Profilbild klicken und **„Create a project“** wählen *(geprüft)*.
+3. Im Dialog eintragen (Beschriftungen nicht geprüft):
+   - **Name:** `SaberCraft`
+   - **URL / Adresse:** `sabercraft` (am 26.11.2026 frei; die Seite wird dann `modrinth.com/mod/sabercraft`)
+   - **Projektart:** Mod, falls gefragt
+   - **Summary:** Inhalt von `02-projekt/zusammenfassung.txt`:
+     > Lightsabers, starships and a six-mission story campaign for Minecraft 26.2. 15 fighting styles, the Force, droids, blasters and planet skies. Unofficial fan mod.
+   - **Sichtbarkeit:** falls gefragt, so, dass das Projekt erst nach deiner Prüfung öffentlich wird (Entwurf/privat). Ein neues Projekt ist ohnehin erst öffentlich, wenn Modrinth es nach dem Einreichen freigegeben hat.
+4. Anlegen. Du landest auf der (noch leeren) Projektseite.
+
+## Schritt 2: Projekteinstellungen ausfüllen
+
+Öffne die **Einstellungen des Projekts** *(geprüft: Beschreibung, Galerie, Lizenz, Versionen und Disclosures liegen dort)* und fülle Reiter für Reiter aus:
+
+**Allgemein (General)**
+- **Icon:** `02-projekt/icon-512.png` hochladen.
+- Name und Summary prüfen (wie oben).
+
+**Kategorien / Tags**
+- Vorschlag aus Modrinths Kategorienliste *(geprüft über die API)*: **Adventure**, **Equipment**, **Transportation**; zusätzlich passend: **Game Mechanics**, **Mobs**. Erlaubt das Formular weniger, nimm die ersten drei.
+
+**Beschreibung (Description)**
+- Den ganzen Inhalt von `02-projekt/beschreibung.md` einfügen. Vorher `PATREON_URL_EINTRAGEN` durch deine geprüfte Patreon-Adresse ersetzen oder die letzte Zeile löschen.
+- Die Beschreibung ist auf Englisch; Modrinth verlangt eine englische Fassung *(geprüft, Inhaltsregeln)*.
+
+**Lizenz (License)**
+- **MIT** auswählen *(in Modrinths Lizenzliste geprüft, Kennung `MIT`)*.
+
+**Links**
+- Quellcode: `https://github.com/Phiro4241/SaberCraft`
+- Issues: `https://github.com/Phiro4241/SaberCraft/issues`
+- Wiki: leer lassen (oder `https://github.com/Phiro4241/SaberCraft#readme`)
+- Discord: leer lassen
+- Spenden: **Patreon** *(als Plattform geprüft)* mit deiner Adresse, erst wenn sie geprüft ist. Modrinth verlangt, dass alles Beworbene frei verfügbar ist; das ist bei SaberCraft so.
+
+**Galerie (Gallery)** *(geprüft: in den Projekteinstellungen)*
+- Die Bilder aus `03-galerie/` in der Reihenfolge der Nummern hochladen, Titel und Beschreibung aus `galerie-titel.md` übernehmen, **Bild 01 als hervorgehobenes Bild (Featured)** markieren.
+- Alle Bilder sind echte Aufnahmen aus dem Spiel (Szenen mit den Inhalten der Mod aufgebaut, nichts übermalt), keine KI-Bilder.
+
+**Disclosures** *(geprüft)*
+- **„Contains AI-generated content“** einschalten (siehe „Bevor du anfängst“, Punkt 2). Gibt es ein Freitextfeld, den Text aus `05-ki-offenlegung.txt` verwenden:
+  > SaberCraft was developed with extensive help from an AI coding assistant: the source code and the scripts that generate its models, textures, sounds and music were written with it, directed, reviewed and play-tested by the author. No images, sounds or music come from AI image or music generators; all assets are generated procedurally by those scripts. The screenshots are taken in the game.
+- Weitere Angaben dort (falls angeboten) wahrheitsgemäß: kein Inhalt hinter einer Bezahlschranke; Star-Wars-Namen werden beschreibend verwendet, keine Lizenz von Lucasfilm/Disney.
+
+## Schritt 3: Die erste Version hochladen
+
+In den Projekteinstellungen (oder auf der Projektseite) eine **neue Version** anlegen *(geprüft: Versionen werden in den Projekteinstellungen bearbeitet)* und eintragen:
 
 | Feld | Eintrag |
 | --- | --- |
-| Project type | Mod |
-| Name | `SaberCraft` (nur der Name, keine Versionsnummer, keine Schlagwörter) |
-| URL | `sabercraft` (modrinth.com/mod/sabercraft, falls frei) |
-| Visibility | erst **Draft**, nach Prüfung **Public** |
-| Summary (kurz, ohne den Titel zu wiederholen) | `Film-style lightsabers, a six-mission stealth story aboard a Star Destroyer, blasters, droids and starships. Unofficial fan mod with original music and art.` |
+| Datei | `01-mod-datei/sabercraft-0.1.0.jar` (nur diese, **nicht** eine `-sources.jar`) |
+| Versionsnummer | `0.1.0` |
+| Versionsname / Titel | `SaberCraft 0.1.0` |
+| Kanal | **Beta** (erste öffentliche Version) |
+| Loader | **Fabric** |
+| Spielversionen | **26.2** (nur diese; keine Snapshots, nicht 26.3) |
+| Umgebung | **Client und Server**: auf beiden Seiten nötig *(geprüft: wird bei der Version angegeben; die API kennt dafür den Wert `client_and_server`)*. Nicht „nur Client“ wählen: ohne die Mod auf dem Server fehlen Story, Fähigkeiten, Blaster, Droiden und Schiffe. |
+| Abhängigkeit | **Fabric API**, Projekt `fabric-api`, **erforderlich (required)** |
+| Changelog | Inhalt von `04-version/changelog-0.1.0.md` |
 
-## Allgemeine Einstellungen
+Modrinth kann Versionsnummer, Loader und Spielversion aus der Datei vorschlagen; prüfe die Vorschläge gegen die Tabelle.
 
-| Feld | Eintrag |
-| --- | --- |
-| Icon | [`src/main/resources/assets/sabercraft/icon.png`](../../src/main/resources/assets/sabercraft/icon.png) (512×512 PNG, 217 KB) |
-| Client side | **Required** (Klingen, Musik, Menüs, Story-Anzeige) |
-| Server side | **Required** (Story, Fähigkeiten, Blaster, Droiden, Schiffe laufen auf dem Server; im Einzelspieler ist beides dabei) |
-| License | **MIT** (`MIT`) |
-| Source code | https://github.com/Phiro4241/SaberCraft |
-| Issue tracker | https://github.com/Phiro4241/SaberCraft/issues |
-| Wiki page | leer lassen (oder https://github.com/Phiro4241/SaberCraft#readme) |
-| Discord | leer lassen |
-| Donation links | Patreon, **erst nach Prüfung der URL** |
+## Schritt 4: Prüfen und einreichen
 
-**Kategorien (Vorschlag, die genaue Liste zeigt das Formular):** Adventure, Equipment, Transportation. Zusätzlich passend, falls angeboten: Game Mechanics, Mobs.
+1. Die **Veröffentlichungs-Checkliste** in den Projekteinstellungen durchgehen *(geprüft: sie liegt dort)*; sie zeigt, was noch fehlt.
+2. Die Projektseite einmal ansehen: Icon, Beschreibung mit Bildern, Galerie, Version mit Datei.
+3. **Zur Prüfung einreichen.** Moderatoren prüfen das Projekt *(geprüft)*; laut Support-Artikel dauert das meist 24 bis 48 Stunden. Fragen oder Ablehnungsgründe kommen über Modrinth.
 
-Hinweis zu Client/Server: Ein Client ohne Server-Mod sieht nur die Klingen, Musik, Himmel und Menüs (siehe Tabelle im README). Wer „Client side: Optional“ wählt, weckt falsche Erwartungen; deshalb beide **Required**.
+## Schritt 5: Nach der Freigabe
 
-## Beschreibung (Markdown, in das Feld „Description“ kopieren)
+1. Die Modrinth-Adresse im GitHub-Repository als **Website** eintragen (siehe [`github.md`](github.md)).
+2. In README und README.de im Abschnitt „Support“ / „Unterstützen“ den Download-Satz durch den Modrinth-Link ersetzen.
+3. Später für neue Versionen: in den Projekteinstellungen eine neue Version hochladen, Versionsnummer erhöhen (`gradle.properties`, `mod_version`).
 
-```markdown
-![SaberCraft banner](https://raw.githubusercontent.com/Phiro4241/SaberCraft/main/docs/media/banner.png)
+## Galerie: Titel und Beschreibungen
 
-**SaberCraft** turns Minecraft's swords into film-style lightsabers and builds a whole galaxy around them: fighting styles and Force abilities, blasters, droid companions, starships you can fly and walk through, planet skies, original music and a story campaign.
-
-> SaberCraft is an **unofficial fan project**, not affiliated with or endorsed by Lucasfilm, Disney, Mojang or Microsoft. It contains **no film music, no film sounds and no film artwork**: every model, texture, sound and piece of music was made for this project.
-
-## Story mode: Chapter 1, "Nightshade"
-
-For three weeks an agent hidden aboard the Star Destroyer *Tenebris* sent data to the Rebellion. Then one last message: *"Nightshade is not a ship. It is a hunt."* You are smuggled aboard to find her and to learn what Nightshade is.
-
-- **Six missions**: a briefing aboard the Millennium Falcon, sneaking aboard, a disguise, the reactor, a discovery and a finale with an escape and a lightsaber duel.
-- **Stealth** with darkness, cover, sneaking, crawl ways and silent takedowns. Troopers notice you in stages, chase you, call for help and search where they last saw you.
-- **Disguise** as a stormtrooper, **dialogs with choices**, two **droid helpers**, short **cutscenes** (skippable).
-- **The finale**: troopers who fire as soon as they see you, then a duel in phases against the *Shadowblade*.
-- **Your name in the story**: the characters speak to you by your own Minecraft name.
-- **Checkpoints**, three **difficulties**, own **music** for every situation, German and English.
-
-## Features
-
-- **Lightsabers**: ignition and retraction, glow, hum and swing sounds; 14 hilts, 6 blade colors, 15 fighting styles, guard, parry, dodges, spin attack and four Force abilities (push, grip, pull, jump). Only the swords you choose become sabers. Works with Iris shader packs.
-- **Characters**: 11 film characters and 5 neutral outfits with original pixel skins, plus your own profiles.
-- **Blasters** *(experimental)*: 9 blasters that use plain arrows as ammunition, with heat and recoil.
-- **Droids** *(experimental)*: 8 droid companions with moving parts, wordless synthesized voices and one ability each.
-- **Starships** *(experimental)*: a flyable X-Wing, TIE Fighter and TIE Interceptor; a Millennium Falcon and a Star Destroyer you can fly and walk through.
-- **Skies**: a space sky and 6 planet skies (sky and sound only, the terrain stays as it is).
-- **Music**: 30 original pieces that follow what happens, with crossfades. A "Star Wars" mode plays only music files you add yourself.
-- **Duels** between players (voluntary, best of three) and **11 advancements**.
-
-Everything can be set in the in-game menu (key **I**).
-
-## Requirements
-
-- Minecraft Java Edition **26.2** (other versions are not supported)
-- **Fabric Loader** 0.19.5 or newer
-- **Fabric API** (required)
-
-## Multiplayer
-
-In single player everything works with the mod installed once. On a server, install SaberCraft and Fabric API on the server **and** on every client. Each player plays their own copy of the story; it is not a co-op mode.
-
-## Known limitations
-
-- Only Minecraft 26.2 with Fabric. No Forge, NeoForge or Quilt.
-- Only Chapter 1 of the story exists. Texts in German and English.
-- Blasters, droids and starships are experimental: built and tested automatically, little played by hand, not balanced with real players.
-- A server with several real players at once has not been tested yet.
-
-## Links
-
-- Source code, full documentation and bug reports: [GitHub](https://github.com/Phiro4241/SaberCraft)
-- Support the project (voluntary, unlocks nothing): [Patreon](PATREON_URL_EINTRAGEN)
-```
-
-Vor dem Einfügen `PATREON_URL_EINTRAGEN` durch die geprüfte URL ersetzen oder die Zeile löschen.
-
-## Galerie
-
-Bilder hochladen in dieser Reihenfolge (Titel und Beschreibung auf Englisch). Die Dateien stammen alle aus dem Spiel selbst (automatische Tests, Software-Rendering). Ein Bild als **Featured** markieren.
-
-| # | Datei | Titel | Featured |
+| # | Datei | Titel | Beschreibung |
 | --- | --- | --- | --- |
-| 1 | `docs/media/screenshots/story-duel.jpg` | The duel against the Shadowblade | ✔ |
-| 2 | `docs/media/screenshots/story-reactor.jpg` | The reactor of the Tenebris | |
-| 3 | `docs/media/screenshots/story-briefing.jpg` | Dialogs that use your own name | |
-| 4 | `docs/media/screenshots/story-trooper.jpg` | A stormtrooper on patrol | |
-| 5 | `docs/images/phase5/aufstellung_nacht.png` | Six blade colors | |
-| 6 | `docs/media/screenshots/saber-clash.png` | Blade clash | |
-| 7 | `docs/media/screenshots/droids.png` | Droid companions | |
-| 8 | `docs/media/screenshots/x-wing-flight.png` | X-Wing in flight | |
+| 01 | `01-hero-saber.jpg` | A lightsaber of your own | Any sword you choose becomes a lightsaber, here under the sky of Mustafar. |
+| 02 | `02-ships-fleet.jpg` | Five starships | X-Wing, TIE Fighter, TIE Interceptor, Millennium Falcon and a Star Destroyer. |
+| 03 | `03-story-duel.jpg` | The duel against the Shadowblade | The end of the story "Nightshade". |
+| 04 | `04-interior-falcon.jpg` | Walk through the Falcon | The Millennium Falcon and the Star Destroyer can be walked through. |
+| 05 | `05-story-disguise.jpg` | In disguise | Sneak aboard the Star Destroyer, in the troopers' own armour. |
+| 06 | `06-sabers-colors.jpg` | Six blade colors | 14 hilts, 6 adjustable colors, 15 fighting styles. |
+| 07 | `07-droids.jpg` | Droid companions | Eight droids, each with an ability. |
+| 08 | `08-planet-tatooine.jpg` | Planet skies | Six planets change the sky, never the terrain. |
+| 09 | `09-ship-xwing.jpg` | Fly them yourself | Lasers, a flight HUD and a chase camera; here an X-Wing over Endor. |
+| 10 | `10-story-briefing.jpg` | They know your name | The characters of the story speak to you by your own Minecraft name. |
 
-Mehr dazu und fehlende Wunschbilder: [`screenshots.md`](screenshots.md).
+## Checkliste
 
-## Version 0.1.0 hochladen
-
-| Feld | Eintrag |
-| --- | --- |
-| File | `sabercraft-0.1.0.jar` (nicht die `-sources.jar`) |
-| Version name | `SaberCraft 0.1.0` |
-| Version number | `0.1.0` |
-| Release channel | **Beta** |
-| Loaders | Fabric |
-| Game versions | 26.2 |
-| Dependencies | Fabric API: **required** (Projekt `fabric-api` auf Modrinth) |
-| Changelog | Inhalt von [`release-notes-0.1.0.md`](release-notes-0.1.0.md) |
-
-## Disclosures (Vorschlag)
-
-Die genauen Auswahlfelder zeigt erst das Formular. Inhaltlich zutreffend ist:
-
-- **Generative AI:** ja. Code und die Generator-Skripte für Modelle, Texturen, Klänge und Musik wurden mit einem KI-Assistenten geschrieben, unter Anleitung, Prüfung und Spieltests des Autors. Keine Bilder, Klänge oder Musik aus KI-Generatoren; die Assets entstehen prozedural aus diesen Skripten.
-- **Monetization:** optionaler Patreon-Link, nichts hinter einer Bezahlschranke.
-- **Third-party content:** Namen aus Star Wars werden beschreibend verwendet (Fan-Projekt, keine Lizenz); keine Assets Dritter.
-
-Englischer Text zum Kopieren, falls ein Freitextfeld angeboten wird:
-
-```
-SaberCraft was developed with extensive help from an AI coding assistant: the source code and the scripts that generate its models, textures, sounds and music were written with it, directed, reviewed and play-tested by the author. No images, sounds or music come from AI generators; all assets are generated procedurally by those scripts.
-```
+- [ ] PR gemergt (Bilder in der Beschreibung laden)
+- [ ] Entscheidung zur KI-Offenlegung getroffen, Modrinths Regeln selbst gelesen
+- [ ] Patreon-Adresse geprüft und eingesetzt (oder Zeile gelöscht)
+- [ ] Projekt angelegt: Name, Adresse `sabercraft`, Summary aus `02-projekt/zusammenfassung.txt`
+- [ ] Icon, Kategorien, Beschreibung, Lizenz MIT, Links
+- [ ] Galerie: 10 Bilder, Bild 01 hervorgehoben
+- [ ] Disclosures: „Contains AI-generated content“ an
+- [ ] Version 0.1.0: JAR, Beta, Fabric, 26.2, Client und Server, Fabric API erforderlich, Changelog
+- [ ] Checkliste in den Einstellungen leer, zur Prüfung eingereicht
+- [ ] Nach der Freigabe: Link auf GitHub und im README

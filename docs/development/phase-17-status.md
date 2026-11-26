@@ -106,7 +106,7 @@ The corridor by the hangar got a rifle rack and a security desk, the command cor
   - After that fix `Phase16GameTest` and `Phase17GameTest` passed (92 checks together, the walk audits included). `Phase16GameTest` passed again after the doorway linings were changed, `Phase17GameTest` after the linings (with the walk audits) and after the glass change (without them).
 - GitHub Actions has not run for this branch yet; it runs once when the pull request is opened.
 
-Pictures (all from the test client): [`docs/images/phase17`](../images/phase17).
+Pictures (all from the test client): [`docs/images/phase17`](images/phase17).
 
 ## Known limits
 

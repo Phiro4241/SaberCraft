@@ -13,7 +13,7 @@ Alles aus Phase 1 bis 6 bleibt: Griffe, Farben, Klinge, Zünden und Summen, Kamp
 - Landung nach höheren Sprüngen: ab etwa 3 Blöcken ein Abfedern, ab etwa 7 Blöcken eine schwere Landung (Staub schon ab 5).
 - Die Kamera macht Rollen und Landungen in der Ego-Perspektive mit (im Menü abschwächbar).
 
-![Ausweichrolle und Parade](../images/phase7/ausweichen.png)
+![Ausweichrolle und Parade](images/phase7/ausweichen.png)
 
 ### Abwehr, Parade, Konter, Ausdauer
 
@@ -47,7 +47,7 @@ Vier Stile für Einzelklingen, dazu der Stab für die Doppelklinge. Keine umbena
 - Bosse (Enderdrache, Wither, Wächter, Großer Wächter) und Rüstungsständer sind immun (Tag `sabercraft:force_immune`). Andere Spieler sind standardmäßig nicht betroffen (`force_players` in `abilities.json`).
 - **Geschosse abwehren:** In der Abwehrhaltung, im Klingenwirbel und kurz nach einem Schlag fliegen Pfeile, Dreizacke, Schneebälle, Feuerbälle, Wither-Schädel, Shulker-Geschosse, Lama-Spucke und Windladungen von vorn zurück (Tag `sabercraft:deflectable`). Direkt nach dem Heben der Haltung oder genau im Schlag fliegen sie präzise in Blickrichtung und gehören dann dir; sonst prallen sie gestreut ab. Funken und Klang sehen und hören alle Spieler. Geschosse von hinten treffen.
 
-![Machtgriff, Ziehen, Sprung, Ablenken](../images/phase7/kraefte.png)
+![Machtgriff, Ziehen, Sprung, Ablenken](images/phase7/kraefte.png)
 
 ### Weltraum-Himmel (optional, nur Client)
 
@@ -57,7 +57,7 @@ Vier Stile für Einzelklingen, dazu der Stab für die Doppelklinge. Keine umbena
 - Aus = exakt der normale Minecraft-Himmel, der Code läuft dann gar nicht.
 - Läuft ein Iris-Shaderpack, bleibt der Himmel aus, solange man es im Menü nicht erlaubt (Shaderpacks malen ihren eigenen Himmel).
 
-![Weltraum-Himmel](../images/phase7/himmel.png)
+![Weltraum-Himmel](images/phase7/himmel.png)
 
 ### Musik (optional, nur Client)
 
@@ -71,7 +71,7 @@ Vier Stile für Einzelklingen, dazu der Stab für die Doppelklinge. Keine umbena
 - Überblendung beim Stimmungswechsel (Länge einstellbar). Nie mehr als zwei Stücke gleichzeitig, nämlich nur während der Überblendung. Nie dasselbe Stück zweimal hintereinander, wenn es eine Wahl gibt.
 - Eigener Lautstärkeregler, zusätzlich zum Musikregler von Minecraft. Solange die SaberCraft-Musik an ist, schweigt die normale Spielmusik. Im Titelbildschirm läuft die normale Musik. Aus = alles wie Vanilla.
 - **Eigene Musik:** `.ogg`-Dateien in `config/sabercraft/music/exploration|night|combat|event/`. Höchstens 64 pro Stimmung und je 64 MB. Sie werden nur auf deinem Rechner gelesen und nie verschickt; die Ordner und eine Kurzanleitung legt die Mod beim ersten Weltbeitritt an. MP3 geht nicht, weil Minecraft nur Ogg Vorbis abspielen kann.
-- Hörprobe aller sechs Stücke: [audio/phase7-musik-hoerprobe.mp3](../audio/phase7-musik-hoerprobe.mp3)
+- Hörprobe aller sechs Stücke: [audio/phase7-musik-hoerprobe.mp3](audio/phase7-musik-hoerprobe.mp3)
 
 ### Charakter (Outfits)
 
@@ -91,7 +91,7 @@ Vier Stile für Einzelklingen, dazu der Stab für die Doppelklinge. Keine umbena
 - „Andere Outfits: Aus" zeigt alle anderen Spieler mit ihrem normalen Skin.
 - Fremde Skins werden nie verändert: Andere Spieler zeigen nur das Outfit, das sie selbst gewählt haben.
 
-![Outfits](../images/phase7/outfits.png)
+![Outfits](images/phase7/outfits.png)
 
 ### Menü (Taste V)
 
@@ -108,7 +108,7 @@ V öffnet das SaberCraft-Menü mit sechs Bereichen in einer Leiste links:
 
 Mit Schwert in der Hand öffnet V den Bereich Schwert, sonst Charakter. Jede Einstellung wird sofort gespeichert. Das Menü passt auch in ein kleines Fenster (854 × 480).
 
-![Menü](../images/phase7/menue.png)
+![Menü](images/phase7/menue.png)
 
 ## Tasten
 
@@ -165,7 +165,7 @@ Ohne SaberCraft auf dem Server gehen Aussehen, Animationen, Himmel, Musik und da
 
 Testlauf mit Sodium 0.9.2 und Iris 1.11.4 (ohne Shaderpack): Klinge, Kräfte, Himmel und Outfits sehen aus wie ohne die beiden Mods.
 
-![Mit Sodium und Iris](../images/phase7/sodium_iris.png)
+![Mit Sodium und Iris](images/phase7/sodium_iris.png)
 
 ## Konfiguration
 

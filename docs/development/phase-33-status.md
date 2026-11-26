@@ -23,20 +23,27 @@ Phiro's playtest: from the lab with the lightsaber to the hangar one could run p
 - **Fields of view:** a guard at his post sees what is before him (75° to each side of his look, up to 22 blocks) and hears the player all round only within 5 blocks; shots or a shout near him (14 blocks, 3 seconds) turn him towards the player at his post.
 - **No shots through walls:** besides his eyes' line of sight, the muzzle's own line to the player must be free, or he holds the shot (`heldBack`); a shot aimed ahead of the player only where that line is free too.
 - **A little more often, taking turns:** each trooper fires every 16 + up to 11 ticks (was 18 + up to 17), a second shot right after a little more often (0.4, was 0.35); but two troopers fire at least 9 ticks apart (`VOLLEY_GAP`, was 7), so several in the way do not fire all at once.
-- **Aim (new):** each shot is first a good one or a near miss. A good one is aimed where the player will be if they keep going (so changing direction or stopping still makes it miss); a miss flies 1 to 1.7 blocks past them, to be heard and seen. Good shots: 55 % at 3 blocks or closer, falling to 15 % from 20 blocks; ×0.8 at a player on the move, ×0.75 more when moving across the line of fire, ×0.7 for the first shot after catching sight of them; divided by the difficulty's scatter (Easy fewer, Hard more). Before, every bolt was aimed at where the player stood: one running across was never hit, one running at them nearly always.
+- **Aim (new):** each shot is first a good one or a near miss. A good one is aimed where the player will be if they keep going (so changing direction or stopping still makes it miss); a miss flies 1.2 to 1.9 blocks past them, to be heard and seen. Good shots: 60 % at 3 blocks or closer, falling to 20 % from 20 blocks; ×0.8 at a player on the move, ×0.75 more when moving across the line of fire, ×0.7 for the first shot after catching sight of them; divided by the difficulty's scatter (Easy fewer, Hard more). Before, every bolt was aimed at where the player stood: one running across was never hit, one running at them nearly always.
 - **The reactor's lift** (Phase 28's slow lift, stand still 30 ticks): a hit's push (`player.hurtTime`) no longer counts as stepping off.
 
 **The run straight through** (Phase33GameTest, part `path`): from the saber's field out of the lab, round the shaft to the lift, up, across the hangar deck to the duel, at a run (0.26 blocks a tick), never stopping, never raising the saber's guard, never striking, with natural regeneration off. It is the worst case: a player who uses the guard (it sends bolts from the front back), cover or the saber is hit far less. Several runs after the last change:
 
-RESULTS_TABLE
+| Run | Bolts | Hits (hangar deck) | Hit share | Damage by bolts (lab to lift) | Meant to miss | First bolt after first seen | Lift under fire |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 1 | 22 | 14 (6) | 64 % | 39 (15) | 10 | 11 ticks | 27 ticks |
+| 2 | 22 | 7 (3) | 32 % | 18 (9) | 16 | 11 ticks | 30 ticks |
+| 3 | 23 | 4 (1) | 17 % | 9 (3) | 18 | 11 ticks | 30 ticks |
+| 4 | 22 | 9 (5) | 41 % | 24 (9) | 12 | 11 ticks | 30 ticks |
 
-Most hits on the hangar deck come from troopers the way passes at 1 to 5 blocks. The test checks: the player reaches the duel; at least 8 bolts, at least 3 hits and 6 damage on the way; the way from the lab to the lift costs at least 3 and less than 20 (a full health bar: hurt there, not caught); at most 65 % of bolts hit; from 8 blocks or further at most half; the first bolt at most 30 ticks after the player is first seen; no bolt without a free line to the player; no bolt while no trooper sees them; the lift goes under fire within 50 ticks.
+The spread is chance: the same run costs between 9 and 39 health (the test gives the player 200 and turns natural regeneration off to count it; a normal player has 20, and with a full food bar heals a good part of it on the way). On an unlucky run like the first, a player who never raises the guard can be caught on the hangar deck and starts again at the checkpoint. Bolts fired from closer than about 1.5 blocks hit whatever their aim (they leave the muzzle inside the player's hit box), which is why the hit share near troopers is higher than the share of good shots.
+
+Most hits on the hangar deck come from troopers the way passes at 1 to 5 blocks. The test checks (with room for chance, so that it fails only on runs far off the ones above): the player reaches the duel; at least 8 bolts, at least 2 hits and 6 damage on the way; the way from the lab to the lift costs less than 20 (a full health bar: not caught there); at most 70 % of bolts hit; from 8 blocks or further at most 70 %; the first bolt at most 30 ticks after the player is first seen; no bolt without a free line to the player; no bolt while no trooper sees them; the lift goes under fire within 50 ticks.
 
 Not changed: the bolt's damage (3, an officer's pistol 2.4), natural regeneration, the boss and her fight (Phase 32), what happens when the player is caught. The player is **not** healed when the duel begins (a player who arrives hurt fights hurt; caught in the duel, they start it again with full health at its checkpoint). If that turns out too hard in playtests, healing at the duel's start would be a one-line change.
 
 ## 2. The player's own name instead of "Funke"
 
-The story called the player "Funke" (English "Spark"). Every text that speaks to the player or names them now holds `{player}` (14 texts in each language: Mira's briefing, Kestrel's recording and her words in the hideout, radio messages, the dialog name over the player's own lines, Dax after the escape, the epilogue). The client's language layer (`SaberLanguage`, Phase 19) puts in **the player's own Minecraft name** when the text is shown (the account's name before a world is joined), so in a game of several everyone reads their own name; the server only ever sends the text's key. Other uses of "Funke(n)" (sparks of the blade in the settings and a title-screen splash) are not names and stay.
+The story called the player "Funke" (English "Spark"). Every text that speaks to the player or names them now holds `{player}` (14 texts in each language: Mira's briefing, Kestrel's recording and her words in the hideout, radio messages, the dialog name over the player's own lines, Dax after the escape, the epilogue). The client's language layer (`SaberLanguage`, Phase 19) puts in **the player's own Minecraft name** when the text is shown (the account's name before a world is joined), so in a game of several everyone reads their own name; the server only ever sends the text's key. The name is read once per client tick and kept, because texts are also built on threads that must not ask the game for its player (the full test run found that in Phase 14's tests). Other uses of "Funke(n)" (sparks of the blade in the settings and a title-screen splash) are not names and stay.
 
 Tested with the real client (its name in the test is `Player0`) and with other names through `SaberLanguage.named` ("Max", "Lena"). **Not tested:** two real clients with different names on one server at the same time (the test environment runs one client).
 
@@ -58,11 +65,15 @@ New pieces (all original, synthesized by `tools/synth_music.py`, no film music):
 
 ## 4. Public pages and release preparation
 
-- `README.md` and `README.de.md` rewritten: what the mod is, the story mode and its six missions, how it plays, features with status labels (stable / experimental), real screenshots from the game, requirements, installation and client/server table, controls, commands, configuration, known limitations, links, support (Patreon placeholder), building, license and the fan-project notice.
-- Banner and social preview regenerated with the current subtitle; four story screenshots in `docs/media/screenshots/` (all taken in the game by the tests).
-- Internal notes (phase status, plans) moved to `docs/development/`; links in the code and docs updated.
-- `docs/release/`: GitHub settings, Modrinth and ModDB page content, Patreon section, release notes 0.1.0, installation guide, image plan. Nothing published.
-- `fabric.mod.json` description: no "Star Wars for Minecraft" any more, mentions the story and that it is an unofficial fan mod.
+After Phiro's review of the first draft the GitHub page was redone from scratch:
+
+- `README.md` and `README.de.md` written anew in one piece: banner, short pitch, four showcase pictures, then lightsabers and combat, the story "Nightshade" (all six missions by title, how it plays, six story pictures), starships (five ships, fighters and walkable interiors), droids and blasters, characters, skies and music, playing together, getting started (requirements, three steps, client/server table), controls (story, ship keys, commands and settings folded away), good to know, support (Patreon placeholder), license and legal. No development phases, no test notes.
+- Every picture is new: 30 pictures taken in the game at 1920 x 1080 by the new `MediaGameTest` (scenes built from the mod's own ships, droids, sabers, skies and story; nothing painted over) and cropped by the new `tools/crop_screenshots.py` (mostly to cut away the flat test ground; the only retouch blacks out the small skip hint on the black bar of two cutscene pictures). All five ships fly in their own picture, plus the walkable interiors, six story moments, the droids, menus and skies. The old ones (X-Wing alone, droid menu, hangar menu, old story pictures at 854 x 480) are deleted. The list is in `docs/media/README.md` and `docs/release/screenshots.md`; what could not be taken automatically (two real players, Iris, a clip, the ring saber up close, the lab) is listed there too.
+- `tools/gen_banner.py` rewritten: banner and social preview are put together from those screenshots, the icon and the title.
+- The development images and sound samples moved with the notes: `docs/images/` -> `docs/development/images/`, `docs/audio/` -> `docs/development/audio/`.
+- The Mod Menu description (`modmenu.descriptionTranslation`, both languages) matches `fabric.mod.json` now (it still spoke of "a flyable X-Wing" only).
+- `docs/release/`: GitHub description and topics, the Modrinth guide (`modrinth.md`, step by step, with what could and could not be verified), the Modrinth description (`modrinth-description.md`), ModDB, Patreon, release notes 0.1.0, installation guide, image list. All texts give the same versions and features. Nothing published.
+- Modrinth upload package outside the repository (`modrinth-upload/` in the project files): JAR, icon, summary, description, gallery (10 pictures with titles), changelog, version details, AI disclosure text, license, and the GitHub About texts with the social preview.
 
 Open points that only Phiro can settle are listed in [`docs/release/README.md`](../release/README.md): the exact Patreon URL, the Modrinth AI disclosure (Modrinth may reject projects made mostly with generative AI), the Patreon link next to a Star Wars fan mod.
 
@@ -70,7 +81,16 @@ Open points that only Phiro can settle are listed in [`docs/release/README.md`](
 
 New: `Phase33GameTest` with five parts (`names`, `music`, `post`, `path`, `cover`; `PHASE33_ONLY=<parts>` runs only some). Changed: `Phase30GameTest` expects the new shot cooldown (16 + 12). Links to moved docs updated in the tests of Phases 25 to 32.
 
-TEST_RESULTS
+New: `MediaGameTest`, the pictures for the public pages (see `CONTRIBUTING.md`, "Screenshots for the README"). It returns at once unless `SABERCRAFT_MEDIA` names a folder, so normal runs and CI skip it.
+
+Two local runs in the real client (Xvfb, software rendering), `./gradlew runClientGameTest`:
+
+- Run 1 on `49fd8fd`: the 37 classes outside the story (all up to Phase 20 and the feature tests) green. In the story classes, `StoryGameTest` failed: a bolt sent back hit a trooper while the test counted saber strokes. Cause: the test parked the troopers with a long cooldown, and the new out-of-sight rule shortens a trooper's cooldown so he fires quickly when he sees the player again. Fix: a story timer `hold_fire` that only the tests set (`StoryTesting.holdFire`), during which nobody in the finale fires; a new step ends it.
+- Run 2 with the fix: `StoryGameTest` and `Phase21GameTest` to `Phase33GameTest` (14 classes) green, 54 minutes.
+
+The `hold_fire` timer is never set in the game, so the 37 classes of run 1 were not run again. `MediaGameTest` does nothing without `SABERCRAFT_MEDIA`; it was run on its own to take the pictures.
+
+Not tested: two real clients with different names on one server at once (the test has one client); how the way and the music feel by hand (the music was not listened to); a real graphics card, Iris; a server full of players.
 
 ## 6. Please check by hand
 

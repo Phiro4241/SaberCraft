@@ -175,17 +175,17 @@ The test step took 68 of its 75 minutes with Phase 24. The limits are now **95 m
 
 ## 13. Pictures
 
-All from the test client (software rendering, 854×480, English texts, no shader pack): [`docs/images/phase25`](../images/phase25).
+All from the test client (software rendering, 854×480, English texts, no shader pack): [`docs/images/phase25`](images/phase25).
 
 | | |
 |---|---|
-| Hale's scene: the armory's door opens ![](../images/phase25/hale_door.jpg) | He walks up to the player ![](../images/phase25/hale_in.jpg) |
-| The maintenance walkway, lit with the alarm ![](../images/phase25/escape_walkway.jpg) | Inside, the door bolted, the crawl way ahead ![](../images/phase25/escape_chamber.jpg) |
-| The crawl way's scene: they reach the bolted door ![](../images/phase25/escape_scene_door.jpg) | They spread out to search ![](../images/phase25/escape_scene_search.jpg) |
-| The lab's guard at his new place by the lab's door ![](../images/phase25/lab_guard.jpg) | The hangar corridor, before the door ![](../images/phase25/hangar_door.jpg) |
-| The saber's scene: the hand takes it ![](../images/phase25/saber_take.jpg) | The field dies, sparks ![](../images/phase25/saber_field_dies.jpg) |
-| Back over the player's shoulder ![](../images/phase25/saber_end.jpg) | Her staff with both blades ![](../images/phase25/staff_twin.jpg) |
-| The spin ![](../images/phase25/staff_spin.jpg) | The throw, on its way out ![](../images/phase25/staff_throw.jpg) |
-| Back in her hand ![](../images/phase25/staff_caught.jpg) | The core's light on the platform and the shaft's wall ![](../images/phase25/light_reactor.jpg) |
-| The lab, lit by what glows in it ![](../images/phase25/light_lab.jpg) | The Falcon's boarding hatch: no slit over it ![](../images/phase25/falcon_hatch.jpg) |
-| The upper gun well: the collar up to the rim ![](../images/phase25/falcon_turret.jpg) | |
+| Hale's scene: the armory's door opens ![](images/phase25/hale_door.jpg) | He walks up to the player ![](images/phase25/hale_in.jpg) |
+| The maintenance walkway, lit with the alarm ![](images/phase25/escape_walkway.jpg) | Inside, the door bolted, the crawl way ahead ![](images/phase25/escape_chamber.jpg) |
+| The crawl way's scene: they reach the bolted door ![](images/phase25/escape_scene_door.jpg) | They spread out to search ![](images/phase25/escape_scene_search.jpg) |
+| The lab's guard at his new place by the lab's door ![](images/phase25/lab_guard.jpg) | The hangar corridor, before the door ![](images/phase25/hangar_door.jpg) |
+| The saber's scene: the hand takes it ![](images/phase25/saber_take.jpg) | The field dies, sparks ![](images/phase25/saber_field_dies.jpg) |
+| Back over the player's shoulder ![](images/phase25/saber_end.jpg) | Her staff with both blades ![](images/phase25/staff_twin.jpg) |
+| The spin ![](images/phase25/staff_spin.jpg) | The throw, on its way out ![](images/phase25/staff_throw.jpg) |
+| Back in her hand ![](images/phase25/staff_caught.jpg) | The core's light on the platform and the shaft's wall ![](images/phase25/light_reactor.jpg) |
+| The lab, lit by what glows in it ![](images/phase25/light_lab.jpg) | The Falcon's boarding hatch: no slit over it ![](images/phase25/falcon_hatch.jpg) |
+| The upper gun well: the collar up to the rim ![](images/phase25/falcon_turret.jpg) | |

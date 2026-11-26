@@ -510,6 +510,11 @@ public final class StoryTesting {
 
 	/** Phase 33: shots a trooper held back because his muzzle's line to the player was blocked. */
 	/** Phase 33: the troopers' shots meant to fly past the player, since the game started. */
+	/** Phase 33: nobody fires for so many ticks (or until the next step). */
+	public static void holdFire(StorySession s, int ticks) {
+		s.timer(Finale.HOLD_FIRE, ticks);
+	}
+
 	public static int misses() {
 		return Finale.missesForTest();
 	}

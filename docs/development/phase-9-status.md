@@ -27,9 +27,9 @@ Technik:
 - Yodas Größe ist eine reine Darstellung (Option „Charaktergröße“ im Charaktermenü, Standard an). Seine Trefferbox bleibt die eines Spielers.
 - Jeder Stil hat eigene Ausweichbewegungen, Landungen, Parade und Abwehrtreffer.
 
-![Die sechs neuen Charaktere](../images/phase9/charaktere.jpg)
+![Die sechs neuen Charaktere](images/phase9/charaktere.jpg)
 
-![Kampfbewegungen der neuen Stile](../images/phase9/kampfstile.jpg)
+![Kampfbewegungen der neuen Stile](images/phase9/kampfstile.jpg)
 
 ## 2. Charakterauswahl
 
@@ -37,9 +37,9 @@ Technik:
 - **Schwertmenü (V > Schwert):** die 13 Griffe als Bildraster mit Namen im Tooltip, darunter die 11 Kampfstile. Alle bisherigen Funktionen bleiben.
 - Der Knopf „Schwert übernehmen“ gibt dem Schwert in der Hand den Griff, die Farbe und den Stil des gewählten Charakters.
 
-![Charaktermenü](../images/phase9/menue_charakter.png)
+![Charaktermenü](images/phase9/menue_charakter.png)
 
-![Schwertmenü](../images/phase9/menue_schwert.png)
+![Schwertmenü](images/phase9/menue_schwert.png)
 
 ## 3. Planeten und Atmosphäre
 
@@ -59,7 +59,7 @@ Neue Optionen unter V > Himmel:
 - **Horizont und Details** (Standard an): die Landschaften und Details oben.
 - **Planetenfarbe mit Shadern** (Standard an, wirkt nur mit Iris-Shaderpack): eine halbdurchsichtige Schicht in der Himmelsfarbe des Planeten.
 
-![Planeten ohne Shader, Mittag und Nacht](../images/phase9/planeten.jpg)
+![Planeten ohne Shader, Mittag und Nacht](images/phase9/planeten.jpg)
 
 ### Wie viel vom Himmel mit Shadern sichtbar bleibt (gemessen)
 
@@ -81,7 +81,7 @@ Neuer Test `PlanetVisibilityGameTest`: Für jeden Planeten wird dasselbe Bild mi
 | Naboo | Horizont | 20,6 | 36,1 | 48,6 | 11,7 | 15,0 |
 | Rauschen | Himmel / Horizont | 0,0 / 0,0 | 0,2 / 0,2 | | 4,3 / 0,4 | |
 
-Nachts sind die Werte kleiner: ohne Shader 13 bis 30, mit Complementary 5 bis 12 (mit Tönung), mit BSL nur 1 bis 6. Die ganze Tabelle mit Nachtwerten: [planet_visibility.csv](../images/phase9/planet_visibility.csv).
+Nachts sind die Werte kleiner: ohne Shader 13 bis 30, mit Complementary 5 bis 12 (mit Tönung), mit BSL nur 1 bis 6. Die ganze Tabelle mit Nachtwerten: [planet_visibility.csv](images/phase9/planet_visibility.csv).
 
 Was das heißt, ehrlich ausgewertet (die Zahlen und die Bilder dazu):
 
@@ -90,9 +90,9 @@ Was das heißt, ehrlich ausgewertet (die Zahlen und die Bilder dazu):
 - **BSL** behält die Farben der Schicht: Dünen, Eisberge, Vulkane mit Lava, Bäume und Skyline sind in Farbe zu sehen. Die Tönung gibt einen leichten Farbstich (Tatooine wärmer, Mustafar rötlich-grau). Nachts bleibt mit BSL fast nichts vom Planeten übrig.
 - Fazit: Mit Shaderpack kommt der **Horizont mit seiner Landschaft gut an** (BSL farbig, Complementary als Silhouette). Die **Himmelsfarbe** kommt mit BSL teilweise und mit Complementary nicht an. Wer mit Complementary den grauen Himmel nicht mag, schaltet „Planetenfarbe mit Shadern“ aus.
 
-![Sichtbarkeit mit Shadern: Vanilla, Complementary ohne/mit Tönung, BSL ohne/mit Tönung](../images/phase9/shader_sichtbarkeit.jpg)
+![Sichtbarkeit mit Shadern: Vanilla, Complementary ohne/mit Tönung, BSL ohne/mit Tönung](images/phase9/shader_sichtbarkeit.jpg)
 
-![Tatooine, Coruscant, Endor, Naboo mit Complementary und BSL](../images/phase9/shader_sichtbarkeit_2.jpg)
+![Tatooine, Coruscant, Endor, Naboo mit Complementary und BSL](images/phase9/shader_sichtbarkeit_2.jpg)
 
 ## 4. Musik
 
@@ -108,7 +108,7 @@ Beide Modi bleiben: **SaberCraft** (eingebaut, unverändert) und **Star Wars** (
 
 **Genaue Anleitung:** [eigene-musik.md](../eigene-musik.md).
 
-![Musikmenü mit Planet- und Charakterdateien](../images/phase9/menue_musik.png)
+![Musikmenü mit Planet- und Charakterdateien](images/phase9/menue_musik.png)
 
 ## Tests
 

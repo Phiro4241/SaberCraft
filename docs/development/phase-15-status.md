@@ -55,7 +55,7 @@ The goal of this phase: the walkable Millennium Falcon and Star Destroyer from P
 - Local runs (2026-11-14, cloud container with software rendering): the full suite (`build` plus all 33 client test classes) ran to `Phase12GameTest`, where one droid sound check heard nothing once ("three voices at once"); that class passes on its own (67 checks), and the classes after it (`Phase13GameTest`, `Phase14GameTest`, `ShipBoardingGameTest`, `InteriorDesignGameTest`) pass together (335 checks). No class failed on its own. GitHub Actions has not run for this branch yet.
 - Bugs the tests found and that are fixed: the walled-up reactor door, the Falcon turret's collar closing the dome over the gunner, streaks on the Imperial floor texture.
 
-Pictures (all from the test client): [`docs/images/phase15`](../images/phase15).
+Pictures (all from the test client): [`docs/images/phase15`](images/phase15).
 
 ## Performance
 

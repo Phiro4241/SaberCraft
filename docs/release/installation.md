@@ -1,6 +1,6 @@
 # Installing SaberCraft
 
-*Platform-neutral guide to copy onto Modrinth, ModDB or a forum post. The same steps are in the [README](../../README.md#installation).*
+*Platform-neutral guide to copy onto Modrinth, ModDB or a forum post. The same steps are in the [README](../../README.md#getting-started).*
 
 ## What you need
 

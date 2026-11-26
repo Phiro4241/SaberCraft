@@ -10,41 +10,41 @@ Stand: 24.10.2026, Minecraft 26.2, Fabric Loader 0.19.5, Fabric API 0.161.0+26.2
 - **Eigenes Soundprofil** für den dunklen Griff: tieferes, raueres Summen (74 statt 92 Hz), schwereres Zünden und eine etwas langsamere, härtere Ausfahranimation.
 - **Bisheriges bleibt:** Ein Schwert ohne gespeicherte Variante sieht genauso aus wie in Phase 4 (flacher Griff, rote Klinge), mit derselben Animation und denselben Sounds. Alle Tests aus Phase 3 und 4 laufen unverändert weiter.
 
-![Alle sechs Farben bei Nacht](../images/phase5/aufstellung_nacht.png)
+![Alle sechs Farben bei Nacht](images/phase5/aufstellung_nacht.png)
 
 ### Farben
 
 Ego-Perspektive bei Nacht und bei Tag (Hüter-Griff):
 
-![Farben, Ego-Perspektive, Nacht](../images/phase5/farben_ego_nacht.png)
+![Farben, Ego-Perspektive, Nacht](images/phase5/farben_ego_nacht.png)
 
-![Farben, Ego-Perspektive, Tag](../images/phase5/farben_ego_tag.png)
+![Farben, Ego-Perspektive, Tag](images/phase5/farben_ego_tag.png)
 
 Third Person:
 
-![Farben, Third Person](../images/phase5/farben_third_person.png)
+![Farben, Third Person](images/phase5/farben_third_person.png)
 
 ### Griffe
 
 Ego-Perspektive, jeder Griff in seiner Standardfarbe:
 
-![Griffe, Ego-Perspektive](../images/phase5/griffe_ego.png)
+![Griffe, Ego-Perspektive](images/phase5/griffe_ego.png)
 
 Third Person:
 
-![Griffe, Third Person](../images/phase5/griffe_third_person.png)
+![Griffe, Third Person](images/phase5/griffe_third_person.png)
 
 Griffe aus der Nähe (Rüstungsständer, bei Tag):
 
-![Griffe aus der Nähe](../images/phase5/aufstellung_griffe.png)
+![Griffe aus der Nähe](images/phase5/aufstellung_griffe.png)
 
 Inventar (Hotbar: Standard, Hüter, Dunkler Lord, Wächter, Doppelklinge ab dem vierten Platz):
 
-![Inventar](../images/phase5/inventar.png)
+![Inventar](images/phase5/inventar.png)
 
 ### Auswahlmenü
 
-![Menü Lichtschwert anpassen](../images/phase5/menue.png)
+![Menü Lichtschwert anpassen](images/phase5/menue.png)
 
 Die Bilder stammen aus dem automatischen Client-Test (Software-Rendering, 854×480).
 
@@ -73,7 +73,7 @@ Alles unten lief automatisch in einem echten Minecraft-26.2-Client (`./gradlew r
 ## Was du noch selbst im Spiel prüfen solltest
 
 - **Wie die Griffe auf einer echten Grafikkarte wirken**, vor allem aus der Nähe in der Ego-Perspektive.
-- **Der Klang des dunklen Griffs.** Ich konnte ihn messen (Grundton 74 Hz statt 92 Hz), aber nicht anhören. Hörprobe: [audio/phase5-dunkler-griff-hoerprobe.mp3](../audio/phase5-dunkler-griff-hoerprobe.mp3) (Zünden, Summen mit Schwüngen, Einfahren).
+- **Der Klang des dunklen Griffs.** Ich konnte ihn messen (Grundton 74 Hz statt 92 Hz), aber nicht anhören. Hörprobe: [audio/phase5-dunkler-griff-hoerprobe.mp3](audio/phase5-dunkler-griff-hoerprobe.mp3) (Zünden, Summen mit Schwüngen, Einfahren).
 - **Ein Server ohne SaberCraft.** Getestet wurde der Kreativ-Weg gegen einen Server mit SaberCraft. Dass das Menü auf einem Vanilla-Server im Überlebensmodus den Hinweis zeigt und sonst nichts tut, ist nur im Code abgesichert, nicht im Test.
 - **Zwei echte Spieler.** Andere Wesen (Zombie) sehen die Variante, ein zweiter echter Spieler wurde nicht getestet.
 - **Die Doppelklinge in der Ego-Perspektive.** Sie ist bewusst experimentell, siehe unten.
@@ -153,7 +153,7 @@ Fehlende Einträge behalten ihren Standard, ungültige werden im Log gemeldet un
 - Ein experimenteller Doppelklingen-Griff, mittig auf die Hand gesetzt, mit Klinge oben und unten. Beide Klingen fahren gemeinsam aus und ein, mit Summen und Schwunggeräuschen.
 - Inventar-Icon, Auswahl im Menü, Speicherung und Mehrspieler funktionieren wie bei allen anderen Griffen.
 
-![Doppelklinge bei Nacht](../images/phase5/doppelklinge_nacht.png)
+![Doppelklinge bei Nacht](images/phase5/doppelklinge_nacht.png)
 
 **Noch offen:**
 

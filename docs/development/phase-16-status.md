@@ -83,7 +83,7 @@ The crates, barrels and chests are where they make sense (the cargo hold, the hi
 - `InteriorDesignGameTest`: the player leaves the plot before the migration check (a plot is only rebuilt while nobody is aboard; since this phase the player counts as aboard the plot they stand in).
 - Local runs (2026-11-14, cloud container, software rendering): the full suite (`build` plus all client test classes) passed 1232 checks up to `AdvancementGameTest`, which then hung until the 90-minute limit. The classes from there on (`AdvancementGameTest`, `SaberHitGameTest`, `DroidGameTest`, `ShipGameTest`, `AtmosphereGameTest`, `Phase12GameTest`, `Phase13GameTest`, `Phase16GameTest`) were run again together and passed (385 checks, `AdvancementGameTest` included). `Phase14GameTest`, `ShipBoardingGameTest` and `InteriorDesignGameTest` passed in their own runs after the last code change. GitHub Actions has not run for this branch yet.
 
-Pictures (all from the test client): [`docs/images/phase16`](../images/phase16).
+Pictures (all from the test client): [`docs/images/phase16`](images/phase16).
 
 ## Known limits
 

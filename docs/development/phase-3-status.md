@@ -8,11 +8,11 @@ Hält der Spieler ein Netherite-Schwert in der Hand, sieht er statt der normalen
 
 | Ego-Perspektive, Tag | Ego-Perspektive, Nacht |
 | --- | --- |
-| ![](../images/phase3/ego_tag.png) | ![](../images/phase3/ego_nacht.png) |
+| ![](images/phase3/ego_tag.png) | ![](images/phase3/ego_nacht.png) |
 
 | Third Person, Tag | Third Person, Nacht |
 | --- | --- |
-| ![](../images/phase3/third_person_tag.png) | ![](../images/phase3/third_person_nacht.png) |
+| ![](images/phase3/third_person_tag.png) | ![](images/phase3/third_person_nacht.png) |
 
 Die Bilder stammen aus dem automatischen Client-Test (Software-Rendering ohne Kantenglättung). Auf einer echten Grafikkarte sehen die Kanten glatter aus.
 

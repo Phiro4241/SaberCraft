@@ -19,7 +19,7 @@ Stand: 24.10.2026, Minecraft 26.2, Fabric Loader 0.19.5, Fabric API 0.161.0+26.2
 - **Zehn neue Sounds**, wie alle anderen selbst synthetisiert: Drehung, Treffer (2 Varianten), Versengen, Abwehr, Klingenkontakt (2 Varianten), Parade, Machtstoß, Ausfallschritt. Das Profil des Dunklen Lords bleibt. Wand-Funken haben eine eigene Sperre, damit schnelle Schläge gegen eine Wand nicht dauerknistern.
 - **Bisheriges bleibt:** Griffe, Farben, Bloom und Glühen, Zünden und Einfahren, Summen, V-Menü. Alle Tests aus Phase 3 bis 5 laufen weiter (eine Erwartung wurde angepasst: das Schwunggeräusch kommt jetzt im Schlag, also ein paar Ticks nach dem Klick).
 
-![Lichtspuren in allen sechs Farben](../images/phase6/lichtspuren_ego.png)
+![Lichtspuren in allen sechs Farben](images/phase6/lichtspuren_ego.png)
 
 ### Bewegungen
 
@@ -27,29 +27,29 @@ Je Bewegung drei Momente (kurz vor dem Schlag, Schlag, Durchschwung). Jedes Bild
 
 Fließend:
 
-![Fließend](../images/phase6/bewegungen_flowing.png)
+![Fließend](images/phase6/bewegungen_flowing.png)
 
 Schwer:
 
-![Schwer](../images/phase6/bewegungen_heavy.png)
+![Schwer](images/phase6/bewegungen_heavy.png)
 
 Stab (Doppelklinge):
 
-![Stab](../images/phase6/bewegungen_staff.png)
+![Stab](images/phase6/bewegungen_staff.png)
 
 ### Effekte und Fähigkeiten
 
 Third-Person-Spuren (Rot, Grün), Treffer-Funken, Funken an der Wand, Drehangriff, Machtstoß (mit Abklingzeit-Anzeige unten rechts):
 
-![Effekte und Fähigkeiten](../images/phase6/effekte_faehigkeiten.png)
+![Effekte und Fähigkeiten](images/phase6/effekte_faehigkeiten.png)
 
 Abwehrhaltung (Ego, Parade in Third Person), Ausfallschritt, Doppelklinge in Ruhe, Klingenwirbel in Ego und Third Person:
 
-![Abwehr und Doppelklinge](../images/phase6/abwehr_doppelklinge.png)
+![Abwehr und Doppelklinge](images/phase6/abwehr_doppelklinge.png)
 
 V-Menü mit Kampfstil (einzelne Klinge und Doppelklinge):
 
-![Menü](../images/phase6/menue_kampfstil.png)
+![Menü](images/phase6/menue_kampfstil.png)
 
 ## Steuerung
 

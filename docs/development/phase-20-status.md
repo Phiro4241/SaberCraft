@@ -112,19 +112,19 @@ Run locally in the cloud container (software rendering, one test client), 2026-1
 
 ## 11. Pictures and the film
 
-All from the test client (software rendering, 854×480): [`docs/images/phase20`](../images/phase20).
+All from the test client (software rendering, 854×480): [`docs/images/phase20`](images/phase20).
 
-The film of the arrival, as the story test saw it (frames about a third of a second apart, real time; MP4 beside it): ![](../images/phase20/story_film_arrival.gif)
+The film of the arrival, as the story test saw it (frames about a third of a second apart, real time; MP4 beside it): ![](images/phase20/story_film_arrival.gif)
 
 | | |
 |---|---|
-| Out of hyperspace ![](../images/phase20/film_1_exit.jpg) | Under the hull, the title ![](../images/phase20/film_2_under_hull.jpg) |
-| Along the flank ![](../images/phase20/film_3_flank.jpg) | Docked ![](../images/phase20/film_4_docked.jpg) |
-| Mission 1: luring the guard from the hatch ![](../images/phase20/story_m1_lure.jpg) | Hale alone with the player, the door bolted ![](../images/phase20/story_hale_alone.jpg) |
-| Mission 4: the officer called it in ![](../images/phase20/story_alarm_called.jpg) | Mission 5: the emergency lights ![](../images/phase20/story_emergency_lights.jpg) |
-| The way to the lab ![](../images/phase20/reactor_lab_way.jpg) | The lab door, locked ![](../images/phase20/reactor_lab_door.jpg) |
-| The technician's console on the catwalk ![](../images/phase20/reactor_catwalk_console.jpg) | A hatch, shut ![](../images/phase20/vent_hatch_shut.jpg) |
-| The hatch, open ![](../images/phase20/vent_hatch_open.jpg) | Shut, seen from the crawl way ![](../images/phase20/vent_hatch_inside.jpg) |
+| Out of hyperspace ![](images/phase20/film_1_exit.jpg) | Under the hull, the title ![](images/phase20/film_2_under_hull.jpg) |
+| Along the flank ![](images/phase20/film_3_flank.jpg) | Docked ![](images/phase20/film_4_docked.jpg) |
+| Mission 1: luring the guard from the hatch ![](images/phase20/story_m1_lure.jpg) | Hale alone with the player, the door bolted ![](images/phase20/story_hale_alone.jpg) |
+| Mission 4: the officer called it in ![](images/phase20/story_alarm_called.jpg) | Mission 5: the emergency lights ![](images/phase20/story_emergency_lights.jpg) |
+| The way to the lab ![](images/phase20/reactor_lab_way.jpg) | The lab door, locked ![](images/phase20/reactor_lab_door.jpg) |
+| The technician's console on the catwalk ![](images/phase20/reactor_catwalk_console.jpg) | A hatch, shut ![](images/phase20/vent_hatch_shut.jpg) |
+| The hatch, open ![](images/phase20/vent_hatch_open.jpg) | Shut, seen from the crawl way ![](images/phase20/vent_hatch_inside.jpg) |
 
 ## 12. Not tested, limitations
 

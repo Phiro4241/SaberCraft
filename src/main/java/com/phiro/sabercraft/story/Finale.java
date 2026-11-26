@@ -771,8 +771,9 @@ final class Finale {
 			}
 
 			if (figure.cooldown <= 0) {
-				if (s.stepTicks < SECTION_GRACE || !facing) {
+				if (s.stepTicks < SECTION_GRACE || !facing || s.timer(HOLD_FIRE)) {
 					// Phase 33: the section just began (or he is still turning): the rifle up, a moment.
+					// (HOLD_FIRE: only the tests, which count strokes without bolts in the way.)
 					figure.cooldown = 0;
 				} else if (s.time() - s.lastVolley < VOLLEY_GAP) {
 					// Phase 26: another just fired: a moment later (the rifle stays up).
@@ -809,6 +810,12 @@ final class Finale {
 		}
 	}
 
+	/**
+	 * Phase 33: while this story timer runs, nobody fires (set only by the tests through
+	 * {@link StoryTesting#holdFire}; a new step ends it). Before, the tests gave each trooper a long
+	 * cooldown, which a trooper now shortens out of sight to fire quickly when he sees the player again.
+	 */
+	static final String HOLD_FIRE = "hold_fire";
 	/** Phase 24: a guard at his post sees this far, hears one this near. (Phase 33: 22 blocks, was 18: the corridor's length.) */
 	static final double POST_SIGHT = 22.0;
 	static final double POST_NEAR = 5.0;

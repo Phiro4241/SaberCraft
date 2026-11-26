@@ -1210,8 +1210,11 @@ public class StoryGameTest implements FabricClientGameTest {
 		// front, Phase 22; half his strength). In CI (PR #30) the lab's guard, who now stands out on the
 		// platform in the troopers' line of fire, was down after a heavy and a light stroke. So the
 		// troopers hold their fire, the bolts already flying land, and he starts whole; if a stroke
-		// still misses, the hits counted so far are in the message.
+		// still misses, the hits counted so far are in the message. (Phase 33: through the story's
+		// hold-fire timer; a trooper now shortens a long cooldown while out of sight.)
 		this.server.runOnServer(s -> {
+			StoryTesting.holdFire(session(s), 1000);
+
 			for (Figure f : session(s).figures) {
 				if (f.hostile) {
 					f.cooldown = 1000;

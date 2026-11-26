@@ -170,12 +170,12 @@ Was die automatischen Tests nicht ersetzen können, im echten Spiel mit der JAR 
 
 ## 15. Pictures
 
-All from the test client (software rendering, 854×480 unless said, no shader pack): [`docs/images/phase28`](../images/phase28).
+All from the test client (software rendering, 854×480 unless said, no shader pack): [`docs/images/phase28`](images/phase28).
 
 | | |
 |---|---|
-| The hint card at the left, clear of the mission panel (640×480, GUI scale 2) ![](../images/phase28/hint_card_left.jpg) | A mission's title on a narrow screen: below the panel ![](../images/phase28/title_below_panel.jpg) |
-| Mission 5 without Hale: the detention block's main door stays shut and says why; the objective names Kestrel's hatch ![](../images/phase28/detention_door_locked.jpg) | Mission 2: the cover's close-up, the first screw marked ![](../images/phase28/cover_closeup.jpg) |
-| Turning out the second screw ![](../images/phase28/cover_turning.jpg) | The cover off; the comlink line that waited comes now ![](../images/phase28/cover_off.jpg) |
-| The reactor's catwalk: the technician at his console, the hint ![](../images/phase28/catwalk_technician.jpg) | The guard broken in the boss fight (the advancement toast below the mission panel) ![](../images/phase28/guard_broken.jpg) |
-| Her ring turning in the second phase ![](../images/phase28/ring_turning.jpg) | After her flight: no saber on the floor; "Checkpoint gespeichert" below the comlink line ![](../images/phase28/after_duel.jpg) |
+| The hint card at the left, clear of the mission panel (640×480, GUI scale 2) ![](images/phase28/hint_card_left.jpg) | A mission's title on a narrow screen: below the panel ![](images/phase28/title_below_panel.jpg) |
+| Mission 5 without Hale: the detention block's main door stays shut and says why; the objective names Kestrel's hatch ![](images/phase28/detention_door_locked.jpg) | Mission 2: the cover's close-up, the first screw marked ![](images/phase28/cover_closeup.jpg) |
+| Turning out the second screw ![](images/phase28/cover_turning.jpg) | The cover off; the comlink line that waited comes now ![](images/phase28/cover_off.jpg) |
+| The reactor's catwalk: the technician at his console, the hint ![](images/phase28/catwalk_technician.jpg) | The guard broken in the boss fight (the advancement toast below the mission panel) ![](images/phase28/guard_broken.jpg) |
+| Her ring turning in the second phase ![](images/phase28/ring_turning.jpg) | After her flight: no saber on the floor; "Checkpoint gespeichert" below the comlink line ![](images/phase28/after_duel.jpg) |

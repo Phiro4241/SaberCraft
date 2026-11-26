@@ -142,16 +142,16 @@ Automated tests run in the cloud container with a real client (Xvfb, software re
 
 ## 15. Pictures
 
-All from the test client (software rendering, 854×480, English texts): [`docs/images/phase24`](../images/phase24).
+All from the test client (software rendering, 854×480, English texts): [`docs/images/phase24`](images/phase24).
 
 | | |
 |---|---|
-| The title screen: starfield, ship, subtitle, a saying ![](../images/phase24/title.jpg) | A button under the mouse ![](../images/phase24/title_hover.jpg) |
-| With `title_screen: false`: Minecraft's own ![](../images/phase24/title_vanilla.jpg) | Hunted: the hatch stays shut ![](../images/phase24/hunted_hatch.jpg) |
-| The guard overpowered from behind ![](../images/phase24/takedown_grab.jpg) | He stays down ![](../images/phase24/takedown_down.jpg) |
-| The corridor out of the reactor, guarded ![](../images/phase24/corridor_guards.jpg) | The reactor failing: flicker and the red edge ![](../images/phase24/reactor_failing.jpg) |
-| The blade lock's scene: her second blade ![](../images/phase24/boss_mid_reveal.jpg) | The second phase begins ![](../images/phase24/boss_phase2.jpg) |
-| Her TIE, from the front, before she leaps in ![](../images/phase24/tie_board.jpg) | It lifts off over the field ![](../images/phase24/tie_lift.jpg) |
-| Her TIE leaving the Tenebris ![](../images/phase24/tie_outside.jpg) | The Falcon drops out of the hangar ![](../images/phase24/escape_hangar.jpg) |
-| The chase, the Tenebris burning ![](../images/phase24/escape_chase.jpg) | The core goes ![](../images/phase24/escape_core.jpg) |
-| Beside the Falcon as the ring comes ![](../images/phase24/escape_ring.jpg) | The jump: a line of light ![](../images/phase24/escape_jump.jpg) |
+| The title screen: starfield, ship, subtitle, a saying ![](images/phase24/title.jpg) | A button under the mouse ![](images/phase24/title_hover.jpg) |
+| With `title_screen: false`: Minecraft's own ![](images/phase24/title_vanilla.jpg) | Hunted: the hatch stays shut ![](images/phase24/hunted_hatch.jpg) |
+| The guard overpowered from behind ![](images/phase24/takedown_grab.jpg) | He stays down ![](images/phase24/takedown_down.jpg) |
+| The corridor out of the reactor, guarded ![](images/phase24/corridor_guards.jpg) | The reactor failing: flicker and the red edge ![](images/phase24/reactor_failing.jpg) |
+| The blade lock's scene: her second blade ![](images/phase24/boss_mid_reveal.jpg) | The second phase begins ![](images/phase24/boss_phase2.jpg) |
+| Her TIE, from the front, before she leaps in ![](images/phase24/tie_board.jpg) | It lifts off over the field ![](images/phase24/tie_lift.jpg) |
+| Her TIE leaving the Tenebris ![](images/phase24/tie_outside.jpg) | The Falcon drops out of the hangar ![](images/phase24/escape_hangar.jpg) |
+| The chase, the Tenebris burning ![](images/phase24/escape_chase.jpg) | The core goes ![](images/phase24/escape_core.jpg) |
+| Beside the Falcon as the ring comes ![](images/phase24/escape_ring.jpg) | The jump: a line of light ![](images/phase24/escape_jump.jpg) |

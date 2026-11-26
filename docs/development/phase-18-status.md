@@ -105,7 +105,7 @@ Everything north of the Star Destroyer's plot corner (the whole hangar deck, fli
 
 The Star Destroyer's walk report (600 000 places, the walk's limit) went from **12 335 places in a wall and 64 922 invisible stops** (with the corrected audit, when this phase's work on it began) to **2 026 in a wall (768 at the eyes) and 2 573 invisible stops**. What is left is listed under the limitations.
 
-Pictures (all from the test client): [`docs/images/phase18`](../images/phase18).
+Pictures (all from the test client): [`docs/images/phase18`](images/phase18).
 
 ## Known limitations and open points
 

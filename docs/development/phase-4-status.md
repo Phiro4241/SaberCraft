@@ -13,17 +13,17 @@ Stand: 24.10.2026, Minecraft 26.2, Fabric Loader 0.19.5, Fabric API 0.161.0+26.2
 
 Ausfahren (die Hand kommt nach dem Itemwechsel erst hoch, dann zündet die Klinge):
 
-![Ausfahren, Ego-Perspektive](../images/phase4/ignite_first_person.png)
+![Ausfahren, Ego-Perspektive](images/phase4/ignite_first_person.png)
 
 Einfahren (die Klinge fährt in den Griff, danach wird das Item gewechselt):
 
-![Einfahren, Ego-Perspektive](../images/phase4/retract_first_person.png)
+![Einfahren, Ego-Perspektive](images/phase4/retract_first_person.png)
 
 ### Third Person
 
-![Ausfahren, Third Person](../images/phase4/ignite_third_person.png)
+![Ausfahren, Third Person](images/phase4/ignite_third_person.png)
 
-![Einfahren, Third Person](../images/phase4/retract_third_person.png)
+![Einfahren, Third Person](images/phase4/retract_third_person.png)
 
 Die Bilder stammen aus dem automatischen Client-Test (Software-Rendering). Zwischen zwei Bildern vergehen 2 bis 3 Spielticks, weil jeder Screenshot das Spiel kurz weiterlaufen lässt. Im Spiel selbst wird zwischen den Ticks interpoliert, die Bewegung ist also bei jeder Bildrate flüssig.
 
@@ -51,7 +51,7 @@ Alles unten lief automatisch in einem echten Minecraft-26.2-Client (`./gradlew r
 
 ## Was du noch selbst im Spiel prüfen solltest
 
-- **Wie es klingt.** Ich konnte die Tonspur messen, aber nicht anhören. [audio/phase4-hoerprobe.mp3](../audio/phase4-hoerprobe.mp3) ist ein Zusammenschnitt der echten Mod-Sounds mit denselben Lautstärken und Überblendungen wie im Spiel: Zünden, Summen mit fünf Schwüngen, Einfahren. Sag mir, wenn dir etwas zu laut, zu leise oder zu künstlich klingt, das lässt sich im Skript `tools/synth_sounds.py` schnell ändern.
+- **Wie es klingt.** Ich konnte die Tonspur messen, aber nicht anhören. [audio/phase4-hoerprobe.mp3](audio/phase4-hoerprobe.mp3) ist ein Zusammenschnitt der echten Mod-Sounds mit denselben Lautstärken und Überblendungen wie im Spiel: Zünden, Summen mit fünf Schwüngen, Einfahren. Sag mir, wenn dir etwas zu laut, zu leise oder zu künstlich klingt, das lässt sich im Skript `tools/synth_sounds.py` schnell ändern.
 - **Wie flüssig es auf einer echten Grafikkarte wirkt**, besonders bei hoher Bildrate.
 - **Zwei echte Spieler auf einem Server.** Der Test hat einen Dedicated Server und einen Zombie als „anderes Wesen" geprüft, aber keinen zweiten echten Spieler.
 - **Schnelles Scrollen im Kampf.** Das Wegstecken dauert jetzt 0,35 Sekunden. Prüf bitte, ob sich das gut anfühlt oder ob es dich beim Wechsel auf Bogen oder Essen stört.

@@ -190,16 +190,16 @@ Unchanged from Phase 25 (test step 95 minutes, job 110 minutes, `docs/ci.md`). `
 
 ## 13. Pictures
 
-All from the test client (software rendering, 854×480, English texts, no shader pack): [`docs/images/phase26`](../images/phase26).
+All from the test client (software rendering, 854×480, English texts, no shader pack): [`docs/images/phase26`](images/phase26).
 
 | | |
 |---|---|
-| The random character, put on at once ![](../images/phase26/random_character.jpg) | The random saber, on the saber at once ![](../images/phase26/random_saber.jpg) |
-| The takedown of the lab's guard from behind ![](../images/phase26/lab_takedown.jpg) | He stays down (front, by the platform's edge) ![](../images/phase26/lab_guard_down.jpg) |
-| Droids put on the saber's holder have stepped off ![](../images/phase26/droids_off_holder.jpg) | The lift to the bridge locked in the finale ![](../images/phase26/lift_locked.jpg) |
-| The Falcon waiting under the hangar's field ![](../images/phase26/falcon_under_hangar.jpg) | Looking down through the field ![](../images/phase26/falcon_from_above.jpg) |
-| The ring spinning up before her rush ![](../images/phase26/ring_windup.jpg) | The rush, close up (the blades a glowing disc) ![](../images/phase26/ring_rush.jpg) |
-| Her last quarter: the ring flares (no text under her bar) ![](../images/phase26/boss_fierce.jpg) | The 50 % scene, set up after running past her ![](../images/phase26/half_scene.jpg) |
+| The random character, put on at once ![](images/phase26/random_character.jpg) | The random saber, on the saber at once ![](images/phase26/random_saber.jpg) |
+| The takedown of the lab's guard from behind ![](images/phase26/lab_takedown.jpg) | He stays down (front, by the platform's edge) ![](images/phase26/lab_guard_down.jpg) |
+| Droids put on the saber's holder have stepped off ![](images/phase26/droids_off_holder.jpg) | The lift to the bridge locked in the finale ![](images/phase26/lift_locked.jpg) |
+| The Falcon waiting under the hangar's field ![](images/phase26/falcon_under_hangar.jpg) | Looking down through the field ![](images/phase26/falcon_from_above.jpg) |
+| The ring spinning up before her rush ![](images/phase26/ring_windup.jpg) | The rush, close up (the blades a glowing disc) ![](images/phase26/ring_rush.jpg) |
+| Her last quarter: the ring flares (no text under her bar) ![](images/phase26/boss_fierce.jpg) | The 50 % scene, set up after running past her ![](images/phase26/half_scene.jpg) |
 
 ## 14. Manuelle Testliste (für Phiro)
 

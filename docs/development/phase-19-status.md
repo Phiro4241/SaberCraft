@@ -119,22 +119,22 @@ Walking from place to place is done by teleporting (the ways themselves are cove
 
 ## 5. Pictures and short films
 
-All from the test client (software rendering, 854×480): [`docs/images/phase19`](../images/phase19).
+All from the test client (software rendering, 854×480): [`docs/images/phase19`](images/phase19).
 
 | | |
 |---|---|
-| The briefing in the Falcon ![](../images/phase19/story_dialog_de.jpg) | The same line in English ![](../images/phase19/story_dialog_en.jpg) |
-| Answers ![](../images/phase19/story_dialog_answers.jpg) | The trooper with the lamp in the dark ![](../images/phase19/story_maintenance_lamp.jpg) |
-| In disguise ![](../images/phase19/story_disguise.jpg) | Lt. Corvan Hale ![](../images/phase19/story_hale.jpg) |
-| The alarm ![](../images/phase19/story_alarm.jpg) | In Hale's trap ![](../images/phase19/story_cell.jpg) |
-| The duel ![](../images/phase19/story_duel.jpg) | The jump ![](../images/phase19/story_jump.jpg) |
-| The epilogue ![](../images/phase19/story_epilogue.jpg) | The menu's Story tab ![](../images/phase19/story_menu_start.jpg) |
+| The briefing in the Falcon ![](images/phase19/story_dialog_de.jpg) | The same line in English ![](images/phase19/story_dialog_en.jpg) |
+| Answers ![](images/phase19/story_dialog_answers.jpg) | The trooper with the lamp in the dark ![](images/phase19/story_maintenance_lamp.jpg) |
+| In disguise ![](images/phase19/story_disguise.jpg) | Lt. Corvan Hale ![](images/phase19/story_hale.jpg) |
+| The alarm ![](images/phase19/story_alarm.jpg) | In Hale's trap ![](images/phase19/story_cell.jpg) |
+| The duel ![](images/phase19/story_duel.jpg) | The jump ![](images/phase19/story_jump.jpg) |
+| The epilogue ![](images/phase19/story_epilogue.jpg) | The menu's Story tab ![](images/phase19/story_menu_start.jpg) |
 
 Short films (GIF; MP4 beside them):
 
-- Seen, chased, caught: ![](../images/phase19/story_film_seen.gif)
-- A dialog appearing: ![](../images/phase19/story_film_dialog.gif)
-- The duel: ![](../images/phase19/story_film_duel.gif)
+- Seen, chased, caught: ![](images/phase19/story_film_seen.gif)
+- A dialog appearing: ![](images/phase19/story_film_dialog.gif)
+- The duel: ![](images/phase19/story_film_duel.gif)
 
 ## 6. Deviations from the plan, limitations, not tested
 

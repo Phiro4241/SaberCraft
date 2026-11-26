@@ -88,13 +88,13 @@ All in the cloud container (Xvfb, software rendering), **not CI**: see the pull 
 
 ## 12. Pictures
 
-All from the test client (software rendering, 854×480): [`docs/images/phase22`](../images/phase22).
+All from the test client (software rendering, 854×480): [`docs/images/phase22`](images/phase22).
 
 | | |
 |---|---|
-| Falcon engine room, the machines ![](../images/phase22/falcon_engine_room.jpg) | Its ceiling, closed over the machines ![](../images/phase22/falcon_engine_ceiling.jpg) |
-| The corridor to the lab ![](../images/phase22/lab_way.jpg) | The detention door, out of the corner, with a frame ![](../images/phase22/detention_door.jpg) |
-| New trooper skin ![](../images/phase22/skin_trooper.jpg) | New technician skin ![](../images/phase22/skin_technician.jpg) |
-| Story HUD (German) ![](../images/phase22/story_hud.jpg) | Hurt: the condition bar ![](../images/phase22/story_hud_hurt.jpg) |
-| Story HUD (English) ![](../images/phase22/story_hud_en.jpg) | R2-V7 ![](../images/phase22/r2v7.jpg) |
-| Outside the story: Minecraft's HUD ![](../images/phase22/outside_story_hud.jpg) | After the chapter: Dax and Kestrel in the cockpit ![](../images/phase22/after_chapter_cockpit.jpg) |
+| Falcon engine room, the machines ![](images/phase22/falcon_engine_room.jpg) | Its ceiling, closed over the machines ![](images/phase22/falcon_engine_ceiling.jpg) |
+| The corridor to the lab ![](images/phase22/lab_way.jpg) | The detention door, out of the corner, with a frame ![](images/phase22/detention_door.jpg) |
+| New trooper skin ![](images/phase22/skin_trooper.jpg) | New technician skin ![](images/phase22/skin_technician.jpg) |
+| Story HUD (German) ![](images/phase22/story_hud.jpg) | Hurt: the condition bar ![](images/phase22/story_hud_hurt.jpg) |
+| Story HUD (English) ![](images/phase22/story_hud_en.jpg) | R2-V7 ![](images/phase22/r2v7.jpg) |
+| Outside the story: Minecraft's HUD ![](images/phase22/outside_story_hud.jpg) | After the chapter: Dax and Kestrel in the cockpit ![](images/phase22/after_chapter_cockpit.jpg) |

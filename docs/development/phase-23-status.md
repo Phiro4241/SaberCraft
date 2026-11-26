@@ -115,15 +115,15 @@ Old saves: `StoryGameTest` continues Phase 19 files (mission and step by number)
 
 ## 13. Pictures
 
-All from the test client (software rendering, 854×480): [`docs/images/phase23`](../images/phase23).
+All from the test client (software rendering, 854×480): [`docs/images/phase23`](images/phase23).
 
 | | |
 |---|---|
-| The disguise from the front: the troopers' own armour ![](../images/phase23/disguise_front.jpg) | And from behind ![](../images/phase23/disguise_back.jpg) |
-| The officer, seen, fights back and calls for troopers ![](../images/phase23/officer_fights.jpg) | Troopers coming through the armory's door ![](../images/phase23/troopers_through_door.jpg) |
-| The reactor from the gallery: down onto a platform, edges marked ![](../images/phase23/reactor_from_gallery.jpg) | The core and its rings over the open shaft ![](../images/phase23/reactor_core.jpg) |
-| Platforms round the core, seen from the lab's side ![](../images/phase23/reactor_lab_platform.jpg) | Off the lift onto its platform ![](../images/phase23/reactor_lift_platform.jpg) |
-| The bridge creaks under fire ![](../images/phase23/bridge_creak.jpg) | It breaks behind the player ![](../images/phase23/bridge_collapse.jpg) |
-| Gone: the pursuers stay on their side ![](../images/phase23/bridge_gone.jpg) | Platforms and a narrow bridge without railing, from above ![](../images/phase23/reactor_bridge_down.jpg) |
-| The lift in its own bay behind the lobby ![](../images/phase23/lift_bay.jpg) | The detention door, apart from the lift ![](../images/phase23/detention_door.jpg) |
-| Out of the vent: the droid waits outside, behind the player ![](../images/phase23/droid_out_of_vent.jpg) | |
+| The disguise from the front: the troopers' own armour ![](images/phase23/disguise_front.jpg) | And from behind ![](images/phase23/disguise_back.jpg) |
+| The officer, seen, fights back and calls for troopers ![](images/phase23/officer_fights.jpg) | Troopers coming through the armory's door ![](images/phase23/troopers_through_door.jpg) |
+| The reactor from the gallery: down onto a platform, edges marked ![](images/phase23/reactor_from_gallery.jpg) | The core and its rings over the open shaft ![](images/phase23/reactor_core.jpg) |
+| Platforms round the core, seen from the lab's side ![](images/phase23/reactor_lab_platform.jpg) | Off the lift onto its platform ![](images/phase23/reactor_lift_platform.jpg) |
+| The bridge creaks under fire ![](images/phase23/bridge_creak.jpg) | It breaks behind the player ![](images/phase23/bridge_collapse.jpg) |
+| Gone: the pursuers stay on their side ![](images/phase23/bridge_gone.jpg) | Platforms and a narrow bridge without railing, from above ![](images/phase23/reactor_bridge_down.jpg) |
+| The lift in its own bay behind the lobby ![](images/phase23/lift_bay.jpg) | The detention door, apart from the lift ![](images/phase23/detention_door.jpg) |
+| Out of the vent: the droid waits outside, behind the player ![](images/phase23/droid_out_of_vent.jpg) | |

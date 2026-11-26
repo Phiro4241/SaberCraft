@@ -103,16 +103,16 @@ All runs in the cloud container (Xvfb, software rendering, sound written to a fi
 
 ## 7. Pictures
 
-All from the test client (software rendering, 854×480): [`docs/images/phase21`](../images/phase21).
+All from the test client (software rendering, 854×480): [`docs/images/phase21`](images/phase21).
 
-The duel in motion, as the story test saw it at the start of his second phase (3 seconds, a frame every 0.1 s; MP4 beside it): ![](../images/phase21/duel_phase_two.gif)
+The duel in motion, as the story test saw it at the start of his second phase (3 seconds, a frame every 0.1 s; MP4 beside it): ![](images/phase21/duel_phase_two.gif)
 
 | | |
 |---|---|
-| The scene before the duel: behind the player, he waits at the force field ![](../images/phase21/duel_film_1_back.jpg) | He turns round ![](../images/phase21/duel_film_2_turns.jpg) |
-| His blade lights, the title ![](../images/phase21/duel_film_3_ignition.jpg) | Over his shoulder onto the player ![](../images/phase21/duel_film_4_face_off.jpg) |
-| An overhead blow wound up, named on the HUD ![](../images/phase21/duel_windup.jpg) | Blocked: he staggers, the opening ![](../images/phase21/duel_staggers.jpg) |
-| The Focus: the screen's edges go cold ![](../images/phase21/duel_focus.jpg) | The end: his blade goes out ![](../images/phase21/duel_end_1_retreat.jpg) |
-| He runs for the flight control door ![](../images/phase21/duel_end_2_flight.jpg) | Mission 1: M-31 drew the guard from the hatch ![](../images/phase21/m1_lure_m31.jpg) |
-| The droids in their places behind the player ![](../images/phase21/droids_places.jpg) | Still there after walking into the hangar ![](../images/phase21/droids_hangar.jpg) |
-| Seen: the first stun bolt comes from a distance ![](../images/phase21/chase_stun_bolt.jpg) | |
+| The scene before the duel: behind the player, he waits at the force field ![](images/phase21/duel_film_1_back.jpg) | He turns round ![](images/phase21/duel_film_2_turns.jpg) |
+| His blade lights, the title ![](images/phase21/duel_film_3_ignition.jpg) | Over his shoulder onto the player ![](images/phase21/duel_film_4_face_off.jpg) |
+| An overhead blow wound up, named on the HUD ![](images/phase21/duel_windup.jpg) | Blocked: he staggers, the opening ![](images/phase21/duel_staggers.jpg) |
+| The Focus: the screen's edges go cold ![](images/phase21/duel_focus.jpg) | The end: his blade goes out ![](images/phase21/duel_end_1_retreat.jpg) |
+| He runs for the flight control door ![](images/phase21/duel_end_2_flight.jpg) | Mission 1: M-31 drew the guard from the hatch ![](images/phase21/m1_lure_m31.jpg) |
+| The droids in their places behind the player ![](images/phase21/droids_places.jpg) | Still there after walking into the hangar ![](images/phase21/droids_hangar.jpg) |
+| Seen: the first stun bolt comes from a distance ![](images/phase21/chase_stun_bolt.jpg) | |

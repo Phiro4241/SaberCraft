@@ -36,11 +36,11 @@ Mit **Iris 1.11.4 + Sodium 0.9.2**, je vorher und nachher, mit echten, geladenen
 
 Geprüft: alle 6 Farben in der Ego-Perspektive am Tag und um Mitternacht, eine Reihe Rüstungsständer (dritte Person) vor Himmel und vor einer Wand, die Doppelklinge von vorn und hinten, dazu ab dem finalen Stand ein Vader-Charakter in der dritten Person und vier Planetenhimmel unter jedem Pack.
 
-![Vorher/Nachher](../images/phase8/vergleich_shader_vorher_nachher.jpg)
+![Vorher/Nachher](images/phase8/vergleich_shader_vorher_nachher.jpg)
 
 Finaler Stand, oben ohne Shaderpack, Mitte Complementary, unten BSL: Vader, Tatooine, Coruscant (Nacht), Mustafar (Abend), Endor.
 
-![Charakter und Planeten unter Shaderpacks](../images/phase8/shader_charakter_planeten.jpg)
+![Charakter und Planeten unter Shaderpacks](images/phase8/shader_charakter_planeten.jpg)
 
 ## 2. Charaktere
 
@@ -58,9 +58,9 @@ Fertig umgesetzt sind die vier bekanntesten Charaktere. Jeder hat ein eigenes Au
 - **Eigene Skins:** Eine 64x64-PNG unter `config/sabercraft/characters/<id>.png` (`vader.png`, `obi_wan.png`, `maul.png`, `luke.png`) ersetzt das mitgelieferte Aussehen des Charakters. Der Knopf „Ordner …“ öffnet den Ordner. Das Menü zeigt „Eigener Skin aktiv“.
 - Charakterwahl und Aussehen werden mit anderen Spielern auf dem Server geteilt (wie die Outfits aus Phase 7).
 
-![Vader, Obi-Wan, Maul, Luke](../images/phase8/charaktere.png)
+![Vader, Obi-Wan, Maul, Luke](images/phase8/charaktere.png)
 
-![Charakter-Menü](../images/phase8/charakter_menue.png)
+![Charakter-Menü](images/phase8/charakter_menue.png)
 
 Noch nicht umgesetzt: Anakin, Yoda, Dooku, Ahsoka, Kylo, Rey. Die Struktur (Outfit-Eintrag, Griff, Stil, Textur, Musik-Thema) ist so gebaut, dass weitere Charaktere ohne Umbau dazukommen.
 
@@ -83,7 +83,7 @@ V > „Himmel“ > „Planet“. Sechs Planeten, alle zur Laufzeit aus Zahlen ge
 - Leistung: die Bilder werden einmal im Hintergrund gemalt (Qualität wie beim Weltraumhimmel), danach nur zwei Würfel pro Frame. Funktioniert mit Sodium und Iris.
 - Nur die Oberwelt wird zum Planeten. Nether und End bleiben.
 
-![Tatooine, Coruscant, Endor, Hoth, Mustafar, Naboo](../images/phase8/planeten.png)
+![Tatooine, Coruscant, Endor, Hoth, Mustafar, Naboo](images/phase8/planeten.png)
 
 ## 4. Musik: zwei getrennte Modi
 
@@ -99,7 +99,7 @@ Spielt Musik, die der Spieler selbst einlegt, zum Beispiel gekaufte Soundtracks.
 
 Eigene Einstellungen: Lautstärke, Überblendung an/aus, Kampfmusik an/aus, Erkundungsmusik an/aus, Charakter-Themen an/aus, „Ordner …“, „Dateien neu laden“. Darunter: welches Stück gerade läuft, alle Situationen mit Anzahl der Stücke (fehlende in Rot) und alle Probleme (fehlende Dateien, falsches Format, zu groß).
 
-![Musikmenü im Star-Wars-Modus](../images/phase8/musik_starwars.png)
+![Musikmenü im Star-Wars-Modus](images/phase8/musik_starwars.png)
 
 Welche Situation gerade gilt (höchste zuerst):
 

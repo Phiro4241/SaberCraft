@@ -3,7 +3,7 @@
 Thanks for your interest in SaberCraft! Bug reports, ideas and pull requests are all welcome. This page explains how to get set up and what a good contribution looks like.
 
 > [!IMPORTANT]
-> SaberCraft is licensed under the [MIT License](LICENSE). By submitting a pull request you agree that your contribution is released under the same license. The license does not cover Star Wars names, characters or designs (see the [README](README.md#legal)), so only contribute work you made yourself. For a larger change, please **open an issue first** so we can agree on it.
+> SaberCraft is licensed under the [MIT License](LICENSE). By submitting a pull request you agree that your contribution is released under the same license. The license does not cover Star Wars names, characters or designs (see the [README](README.md#license-and-legal)), so only contribute work you made yourself. For a larger change, please **open an issue first** so we can agree on it.
 
 ## Reporting bugs
 
@@ -43,7 +43,8 @@ src/main/       Code for client and server: items, abilities, blasters, droids, 
 src/client/     Client only: blade rendering, animation, sounds, music, sky, menus, keys, HUDs, story dialogs and cutscenes
 src/gametest/   Fabric client game tests with screenshots
 tools/          Python scripts that generate models, textures, sounds, music, the icon and the banner
-docs/           Guides, configuration, media; docs/release/ for the platform pages, docs/development/ for the development notes per phase (German)
+docs/           Guides and configuration; docs/media/ for the README images, docs/release/ for the platform pages,
+                docs/development/ for the development notes per phase with their images and sound samples (German)
 ```
 
 Key places:
@@ -69,7 +70,7 @@ Models, textures, sounds and music are **not** drawn or recorded by hand. They a
 ```bash
 python3 tools/gen_hilts.py      # hilt models, textures and item model
 python3 tools/synth_sounds.py   # all sound effects
-python3 tools/gen_banner.py     # docs/media/banner.png
+python3 tools/gen_banner.py     # docs/media/banner.png and social-preview.png from the README screenshots
 ```
 
 If you change an asset, change its generator and commit both. **Do not add assets you did not make yourself**: no ripped film sounds or music, no textures or models from other mods or packs, no official artwork or logos.
@@ -88,6 +89,16 @@ xvfb-run -a -s "-screen 0 1280x720x24" ./gradlew runClientGameTest
 A full run takes about one and a half hours. Screenshots are written to `build/run/clientGameTest/screenshots/`. Test classes are listed in `src/gametest/resources/fabric.mod.json`.
 
 New behavior should come with a test in `src/gametest/` that exercises it the way a player would (real key presses, real menu clicks), and a screenshot if it is visual.
+
+### Screenshots for the README
+
+The images in `docs/media/screenshots/` are taken in game by `MediaGameTest`, which does nothing in a normal test run. To take them again, point `SABERCRAFT_MEDIA` at an output folder (and, optionally, `SABERCRAFT_MEDIA_ONLY` at a comma-separated list of scenes such as `fleet,story`). To skip the rest of the suite, list only `MediaGameTest` under `fabric-client-gametest` in `src/gametest/resources/fabric.mod.json` for that run (and put the list back afterwards):
+
+```bash
+SABERCRAFT_MEDIA=/tmp/sabercraft-media xvfb-run -a -s "-screen 0 1920x1080x24" ./gradlew runClientGameTest
+```
+
+It renders at 1920×1080 and writes PNG files named after each scene. `python3 tools/crop_screenshots.py /tmp/sabercraft-media` crops them into the JPG files the README uses, and `python3 tools/gen_banner.py` redraws the banner and the social preview. Look at the results before committing them; see [docs/media/README.md](docs/media/README.md).
 
 ## Pull requests
 

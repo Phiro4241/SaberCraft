@@ -234,10 +234,10 @@ Was die automatischen Tests nicht ersetzen können, im echten Spiel mit der JAR 
 
 ## 20. Pictures
 
-All from the test client (software rendering, 854×480, no shader pack): [`docs/images/phase27`](../images/phase27).
+All from the test client (software rendering, 854×480, no shader pack): [`docs/images/phase27`](images/phase27).
 
 | | |
 |---|---|
-| A new story asks for the difficulty first ![](../images/phase27/difficulty_page.jpg) | Mission 2: the side hatch low in the hangar's west wall, beside the crate stack ![](../images/phase27/hangar_side_hatch.jpg) |
-| Behind it, the short crawl way into the one to the hideout ![](../images/phase27/hangar_side_crawl_way.jpg) | The lab's door seen from the platform: the guard's post is to the right of this view, just out of the frame ![](../images/phase27/lab_door_from_platform.jpg) |
-| Looking out of the lab's door: the guard on his post, on the left ![](../images/phase27/lab_guard_from_door.jpg) | |
+| A new story asks for the difficulty first ![](images/phase27/difficulty_page.jpg) | Mission 2: the side hatch low in the hangar's west wall, beside the crate stack ![](images/phase27/hangar_side_hatch.jpg) |
+| Behind it, the short crawl way into the one to the hideout ![](images/phase27/hangar_side_crawl_way.jpg) | The lab's door seen from the platform: the guard's post is to the right of this view, just out of the frame ![](images/phase27/lab_door_from_platform.jpg) |
+| Looking out of the lab's door: the guard on his post, on the left ![](images/phase27/lab_guard_from_door.jpg) | |
