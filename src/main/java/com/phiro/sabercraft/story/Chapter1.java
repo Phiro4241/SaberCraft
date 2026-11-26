@@ -1995,6 +1995,9 @@ public final class Chapter1 implements Chapter {
 		OutfitSync.override(player, s.disguised ? Outfit.STORMTROOPER.id() : Outfit.PLAIN);
 	}
 
+	/** Phase 33: the steps down at the reactor that play its piece (below the hangar deck). */
+	private static final Set<String> REACTOR_STEPS = Set.of("m4.lift", "m4.tech", "m4.download", "m6.reactor", "m6.door", "m6.lab", "m6.saber");
+
 	/**
 	 * The music the story asks for (the client plays it instead of its own choice): sneaking on the
 	 * Star Destroyer, calm in the Falcon and in the hideout, the alarm piece while escaping, the
@@ -2003,7 +2006,9 @@ public final class Chapter1 implements Chapter {
 	 */
 	static void music(StorySession s, int m, String step) {
 		String track = switch (step) {
-			case "m1.briefing", "m1.cockpit", "m6.epilogue" -> "music.story_hideout";
+			case "m1.briefing", "m1.cockpit" -> "music.story_hideout";
+			// Phase 33: the way home has its own warm, quiet piece (it was the hideout's).
+			case "m6.epilogue" -> "music.story_epilogue";
 			// Phase 24: after the arrival the mission begins: aboard the Star Destroyer, wide awake.
 			case "m1.ramp", "m1.droid" -> "music.story_infiltration";
 			case "m5.escape" -> "music.story_alarm";
@@ -2022,8 +2027,20 @@ public final class Chapter1 implements Chapter {
 			// piece, rising into D major as the Falcon jumps). Phase 28: only once the Falcon is
 			// really away, in hyperspace, the triumphant piece; the epilogue in the lounge is calm.
 			case "m6.jump" -> s.has("tmp.jumping") ? "music.story_triumph" : "music.story_launch";
+			// Phase 33: Kestrel's capture and the plan to free her: a darker, ticking piece in the
+			// hideout (out of it the usual stealth piece again).
+			case "m5.recording", "m5.route" -> D.equals(s.here) && s.inside(D, HIDDEN) ? "music.story_captured" : "music.story_stealth";
 			default -> D.equals(s.here) && s.inside(D, HIDDEN) ? "music.story_hideout" : "music.story_stealth";
 		};
+
+		// Phase 33 (Phiro): the room with the lightsaber has its own mysterious, majestic piece the
+		// moment one steps in (until the saber is taken: its film and the escape have their own),
+		// and the way down to the reactor its own deep, pulsing one.
+		if (D.equals(s.here) && m == 5 && !s.has("saber.taken") && s.inside(D, DestroyerInterior.LAB)) {
+			track = "music.story_relic";
+		} else if (D.equals(s.here) && REACTOR_STEPS.contains(step) && s.local(D).y < H - 1.0) {
+			track = "music.story_reactor";
+		}
 
 		if (!track.equals(s.music)) {
 			s.music = track;
@@ -2143,7 +2160,8 @@ public final class Chapter1 implements Chapter {
 
 		String step = s.step().id();
 
-		if (s.stepTicks % 20 == 0) {
+		// Phase 33: twice a second, so a room's own piece sets in as one steps through the door.
+		if (s.stepTicks % 10 == 0) {
 			music(s, s.mission, step);
 		}
 

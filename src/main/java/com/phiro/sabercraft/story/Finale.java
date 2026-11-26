@@ -62,11 +62,64 @@ final class Finale {
 	// ticks (was 22 + up to 21; for one trooper about a fifth fewer shots, this is about a quarter
 	// more), a second shot a little more often (0.35, was 0.3). The wind-up before each shot and the
 	// gap between two troopers' shots stay.)
-	static final int SHOT_MIN = 18;
-	static final int SHOT_RANDOM = 18;
-	static final float DOUBLE_CHANCE = 0.35F;
+	// (Phase 33, after Phiro's playtest of the way from the saber to the boss: one could run past all
+	// of them unhurt. A little more often again, 16 + up to 11 ticks (for one trooper about a fifth
+	// more shots), a second shot a little more often (0.4). What weighed more was what came before
+	// the first shot: see REACT, ARM_FIRST and LEAD.)
+	static final int SHOT_MIN = 16;
+	static final int SHOT_RANDOM = 12;
+	static final float DOUBLE_CHANCE = 0.4F;
 	static final int DOUBLE_GAP = 7;
-	static final int VOLLEY_GAP = 7;
+	// (Phase 33: 9, was 7. They fire sooner and aim better now; together they take turns a little
+	// more: where several stood in the way, a bolt came almost every third of a second.)
+	static final int VOLLEY_GAP = 9;
+	/**
+	 * Phase 33: ticks from the moment a trooper sees the player (the first time, or again round a
+	 * corner) to his shot, the rifle up meanwhile (Normal; the difficulty's aim scales it). It was
+	 * at least 12 again round a corner, and after a section began a wait of its own of 30 ticks
+	 * and 17 more for each trooper (the sixth waited almost six seconds of seeing the player).
+	 */
+	static final int REACT = 6;
+	/** Phase 33: out of sight he readies the next shot: seen again, he fires within this much more than {@link #REACT}. */
+	static final int REACQUIRE = 6;
+	/** Phase 33: a section's start: the first trooper who sees the player fires after this long, each one after him a little later. */
+	static final int ARM_FIRST = 14;
+	static final int ARM_STAGGER = 4;
+	/** Phase 33: nobody fires in the first ticks of a section (or after being put back at its checkpoint): time to get one's bearings. */
+	static final int SECTION_GRACE = 20;
+	/**
+	 * Phase 33: how good a shot is. Before, a trooper aimed where the player was: a bolt needs five
+	 * ticks for fifteen blocks, in which a running player is a block and a half further, so none hit
+	 * one who ran across, and nearly all hit one who ran at them. Now each shot is first a good one
+	 * or not: a good one is aimed ahead of the player where they will be if they keep going
+	 * ({@link #LEAD}), so who changes direction or stops still makes it miss; the others fly close
+	 * past where they will be (between {@link #MISS_MIN} and {@link #MISS_MAX} beside it), to be heard and seen.
+	 * How many are good: {@link #HIT_NEAR} of them at {@link #HIT_NEAR_RANGE} blocks or closer,
+	 * fewer the further off, {@link #HIT_FAR} from {@link #HIT_FAR_RANGE} blocks; fewer at one on
+	 * the move ({@link #HIT_RUNNING}), fewer again at one who moves across the line of fire
+	 * ({@link #HIT_ACROSS}), fewer for the first shot after catching sight of them ({@link #SNAP_HIT});
+	 * by the difficulty (its scatter: fewer on Easy, more on Hard).
+	 */
+	static final double HIT_NEAR = 0.6;
+	static final double HIT_FAR = 0.2;
+	static final double HIT_NEAR_RANGE = 3.0;
+	static final double HIT_FAR_RANGE = 20.0;
+	static final double HIT_RUNNING = 0.8;
+	static final double HIT_ACROSS = 0.75;
+	static final double SNAP_HIT = 0.7;
+	/** Phase 33: who goes further than this in a tick is on the move (walking is about 0.22, sprinting 0.28, sneaking 0.07). */
+	static final double RUNNING = 0.15;
+	/** Phase 33: a good shot leads a moving player by this share of the way they go while the bolt flies, and up to LEAD_RANDOM more. */
+	static final double LEAD = 0.8;
+	static final double LEAD_RANDOM = 0.2;
+	/** Phase 33: how far beside the player a miss flies (blocks; more the further off). */
+	static final double MISS_MIN = 1.2;
+	static final double MISS_MAX = 1.9;
+	/** The scatter of every bolt (as before). */
+	static final float SPREAD = 2.6F;
+	/** Phase 33: he fires only when facing the player this nearly (degrees), and turns this fast to do so. */
+	static final float AIM_CONE = 35.0F;
+	static final float TURN_FIGHT = 24.0F;
 	/** How far a trooper shoots, and how close they come. */
 	static final double SHOT_RANGE = 26.0;
 	static final double KEEP = 9.0;
@@ -537,10 +590,16 @@ final class Finale {
 		for (Figure figure : s.figures) {
 			if (figure.hostile && figure.mode != Figure.DOWN) {
 				figure.mode = Figure.FIGHT;
-				figure.cooldown = 30 + i++ * 17;
+				// (Phase 33: was 30 + 17 for each: the last of six waited 115 ticks of seeing the player.)
+				figure.cooldown = ARM_FIRST + i++ * ARM_STAGGER;
 				figure.windup = 0;
+				figure.sighted = false;
 			}
 		}
+
+		s.aimFrom = null;
+		s.aimWay = Vec3.ZERO;
+		s.gunfireAt = -1000L;
 	}
 
 	/** Phase 23: a fight begins: everyone hunting the player joins it at once (see {@link Combat#engage}). */
@@ -568,6 +627,8 @@ final class Finale {
 		int restores = s.restores;
 
 		focusTick(s);
+		// Phase 33: the way the player moves (per tick, smoothed), for the troopers to aim ahead.
+		follow(s, player.position().subtract(Vec3.atLowerCornerOf(s.origin(ship))));
 
 		// The Focus: the enemies move on every other tick only.
 		if (slowed(s) && (level.getGameTime() & 1L) == 1L) {
@@ -635,13 +696,24 @@ final class Finale {
 		Vec3 chest = me.add(0.0, 1.0, 0.0);
 		double distance = figure.eye().distanceTo(chest);
 		boolean sees = distance < SHOT_RANGE && Stealth.clear(level, corner.add(figure.eye()), corner.add(chest));
+		StoryDifficulty difficulty = s.difficulty();
+		int react = difficulty.ticks(REACT, difficulty.aim);
 
 		// Phase 24: a guard at his post holds it (rifle up, facing the way one comes) until he sees
 		// the player, hears them close, or is hit: then a shout to the others, and he fights.
+		// Phase 33: what he sees is what is before him (his look sweeping a little), as far as
+		// POST_SIGHT; close by he hears the player all round. Shots near him turn him towards the
+		// player at his post (he then sees them the moment they come round the corner); he fires
+		// after REACT (it was 18 ticks at least, after the section's own wait).
 		if (figure.post) {
-			if (sees && distance < POST_SIGHT || distance < POST_NEAR || figure.health < 1.0F) {
+			boolean before = sees && distance < POST_SIGHT * difficulty.sight && inView(figure, me, POST_CONE);
+
+			if (before || distance < POST_NEAR || figure.health < 1.0F) {
 				figure.post = false;
-				figure.cooldown = Math.max(figure.cooldown, POST_FIRST_SHOT);
+				figure.cooldown = react;
+				figure.sighted = false;
+				s.gunfireAt = s.time();
+				s.gunfireFrom = figure.position();
 
 				if (!s.timer("contact")) {
 					s.timer("contact", 120);
@@ -650,8 +722,16 @@ final class Finale {
 			} else {
 				figure.speed = 0.0F;
 				figure.windup = 4;
-				figure.yaw = figure.crew.yaw();
-				figure.headYaw = figure.yaw + 18.0F * (float) Math.sin(s.time() / 30.0 + figure.id);
+
+				if (alerted(s, figure)) {
+					// He heard his comrades fire: rifle towards where the player is, still at his post.
+					figure.turnTowards(me, TURN_FIGHT * 0.5F, true);
+					figure.yaw = figure.yaw + Mth.clamp(Mth.wrapDegrees(figure.headYaw - figure.yaw), -TURN_FIGHT, TURN_FIGHT);
+				} else {
+					figure.yaw = figure.crew.yaw();
+					figure.headYaw = figure.yaw + 18.0F * (float) Math.sin(s.time() / 30.0 + figure.id);
+				}
+
 				return;
 			}
 		}
@@ -662,32 +742,52 @@ final class Finale {
 		figure.target = me;
 
 		if (sees) {
-			figure.turnTowards(me, 14.0F, true);
+			// Phase 33: newly in sight (round a corner, out of cover): his shot comes after REACT (to
+			// REACT + REACQUIRE, see below), and the first one is less often a good one (see HIT_NEAR).
+			if (!figure.sighted) {
+				figure.snap = true;
+			}
+
+			figure.sighted = true;
+			// (Phase 33: turning faster, 24 degrees a tick (the body 60 % of it): he fires only facing
+			// the player, so one behind him has a moment more.)
+			figure.turnTowards(me, TURN_FIGHT, true);
 
 			if (distance > KEEP) {
 				if (!Stealth.go(figure, Combat.apart(s, figure, me, level, corner), Stealth.WALK, level, corner, s.time())) {
 					figure.speed = 0.0F;
 				}
 
-				figure.turnTowards(me, 14.0F, true);
+				figure.turnTowards(me, TURN_FIGHT, true);
 			} else {
 				figure.speed = 0.0F;
 			}
 
 			figure.headYaw = Crew.yaw(figure.position(), me);
+			boolean facing = Math.abs(Mth.wrapDegrees(figure.headYaw - figure.yaw)) <= AIM_CONE;
 
-			if (--figure.cooldown <= 0) {
-				if (s.time() - s.lastVolley < VOLLEY_GAP) {
+			if (figure.cooldown > 0) {
+				figure.cooldown--;
+			}
+
+			if (figure.cooldown <= 0) {
+				if (s.stepTicks < SECTION_GRACE || !facing) {
+					// Phase 33: the section just began (or he is still turning): the rifle up, a moment.
+					figure.cooldown = 0;
+				} else if (s.time() - s.lastVolley < VOLLEY_GAP) {
 					// Phase 26: another just fired: a moment later (the rifle stays up).
 					figure.cooldown = VOLLEY_GAP - (int) (s.time() - s.lastVolley) + 1;
-				} else {
-					shoot(figure, player, level, corner);
+				} else if (shoot(s, figure, player, level, corner, figure.burst == 0 && figure.snap)) {
 					s.lastVolley = s.time();
+					figure.snap = false;
 					// Phase 26: now and then a second shot right after the first (never a third).
 					boolean again = figure.burst == 0 && player.getRandom().nextFloat() < DOUBLE_CHANCE;
 					figure.burst = again ? 1 : 0;
 					// Phase 27: by the difficulty (more often on Hard, less on Easy).
-					figure.cooldown = again ? DOUBLE_GAP : s.difficulty().ticks(SHOT_MIN + player.getRandom().nextInt(SHOT_RANDOM), s.difficulty().cooldown);
+					figure.cooldown = again ? DOUBLE_GAP : difficulty.ticks(SHOT_MIN + player.getRandom().nextInt(SHOT_RANDOM), difficulty.cooldown);
+				} else {
+					// Phase 33: the muzzle's line is blocked (a corner, a comrade's edge of wall): no bolt into it.
+					figure.cooldown = 2;
 				}
 			}
 
@@ -702,14 +802,53 @@ final class Finale {
 
 			figure.windup = 0;
 			figure.burst = 0;
-			figure.cooldown = Math.max(figure.cooldown, 12);
+			figure.sighted = false;
+			// Phase 33: he readies the next shot meanwhile (was at least 12 ticks, longer after a shot):
+			// seen again, he fires after REACT, at most REACQUIRE ticks more.
+			figure.cooldown = Math.max(react, Math.min(figure.cooldown, react + REACQUIRE));
 		}
 	}
 
-	/** Phase 24: a guard at his post sees this far, hears one this near; his first shot after a moment. */
-	static final double POST_SIGHT = 18.0;
+	/** Phase 24: a guard at his post sees this far, hears one this near. (Phase 33: 22 blocks, was 18: the corridor's length.) */
+	static final double POST_SIGHT = 22.0;
 	static final double POST_NEAR = 5.0;
-	static final int POST_FIRST_SHOT = 18;
+	/** Phase 33: a guard at his post sees this far to either side of his look (degrees): not behind him. */
+	static final float POST_CONE = 75.0F;
+	/** Phase 33: shots or a comrade's shout this near (blocks), this long ago (ticks), turn a guard at his post towards the player. */
+	static final double ALERT_RANGE = 14.0;
+	static final int ALERT_TICKS = 60;
+
+	/** Phase 33: whether the player is before the figure's eyes (within that many degrees of where they look). */
+	static boolean inView(Figure figure, Vec3 me, float cone) {
+		Vec3 flat = new Vec3(me.x - figure.x, 0.0, me.z - figure.z);
+
+		if (flat.lengthSqr() < 1.0E-4) {
+			return true;
+		}
+
+		double angle = Math.toDegrees(Math.acos(Mth.clamp(flat.normalize().dot(figure.look()), -1.0, 1.0)));
+		return angle <= cone;
+	}
+
+	/** Phase 33: whether a guard at his post heard shots or a comrade's shout near him a moment ago. */
+	static boolean alerted(StorySession s, Figure figure) {
+		Vec3 from = s.gunfireFrom;
+		return from != null && s.time() - s.gunfireAt <= ALERT_TICKS && figure.position().distanceTo(from) <= ALERT_RANGE;
+	}
+
+	/** Phase 33: where the player went since the last tick (plot space), smoothed over a few ticks; a jump (a teleport, a capture) starts afresh. */
+	private static void follow(StorySession s, Vec3 me) {
+		Vec3 from = s.aimFrom;
+		s.aimFrom = me;
+
+		if (from == null || from.distanceTo(me) > 1.5) {
+			s.aimWay = Vec3.ZERO;
+			return;
+		}
+
+		Vec3 step = me.subtract(from);
+		s.aimWay = s.aimWay.scale(0.55).add(step.scale(0.45));
+	}
 
 	/** For the tests: the troopers' (and officers') bolts in a fight since the game started. */
 	private static int shots;
@@ -718,20 +857,91 @@ final class Finale {
 		return shots;
 	}
 
-	/** A trooper fires at the player: a real bolt, which the saber can send back. */
-	private static void shoot(Figure figure, ServerPlayer player, ServerLevel level, Vec3 corner) {
-		shots++;
+	/** Phase 33: for the tests: shots held back because the muzzle's line to the player was blocked. */
+	private static int heldBack;
+	/** Phase 33: for the tests: shots meant to fly past. */
+	private static int misses;
+
+	static int missesForTest() {
+		return misses;
+	}
+
+	/** Phase 33: the share of a trooper's shots that are good ones (see {@link #HIT_NEAR}); {@code line} from his muzzle to the player. */
+	static double hitChance(StorySession s, double distance, Vec3 line, boolean snap) {
+		double far = Mth.clamp((distance - HIT_NEAR_RANGE) / (HIT_FAR_RANGE - HIT_NEAR_RANGE), 0.0, 1.0);
+		double chance = Mth.lerp(far, HIT_NEAR, HIT_FAR);
+		Vec3 way = new Vec3(s.aimWay.x, 0.0, s.aimWay.z);
+		Vec3 flat = new Vec3(line.x, 0.0, line.z);
+
+		if (way.length() > RUNNING) {
+			chance *= HIT_RUNNING;
+
+			// Across the line of fire (more than about 45 degrees off it).
+			if (flat.lengthSqr() > 1.0E-4 && Math.abs(way.normalize().dot(flat.normalize())) < 0.7) {
+				chance *= HIT_ACROSS;
+			}
+		}
+
+		if (snap) {
+			chance *= SNAP_HIT;
+		}
+
+		return Mth.clamp(chance / s.difficulty().spread, 0.05, 0.9);
+	}
+
+	static int heldBackForTest() {
+		return heldBack;
+	}
+
+	/**
+	 * A trooper fires at the player: a real bolt, which the saber can send back. Phase 33: a good
+	 * shot or a near miss (see {@link #HIT_NEAR}); and only when the muzzle's own line to the player
+	 * is free (it is checked from his eyes before: a corner in between, and no bolt flies into the
+	 * wall). Returns whether he fired.
+	 */
+	private static boolean shoot(StorySession s, Figure figure, ServerPlayer player, ServerLevel level, Vec3 corner, boolean snap) {
+		Vec3 eye = corner.add(figure.eye());
 		Vec3 muzzle = corner.add(figure.eye().add(figure.look().scale(0.55)).subtract(0.0, 0.3, 0.0));
-		Vec3 aim = player.position().add(0.0, 1.1, 0.0).subtract(muzzle).normalize();
 		// Phase 23: an officer's pistol.
 		boolean pistol = Combat.pistol(figure);
 		BlasterType type = pistol ? BlasterType.SE14C : BlasterType.E11;
+		Vec3 body = player.position().add(0.0, 1.1, 0.0);
+		double distance = muzzle.distanceTo(body);
+
+		if (!Stealth.clear(level, eye, muzzle) || !Stealth.clear(level, muzzle, body)) {
+			heldBack++;
+			return false;
+		}
+
+		RandomSource random = player.getRandom();
+		Vec3 line = body.subtract(muzzle);
+		// Where the player will be if they keep going (if that line is free too, else where they
+		// are: a bolt into the corner they ran past is no use).
+		double lead = distance / Math.max(0.5, type.speed()) * (LEAD + random.nextDouble() * LEAD_RANDOM);
+		Vec3 ahead = body.add(s.aimWay.x * lead, 0.0, s.aimWay.z * lead);
+		Vec3 target = Stealth.clear(level, muzzle, ahead) ? ahead : body;
+
+		if (random.nextDouble() >= hitChance(s, distance, line, snap)) {
+			// A miss: close past that place on one side, about chest high (who keeps going is not
+			// in its way; who turns into it may still be hit).
+			Vec3 side = new Vec3(-line.z, 0.0, line.x);
+			side = side.lengthSqr() < 1.0E-6 ? new Vec3(1.0, 0.0, 0.0) : side.normalize();
+			double off = Mth.clamp(distance * 0.14, MISS_MIN, MISS_MAX) * (random.nextBoolean() ? 1.0 : -1.0);
+			target = target.add(side.scale(off)).add(0.0, random.nextDouble() * 0.6 - 0.2, 0.0);
+			misses++;
+		}
+
+		shots++;
+		Vec3 aim = target.subtract(muzzle).normalize();
 		BlasterBolt bolt = new BlasterBolt(level, muzzle, type, pistol ? BOLT_DAMAGE * 0.8F : BOLT_DAMAGE);
-		bolt.shoot(aim.x, aim.y, aim.z, type.speed(), 2.6F);
+		bolt.shoot(aim.x, aim.y, aim.z, type.speed(), SPREAD * (float) s.difficulty().spread);
 		level.addFreshEntity(bolt);
 		SHOOTERS.put(bolt, figure.id);
+		s.gunfireAt = s.time();
+		s.gunfireFrom = figure.position();
 		level.playSound(null, muzzle.x, muzzle.y, muzzle.z, ShipInteriors.sound(pistol ? "blaster.se14c" : "blaster.e11"), SoundSource.HOSTILE, 0.8F,
 				0.95F + player.getRandom().nextFloat() * 0.1F);
+		return true;
 	}
 
 	/**

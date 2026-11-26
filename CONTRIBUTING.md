@@ -20,7 +20,7 @@ Please do **not** report security problems in public issues; see [SECURITY.md](S
 
 ## Suggesting features
 
-Open a [feature request](https://github.com/Phiro4241/SaberCraft/issues/new?template=feature_request.yml). Describe what you want to do in game and why; mockups or film references (described in words, no copyrighted files) are welcome. Planned work is listed in [docs/folgephasen.md](docs/folgephasen.md) and [docs/phase-11-starships.md](docs/phase-11-starships.md) (German).
+Open a [feature request](https://github.com/Phiro4241/SaberCraft/issues/new?template=feature_request.yml). Describe what you want to do in game and why; mockups or film references (described in words, no copyrighted files) are welcome. Planned work is listed in [docs/development/folgephasen.md](docs/development/folgephasen.md) and [docs/development/phase-11-starships.md](docs/development/phase-11-starships.md) (German).
 
 ## Setting up
 
@@ -39,11 +39,11 @@ IntelliJ IDEA works well: open the folder as a Gradle project and use the genera
 ### Project layout
 
 ```
-src/main/       Code for client and server: items, abilities, blasters, droids, ships, duels, commands, networking
-src/client/     Client only: blade rendering, animation, sounds, music, sky, menus, keys, HUDs
+src/main/       Code for client and server: items, abilities, blasters, droids, ships, ship interiors, the story, duels, commands, networking
+src/client/     Client only: blade rendering, animation, sounds, music, sky, menus, keys, HUDs, story dialogs and cutscenes
 src/gametest/   Fabric client game tests with screenshots
 tools/          Python scripts that generate models, textures, sounds, music, the icon and the banner
-docs/           Development notes per phase (German), guides, images and media
+docs/           Guides, configuration, media; docs/release/ for the platform pages, docs/development/ for the development notes per phase (German)
 ```
 
 Key places:
@@ -57,7 +57,9 @@ Key places:
 | Server-side abilities | `src/main/.../ability/` |
 | Blasters | `src/main/.../blaster/`, `client/blaster/` |
 | Droids and starships | `src/main/.../droid/`, `ship/`, `client/droid/`, `client/ship/` |
-| Menu (key V) | `src/client/.../client/menu/` |
+| Walkable ship interiors | `src/main/.../interior/`, `client/interior/` |
+| Story mode | `src/main/.../story/` (missions, stealth, the finale), `client/story/` (dialogs, cutscenes, HUD), `client/music/StoryMusic.java`, texts in `assets/sabercraft/lang/` |
+| Menu (key I) | `src/client/.../client/menu/` |
 | Settings files | `AbilityConfig`, `CombatConfig`, `ImmersionConfig`, `CharacterConfig`, `BladeStyleConfig` (see [docs/configuration.md](docs/configuration.md)) |
 
 ### Assets are generated
@@ -83,7 +85,7 @@ xvfb-run -a -s "-screen 0 1280x720x24" ./gradlew runClientGameTest
 ./gradlew runClientGameTest
 ```
 
-A full run takes about 30 to 40 minutes. Screenshots are written to `build/run/clientGameTest/screenshots/`. Test classes are listed in `src/gametest/resources/fabric.mod.json`.
+A full run takes about one and a half hours. Screenshots are written to `build/run/clientGameTest/screenshots/`. Test classes are listed in `src/gametest/resources/fabric.mod.json`.
 
 New behavior should come with a test in `src/gametest/` that exercises it the way a player would (real key presses, real menu clicks), and a screenshot if it is visual.
 

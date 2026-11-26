@@ -12,7 +12,7 @@ docs/images/phaseN/     screenshots from the development of each phase (also use
 
 ## Current screenshots
 
-All of them were taken by the automated client game tests (`./gradlew runClientGameTest`), in a virtual display with software rendering at 1280×720. Some show placeholder textures where the test machine lacks vanilla assets.
+All of them were taken by the automated client game tests (`./gradlew runClientGameTest`), in a virtual display with software rendering at 1280×720 (the story images saved as 854×480 JPG). Some show placeholder textures where the test machine lacks vanilla assets.
 
 | File | Shows | Source |
 | --- | --- | --- |
@@ -22,6 +22,10 @@ All of them were taken by the automated client game tests (`./gradlew runClientG
 | `screenshots/hangar.png` | Hangar menu with the planned ships locked | `ShipGameTest` |
 | `screenshots/blaster-first-person.png` | Blaster in first person with the arrow counter | `AtmosphereGameTest` |
 | `screenshots/saber-clash.png` | Two blades clashing | `SaberTypesGameTest` |
+| `screenshots/story-briefing.jpg` | Story, Mission 1: Mira and a radio message address the player by their Minecraft name (the test account's "Player0"; the radio message is shown by the test) | `Phase33GameTest` |
+| `screenshots/story-trooper.jpg` | Story: a stormtrooper in the hangar corridor of the Star Destroyer | `Phase22GameTest` (also `docs/images/phase22/`) |
+| `screenshots/story-reactor.jpg` | Story, Mission 4: the reactor with the mission title | `Phase25GameTest` (also `docs/images/phase25/`) |
+| `screenshots/story-duel.jpg` | Story, Mission 6: the duel against the Shadowblade, second phase | `Phase25GameTest` (also `docs/images/phase25/`) |
 
 ## Adding your own screenshots
 
@@ -40,6 +44,7 @@ Planned slots that do not have a good screenshot yet:
 - `screenshots/duel.png`: a duel between two real players
 - `screenshots/shader-pack.png`: lightsabers with an Iris shader pack in a real game
 - `screenshots/ignition.gif`: a short ignition animation
+- More story shots from a real game: the hangar from above, a stealth moment behind cover, the lab with the saber in its field (see [`docs/release/screenshots.md`](../release/screenshots.md))
 
 ## Visual style
 

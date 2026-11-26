@@ -41,7 +41,7 @@ import com.phiro.sabercraft.story.StoryTesting;
 /**
  * Phase 25: the story's polish after Phiro's playthrough of Phase 24 (the test cases of the phase's
  * list that can be played by a test; how it feels, the camera in motion and the music's moods by
- * ear stay for the manual test, see {@code docs/phase-25-status.md}).
+ * ear stay for the manual test, see {@code docs/development/phase-25-status.md}).
  *
  * <ul>
  * <li>Hale's scene after the card (1-7): it begins at once, running off changes nothing, skipped

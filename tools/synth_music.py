@@ -71,7 +71,7 @@ class Track:
         self.buf[0, i:i + n] += signal[:n] * left
         self.buf[1, i:i + n] += signal[:n] * right
 
-    def finish(self, reverb_seconds=2.5, wet=0.3, seed=1):
+    def finish(self, reverb_seconds=2.5, wet=0.3, seed=1, peak_to=0.89):
         dry = self.buf
         wet_sig = reverb(dry, reverb_seconds, seed)
         mix = dry * (1 - wet * 0.5) + wet_sig * wet
@@ -84,9 +84,9 @@ class Track:
             tail = tail[:, n:]
         out -= out.mean(axis=1, keepdims=True)
         peak = np.max(np.abs(out))
-        return out / peak * 0.89 if peak > 0 else out
+        return out / peak * peak_to if peak > 0 else out
 
-    def finish_once(self, reverb_seconds=2.5, wet=0.3, seed=1, tail=3.0):
+    def finish_once(self, reverb_seconds=2.5, wet=0.3, seed=1, tail=3.0, peak_to=0.89):
         """For pieces played once (Phase 10 victory and defeat): the reverb rings out at the end."""
         dry = self.buf
         wet_sig = reverb(dry, reverb_seconds, seed)
@@ -97,7 +97,7 @@ class Track:
         out[:, -fade:] *= np.linspace(1.0, 0.0, fade)
         out -= out.mean(axis=1, keepdims=True)
         peak = np.max(np.abs(out))
-        return out / peak * 0.89 if peak > 0 else out
+        return out / peak * peak_to if peak > 0 else out
 
 
 def reverb(signal, seconds, seed):
@@ -1010,6 +1010,302 @@ def story_launch():
     return tr.finish(2.4, 0.3, 2562)
 
 
+# Phase 33: the story's great moments --------------------------------------------------------------
+# Five more original pieces for places and moments of the story that played the plain sneaking
+# music before: Ilyra's lightsaber in the lab under the reactor (and the moment it is taken), the
+# reactor shaft, Kestrel's recording after her capture, and the epilogue, where the saber's own
+# figure comes back. The saber's figure (root, fifth, minor sixth, fifth, the octave; then down
+# by the seventh and sixth to the fourth and the fifth) is written for SaberCraft; the chord moves
+# under it (minor, the sixth and seventh below, then a major chord on the root) are the common
+# stock of film music, not anyone's tune.
+
+def swell(seconds, seed, level=1.0):
+    """A cymbal swell: bright noise that grows and stops at its peak."""
+    rng = np.random.default_rng(seed)
+    n = int(seconds * RATE)
+    t = np.arange(n) / RATE
+    noise = rng.standard_normal(n)
+    noise = noise - np.convolve(noise, np.ones(5) / 5, mode="same")
+    grow = (t / max(seconds, 1e-3)) ** 2.2
+    tail = np.ones(n)
+    k = int(0.04 * RATE)
+    tail[-k:] = np.linspace(1, 0, k)
+    return noise * grow * tail * 0.35 * level
+
+
+def crash(seconds, seed, level=1.0):
+    """A soft cymbal hit that rings out."""
+    rng = np.random.default_rng(seed)
+    n = int(seconds * RATE)
+    t = np.arange(n) / RATE
+    noise = rng.standard_normal(n)
+    noise = noise - np.convolve(noise, np.ones(4) / 4, mode="same")
+    return noise * np.exp(-t * 1.8) * env(n, 0.003, 0.4) * 0.3 * level
+
+
+def glass(freq, seconds, seed):
+    """Crystal pings: a bell with a softer attack and a long shimmering tail."""
+    return additive(freq, seconds, [(1, 1.0, 0.0), (2.0, 0.35, 0.6), (3.01, 0.18, 1.4), (4.17, 0.08, 2.4)], 0.01, 0.8,
+                    vibrato=0.0015, vib_rate=3.0, decay=0.45, seed=seed)
+
+
+def tick(seconds, seed, pitch=2400.0):
+    """A dry tick, like a clock or a relay."""
+    rng = np.random.default_rng(seed)
+    n = int(seconds * RATE)
+    t = np.arange(n) / RATE
+    click = np.sin(2 * np.pi * pitch * t) * np.exp(-t * 90) + rng.standard_normal(n) * np.exp(-t * 160) * 0.3
+    return click * env(n, 0.0005, 0.02)
+
+
+def relic_figure(start_midi):
+    """The saber's figure: (offset in semitones from the root, beat in the phrase, length in beats); four bars."""
+    return [(0, 0, 1), (7, 1, 1), (8, 2, 1), (7, 3, 1), (12, 4, 4), (10, 8, 1.5), (8, 9.5, 0.5), (5, 10, 2), (7, 12, 4)]
+
+
+def story_relic():
+    """Phase 33, Ilyra's lightsaber in the lab under the reactor: from the moment the player steps
+    in. Mysterious first (a low drone, a choir holding its breath, crystal pings that hint at the
+    saber's figure), then the figure itself in a lone horn over harp and strings, then majestic:
+    brass, choir and timpani carry it over the sixth and seventh below into D major, the reveal,
+    before it sinks back into the dark it began in (so it loops). D minor, 60 bpm, 24 bars."""
+    rng = np.random.default_rng(3301)
+    prog = ["Dm", "Dm", "Bb", "Bb", "Gm", "Gm", "A5", "A5",
+            "Dm", "Bb", "Gm", "A5", "Dm", "Bb", "Gm", "A5",
+            "Bb", "C", "Dm", "Bb", "C", "D",
+            "Dm", "Dm"]
+    tr = Track(60, len(prog))
+    root = 62  # D4
+    for b, name in enumerate(prog):
+        ch = chord(name, 3)
+        majestic = 16 <= b <= 21
+        rising = 8 <= b <= 15
+        # The drone and the pads.
+        tr.add(tr.at(b), strings(hz(38), tr.bar + 0.8, 33000 + b, 0.45), 0.0, 0.11 if b < 16 else 0.13)
+        for k, note in enumerate(ch):
+            tr.add(tr.at(b), pad(hz(note), tr.bar + 1.4, 33010 + 3 * b + k), -0.5 + 0.5 * k, 0.07 if b < 8 or b >= 22 else 0.09)
+        # The choir: barely there at first, full in the majestic part.
+        choir_gain = 0.035 if b < 8 or b >= 22 else 0.05 if rising else 0.085
+        for k, note in enumerate(chord(name, 4)[:2] if not majestic else chord(name, 4)):
+            tr.add(tr.at(b), choir(hz(note), tr.bar + 0.8, 33100 + 3 * b + k), -0.3 + 0.3 * k, choir_gain)
+        # Crystal pings: in the mysterious part a hint of the figure, later a shimmer.
+        if b < 8 or b >= 22:
+            for i in range(2):
+                if rng.random() < 0.8:
+                    off = int(rng.choice([0, 7, 8, 12, 19, 20]))
+                    tr.add(tr.at(b, 0.5 + 2 * i + rng.random()), glass(hz(root + 12 + off if b % 2 else root + off + 12), 4.0, 33200 + 2 * b + i),
+                           float(rng.uniform(-0.7, 0.7)), 0.05)
+            tr.add(tr.at(b), tremolo(hz(81 if name != "Bb" else 77), tr.bar + 0.4, 33250 + b, 7.0, 0.5, 0.6), 0.4, 0.016)
+        # A slow heartbeat on the timpani in the dark part, every other bar.
+        if b < 8 and b % 2 == 0:
+            tr.add(tr.at(b), drum(2.0, 36.7, 33300 + b, 0.1, 0.4, 1.8), 0.0, 0.12)
+        # Harp in the rising part.
+        if rising:
+            arp = [ch[0] + 12, ch[2] + 12, ch[1] + 24, ch[2] + 12, ch[0] + 24, ch[2] + 12, ch[1] + 24, ch[2] + 24]
+            for s2, note in enumerate(arp):
+                tr.add(tr.at(b, s2 * 0.5), harp(hz(note), 1.8, 33400 + 8 * b + s2), 0.35, 0.05 + 0.004 * (b - 8))
+            tr.add(tr.at(b), strings(hz(ch[0]), tr.bar + 0.6, 33450 + b, 0.7), -0.2, 0.08)
+        # The majestic part: brass chords, timpani on each bar, strings in octaves.
+        if majestic:
+            for k, note in enumerate(chord(name, 3)):
+                tr.add(tr.at(b), brass(hz(note), tr.bar * 0.97, 33500 + 3 * b + k, 0.85), -0.35 + 0.35 * k, 0.085 if b < 21 else 0.11)
+            for k, note in enumerate(chord(name, 4)):
+                tr.add(tr.at(b), strings(hz(note), tr.bar + 0.6, 33550 + 3 * b + k, 1.0), -0.4 + 0.4 * k, 0.06)
+            timp = hz(chord(name, 1)[0])
+            tr.add(tr.at(b), drum(2.2, timp, 33600 + b, 0.3, 0.5, 2.2), 0.0, 0.32 if b != 21 else 0.42)
+            tr.add(tr.at(b, 3.5), drum(0.6, timp, 33620 + b, 0.2, 0.4, 6.0), 0.0, 0.1)
+    # Cymbal swells into the majestic part and into the reveal, a crash on each.
+    tr.add(tr.at(16) - 3.0, swell(3.0, 33700), 0.0, 0.5)
+    tr.add(tr.at(16), crash(4.0, 33701), 0.1, 0.35)
+    tr.add(tr.at(21) - 2.0, swell(2.0, 33702), 0.0, 0.6)
+    tr.add(tr.at(21), crash(5.0, 33703), -0.1, 0.45)
+    # A timpani roll into bar 16.
+    for s2 in range(12):
+        tr.add(tr.at(15, 1) + s2 * 0.25, drum(0.5, 55.0, 33710 + s2, 0.2, 0.4, 7.0), 0.0, 0.03 + 0.012 * s2)
+    # The saber's figure: hinted on the harp (bars 4-7), the lone horn (8-11), strings an octave up (12-15).
+    for offset, beat, length in relic_figure(root):
+        tr.add(tr.at(4) + beat * tr.beat, harp(hz(root + offset), 2.5, 33800 + int(beat * 4)), -0.3, 0.06)
+        tr.add(tr.at(8) + beat * tr.beat, brass(hz(root - 12 + offset), tr.beat * length + 0.2, 33850 + int(beat * 4), 0.6), 0.15, 0.13)
+        tr.add(tr.at(12) + beat * tr.beat, strings(hz(root + offset), tr.beat * length + 0.4, 33900 + int(beat * 4), 1.1), 0.2, 0.1)
+        tr.add(tr.at(12) + beat * tr.beat, brass(hz(root - 12 + offset), tr.beat * length + 0.2, 33950 + int(beat * 4), 0.7), -0.1, 0.07)
+    # The majestic statement: over B flat, C, D minor, B flat, C and the D major of the reveal.
+    big = [(16, 0, 74, 2), (16, 2, 77, 2), (17, 0, 76, 2), (17, 2, 79, 1), (17, 3, 76, 1), (18, 0, 77, 1), (18, 1, 76, 1), (18, 2, 74, 2),
+           (19, 0, 74, 1), (19, 1, 77, 1), (19, 2, 82, 2), (20, 0, 79, 2), (20, 2, 76, 1), (20, 3, 79, 1), (21, 0, 78, 4)]
+    for bar, beat, note, length in big:
+        tr.add(tr.at(bar, beat), brass(hz(note - 12), tr.beat * length + 0.25, 34000 + 4 * bar + beat, 1.15), 0.1, 0.14)
+        tr.add(tr.at(bar, beat), brass(hz(note - 24), tr.beat * length + 0.25, 34100 + 4 * bar + beat, 0.9), -0.15, 0.09)
+        tr.add(tr.at(bar, beat), strings(hz(note), tr.beat * length + 0.4, 34200 + 4 * bar + beat, 1.2), 0.25, 0.08)
+    # Back into the dark: the F of D minor again in the strings, one last ping.
+    tr.add(tr.at(22), strings(hz(65), tr.bar * 2 + 0.6, 34300, 0.6), 0.2, 0.06)
+    tr.add(tr.at(23, 2), glass(hz(74), 4.0, 34301), -0.4, 0.05)
+    # (Phase 33: a little below the others' peak: the hits and pings overshoot in the Ogg file.)
+    return tr.finish(4.2, 0.42, 3302, 0.82)
+
+
+def story_relic_take():
+    """Phase 33, the scene in which the player takes the saber (ten seconds; the film plays it from
+    its start): the figure in the horn over a held D and a growing roll, the D major chord with
+    everything as the hand closes on the hilt (3.1 s), a dark blow as the field breaks and the
+    reactor surges (4.2 s), strings shivering upwards, a second blow as the core flares (6.8 s),
+    then a racing pulse on D that leads into the escape's G minor."""
+    tr = Track(60, 4)
+    take, surge, core = 3.1, 4.2, 6.8
+    # The held D and the choir growing towards the take.
+    tr.add(0.0, strings(hz(38), take + 0.6, 33010, 0.5), 0.0, 0.16)
+    for k, note in enumerate((50, 57, 62)):
+        sig = choir(hz(note + 12), take + 0.4, 33020 + k)
+        sig *= np.linspace(0.4, 1.0, len(sig))
+        tr.add(0.0, sig, -0.3 + 0.3 * k, 0.07)
+    for offset, beat in ((0, 0.0), (7, 0.7), (8, 1.4), (7, 2.1)):
+        tr.add(beat, brass(hz(50 + offset), 0.8, 33030 + int(beat * 10), 0.7), 0.15, 0.15)
+    for s2 in range(14):
+        tr.add(1.6 + s2 * (take - 1.6) / 14, drum(0.4, 36.7, 33040 + s2, 0.15, 0.4, 7.0), 0.0, 0.03 + 0.01 * s2)
+    tr.add(take - 1.6, swell(1.6, 33050), 0.0, 0.6)
+    # The take: D major, all of it.
+    for k, note in enumerate((38, 50, 54, 57, 62, 66, 69)):
+        tr.add(take, brass(hz(note), surge - take + 0.2, 33060 + k, 1.2), -0.45 + 0.15 * k, 0.09)
+    for k, note in enumerate((62, 66, 69)):
+        tr.add(take, choir(hz(note), surge - take + 0.5, 33070 + k), -0.3 + 0.3 * k, 0.1)
+        tr.add(take, strings(hz(note + 12), surge - take + 0.4, 33075 + k, 1.2), -0.3 + 0.3 * k, 0.07)
+    tr.add(take, drum(2.0, 36.7, 33080, 0.4, 0.6, 2.0), 0.0, 0.5)
+    tr.add(take, crash(3.0, 33081), 0.1, 0.5)
+    # The surge: a dark E flat over the D, low and hard.
+    for k, note in enumerate((26, 38, 39, 43, 46)):
+        tr.add(surge, brass(hz(note), 0.9, 33090 + k, 1.3), -0.3 + 0.15 * k, 0.12)
+        tr.add(surge, low_staccato(hz(note), 0.5, 33095 + k), 0.0, 0.12)
+    tr.add(surge, drum(2.5, 30.0, 33100, 0.7, 2.0, 1.6), 0.0, 0.6)
+    # Shivering strings that climb a half step at a time.
+    for i, note in enumerate((74, 75, 76, 77)):
+        start = surge + 0.4 + i * 0.6
+        tr.add(start, tremolo(hz(note), 0.75, 33110 + i, 12.0, 0.6, 1.0), 0.3, 0.09 + 0.015 * i)
+        tr.add(start, tremolo(hz(note - 12), 0.75, 33120 + i, 12.0, 0.6, 0.9), -0.3, 0.08 + 0.015 * i)
+    # Under them the low D goes on, rumbling (no hole between the two blows).
+    rumble = strings(hz(26), core - surge + 0.6, 33125, 0.6)
+    rumble *= np.linspace(0.6, 1.0, len(rumble))
+    tr.add(surge + 0.3, rumble, 0.0, 0.2)
+    tr.add(surge + 0.3, tremolo(hz(38), core - surge, 33126, 8.0, 0.5, 0.7), 0.0, 0.08)
+    # The core flares: the second blow, then the racing pulse on D (the escape's dominant).
+    for k, note in enumerate((26, 38, 45, 50)):
+        tr.add(core, brass(hz(note), 1.2, 33130 + k, 1.2), -0.3 + 0.2 * k, 0.12)
+    tr.add(core, drum(2.0, 36.7, 33140, 0.6, 1.6, 2.2), 0.0, 0.5)
+    tr.add(core, crash(2.5, 33141), -0.1, 0.35)
+    sixteenth = 60.0 / 152 / 4
+    # Root, fifth and octave only (no third): the escape's G minor follows, its dominant open.
+    pattern = [0, 0, 7, 0, 12, 0, 7, 0, 0, 0, 7, 12, 0, 7, 12, 7]
+    t = core + 0.5
+    i = 0
+    while t < 15.0:
+        note = 38 + pattern[i % 16]
+        fade = 1.0 if t < 11.0 else max(0.0, 1.0 - (t - 11.0) / 4.0)
+        tr.add(t, low_staccato(hz(note), 0.14, 33200 + i), -0.1, (0.22 if i % 4 == 0 else 0.13) * min(1.0, 0.5 + (t - core) / 3.0) * fade)
+        i += 1
+        t += sixteenth
+    for s2 in range(16):
+        tr.add(8.4 + s2 * 0.1, snare(0.12, 33300 + s2), 0.2, (0.02 + 0.006 * s2))
+    for k, note in enumerate((50, 57, 62)):
+        tr.add(core + 0.6, strings(hz(note), 7.0, 33310 + k, 1.0), -0.3 + 0.3 * k, 0.09)
+    return tr.finish_once(2.2, 0.28, 3303, 1.5, 0.8)
+
+
+def story_reactor():
+    """Phase 33, in the reactor shaft (the technician's console, the download, sneaking past the
+    lab's guard): a machine pulse in three, three and two over a dark drone, metal ticks like
+    relays, a slow throb in the low strings and a warning bell now and then. Awake and uneasy,
+    soft enough to sneak to. F phrygian, 96 bpm, 16 bars."""
+    rng = np.random.default_rng(3311)
+    prog = ["Fm", "Fm", "Gb", "Fm", "Db", "Gb", "Fm", "C5"] * 2
+    tr = Track(96, len(prog))
+    for b, name in enumerate(prog):
+        ch = chord(name, 2)
+        for s2 in range(8):
+            accent = s2 in (0, 3, 6)
+            note = ch[0] if s2 != 6 else ch[2]
+            tr.add(tr.at(b, s2 * 0.5), low_staccato(hz(note), 0.16, 33400 + 8 * b + s2), -0.05, 0.12 if accent else 0.045)
+            if accent:
+                tr.add(tr.at(b, s2 * 0.5), tick(0.05, 33500 + 8 * b + s2, 1800.0), 0.35, 0.05)
+            else:
+                tr.add(tr.at(b, s2 * 0.5), tick(0.04, 33550 + 8 * b + s2, 3200.0), -0.35, 0.025)
+        tr.add(tr.at(b), drum(1.2, 43.7, 33600 + b, 0.12, 0.8, 3.0), 0.0, 0.14)
+        n = int((tr.bar + 0.6) * RATE)
+        throb = 0.65 + 0.35 * np.sin(2 * np.pi * 0.8 * np.arange(n) / RATE)
+        low = strings(hz(chord(name, 1)[0] + 12), tr.bar + 0.6, 33650 + b, 0.5)
+        tr.add(tr.at(b), low * throb[:len(low)], 0.0, 0.1)
+        for k, note in enumerate(chord(name, 3)):
+            tr.add(tr.at(b), pad(hz(note), tr.bar + 1.2, 33700 + 3 * b + k), -0.4 + 0.4 * k, 0.06)
+        if b % 4 == 3:
+            for k, note in enumerate(chord(name, 3)):
+                sig = brass(hz(note), tr.bar * 0.9, 33750 + 3 * b + k, 0.6)
+                sig *= np.linspace(0.2, 1.0, len(sig)) ** 2
+                tr.add(tr.at(b), sig, -0.3 + 0.3 * k, 0.06)
+        if b >= 8 and rng.random() < 0.5:
+            tr.add(tr.at(b, 1 + 2 * rng.random()), bell(hz(int(rng.choice(chord(name, 5)))), 2.8, 33800 + b), float(rng.uniform(-0.6, 0.6)), 0.03)
+        if b >= 8:
+            tr.add(tr.at(b), tremolo(hz(chord(name, 5)[0]), tr.bar + 0.4, 33850 + b, 9.0, 0.5, 0.7), 0.3, 0.018)
+    return tr.finish(2.8, 0.34, 3312, 0.8)
+
+
+def story_captured():
+    """Phase 33, Kestrel's recording after her capture (and while the player decides how to get
+    her out): sorrow with a clock running under it. Low strings held, a lone line in the cellos
+    that sinks and rises again, a soft tick in eighths, a heartbeat on the timpani, the choir in
+    the second half. G minor, 70 bpm, 16 bars."""
+    rng = np.random.default_rng(3321)
+    prog = ["Gm", "Eb", "Cm", "D5", "Gm", "Bb", "Eb", "D5", "Cm", "Gm", "Eb", "Bb", "Cm", "Eb", "Cm", "D5"]
+    tr = Track(70, len(prog))
+    for b, name in enumerate(prog):
+        ch = chord(name, 2)
+        tr.add(tr.at(b), strings(hz(ch[0]), tr.bar + 0.8, 34400 + b, 0.45), 0.0, 0.14)
+        for k, note in enumerate(chord(name, 3)):
+            tr.add(tr.at(b), pad(hz(note), tr.bar + 1.4, 34410 + 3 * b + k), -0.5 + 0.5 * k, 0.08)
+        for s2 in range(8):
+            tr.add(tr.at(b, s2 * 0.5), tick(0.04, 34500 + 8 * b + s2, 2600.0 if s2 % 2 == 0 else 2100.0), 0.3, 0.03 if s2 % 2 == 0 else 0.018)
+        for beat in (0, 0.45):
+            tr.add(tr.at(b, beat), drum(0.9, 49.0, 34600 + 2 * b + int(beat * 3), 0.08, 0.6, 4.0), 0.0, 0.12 if beat == 0 else 0.07)
+        if b >= 8:
+            tr.add(tr.at(b), choir(hz(chord(name, 4)[0]), tr.bar + 0.6, 34650 + b), -0.2, 0.045)
+            tr.add(tr.at(b), choir(hz(chord(name, 4)[2]), tr.bar + 0.6, 34660 + b), 0.2, 0.035)
+        if b % 4 == 0:
+            tr.add(tr.at(b, 2.5), bell(hz(chord(name, 5)[1]), 3.0, 34700 + b), float(rng.uniform(-0.5, 0.5)), 0.03)
+    chords = [chord(p, 3) for p in prog]
+    tune = melody(rng, MINOR, 55, chords, 2, rest=0.3, span=(0, 12))
+    for i in range(4):
+        tune[i] = None
+    lay_melody(tr, tune, 2, lambda f, sec, sd: strings(f, sec, sd, 0.75), 0, 34800, 0.12, -0.15, 1.0)
+    return tr.finish(3.6, 0.42, 3322, 0.84)
+
+
+def story_epilogue():
+    """Phase 33, the epilogue aboard the Falcon: safe at last, and the tracker's last find. The
+    saber's figure comes back in the flute, warm, in D major, over harp and strings; in its second
+    half the B flat and C of the lab return under it, a shadow of the mystery, before it settles in
+    D major again. 66 bpm, 16 bars."""
+    rng = np.random.default_rng(3331)
+    prog = ["D", "Bm", "Em", "A", "D", "Bm", "A", "D", "D", "Bb", "C", "D", "G", "Bb", "Asus", "D"]
+    tr = Track(66, len(prog))
+    for b, name in enumerate(prog):
+        ch = chord(name, 3)
+        for k, note in enumerate(ch):
+            tr.add(tr.at(b), pad(hz(note), tr.bar + 1.4, 34900 + 3 * b + k), -0.5 + 0.5 * k, 0.1)
+        tr.add(tr.at(b), strings(hz(ch[0] - 12), tr.bar + 0.8, 34950 + b, 0.45), 0.0, 0.12)
+        arp = [ch[0] + 12, ch[2] + 12, ch[1] + 24, ch[2] + 12]
+        for s2, note in enumerate(arp):
+            tr.add(tr.at(b, s2), harp(hz(note), 2.0, 35000 + 4 * b + s2), 0.3, 0.08)
+        if b >= 8:
+            tr.add(tr.at(b), choir(hz(chord(name, 4)[1]), tr.bar + 0.8, 35100 + b), -0.2, 0.04)
+            tr.add(tr.at(b), strings(hz(chord(name, 4)[0]), tr.bar + 0.6, 35150 + b, 0.8), 0.2, 0.05)
+        if b in (3, 11):
+            tr.add(tr.at(b, 2), glass(hz(chord(name, 5)[2]), 4.0, 35200 + b), float(rng.uniform(-0.5, 0.5)), 0.04)
+    # The saber's figure, warm: 1 5 6 5 | 8 | 7 6 4 | 5 (major sixth now), and with the lab's chords under it.
+    first = [(0, 0, 1), (7, 1, 1), (9, 2, 1), (7, 3, 1), (12, 4, 4), (11, 8, 1.5), (9, 9.5, 0.5), (7, 10, 2), (4, 12, 4)]
+    second = [(0, 0, 1), (7, 1, 1), (9, 2, 1), (7, 3, 1), (12, 4, 4), (10, 8, 1.5), (9, 9.5, 0.5), (5, 10, 2), (12, 12, 4)]
+    last = [(5, 0, 1), (7, 1, 1), (9, 2, 2), (8, 4, 4), (7, 8, 2), (2, 10, 2), (4, 12, 4)]
+    # (The first four bars only harp and strings; the flute from bar 4.)
+    for bar0, figure in ((4, first), (8, second), (12, last)):
+        for offset, beat, length in figure:
+            tr.add(tr.at(bar0) + beat * tr.beat, flute(hz(74 + offset), tr.beat * length + 0.3, 35300 + 16 * bar0 + int(beat * 2)), -0.15, 0.15)
+    return tr.finish(4.0, 0.45, 3332)
+
+
 PIECES = {
     "exploration_horizon": exploration_horizon,
     "exploration_wander": exploration_wander,
@@ -1036,6 +1332,11 @@ PIECES = {
     "story_finale": story_finale,
     "story_triumph": story_triumph,
     "story_launch": story_launch,
+    "story_relic": story_relic,
+    "story_relic_take": story_relic_take,
+    "story_reactor": story_reactor,
+    "story_captured": story_captured,
+    "story_epilogue": story_epilogue,
 }
 
 

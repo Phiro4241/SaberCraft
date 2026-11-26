@@ -514,7 +514,10 @@ public final class StoryCinema {
 			// bed of before the duel); the triumph only once the Falcon has escaped.
 			case "duel_end" -> "music.story_tension";
 			case "escape" -> "music.story_finale";
-			case "takedown", "hale_in", "service", "saber" -> null;
+			// Phase 33 (Phiro): taking the saber has its own music: the relic's theme in full, the
+			// surge of the alarm, and a racing pulse that leads into the escape.
+			case "saber" -> "music.story_relic_take";
+			case "takedown", "hale_in", "service" -> null;
 			default -> "music.flight_imperial";
 		};
 	}

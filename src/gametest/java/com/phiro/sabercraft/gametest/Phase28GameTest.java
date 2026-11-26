@@ -51,7 +51,7 @@ import com.phiro.sabercraft.story.StoryTesting;
 
 /**
  * Phase 28: the last polish of chapter 1, after Phiro's playtest. The parts a test can play in the
- * real game (the feel stays for the manual test list in {@code docs/phase-28-status.md}):
+ * real game (the feel stays for the manual test list in {@code docs/development/phase-28-status.md}):
  *
  * <ol>
  * <li>The hint cards: at the left, never over the mission panel, at every size of screen (1).</li>

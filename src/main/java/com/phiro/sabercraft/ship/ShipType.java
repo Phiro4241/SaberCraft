@@ -9,7 +9,7 @@ import net.minecraft.world.phys.Vec3;
 /**
  * The starships. The X-Wing flies since Phase 11, the TIE Fighter and the TIE Interceptor since
  * Phase 12, the Millennium Falcon and the Star Destroyer since Phase 13 (see
- * docs/phase-13-status.md).
+ * docs/development/phase-13-status.md).
  *
  * @param id          short name in commands, models, sounds and translation keys
  * @param displayName the name over the ship and in messages to players without SaberCraft

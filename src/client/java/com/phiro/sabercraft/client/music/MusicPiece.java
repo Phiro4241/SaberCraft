@@ -31,6 +31,8 @@ final class MusicPiece extends AbstractTickableSoundInstance {
 	private float fadeOutStep;
 	private float master = 1.0F;
 	private int age;
+	/** Phase 33: ticks of the story's music this piece waited on its list without the sound engine playing it. */
+	int idle;
 	/** Phase 26: the piece this one waits for before it fades out, how long it will fade then, how long it waited. */
 	private @Nullable MusicPiece waitFor;
 	private float pendingOut;

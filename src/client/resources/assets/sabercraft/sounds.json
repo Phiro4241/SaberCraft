@@ -1752,5 +1752,45 @@
         "attenuation_distance": 12
       }
     ]
+  },
+  "music.story_relic": {
+    "sounds": [
+      {
+        "name": "sabercraft:music/story_relic",
+        "stream": true
+      }
+    ]
+  },
+  "music.story_relic_take": {
+    "sounds": [
+      {
+        "name": "sabercraft:music/story_relic_take",
+        "stream": true
+      }
+    ]
+  },
+  "music.story_reactor": {
+    "sounds": [
+      {
+        "name": "sabercraft:music/story_reactor",
+        "stream": true
+      }
+    ]
+  },
+  "music.story_captured": {
+    "sounds": [
+      {
+        "name": "sabercraft:music/story_captured",
+        "stream": true
+      }
+    ]
+  },
+  "music.story_epilogue": {
+    "sounds": [
+      {
+        "name": "sabercraft:music/story_epilogue",
+        "stream": true
+      }
+    ]
   }
 }

@@ -28,9 +28,11 @@ import com.phiro.sabercraft.network.StoryStatePayload;
 public final class StoryMusic {
 	/** The calm pieces the danger's moods lay themselves over. */
 	private static final List<String> CALM = List.of("music.story_stealth", "music.story_hideout", "music.exploration_wander", "music.night_stars",
-			"music.story_corridors", "music.story_infiltration");
+			"music.story_corridors", "music.story_infiltration", "music.story_reactor");
 	private static final String STEALTH = "music.story_stealth";
 	private static final String CORRIDORS = "music.story_corridors";
+	/** Phase 33: down at the reactor (under its hum it sits low, like the sneaking music). */
+	private static final String REACTOR = "music.story_reactor";
 	private static final String HIDEOUT = "music.story_hideout";
 	private static final String ALARM = "music.story_alarm";
 	/** Phase 24: the moods: suspicion nearby, the search, after the danger. */
@@ -74,6 +76,11 @@ public final class StoryMusic {
 				owns = false;
 				fadeOut(Math.max(10.0F, crossfade * 0.5F));
 				playing = null;
+				// Phase 33: the danger of before stays behind (back in the story later, no calming piece of it).
+				dangerAt = Long.MIN_VALUE / 2;
+				suspectAt = Long.MIN_VALUE / 2;
+				wasCalm = false;
+				mood = "";
 			}
 
 			tidy(client);
@@ -114,7 +121,7 @@ public final class StoryMusic {
 
 		if (current != null) {
 			// Phase 26: the tense bed under her words before the duel sits low too.
-			boolean low = STEALTH.equals(playing) || CORRIDORS.equals(playing) || "story".equals(mood) && TENSION.equals(playing);
+			boolean low = STEALTH.equals(playing) || CORRIDORS.equals(playing) || REACTOR.equals(playing) || "story".equals(mood) && TENSION.equals(playing);
 			current.setMaster(volume * (low ? STEALTH_GAIN : 1.0F));
 		}
 
@@ -263,7 +270,29 @@ public final class StoryMusic {
 	}
 
 	private static void tidy(Minecraft client) {
-		FADING.removeIf(piece -> piece.isStopped() || !piece.isPlaying(client) && piece.age() > 40);
+		// Phase 33: also a piece that never came to play (given way before the sound engine started
+		// it): it is not heard, and it is not kept on the list.
+		FADING.removeIf(piece -> piece.isStopped() || !piece.isPlaying(client) && (piece.age() > 40 || ++piece.idle > 40));
+	}
+
+	/** Phase 33: for the tests: how many of the story's pieces the sound engine plays now (the current one and those fading). */
+	public static int audibleForTest() {
+		Minecraft client = Minecraft.getInstance();
+		int audible = current != null && current.isPlaying(client) ? 1 : 0;
+
+		for (MusicPiece piece : FADING) {
+			if (piece.isPlaying(client)) {
+				audible++;
+			}
+		}
+
+		return audible;
+	}
+
+	/** Phase 33: for the tests: the pieces fading now (name, whether the sound engine plays it, its age in ticks). */
+	public static List<String> fadingNamesForTest() {
+		Minecraft client = Minecraft.getInstance();
+		return FADING.stream().map(piece -> piece.getIdentifier() + (piece.isPlaying(client) ? " playing" : " silent") + " age " + piece.age()).toList();
 	}
 
 	/** The piece playing now (for tests). */

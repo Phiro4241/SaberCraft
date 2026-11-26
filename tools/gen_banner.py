@@ -97,7 +97,7 @@ def compose(h, seed):
     img = Image.alpha_composite(img, glow.filter(ImageFilter.GaussianBlur(10)))
     d = ImageDraw.Draw(img)
     d.text((320, 78 + dy), "SaberCraft", font=title, fill=(245, 248, 255, 255))
-    d.text((324, 200 + dy), "Lightsabers, blasters, droids and an X-Wing", font=sub, fill=(215, 225, 245, 255))
+    d.text((324, 200 + dy), "Lightsabers, starships and a story campaign", font=sub, fill=(215, 225, 245, 255))
     d.text((324, 242 + dy), "for Minecraft Java 26.2 \u00b7 Fabric", font=sub, fill=(215, 225, 245, 255))
     d.text((324, 296 + dy), "Unofficial fan project \u00b7 not affiliated with Lucasfilm or Disney", font=small,
            fill=(160, 170, 200, 255))
